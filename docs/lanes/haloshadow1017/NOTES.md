@@ -254,6 +254,26 @@ projection.
   on lavapipe, and the next legs are GPL mode 0 without the finish (L4), then a tiler-only ordering
   question that only the Nova can answer.
 
+**L3's result (attempt 2, run 12:39): miss.** The desktop now takes the Nova's path pattern (each
+group's first projection draw path 2, the rest path 0; f003 n459-517), and still draws no square.
+Shot-matched against the owner's still `s2-02.png` (the close-up the state loads into; the desktop's
+f000-f007 are inside that shot): at the right-hand soldier's feet the Nova draws a large dark
+parallelogram covering the whole floor patch; L1 and L3 draw a thin soft streak beside the feet
+(crops: `build-linux/run/L1|L3/..._f003.png` (480,230)-(640,360) against s2-02 (900,480)-(1280,780)).
+The super-fast path alone does not draw the square on lavapipe.
+
+Both devices enable VK_EXT_custom_border_color and VK_KHR_push_descriptor (logcat 499-500; L3
+qemu.log 34-37), so neither is an Android-only difference. The named one left is GPL mode 0
+(Nova, no VK_EXT_graphics_pipeline_library) vs mode 3 (desktop).
+
+### L4 prediction (before the run)
+
+L4 = L3 + `HAKUX_GPL=0`: the Nova's pipeline mode, the Nova's path pattern, no serialisation.
+- Hit: the square at the right soldier's feet in f000-f007 (the s2-02 shot). The cause is in mode 0's
+  pipeline or uniform path, and the desktop reproduces the defect from here on.
+- Miss: the thin streak again. Mode is out; next are the other env/Android-only differences
+  (a full diff of the Nova's logged switches against the desktop's).
+
 ## 7. Desktop crash log
 
 (none yet)
