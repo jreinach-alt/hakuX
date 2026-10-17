@@ -1,6 +1,6 @@
 """Does a ring surface turn ON SCREEN? Fit each frame's texture offset from the dumped image (#939, M2).
 
-usage: bandfit.py DUMP.jsonl RAM.bin OUT.tsv [every=N] [px=N] [draws=n4,n5]
+usage: bandfit.py DUMP.jsonl RAM.bin OUT.tsv [every=N] [px=N] [draws=n4,n5] [images=MAP.tsv]
 
 The ring turns by scrolling texture u (oT0.x = c13.x*u + c13.y*v + c13.w; M1).
 The guest's c13.w is in the dump; what reaches the screen is in the dump's image
@@ -200,6 +200,13 @@ for d in draws:
         d[k] = int(d[k])
 fimg = {int(f): r.get("image") for f, r in frames.items()}
 base = os.path.dirname(os.path.abspath(dump))
+if "images" in opt:
+    # pixels from elsewhere: vidmap.py's map.tsv (frame, t_video, video_frame, ppm), a
+    # video frame per dump frame. The video's FPS counter (top left) is kept out of the fit.
+    fimg = {}
+    for line in open(opt["images"]).read().splitlines()[1:]:
+        p = line.split("\t")
+        fimg[int(p[0])] = os.path.abspath(p[3])
 want_f = sorted(f for f in fimg if fimg[f] and f % EVERY == 0)
 st = g.replay(draws, set(want_f))
 
@@ -236,6 +243,9 @@ for k in WANT:
         lid, tid, bary = raster(layers)
         L = list(DRAWS).index(k)
         ys, xs = np.nonzero(lid == L)
+        if "images" in opt:
+            keep = ~((ys < 23) & (xs < 65))
+            ys, xs = ys[keep], xs[keep]
         if len(ys) < 200:
             out.write(f"{f}\t{k}\t{len(ys)}\t{cw[k][f][13, 3]:.6f}\t\t\t\t\t\t\n")
             continue
@@ -252,7 +262,7 @@ for k in WANT:
         tw = DRAWS[k][4][1]
         rho = np.nanmedian(np.concatenate([du[np.isfinite(du)], dv[np.isfinite(dv)]])) * tw
         lod = int(np.clip(np.round(np.log2(max(rho, 1e-6))), 0, len(tex[k]) - 1))
-        img = ppm(os.path.join(base, os.path.basename(fimg[f])))
+        img = ppm(fimg[f] if "images" in opt else os.path.join(base, os.path.basename(fimg[f])))
         sel = rng.choice(len(ys), size=min(NPX, len(ys)), replace=False)
         lum = img[ys[sel], xs[sel]]
         lum = (lum - lum.mean()) / (lum.std() + 1e-9)
