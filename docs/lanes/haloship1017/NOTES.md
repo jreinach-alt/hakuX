@@ -7,8 +7,12 @@ as #939. Branched from master @ 8d260f39fc.
 ## Status
 
 Step 0 done (this file, before any code). Desktop input works (r2), the cut is located (r2), the light tests
-are identified and count 0 in the steady front shot (r2, r3). Running: r4, every frame across the cut, armed by
-the engine glow. Next: per-frame light tests and images for the first frames after the cut.
+are identified and count 0 in the steady front shot (r2, r3). **r4b (attempt 2) reproduces it on the desktop and
+locates it:** the rear lights are lens flares drawn with the depth test OFF, and the second frame after the cut
+(f42) draws all 12 of them at alpha 0.18-0.20, because the first front frame's tests (f41, own count 0) were
+answered with the behind shot's counts (12/730) by `HAKUX_REPORT_EARLY`. See "r4b" below. Running: legs e0
+(`HAKUX_REPORT_EARLY=0`, 0.5.1-rc1's report config) and a0 (`HAKUX_REPORT_ASYNC=0`), and the disassembly of
+Halo's flare read (does it wait for a result? It decides whether 0.5.1-rc1 can flash with no EARLY).
 
 **Why attempt 1 did not finish (12:08 PDT):** the 300-turn cap. It spent its turns on Step 0, the instrument,
 three desktop runs and many single-command polls, and the cap fell 40 s into r4 (route.log ends at
@@ -63,11 +67,18 @@ frame late at a cut), which nobody captured.
 
 ## Symptoms and their accounts (filled as measured)
 
-1. Behind the ship the rear lights show. Correct. Account: TBD (they are what H1-H5 gate).
-2. After the cut to the front, the lights show through the hull; hardware does not. Account: TBD.
-3. How many frames it lasts after the cut. Unknown; first measurement.
-4. Desktop: unknown.
-5. Fast paths off: unknown.
+1. Behind the ship the rear lights show. Correct. **Account (r4b):** they are lens flares, 12 depth-test-off
+   quads a frame whose brightness the CPU sets from each light's pixel-count test (0x60200-0x602b0, 4-182
+   samples each from behind).
+2. After the cut to the front, the lights show through the hull; hardware does not. **Account (desktop, 0.5.2
+   defaults):** the first front frame's tests are answered with the behind shot's counts (EARLY), so the next
+   frame draws all 12 flares, depth test off, through the hull. For 0.5.1-rc1 (no EARLY): pending the e0 leg
+   and the flare read's disassembly.
+3. How many frames it lasts. **Desktop, 0.5.2 defaults: one frame** (f42, the second after the cut), alpha
+   0.18-0.20 against 0.53-0.79 behind. On a device it can be longer if answers lag more than a frame there.
+4. Desktop: **yes**, as that one frame, in the draw records. Not in the dumped images (the frame that would show
+   it has none), which is why r2-r4b's pictures looked clean.
+5. Fast paths off: leg a0 (`HAKUX_REPORT_ASYNC=0`), running.
 
 ## Hypotheses
 
@@ -98,6 +109,18 @@ weight goes to H2-H5, and H8 joins:
 | H8 | a draw that writes the hull's depth is skipped on the host at the cut (pipeline or shader still compiling: `{"t":"skip"}` in gd), so the tests pass where the hull should be | 0.10 | skip records for hull-like draws in the first frames after the cut, defect lasts until they compile | no skips across the cut |
 
 Re-ranked: H3 0.25, H2 0.20, H5 0.20, H4 0.12, H8 0.10, H6 0.05, H7 0.05, H1 0.03.
+
+**Re-ranked on r4b (attempt 2).** The flares are drawn with the depth test off and the host's own counts are
+right, so every GPU-side hypothesis lost its hit on the desktop: H3 0.25 -> 0.04, H5 0.20 -> 0.02 (the light
+draws are not depth-tested at all), H4 0.12 -> 0.02, H8 0.10 -> 0.02 (no skips), H7 0.05 -> 0.02. The defect is
+the guest being given a count that is not its own test's. Two ways to that, one per build:
+
+| # | hypothesis | P | hit | miss |
+|---|---|---|---|---|
+| H1 | (0.5.2) EARLY answers the first front frame's tests with the behind counts | **0.95 for 0.5.2 on the desktop** (seen: f41 given 12/730, own 0/0; f42 draws the 12) | e0 leg: no rear flare in any front frame | e0 still draws them |
+| H9 | (0.5.1-rc1, no EARLY) the flare code does not wait for its result: on "not ready" (0x88760828) it keeps the last answer, and ASYNC's write (16-33 ms after queue, halo1016 RT) is not there yet when a fast guest reads it, so the behind counts carry over the cut the same way | 0.45 | disassembly: the flare caller of 0x1810f0 does not spin; e0 on the desktop clean (slow guest, results land first) | the flare caller spins until ready (then ASYNC gives it the exact 0) |
+| H2 | (Nova) Adreno counts the hidden test quad (A5's Thor record) | 0.15 | Nova per-offset counts nonzero in the front shot | Nova counts 0 there (the 21 halo1016 front frames are clean, which already leans against a whole-shot H2) |
+| H6 | (Nova) the aarch64 JIT decides differently | 0.03 | | |
 
 ## Instrument (#1039, committed before its data)
 
@@ -162,9 +185,54 @@ cut, or on a different cache or settings state from that run's.
 `draws_skipped_no_pipeline`). r3 saw none. H8 stays live only for a player with async compile on, or a pipeline
 creation that fails; the owner's settings are not known.
 
+| run | head | what | result |
+|---|---|---|---|
+| r4 | 1d1f39671b build | as r4b | killed at boot by attempt 1's session end (turn cap) |
+| r4b | 1d1f39671b build (no emulator change since) | `desk_route.py --on-bright 0.045 300,images,gd,cap3000 --every 2 --cine 900 --zrep`, 0.5.2 defaults (ASYNC + EARLY on) | the trigger fired at mark+75.6 s (bright 0.0803, the behind shot); 300 frames f0-f299, nv2a 2136-2435. **The cut is f40 -> f41 (nv2a 2176 -> 2177).** No `{"t":"skip"}` in any frame. No crash; C: 57 GB |
+
+### r4b: the rear lights are flares, and the stale answer draws them one frame through the hull
+
+**The flare draws** (`drawlist.py`, `flares.py`, f40 against f42). After the 44 light tests and the scene's
+`zon:eq` passes, each frame draws its flares as `inline_buffer` quads (prim 7, count 4) of shader 7d6aedad
+(texture 8d84860d) with the **depth test off** (`zOFF:le`, blend 0x14a = ADD, src alpha, one), then two
+full-width quads of a5aae408. The dump has no inline vertex data, but gd's `va` (each attribute's inline value,
+replayed) is the quad's last vertex: screen position (attr 0) and a colour whose alpha is the brightness
+(attr 9). Behind (f30-f40), 12 quads: 8 of colour (0.369,0.886,1) and 4 of (0.259,0.478,1), alpha 0.53-0.79,
+positions (345-459, 262-368) -- the engines and the four small lights. So **nothing on the GPU can hide a flare**:
+the CPU draws it or not, at a brightness it computes from the light's test.
+
+**Every frame across the cut** (`cutflare.py`: the 12 rear tests' own counts, what the guest was given, the
+frame's 7d6aedad quads):
+
+| f | nv2a | view | rear tests: own count nz/sum | answered early | guest given nz/sum | flare quads drawn |
+|---|---|---|---|---|---|---|
+| 38 | 2174 | behind | 12/751 | 12 | 12/726 | 12 rear, a 0.68-0.75 |
+| 39 | 2175 | behind | 12/730 | 12 | 12/751 | 12 rear, a 0.71-0.76 |
+| 40 | 2176 | behind | 12/730 | 12 | 12/730 | 12 rear, a 0.53-0.76 |
+| **41** | 2177 | front | **0/0** | 12 | **12/730** | none |
+| **42** | 2178 | front | 0/0 | 12 | 0/0 | **12 rear, a 0.196 (8) and 0.184 (4), at (208-291, 265-336): behind the hull, depth test off** |
+| 43 | 2179 | front | 0/0 | 12 | 0/0 | 1 other light, colour (0.42,0.45,0.29), a 0.012 |
+| 44-70 | 2180-2206 | front | 0/0 | 12 | 0/0 | that one light, a 0.02-0.06, ramping |
+
+Read: the guest draws a frame's flares from the previous frame's test answers (f42's flares from f41's
+answers), resets them at the cut (f41 draws none), and drops a flare at once when its answer is 0 (f43). The
+first front frame's tests are hidden behind the hull and count 0 on the host (right), but EARLY answered them
+with the offset's last count, the behind shot's 730. So f42 draws the 12 rear flares at ~50/255 through the hull,
+for exactly one frame. On the NV2A the report is written when the GPU reaches GET_REPORT, so f41's answer is 0
+and f42 draws nothing.
+
+The images cannot show this frame: f42's draws appear in the next image (the dump's images lag one frame here,
+f40 and f41's images are byte-identical), and f43 has no image (`img_sync` -2, stale). The draw records are the
+judge: a rear flare quad in a front frame is the defect, whatever a picture shows.
+
+**What this rules out on the desktop.** The tests' own counts are right in every frame (0 from the front, from
+f41 on, against the hull's zeta, after 85-109 depth-writing draws): H2 (host counts failing samples), H3 (zeta
+without the hull), H4 (span/reset) and H5 (depth test on the light) have no hit. H8: no skips. What is left is
+which answer the guest gets, and when.
+
 ## Crash log (desktop)
 
-None yet (r1-r3: no dump in `wsl-crashes/`; C: 57 GB free after each).
+None yet (r1-r4b: no dump in `wsl-crashes/`; C: 57 GB free after each).
 
 ## Questions
 
