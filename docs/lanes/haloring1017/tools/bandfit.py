@@ -1,6 +1,6 @@
 """Does a ring surface turn ON SCREEN? Fit each frame's texture offset from the dumped image (#939, M2).
 
-usage: bandfit.py DUMP.jsonl RAM.bin OUT.tsv [every=N] [px=N] [draws=n4,n5] [images=MAP.tsv]
+usage: bandfit.py DUMP.jsonl RAM.bin OUT.tsv [every=N] [px=N] [draws=n4,n5] [images=MAP.tsv] [pad4=] [pad5=]
 
 The ring turns by scrolling texture u (oT0.x = c13.x*u + c13.y*v + c13.w; M1).
 The guest's c13.w is in the dump; what reaches the screen is in the dump's image
@@ -229,7 +229,7 @@ out.write("frame\tdraw\tpixels\tc13w\td_best\tr_best\td_minus_c13w\tr_at_c13w\tr
 for k in WANT:
     ws = [cw[k][f][13, 3] for f in cw[k]]
     lo, hi = min(ws), max(ws)
-    pad = 0.01 if k == "n4" else 0.03
+    pad = float(opt.get("pad4", 0.01)) if k == "n4" else float(opt.get("pad5", 0.03))
     step = 0.00005 if k == "n4" else 0.0002
     grid_d = np.arange(lo - pad, hi + pad, step)
     first = cw[k][min(cw[k])][13, 3]
