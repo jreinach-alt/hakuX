@@ -69,6 +69,9 @@
   CLF done; CLC on the Nova; RS queued.
 - 06:50: CLF/CLC judged: the same attract sequence, in sync for the first ~95 s; no hang or crash (below).
   The FLDCW chain's exit path, taken on 99.5% of Conker's FLDCWs, shows nothing these frames can see.
+- 06:58: RS judged: every leg hit; REPORT_EARLY acts there (7,640 early, vis 0.16%). No rival is in any
+  shot, master's included, so #804's blink can't be read from this route (below). Waiting on the five TS
+  rows.
 
 ## Pilot verdict (HON, HNI; screenread.py, as registered)
 
@@ -121,6 +124,7 @@ briefing (was 17 fps)`.
 | MKSM | 1792239588-defaulton1017-3307916 | s2t on, early 1, chain 1 (unset); ibc 0 (`=0`) | yes, 333 s | 0 (no `w` line) | 131,073 / 1,048,576 | locked 54.3 fps |
 | SHR | 1792239591-defaulton1017-3308261 | early 1, chain 1 (unset); ibc 0 (`=0`); no s2t line | yes, 302 s | 10,984 in 116 windows, share 0.9999 | 0 / 1,048,576 | valid end, pace 308 s |
 | CLR | 1792239593-defaulton1017-3308455 | s2t on, early 1, chain 1 (unset); ibc 0 (`=0`) | no route; held 303 s | 82 (skipn 22,459), share 0.0036 | 1,043,567 / 1,048,576 | valid end, pace 301 s |
+| RS | 1792242364-defaulton1017-3562768 | early 1, chain 1 (unset); ibc 0 (`=0`); no s2t line | yes, 243 s | 7,640 (skipn 13,697, unarmed 1,120), share 0.358 | 0 / 13,631,488 | valid end, pace 252 s |
 | AMP | 1792239593-defaulton1017-3308736 | early 1, chain 1 (unset); ibc 0 (`=0`); no s2t line | yes, 580 s | 9 (skipn 5,551), share 0.0016 | no line (< 2^20 FLDCW) | valid end, pace 535 s |
 
 - **MKF HIT**: 54.3 fps locked over 1,800 frames from s13 (fps1015's on: 54.2-54.4), V cut 79, signature 55,
@@ -183,6 +187,18 @@ briefing (was 17 fps)`.
 - **AMP: AV HIT, HDS HIT; VIS:AMP not judged** (early 9), FL not reached (fewer than 2^20 FLDCW in 578 s).
   Amped 2 re-queues its report offsets two or more guest frames later too: 5,551 `skipn`, 3 cold, 9 early.
   REPORT_EARLY's gate leaves it on the reader's path, as on master. Route end, held 580 s, no crash.
+- **RS: RV HIT, VIS:RS HIT, HDS HIT, FL HIT.** It ran once RalliSport was on the Nova (lane.xbox, 06:05;
+  live listing 06:08). REPORT_EARLY acts in the title whose visibility tests #804 was about: 7,640 early
+  answers in 243 s, alongside 13,697 `skipn` and 1,120 `unarmed`, so RalliSport re-queues some offsets one
+  guest frame later and others later still. vis 12 of 7,640 (0.16%, bar 2%), stale 6.2%, desync 0.
+  0 flips in 13.6M FLDCW. Route end, no crash. The #804 look (`scratch/sheet.py` d1-d20, RS against
+  accuracy804's two master runs of rallisport-804g, 1791167624 and 1791167617, 10-04): no rival car
+  appears in any d-shot of any of the three runs. The player is at POS 4 OF 4 behind the field, and
+  master's d1 at race clock 7.13 is an empty road too. So the route's shots, 2.7 s apart, never catch the
+  close pass where #804's blink lives (race clock ~7.3-8.5), and they say nothing about it either way. RS's race
+  starts ~7 s later in the route's timeline (d2 is race clock 0:00; master's d1 is 0:07), and the hold
+  drive still steers the course. Two RS shots are dark (d8, d19); master's are too (d13 in both runs, d3 in
+  1791167617), so they are not the switches'.
 - **CLF/CLC (conditional, Conker ON against `HAKUX_FLDCW_CHAIN=0`, frames every 5 s): no difference the
   chain causes that these frames can show.** CLF 1792241775-defaulton1017-3512155 and CLC
   1792241776-defaulton1017-3512282: chain=1 (unset) and chain=0 (`=0`), as asked. Both valid ends (pace 300
