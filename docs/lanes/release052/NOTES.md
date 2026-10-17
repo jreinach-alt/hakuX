@@ -32,7 +32,7 @@ own commit message carries defaulton1017's PR.md verbatim).
    its own test would have hidden it, or the reverse, for one frame; the lane
    did not look at frames for it. Stated in one sentence in both
    CHANGELOG.md's paragraph and docs/releases/v0.5.2.md ("a visual effect ...
-   can very rarely show a frame late at a camera cut"). Not claimed as fixed
+   can show a frame late at a camera cut"). Not claimed as fixed
    or investigated further, per the brief.
 4. **KNOWN_ISSUES.md's #1018 entry, reworded, not closed.** Source: the same
    PR's "What ships" line: HNI 35.0 ms/f (28.6 fps) against HOFF's 58.9

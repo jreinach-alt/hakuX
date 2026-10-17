@@ -8,7 +8,7 @@ answers the game's occlusion (visibility) tests as soon as they are queued
 instead of waiting on the GPU to confirm each one, skips a slower texture
 path the cinematic's colour surfaces were taking, and stops the CPU
 translator recompiling around one floating-point instruction. Answering
-occlusion tests early means a visual effect can very rarely show a frame
+occlusion tests early means a visual effect can show a frame
 late at a camera cut.
 
 See [docs/releases/v0.5.2.md](docs/releases/v0.5.2.md).
