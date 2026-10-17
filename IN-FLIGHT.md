@@ -8,7 +8,8 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `halo1016` | claude-opus-5-5 | 2 min | halo1016: Halo CE cutscenes on the Nova -- quiet speech under loud music (#938), cinematic below 30 fps |
+| `halo1016` | claude-opus-5-5 | 17 min | halo1016: Halo CE cutscenes on the Nova -- quiet speech under loud music (#938), cinematic below 30 fps |
+| `issuerecon1016` | claude-sonnet-5 | 11 min |  |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `owner`
@@ -116,10 +117,11 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/halo1016` | halo1016: Halo CE cutscenes on the Nova -- quiet speech under loud music (#938), cinematic below 30 fps | `4f3bf6d91d` | 2026-10-16 21:43 |
+| `lane/halo1016` | halo1016: Halo CE cutscenes on the Nova -- quiet speech under loud music (#938), cinematic below 30 fps | `141d3b9916` | 2026-10-16 21:59 |
 
 ## Recently landed on master
 
+- 2026-10-16 logo1016-move: the README logo moves to docs/images (#433)
 - 2026-10-16 visitordocs1016: security policy, code of conduct, getting your Xbox files
 - 2026-10-16 frontends1016c: stock launcher tested on the Nova, Daijisho page rewritten for users (#433)
 - 2026-10-16 0.5.1 release commit
@@ -131,6 +133,5 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-16 logo1016-banner: the new hakuX CE banner at the top of the README
 - 2026-10-16 logo1016-count: the Playable count as a running total, apart from the download
 - 2026-10-16 visitor1016: fewer required fields, no placeholder text, and "hakuX CE" in the first-contact files (#433)
-- 2026-10-16 logo1016: hakuX CE logo at the top of the README
 
-_Updated 2026-10-16 21:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-16 22:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
