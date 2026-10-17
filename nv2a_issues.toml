@@ -6494,3 +6494,13 @@ status = "open"
 dispatch_state = "available"
 blocked_on = ""
 status_note = "lighting/draw order (owner's read): the ship's rear directional light is drawn through the hull after the camera cuts from behind to the front; confirmed against the console 10-17. Low priority, not game-blocking, same class as #939. Hold released by the owner 2026-10-17 ~10:15 PDT ('lets get the lighting in flight as well'); owned by lane.haloship1017. Owner 2026-10-17: present in both 0.5.1-rc1 and 0.5.2-rc1, so the 0.5.2-only REPORT_EARLY default is not its origin (lane.haloship1017's H1 is out as the cause; still measured for duration)."
+
+[issue.1043]
+title = "Characters stay in their bind pose with arms and legs outstretched: Tony Hawk's Pro Skater 4 (41560017) and Max Payne 2 (5454000C)"
+suites = []
+no_suites = "A regression in commercial titles' character animation; the mechanism is not yet identified, so no pgraph suite is known to cover it."
+disposition = "defect"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "Filed 2026-10-17 from the owner's report. Regression: both titles animated at acceptance (Max Payne 2 ledger row 45, 10-08; THPS4 ledger row 57, 10-13, apk 0874bf321e41 = master tip 8455537f10). Owner hand-bisect on the Nova (THPS4 character select), 2026-10-17: bind pose in 0.5.2-rc1, 0.5.1-rc1 (b12a313033), 56fdef2c85 and 3c2338eb2b (the 10-13 07:44 x1port1012 fold, carrying the 0.5.1 A-commits); also in 3c2338eb2b with 4f0111232c reverted (rebooted device). So it is not a 0.5.2 change, and FIST_ROUND default-on is excluded. No fold lies between 8455537f10 (good) and 3c2338eb2b; that fold's emulator changes are hw/xbox/mcpx/apu/{apu.c,vp/*} and hw/xbox/nv2a/pgraph/{pgraph.c,vk/draw.c,vk/instance.c,vk/texture.c}. Still to test: 8455537f10 as the same debug build; 3c2338eb2b with d4d292c9ca reverted. Other wall titles on the same engines may share it (Tony Hawk's Underground 2 4156003C, Max Payne 54540003). Owned by lane.bindpose1017 (dispatched 2026-10-17 on the owner's word: blocks any release today)."
