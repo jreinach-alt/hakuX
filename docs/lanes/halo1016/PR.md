@@ -1,10 +1,10 @@
 # halo1016: Halo CE cutscenes on the Nova -- quiet speech under loud music (#938), cinematic at 8-19 fps (#1018)
 
-State: draft
+State: ready
 
 Lane: halo1016            Issue: #938, #1018
 Base: master @ 61ae61dd91
-Files: docs/lanes/halo1016/**, docs/testing/predictions/halo1016-*.json, hw/xbox/mcpx/apu/vp/hrtf.h, hw/xbox/mcpx/apu/vp/vp.c, hw/xbox/nv2a/pgraph/vk/surface.c, hw/xbox/nv2a/pgraph/vk/reports.c, target/i386/tcg/translate.c, target/i386/tcg/fpu_helper.c
+Files: docs/lanes/halo1016/**, docs/testing/predictions/halo1016-*.json, docs/testing/nv2a_index.json, hw/xbox/mcpx/apu/vp/hrtf.h, hw/xbox/mcpx/apu/vp/vp.c, hw/xbox/nv2a/pgraph/vk/surface.c, hw/xbox/nv2a/pgraph/vk/reports.c, target/i386/tcg/translate.c, target/i386/tcg/fpu_helper.c
 Prediction: docs/testing/predictions/halo1016-cinesplit.json @ 88edbbdfa3e0c12241ab27e0191bd39169bc5f22821408686c6415fdc40d92b8 (judged), docs/testing/predictions/halo1016-speech.json @ 397046c508a1ef966ecbbf8a9f7cd1742d5e156d6af31b3e196a9624ba56d04e (judged), docs/testing/predictions/halo1016-census.json @ 1cb4052f9a4ef54af2a29497ca18fb5144a7f7119a26f556014e9737b40fe179 (judged), docs/testing/predictions/halo1016-vcpu.json @ 607a0b0b8b389b5769c6132a0d54c8e9328ffeec350c9022bf31b934256c3727 (judged), docs/testing/predictions/halo1016-tier1.json @ 3f87d2ed401c97a8a548b75ac42b57b0cf30d678daf3b0404cb18a982fbbc59c (judged), docs/testing/predictions/halo1016-reports.json @ 5c7a0d0f6b92f22cb8cbb1e7164e77de23cd744c0b96b7fa20b4d8d1ef90768f (judged: both arms VOID on V, read descriptively), docs/testing/predictions/halo1016-early.json @ 755fc958688ea7c02c01e8b32179cb31c8e475157b7ac1963b03f6603ce09325 (judged)
 Needs device: yes    Needs NDK: yes
 
@@ -135,9 +135,12 @@ note for that flip:
   `arms.sh list` / `run` parse every committed one. Both fragments require them to be fenced
   behind the watermark, so the live fixture stays the only pair queued.
 - `75-nv2a-index.sh` and `75-nv2a-index-drift.sh`: the diff inserts lines in `vk/reports.c` and
-  `vk/surface.c`, which `docs/testing/nv2a_index.json` cites by file:LINE. The index is not
-  regenerated; its check passes on anchor matching across line shifts, and that is what these
-  two fragments pin.
+  `vk/surface.c`, which `docs/testing/nv2a_index.json` cites by file:LINE. `HAKUX_REPORT_EARLY`
+  also adds two new READ sites of `NV097_GET_REPORT_OFFSET`. The index is regenerated: 3070 to
+  3072 sites, 104 suites as before, `resolved_tables` 1. It was built from the fold's pinned
+  trees (`fold-pins/nxdk_pgraph_tests` at 6743b6ab, the committed index's `tests_commit`, and
+  `fold-pins/pbkitplusplus`). The first fragment pins which way the regeneration runs against the
+  tests tree; the second pins the check's tolerance of line shifts.
 - `99-release-note-line.sh`: the body carries a `Release note (none):` line for the emulator code
   under hw/ and target/.
 

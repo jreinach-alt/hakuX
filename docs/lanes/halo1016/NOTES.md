@@ -15,8 +15,14 @@ Defects: **#938** quiet speech under loud music; **#1018** the cinematic drops t
   next, and only removing all three reaches the bar.
 - All four switches are off by default. Shipping the fix in 0.5.2 means turning all four on through one
   default-on screen. This lane does not own S2T_CVT (fps1015) or IBC (#507). The screen it needs is below, and
-  it is requested from lane.xbox in board-requests/xbox.md.
+  it is requested from lane.xbox in board-requests/xbox.md ("04:30 PDT" entry, text in
+  `scratch/board-defaulton.md`). It was routed with `deliver.sh send xbox 1018` (forge comment 19684). The
+  verdict is on #1018 as comment 19681 (`scratch/comment-early.md`).
 - #938: unchanged since 00:30. No emulator fault found; a hardware listen decides it (Questions).
+- The PR is ready (04:40). preflight.sh `--allow-tracker` passes. It first failed on the nv2a index: REPORT_EARLY
+  adds two READ sites of NV097_GET_REPORT_OFFSET. The index was regenerated from `fold-pins/` at the committed
+  `tests_commit` 6743b6ab: 3072 sites, 104 suites as before. The selftest fragments this diff needs, and why,
+  are in PR.md.
 - Earlier, 03:40: B, E and EIF judged. Earlier, 03:10:
 
 - #1018: **where the poll waits is found** ("#1018 reports arms: RT, RC"). Both arms are VOID on their own V:

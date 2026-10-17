@@ -434,7 +434,7 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/hrtf.h:86",
+   "loc": "hw/xbox/mcpx/apu/vp/hrtf.h:99",
    "symbols": [],
    "text": "// FIXME: Match hardware parameter transition"
   },
@@ -464,355 +464,355 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:572",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:720",
    "symbols": [],
    "text": "// FIXME: Should set CBO here?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:575",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:723",
    "symbols": [],
    "text": "d->vp.ssl[selected_handle].ssl_seg = 0; // FIXME: verify this"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:576",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:724",
    "symbols": [],
    "text": "d->vp.ssl[selected_handle].ssl_index = 0; // FIXME: verify this"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:597",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:745",
    "symbols": [],
    "text": "// FIXME: Will count be overwritten in other cases too?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:618",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:766",
    "symbols": [],
    "text": "// FIXME: Will count be overwritten in other cases too?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:633",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:781",
    "symbols": [],
    "text": "// FIXME: What if already in release? Restart envelope?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:634",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:782",
    "symbols": [],
    "text": "// FIXME: Should release count ascend or descend?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:715",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:867",
    "symbols": [],
    "text": "// FIXME: Xbox software seems to reliably set voice HRTF handles"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:799",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:960",
    "symbols": [],
    "text": "// FIXME: Is there an upper limit for the SGE table size?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:800",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:961",
    "symbols": [],
    "text": "// FIXME: NV_PAPU_VPSGEADDR is probably bad, as outbuf SGE use the same"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:814",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:975",
    "symbols": [],
    "text": "//FIXME: Use NV1BA0_PIO_SET_OUTBUF_BA_ADDRESS = 0x007FFF00 ?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:817",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:978",
    "symbols": [],
    "text": "//assert(false); //FIXME: Enable assert! no idea what this reg does"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:822",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:983",
    "symbols": [],
    "text": "//FIXME: Use NV1BA0_PIO_SET_OUTBUF_LEN_VALUE = 0x007FFF00 ?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:825",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:986",
    "symbols": [],
    "text": "//assert(false); //FIXME: Enable assert! no idea what this reg does"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:832",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:993",
    "symbols": [],
    "text": "// FIXME: Is there an upper limit for the SGE table size?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:833",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:994",
    "symbols": [],
    "text": "// FIXME: NV_PAPU_VPSGEADDR is probably bad, as inbuf SGE use the same"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:861",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1022",
    "symbols": [],
    "text": "// FIXME: Refactor into above"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:885",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1046",
    "symbols": [],
    "text": "// FIXME: Entries are 64b, assuming they are stored"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:965",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1126",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1043",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1204",
    "symbols": [],
    "text": "/* TODO: these should instead be queueing up fe commands */"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1052",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1213",
    "symbols": [],
    "text": "assert(0);"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1087",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1248",
    "symbols": [],
    "text": "voice_set_mask(d, v, lvl_reg, lvl_mask, 0x00); // FIXME: Confirm this?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1107",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1268",
    "symbols": [],
    "text": "// FIXME: [division by zero]"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1114",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1275",
    "symbols": [],
    "text": "// FIXME: Overflow in hardware"
   },
   {
    "kind": "HEDGE",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1115",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1276",
    "symbols": [],
    "text": "//       The actual value seems to overflow, but not sure how"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1120",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1281",
    "symbols": [],
    "text": "// FIXME: Comparison could also be the other way around?! Test please."
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1126",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1287",
    "symbols": [],
    "text": "count = hold_time * 16; // FIXME: Skip next phase if count is 0?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1159",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1320",
    "symbols": [],
    "text": "// FIXME: Decay should return a value no less than sustain"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1164",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1325",
    "symbols": [],
    "text": "// FIXME: This formula and threshold is not accurate, but I can't"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1170",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1331",
    "symbols": [],
    "text": "// FIXME: Should we still update lvl?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1185",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1346",
    "symbols": [],
    "text": "0x00); // FIXME: is this only set to 0 once or forced to zero?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1202",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1363",
    "symbols": [],
    "text": "// FIXME: Appears to be an exponential but unsure about actual"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1205",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1366",
    "symbols": [],
    "text": "// FIXME: Based on sustain level or just decay of current level?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1206",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1367",
    "symbols": [],
    "text": "// FIXME: Update level? A very similar, alternative decay function"
   },
   {
    "kind": "HEDGE",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1207",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1368",
    "symbols": [],
    "text": "// (probably what the hw actually does): y(t)=2^(-10t), which would"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1213",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1374",
    "symbols": [],
    "text": "count--; // FIXME: Should release count ascend or descend?"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1226",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1387",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1487",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1648",
    "symbols": [],
    "text": "NV_PAVS_VOICE_CFG_FMT_LINKED); /* FIXME? */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1505",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1666",
    "symbols": [],
    "text": "int16_t adpcm_decoded[65*2]; // FIXME: Move out of here"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1507",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1668",
    "symbols": [],
    "text": "// FIXME: Only update if necessary"
   },
   {
    "kind": "HEDGE",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1527",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1688",
    "symbols": [],
    "text": "// This is probably cleared when the first sample is played"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1528",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1689",
    "symbols": [],
    "text": "// FIXME: How will this behave if CBO > EBO on first play?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1529",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1690",
    "symbols": [],
    "text": "// FIXME: How will this behave if paused?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1539",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1700",
    "symbols": [],
    "text": "// FIXME: Confirm. Unsure if this should wait until end of SSL or"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1627",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1788",
    "symbols": [],
    "text": "ebo = seg_len - 1; // FIXME: Confirm seg_len-1 is last valid sample index"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1662",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1823",
    "symbols": [],
    "text": "// FIXME: Restructure this loop"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1677",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1838",
    "symbols": [],
    "text": "block_size); // FIXME: Use idiomatic DMA function"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1731",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1892",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1832",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1993",
    "symbols": [],
    "text": "// FIXME: Don't do 2ch resampling if this is a mono voice"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1837",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1998",
    "symbols": [],
    "text": "assert(0);"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:2091",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:2252",
    "symbols": [],
    "text": "// FIXME: If phase negations means to flip the signal upside down"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:2106",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:2267",
    "symbols": [],
    "text": "// FIXME: Move to function"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:2117",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:2278",
    "symbols": [],
    "text": "// FIXME: Cutoff modulation via NV_PAVS_VOICE_CFG_ENV1_EF_FCSCALE"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:2144",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:2306",
    "symbols": [],
    "text": "// FIXME: ParaEQ"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:2150",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:2312",
    "symbols": [],
    "text": "// FIXME: Not sure if submix/voice headroom factor in for HRTF"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:2170",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:2332",
    "symbols": [],
    "text": "* TODO: Are the 2D, 3D and MP voice lists merely a DirectSound"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:2407",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:2577",
    "symbols": [],
    "text": "// TODO: To simplify submix scheduling, we make a few assumptions based"
   },
   {
    "kind": "HEDGE",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:2409",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:2579",
    "symbols": [],
    "text": "// multipass sources suggests the hardware may not be so strict. We'll"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:2694",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:2864",
    "symbols": [],
    "text": "* with a `FIXME: Still unsure about frame sync` already on it -- and does not"
   },
@@ -2934,61 +2934,61 @@
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:4994",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:5108",
    "symbols": [],
    "text": "* An unmapped colour surface format used to abort(), which takes"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:5419",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:5533",
    "symbols": [],
    "text": "// FIXME: We don't need to be so aggressive flushing the command list"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:5431",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:5545",
    "symbols": [],
    "text": "* FIXME: Support same color/zeta surface target? One VkImage"
   },
   {
    "kind": "STUB",
-   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:5476",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:5590",
    "symbols": [],
    "text": "NV2A_UNIMPLEMENTED(\"Same color & zeta surface offset\");"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:5607",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:5721",
    "symbols": [],
    "text": "// FIXME: Refactor"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:5784",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:5898",
    "symbols": [],
    "text": "// FIXME: Refactor"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:5829",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:5943",
    "symbols": [],
    "text": "// FIXME: Cannot monitor for reads/writes; flush now"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6005",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6119",
    "symbols": [],
    "text": "// FIXME: Move to common?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6629",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6743",
    "symbols": [],
    "text": "pgraph_vk_reload_surface_scale_factor(pg); // FIXME: Move internal"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6665",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6779",
    "symbols": [],
    "text": "// FIXME: We should download all surfaces to ram, but need to"
   },
@@ -4640,10 +4640,10 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "b2ec98e0152a07db5681e859413c4899341f51a5",
+  "emulator_commit": "b5600b6a98224397b093c4e40837ae376a4db56d",
   "gaps": 495,
   "resolved_tables": 1,
-  "sites": 3070,
+  "sites": 3072,
   "suites": 104,
   "support_dirs": [
    "/home/justin/hakux-work/fold-pins/pbkitplusplus"
@@ -5088,14 +5088,24 @@
     "text": "hwaddr offset = GET_MASK(parameter, NV097_GET_REPORT_OFFSET);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/reports.c:169",
+    "loc": "hw/xbox/nv2a/pgraph/vk/reports.c:171",
     "role": "READ",
     "text": "hwaddr offset = GET_MASK(parameter, NV097_GET_REPORT_OFFSET);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/reports.c:257",
+    "loc": "hw/xbox/nv2a/pgraph/vk/reports.c:259",
     "role": "READ",
     "text": "uint32_t off = GET_MASK(parameter, NV097_GET_REPORT_OFFSET);"
+   },
+   {
+    "loc": "hw/xbox/nv2a/pgraph/vk/reports.c:548",
+    "role": "READ",
+    "text": "uint32_t off = GET_MASK(report->parameter, NV097_GET_REPORT_OFFSET);"
+   },
+   {
+    "loc": "hw/xbox/nv2a/pgraph/vk/reports.c:792",
+    "role": "READ",
+    "text": "GET_MASK(report->parameter, NV097_GET_REPORT_OFFSET);"
    }
   ],
   "NV097_GET_REPORT_TYPE": [
@@ -5110,7 +5120,7 @@
     "text": "uint8_t type = GET_MASK(parameter, NV097_GET_REPORT_TYPE);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/reports.c:514",
+    "loc": "hw/xbox/nv2a/pgraph/vk/reports.c:607",
     "role": "READ",
     "text": "uint8_t type = GET_MASK(parameter, NV097_GET_REPORT_TYPE);"
    }
@@ -5127,7 +5137,7 @@
     "text": "assert(type == NV097_GET_REPORT_TYPE_ZPASS_PIXEL_CNT);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/reports.c:515",
+    "loc": "hw/xbox/nv2a/pgraph/vk/reports.c:608",
     "role": "REF",
     "text": "assert(type == NV097_GET_REPORT_TYPE_ZPASS_PIXEL_CNT);"
    }
@@ -8083,7 +8093,7 @@
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:5024",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:5138",
     "role": "REF",
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8];"
    }
@@ -8125,7 +8135,7 @@
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_B8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:5016",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:5130",
     "role": "REF",
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_B8];"
    }
@@ -8224,7 +8234,7 @@
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_R5G6B5:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:5020",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:5134",
     "role": "REF",
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_R5G6B5];"
    }
@@ -8552,17 +8562,17 @@
     "text": "bool swizzle = (pg->surface_type == NV097_SET_SURFACE_FORMAT_TYPE_SWIZZLE);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:5065",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:5179",
     "role": "REF",
     "text": "(pg->surface_type == NV097_SET_SURFACE_FORMAT_TYPE_SWIZZLE);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:5097",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:5211",
     "role": "REF",
     "text": "if (pg->surface_type != NV097_SET_SURFACE_FORMAT_TYPE_SWIZZLE) {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6109",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6223",
     "role": "REF",
     "text": "bool swizzle = (pg->surface_type == NV097_SET_SURFACE_FORMAT_TYPE_SWIZZLE);"
    }
@@ -8613,7 +8623,7 @@
     "text": "[NV097_SET_SURFACE_FORMAT_ZETA_Z16] = { 2 },"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6578",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6692",
     "role": "TABLE-ENTRY",
     "text": "r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z16] = zeta_d16;"
    }
@@ -8655,27 +8665,27 @@
     "text": "// Pack depth+stencil into NV097_SET_SURFACE_FORMAT_ZETA_Z24S8"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6583",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6697",
     "role": "TABLE-ENTRY",
     "text": "r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6588",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6702",
     "role": "TABLE-ENTRY",
     "text": "r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6595",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6709",
     "role": "TABLE-ENTRY",
     "text": "r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6602",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6716",
     "role": "TABLE-ENTRY",
     "text": "r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6606",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6720",
     "role": "REF",
     "text": "r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8]"
    }
@@ -9352,7 +9362,7 @@
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A1R5G5B5] = {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6281",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6395",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A1R5G5B5:"
    }
@@ -9845,7 +9855,7 @@
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R5G6B5] = {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6278",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6392",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R5G6B5:"
    }
@@ -10278,7 +10288,7 @@
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A1R5G5B5] = {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6280",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6394",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A1R5G5B5:"
    }
@@ -10737,7 +10747,7 @@
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R5G6B5] = {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6277",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6391",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R5G6B5:"
    }
@@ -18625,7 +18635,7 @@
     "text": "pgraph_vk_reg_r(pg, NV_PGRAPH_SETUPRASTER),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6022",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6136",
     "role": "READ",
     "text": "GET_MASK(pgraph_vk_reg_r(pg, NV_PGRAPH_SETUPRASTER),"
    }
@@ -19160,7 +19170,7 @@
     "text": "NV_PGRAPH_SETUPRASTER_Z_FORMAT, z_format);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6023",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6137",
     "role": "REF",
     "text": "NV_PGRAPH_SETUPRASTER_Z_FORMAT);"
    }
