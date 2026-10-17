@@ -8,12 +8,13 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `defaulton1017` | claude-opus-5-5 | 55 min | defaulton1017: S2T_CVT, REPORT_EARLY and FLDCW_CHAIN on by default, after one default-on screen; IBC stays off |
+| `defaulton1017` | claude-opus-5-5 | 1h 10m | defaulton1017: S2T_CVT, REPORT_EARLY and FLDCW_CHAIN on by default, after one default-on screen; IBC stays off |
+| `dispatchdoctor1017` | claude-opus-5-5 | 0 min |  |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-offline`
-- **Device queue:** 4 waiting, 1 running.
+- **Device queue:** 3 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -116,7 +117,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/defaulton1017` | defaulton1017: S2T_CVT, REPORT_EARLY and FLDCW_CHAIN on by default, after one default-on screen; IBC stays off (#1018) | `b7dacc23dc` | 2026-10-17 06:39 |
+| `lane/defaulton1017` | defaulton1017: S2T_CVT, REPORT_EARLY and FLDCW_CHAIN on by default, after one default-on screen; IBC stays off (#1018) | `2cf67da0a1` | 2026-10-17 06:57 |
 
 ## Recently landed on master
 
@@ -132,4 +133,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-16 icon1016: hakuX CE app icon (#433)
 - 2026-10-16 x1port1012-halo: #939 (b) root-caused and fixed behind HAKUX_FIST_ROUND=1 (verified on the Nova, run 13)
 
-_Updated 2026-10-17 06:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-17 07:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
