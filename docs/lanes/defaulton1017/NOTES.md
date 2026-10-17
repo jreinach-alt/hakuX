@@ -75,6 +75,8 @@
 - 06:48 (host `date`; the "06:50" and "06:58" above were estimates and ran ahead: TSF's own shots end at
   06:45:58, and RS and CLF/CLC were judged before it finished): TSF (chain off) DROPS like ON, so the chain
   alone is not the cause (below, "TS isolation"). Waiting on TSFR, TSOFF, TSR, TSS.
+- ~06:58: TSFR (FIST_ROUND off) DROPS the same way. The TS base pair (master 15f8524be1, fps1015's
+  f5a67ba52c) is written and is queued if TSOFF drops.
 
 ## Pilot verdict (HON, HNI; screenread.py, as registered)
 
@@ -230,6 +232,7 @@ briefing (was 17 fps)`.
 | row | result | env beyond ON | switch lines | controller select, s13-s25 | later | tsread play windows, signature | verdict |
 |---|---|---|---|---|---|---|---|
 | TSF | 1792243851-defaulton1017-3688312 | `HAKUX_FLDCW_CHAIN=0` | s2t on, early 1, chain 0 (`=0`), fist round ON | every A and the START dropped; the d-pad moved 1P to Team One (s17) and nothing took after it | player select by hold 2 (+40 s into the hold loop), match intro (PRESS START) by hold 3 | 33 of 105 on | **DROPS** |
+| TSFR | 1792243854-defaulton1017-3689026 | `HAKUX_FIST_ROUND=0` | s2t on, early 1, chain 1 (unset), `fist round=OFF (env HAKUX_FIST_ROUND=0)` | the same: shot distances to master's s15-s19 are TSF's to the unit (24, 47, 53, 47, 56) | match intro only, in the hold loop | 24 of 110 on | **DROPS** |
 
 - **TSF drops, so the chain alone is not what breaks Top Spin's input.** Shots s13-s25 against master's
   off run (sheets at /tmp/claude-1000/-home-justin-hakuX/tsf_s13_s19.png and tsf_s20_s25.png): master is
@@ -237,6 +240,10 @@ briefing (was 17 fps)`.
   failure as ON's two runs. Only the hold loop's dozens of As got it through, about one in a dozen taking.
   That is where its first `[s2tcvt] on` line comes from (ON's runs never reached a match, so they had no
   S2T line at all) and its 33 signature windows: the match intro, not the match. Route end, no crash.
+- **TSFR drops, so FIST_ROUND alone is not what breaks it either.** The switch reached the code (its OFF
+  line), and the route failed at the same place in the same way. No Top Spin run on disk is newer than
+  fps1015's three (`scratch/tsroute.py`: 13 runs of the route family, 10-03 to today), so nothing on
+  disk separates the base from the device. That is the next pair (above, "Triggered next, TS base").
 
 ## S2T_CVT's pixel item: TSC1, TSC2 (defaulton1017-tsc.json, as registered)
 
@@ -408,6 +415,31 @@ Conditional rows, queued only on a trigger, each with its own line here first:
 
     5 x (450 + 90) s = 45 Nova min, under `pilots/defaulton1017.ok` (05:25). Queued in decision order with
     `scratch/queue_screen.sh TSF TSFR TSOFF TSR TSS`.
+  - **Triggered next, TS base** (written ~06:58, after TSF and TSFR dropped, before TSOFF returned): queued
+    once TSOFF drops. TSR and TSS cannot clear a row that TSOFF, with all three off, fails, so their verdicts
+    do not hold this up. Two rows, the same route, 450 s, no env, no `--expect` (neither is this lane's
+    binary):
+    - TSM: master's own binary, 15f8524be1 (origin/master now, this lane's base; 0.5.1's 73dbe8796a is in
+      it);
+    - TSB: fps1015's binary, f5a67ba52c, the one whose three runs reached the match on 10-16, run today on
+      the same device, route file and harness.
+
+    Already ruled out by reading, no device time: the route runner (`docs/testing/titles/route.sh`, last
+    changed 10-16 07:58, before fps1015's runs), the pads (both eras log the same two: 'Retroid Pocket
+    Controller' on port 1, 'Xbox 360 Controller' on port 2, and the route drives `/dev/input/event7` in
+    both), and the base's APU changes (`HAKUX_APU_METER`, `_USE_DSP` off by default; `_HRTF_NORM` defaults
+    to upstream's l1). Input works on this binary in every other row (MKSM matched master shot for shot).
+
+    What we are looking for: the same match test as the isolation rows. Reading:
+    - TSM drops and TSB reaches: a master regression between f5a67ba52c and 15f8524be1 that is not
+      FIST_ROUND (TSFR) and not this lane's switches (TSOFF). This lane's switches are cleared for Top Spin
+      (ON does what master does). The regression goes to the board as a new issue, with the range to bisect.
+    - Both drop: the device or harness has changed since 10-16 10:45, not the code. The switches are cleared.
+      The route goes to lane.xbox for whoever owns it.
+    - TSM reaches: something in this lane's diff that is not behind the three switches (reports.c's ring
+      and gate, surface.c). Read the diff, then bisect it on the device.
+
+    2 x (450 + 90) s = 18 Nova min. Queued with `scratch/queue_screen.sh TSM TSB`.
 
 Judge: `docs/lanes/defaulton1017/screenread.py` (written before the first verdict) with halo1016's `vcpuread`
 and `earlyread` readers for Halo, fps1015's `s2tread.py` and `tsread.py` for MKSM and Top Spin.

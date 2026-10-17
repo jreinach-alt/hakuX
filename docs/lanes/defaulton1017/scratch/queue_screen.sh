@@ -46,6 +46,12 @@ for row in "$@"; do
             --env HAKUX_REPORT_EARLY=0 ;;
         TSS) title TSS 4D530035-Top_Spin.xiso.iso docs/lanes/fps1015/routes fps1015-topspin 450 \
             --env HAKUX_S2T_CVT=0 ;;
+        # conditional (NOTES, "Triggered next, TS base"): TSF, TSFR and TSOFF dropped too
+        TSM|TSB)
+            [ "$row" = TSM ] && ref=15f8524be1 || ref=f5a67ba52c
+            TITLE_ROUTES=docs/lanes/fps1015/routes "$W/docs/testing/request.sh" --who defaulton1017 --device nova \
+                --title 4D530035-Top_Spin.xiso.iso --route fps1015-topspin --seconds 450 --ref "$ref" --perflog \
+                --issue 1018 --purpose "defaulton1017 row $row (Top Spin's input on the base, #1018 screen)" ;;
         RS) title RS 4D53000F-RalliSport_Challenge.xiso.iso docs/lanes/accuracy804 rallisport-804g 240 ;;
         SHR) title SHR 56550015-The_Simpsons_Hit_Run.xiso.iso docs/testing/titles/routes simpsons-hit-run 300 ;;
         CLR) title CLR 'Conker Live & Reloaded.iso' docs/testing/titles/routes '' 300 ;;
