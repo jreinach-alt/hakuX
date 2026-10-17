@@ -1,6 +1,6 @@
 # visitordocs1016: security policy, code of conduct, getting your Xbox files
 
-State: draft
+State: ready
 
 Lane: visitordocs1016          Issue: #433
 Base: master @ fb6ebcff40
@@ -8,8 +8,7 @@ Files: SECURITY.md, CODE_OF_CONDUCT.md, docs/xbox-files.md, docs/lanes/visitordo
 Prediction: none: analysis-only
 Needs device: no    Needs NDK: no
 
-Three pages a visitor to the repository looks for, which it did not have
-(owner 10-16: "needed if we're going to have visitors").
+Three pages a visitor to the repository looks for, which it did not have.
 
 - `SECURITY.md`: how to report a vulnerability privately (GitHub's private
   vulnerability reporting, with an issue asking for a contact as the
@@ -35,6 +34,7 @@ CODE_OF_CONDUCT.md as optional landing-page files, so they appear on
 `home` at its next build after this fold. CODE_OF_CONDUCT.md links
 docs/xbox-files.md, so the three land together.
 
-Fold: root docs and docs/ only, so no selftest and no device run.
+Fold: root docs and docs/ only, so no selftest and no device run. The
+three docs' date lines say 0.5.1, the version on master.
 
 Release note (other): none -- docs only, no emulator/app code touched.

@@ -1,6 +1,6 @@
 # Getting your Xbox files
 
-_Last updated 2026-10-16, for version 0.5.0._
+_Last updated 2026-10-16, for version 0.5.1._
 
 hakuX CE includes no Xbox system software and no games. Setup asks for four
 things, and each has to come from an Xbox and discs you own. This page says
