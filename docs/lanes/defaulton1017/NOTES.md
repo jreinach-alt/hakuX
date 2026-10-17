@@ -8,6 +8,8 @@
   dispatcher.
 - 05:10: screen plan below written before anything is queued. Prediction:
   `docs/testing/predictions/defaulton1017-screen.json` (title rows) and `defaulton1017-tsc.json` (the pgraph item).
+- 05:15: pilot queued on the Nova (`scratch/queue_screen.sh HON HNI`): HON 1792238475-defaulton1017-3197170,
+  HNI 1792238476-defaulton1017-3197283. The rest waits on the pilot's verdict.
 
 ## Confirmed from the source files (not from the brief)
 
