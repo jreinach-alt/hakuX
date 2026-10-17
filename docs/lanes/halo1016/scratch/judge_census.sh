@@ -1,0 +1,11 @@
+#!/bin/sh
+# Judge the census pair exactly as registered; keep the full output beside NOTES.md.
+R=/home/justin/hakux-work/dispatch/results
+W=/home/justin/hakux-work/wt/halo1016
+python3 "$W/docs/lanes/halo1016/censusread.py" \
+    "$R/0-0-x-1792222165-halo1016-1341449" "$R/0-0-x-1792222171-halo1016-1341994" \
+    --expect "$W/docs/testing/predictions/halo1016-census.json" \
+    > "$W/docs/lanes/halo1016/scratch/census-verdict.md"
+rc=$?
+echo "censusread exit $rc"
+exit 0

@@ -1,0 +1,47 @@
+{
+  "registered_utc": "2026-10-17T06:15:00Z",
+  "who": "lane.halo1016",
+  "issues": ["1018", "938"],
+  "kind": "soak env pair (one binary)",
+  "title": "Halo Combat Evolved.iso",
+  "device": "nova",
+  "seconds": 420,
+  "route": "halo-cinematic (docs/lanes/halo1016/routes/halo-cinematic.route, queued with TITLE_ROUTES=docs/lanes/halo1016/routes)",
+  "perflog": false,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "a_ref": "d205bbe2fd",
+  "b_ref": "d205bbe2fd",
+  "a_env": [
+    "HAKUX_FRAMETRACE=1",
+    "HAKUX_PROBE_WAITS=1"
+  ],
+  "b_env": [
+    "HAKUX_FRAMETRACE=1",
+    "HAKUX_PROBE_WAITS=1",
+    "TU_DEBUG=sysmem"
+  ],
+  "queue_order": "Queued by the lane (an env pair; arms.sh skips a_ref == b_ref): two requests of one run each, A then B: TITLE_ROUTES=docs/lanes/halo1016/routes request.sh --who halo1016 --device nova --title 'Halo Combat Evolved.iso' --route halo-cinematic --seconds 420 --ref d205bbe2fd --pull 'frametrace_*' --env ... --issue 1018 --expect this file. d205bbe2fd is the lane's merge of master; git diff origin/master d205bbe2fd -- hw/ accel/ target/ tcg/ ui/ audio/ android/ is empty, so this is master's emulator. Plain build (no --perflog), as the owner played it: the 10-16 captures carry no hakuX-phase lines.",
+  "judge": "python3 docs/lanes/halo1016/cineread.py <A> <B> --expect docs/testing/predictions/halo1016-cinesplit.json (written before either result is read; it prints the per-window timeline and the plateau frames' frametrace account for each arm whatever the verdict)",
+  "baseline": "The owner's two hand captures on 0.5.1-rc1 (captures/owner-halo-1016/logcat-nova-full.txt pid 24554, logcat-nova-2154.txt pid 30514), read with docs/lanes/halo1016/timeline.py: ~1.5 min at 29-30 gfps, then a plateau 21:25:03-21:25:52 (pid 24554) at 8-14 gfps in its core, G 66-117 ms/frame, 13-19 gfps at its edges; recovery to 29 for ~8 s; a second slow stretch from 21:26:01 (6 gfps, still slow at the capture's end). In the plateau core: guest idle 40-50 % of each 2-s window ([rr425w] idle_us/(idle_us+busy_us)), every busy span begun by the NV2A wake 33.44, the PFIFO thread on CPU 44-48 % of wall ([rdc] tcpu/dt, ~48 ms per frame at ~1000 draws), fifoskew drain=0 with a 120-230 KB backlog. At the edges: guest idle 0, FLDCW TB ends (rr425pc e:01ec3a) 10-20x baseline. No frametrace or probe1010 reading of this scene exists.",
+  "prediction": "#1018: what the PFIFO thread does with the half of the plateau it is off CPU, and whether the GPU's GMEM binning is on the path. A is master's code with frametrace and the PFIFO wait probe on; B adds TU_DEBUG=sysmem (Turnip renders once instead of once per GMEM tile; the per-title table already does this for AUF, DOA and NFS MW). Hypotheses and the leg that reads each: F1 the GPU is on the path (the heavy shot's ~1000 draws replayed per tile): G and P. F2 synchronous finishes mid-frame (surface downloads, vertex or staging buffer full) wait out the GPU: W. F3 the PFIFO thread's own CPU per draw: S's p_run. F5 lock waits on the PFIFO thread: S's lock share. F6 run-queue delay: S's rq share. Predicted on A, frames ending inside the plateau span (pace windows of ms/frame >= 50 between mark+40 s and mark+260 s): S: the PFIFO thread's p_run is 35-60 ms/frame and its blocked time is >= 30 % of the period, of which waits on the GPU (fence, submit, rthr and the unhooked finish_event remainder) are >= 60 %, lock waits (bql, pfl, pgl) <= 15 %, and p_rq <= 10 % of the period. G: frametrace gpu50 over those frames is >= 0.5 x the period (raw timestamps; the Nova's timestampPeriod reads 1.573x fast per flip474, so a raw 0.5 is ~0.8 true). W: probe1010's non-deferred finishes are >= 1.5 per frame in the span. P (sysmem, the remedy leg): B's mean period over A's plateau span (same seconds after mark cinematic) <= 0.80 x A's; point 0.70. P(P hits) 0.35. What refutes F1: G under 0.3 x period and P above 0.95; then the off-CPU half is F2/F5/F6 and S names which. The speech (#938) is not judged here: these builds carry no meter.",
+  "expect": {
+    "V_mark": "cinematic",
+    "V_min_cine_shots": 10,
+    "V_a_plateau_min_s": 20,
+    "V_b_render_mode_sysmem": true,
+    "S_prun_min_ms": 35,
+    "S_prun_max_ms": 60,
+    "S_blk_share_min": 0.30,
+    "S_gpuwait_share_of_blk_min": 0.60,
+    "S_lock_share_of_blk_max": 0.15,
+    "S_rq_share_max": 0.10,
+    "G_gpu50_share_min": 0.5,
+    "W_finish_per_frame_min": 1.5,
+    "P_ratio_max": 0.80
+  },
+  "expect_note": "EMPTY of captures ON PURPOSE: a soak writes none. Named rules read by docs/lanes/halo1016/cineread.py --expect (legs V, S, G, W, P). V on both arms: route-frames booted/profile/level/difficulty/loading read by eye and `mark cinematic` in logcat; [hakuX-ft1] and [probe1010] lines present; B's hakuX-build render_mode line names TU_DEBUG=sysmem and A's does not. A run whose route did not reach LOADING is void, not a miss.",
+  "expect_counts": {},
+  "must_not_move": [],
+  "must_not_regress": []
+}

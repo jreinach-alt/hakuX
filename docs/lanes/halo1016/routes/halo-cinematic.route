@@ -1,0 +1,40 @@
+# state: returning   (the golden disk's New001 profile: the title lists SELECT PROFILE first)
+# Halo: Combat Evolved (4D530004), Nova: boot to the opening cinematic of The Pillar of Autumn
+# and let it play, untouched (lane.halo1016, #938 #1018, 2026-10-16).
+#
+# Read from the route-frames of 0-1791083791-lanelocal-3030989 (halo-ce route, golden disk, 10-04),
+# not guessed:
+#   204215 booted: the main menu, CAMPAIGN lit (60 s after the route's start)
+#   204221 after START: SELECT PROFILE, New001 lit
+#   204226 after A: LOAD LEVEL, The Pillar of Autumn lit
+#   204232 after START: CHOOSE DIFFICULTY, NORMAL lit
+#   204239 after A: LOADING
+#   204245 black; 204250 the cinematic (the ring in space)
+# That route kept pressing START/A into the cinematic; this one presses nothing after the
+# difficulty, so the cinematic plays as the owner watched it. The heavy shots (#1018) came
+# ~90 s and ~150 s into it in the owner's capture (21:25:03-21:25:52 and 21:26:01-); the
+# speech (#938) runs through all of it. `mark cinematic`, not `mark gameplay`: this is
+# not play, and title_verdict's scored window must not read it as play.
+wait 20
+shot boot20
+wait 20
+shot boot40
+wait 20
+shot booted                 # CHECK: main menu, CAMPAIGN lit
+press START
+wait 5
+shot profile                # CHECK: SELECT PROFILE, New001 lit
+press A
+wait 5
+shot level                  # CHECK: LOAD LEVEL, The Pillar of Autumn
+press START
+wait 6
+shot difficulty             # CHECK: CHOOSE DIFFICULTY, NORMAL lit
+press A
+wait 6
+shot loading                # CHECK: LOADING
+mark cinematic
+repeat forever {
+    wait 10
+    shot cine
+}
