@@ -34,7 +34,9 @@ for rel in sys.argv[1:]:
         if a in ('-MD', '-c') or a.endswith(rel):
             continue
         if a.startswith('-I..'):
-            a = '-I' + WT + a[4:]          # source headers from this worktree
+            # source headers from this worktree; subprojects it lacks from ~/hakuX
+            a = ('-I' + WT + a[4:] if os.path.isdir(WT + a[4:])
+                 else '-I/home/justin/hakuX' + a[4:])
         elif a.startswith('/home/justin/hakuX') and not a.startswith(BD):
             a = WT + a[len('/home/justin/hakuX'):]   # -iquote and -isystem paths
         out.append(a)

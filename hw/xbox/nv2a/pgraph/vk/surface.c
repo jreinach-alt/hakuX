@@ -3569,6 +3569,117 @@ static void evict372_log(void)
     }
 }
 
+/*
+ * #1018: the bindings invalidate_overlapping_surfaces() evicts because a new
+ * one at another address overlaps them, which [evict372] (same address,
+ * incompatible) does not see. A draw-dirty active one takes a deferred
+ * download that the same surface_update completes before the new binding
+ * uploads from VRAM; a shelved one is downloaded inline. Whether a GPU copy
+ * can stand in for that round trip depends on how the two lie in memory, so
+ * a pair is keyed on both shapes, the offset of the evicted binding from the
+ * new one, and these bits. Counts are cumulative, like [evict372].
+ */
+enum {
+    OVL_INSIDE = 1 << 0,  /* evicted range lies inside the new one's   */
+    OVL_COVERS = 1 << 1,  /* evicted range holds the new one's whole   */
+    OVL_ROLE = 1 << 2,    /* colour vs zeta                            */
+    OVL_FORMAT = 1 << 3,  /* host vk_format                            */
+    OVL_PITCH = 1 << 4,
+    OVL_SHELF = 1 << 5,   /* evicted from the shelf, downloaded inline */
+    OVL_BINS = 1 << 6,
+};
+
+static struct {
+    unsigned long dirty[OVL_BINS];  /* draw-dirty: took the download */
+    unsigned long clean[OVL_BINS];
+    struct {
+        EvictSide from, to;
+        int64_t off;
+        unsigned int rel;
+        unsigned long n;
+    } pair[EVICT_PAIRS];
+    unsigned long pair_overflow;
+} g_ovl1018;
+
+static void ovl1018_record(SurfaceBinding const *held,
+                           SurfaceBinding const *target, bool shelf)
+{
+    hwaddr h0 = held->vram_addr, h1 = held->vram_addr + held->size;
+    hwaddr t0 = target->vram_addr, t1 = target->vram_addr + target->size;
+    unsigned int rel =
+        (h0 >= t0 && h1 <= t1 ? OVL_INSIDE : 0) |
+        (t0 >= h0 && t1 <= h1 ? OVL_COVERS : 0) |
+        (held->color != target->color ? OVL_ROLE : 0) |
+        (held->host_fmt.vk_format != target->host_fmt.vk_format ?
+             OVL_FORMAT : 0) |
+        (held->pitch != target->pitch ? OVL_PITCH : 0) |
+        (shelf ? OVL_SHELF : 0);
+    if (!held->draw_dirty) {
+        g_ovl1018.clean[rel]++;
+        return;
+    }
+    g_ovl1018.dirty[rel]++;
+
+    EvictSide from, to;
+    evict372_side(&from, held);
+    evict372_side(&to, target);
+    int64_t off = (int64_t)h0 - (int64_t)t0;
+    /* The same replacement rule as evict372_record. */
+    int victim = 0;
+    for (int i = 0; i < EVICT_PAIRS; i++) {
+        if (g_ovl1018.pair[i].n == 0) {
+            victim = i;
+            break;
+        }
+        if (!memcmp(&g_ovl1018.pair[i].from, &from, sizeof(from)) &&
+            !memcmp(&g_ovl1018.pair[i].to, &to, sizeof(to)) &&
+            g_ovl1018.pair[i].off == off && g_ovl1018.pair[i].rel == rel) {
+            g_ovl1018.pair[i].n++;
+            return;
+        }
+        if (g_ovl1018.pair[i].n < g_ovl1018.pair[victim].n) {
+            victim = i;
+        }
+    }
+    if (g_ovl1018.pair[victim].n) {
+        g_ovl1018.pair_overflow++;
+    }
+    g_ovl1018.pair[victim].from = from;
+    g_ovl1018.pair[victim].to = to;
+    g_ovl1018.pair[victim].off = off;
+    g_ovl1018.pair[victim].rel = rel;
+    g_ovl1018.pair[victim].n = 1;
+}
+
+static void ovl1018_log(void)
+{
+    char masks[512];
+    int len = 0;
+    masks[0] = '\0';
+    for (int m = 0; m < OVL_BINS && len < (int)sizeof(masks) - 48; m++) {
+        if (g_ovl1018.dirty[m] || g_ovl1018.clean[m]) {
+            len += snprintf(masks + len, sizeof(masks) - len,
+                            " r%02x:%lu/%lu", m, g_ovl1018.dirty[m],
+                            g_ovl1018.clean[m]);
+        }
+    }
+    SURF92_LOG("[ovl1018] dirty/clean by relation (1inside 2covers 4role "
+               "8fmt 10pitch 20shelf):%s overflow=%lu",
+               masks, g_ovl1018.pair_overflow);
+    for (int i = 0; i < EVICT_PAIRS && g_ovl1018.pair[i].n; i++) {
+        EvictSide const *f = &g_ovl1018.pair[i].from;
+        EvictSide const *t = &g_ovl1018.pair[i].to;
+        SURF92_LOG("[ovl1018] pair%d n=%lu r%02x off=%" PRId64 " %c f%d %s "
+                   "p%u %ux%u b%u -> %c f%d %s p%u %ux%u b%u",
+                   i, g_ovl1018.pair[i].n, g_ovl1018.pair[i].rel,
+                   g_ovl1018.pair[i].off, f->color ? 'C' : 'Z', f->vk_format,
+                   f->swizzle ? "sz" : "ln", f->pitch, f->width, f->height,
+                   f->bpp, t->color ? 'C' : 'Z', t->vk_format,
+                   t->swizzle ? "sz" : "ln", t->pitch, t->width, t->height,
+                   t->bpp);
+    }
+}
+
 static void surface_watch_log_periodic(PGRAPHVkState *r)
 {
     static int64_t next_ns;
@@ -3603,6 +3714,7 @@ static void surface_watch_log_periodic(PGRAPHVkState *r)
                surface_watch_gap_writes, surface_watch_lost_writes);
     qemu_rec_mutex_unlock(&surface_watch_lock);
     evict372_log();
+    ovl1018_log();
 }
 
 static void unregister_cpu_access_callback(SurfaceBinding *surface)
@@ -3820,6 +3932,7 @@ static void invalidate_overlapping_surfaces(NV2AState *d,
                 other_surface->vram_addr, other_surface->width,
                 other_surface->height, other_surface->pitch);
             OPT_STAT_INC(dif_overlap);
+            ovl1018_record(other_surface, surface, false);
             /*
              * Record the download now; it completes in
              * pgraph_vk_surface_update() before the new binding uploads from
@@ -3852,6 +3965,7 @@ static void invalidate_overlapping_surfaces(NV2AState *d,
         }
         if (check_surfaces_overlap(surface, other_surface)) {
             OPT_STAT_INC(dif_overlap_sh);
+            ovl1018_record(other_surface, surface, true);
             if (other_surface->shelved_dirty) {
                 OPT_STAT_INC(sd_shelved_lazy_dl);
             }
