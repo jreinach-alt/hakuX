@@ -97,6 +97,12 @@ standing = false
 files = ["docs/testing/compat_notes.tsv", "docs/testing/compat_page.py", "docs/compatibility.csv", "docs/testing/public_docs.txt", "docs/lanes/compat1016/**"]
 note = "STARTED lane.local 2026-10-16 19:50 PDT for lane.xbox (board request 10-16 19:26, branch lane/compat1016, built after release051 folds). compat_notes.tsv and compat_page.py are released by titlekey1016; public_docs.txt released by folded docsfresh1012. docs/COMPATIBILITY.md is held by [lane.release051]: add it when released. Adds the three visitor docs to public_docs.txt, so fold after visitordocs1016 is on master at 0.5.1. Full selftest."
 
+[lane.frontends1016c]
+issues = ["433"]
+standing = false
+files = ["docs/frontends/**", "docs/releases/v0.5.1.md", "docs/lanes/frontends1016c/**"]
+note = "STARTED lane.local 2026-10-16 20:57 PDT (docs, no device): owner 10-16 ~20:40 PDT: stock launcher tested on the Nova (Retroid launcher) and Daijisho rewritten as user-facing add-as-an-app steps. One line in docs/releases/v0.5.1.md (Retroid variant now tested). Follow-up to lane.frontends1016b (folded). No brief."
+
 [retired.compatpage1012]
 issues = ["433"]
 retired_utc = "2026-10-13T18:25:00Z"
@@ -2836,4 +2842,5 @@ note = "READY lane.local 2026-10-16 14:51 PDT: PR #1009 ready, files released (f
 issues = ["433"]
 standing = false
 files = ["docs/frontends/**", "docs/lanes/frontends1016b/**"]
-note = "STARTED lane.local 2026-10-16 14:35 PDT (Sonnet, Thor by hand, no dispatcher): owner 10-16 ~14:30 PDT: Pegasus is now installed on the Thor, test it; Daijisho integrated if possible, else step-by-step instructions. Follow-up to lane.frontends1016 (folded 545886f9c0). Brief: briefs/frontends1016b.md."
+released = ["docs/frontends/**", "docs/lanes/frontends1016b/**"]
+note = "RELEASED (lane.local 2026-10-16 20:57 PDT; folded lane, no unit): files go to [lane.frontends1016c]. || STARTED lane.local 2026-10-16 14:35 PDT (Sonnet, Thor by hand, no dispatcher): owner 10-16 ~14:30 PDT: Pegasus is now installed on the Thor, test it; Daijisho integrated if possible, else step-by-step instructions. Follow-up to lane.frontends1016 (folded 545886f9c0). Brief: briefs/frontends1016b.md."
