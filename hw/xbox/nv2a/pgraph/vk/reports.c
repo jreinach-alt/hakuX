@@ -482,19 +482,34 @@ void pgraph_vk_finalize_reports(PGRAPHState *pg)
 
 /*
  * #1018 (halo1016): two switches for a guest that polls its visibility tests,
- * both off unless set, both on the async reader (HAKUX_REPORT_ASYNC=1, which
- * "Fast renderer paths" sets by default); without it they log so and stay off.
+ * both on the async reader (HAKUX_REPORT_ASYNC=1, which "Fast renderer paths"
+ * sets by default); without it they log so and stay off.
  *
- * HAKUX_REPORT_EARLY=1: a GET_REPORT whose status word the guest armed is
- * answered when it is queued, with the count the last GET_REPORT at the same
- * offset was written with. Its own count, once the reader has it, goes to that
- * table and not to the guest. An offset not seen before is written as today.
- * Halo's cinematic queues ~540 armed reports a frame, each offset once a frame,
- * and polls them (0x63482 -> D3D 0x1810f0) until the status word leaves -1;
- * the async reader writes each ~28 ms after it is queued (median, RT arm):
- * handed off at the next flip's finish, read once the GPU has run that whole
- * command buffer. The answer is one test stale, as RPCS3's "relaxed ZCULL
- * sync" answers: a flare or an occlusion-culled object can lag a frame.
+ * HAKUX_REPORT_EARLY (on unless set to 0, since #1018): a GET_REPORT whose
+ * status word the guest armed is answered when it is queued, with the count
+ * the last GET_REPORT at the same offset was written with. Its own count, once
+ * the reader has it, goes to that table and not to the guest. An offset not
+ * seen before is written as today. Halo's cinematic queues ~540 armed reports
+ * a frame, each offset once a frame, and polls them (0x63482 -> D3D 0x1810f0)
+ * until the status word leaves -1; the async reader writes each ~28 ms after
+ * it is queued (median, RT arm): handed off at the next flip's finish, read
+ * once the GPU has run that whole command buffer. The answer is one test
+ * stale, as RPCS3's "relaxed ZCULL sync" answers: a flare or an
+ * occlusion-culled object can lag a frame.
+ *
+ * Only an offset whose last GET_REPORT came in the guest frame before this one
+ * is answered early: that is Halo's pattern (one test per offset per frame,
+ * polled the next), where the previous count is the same test's, one frame
+ * old. An offset already queued this frame would get another test's count; an
+ * offset last queued two or more frames ago is a slot ring (NFS Most Wanted
+ * cycles four, each reused >= 66.7 ms later, reportasync1010), whose guest
+ * reads the slot later and does not wait on it, so an early answer would only
+ * make its count older. Both are written as today (skip0, skipn below).
+ *
+ * The reader compares each early answer with the count its own test came to:
+ * stale counts those that differ, vis those where one is 0 and the other not
+ * (the guest drew or hid something its own test would have decided the other
+ * way, for one frame). Both go on the 2 s window line.
  *
  * HAKUX_REPORT_SUBMIT=<us>: after an armed GET_REPORT is queued, if <us> or
  * more have passed since the last finish, finish now (STALLED), so the GPU
@@ -507,15 +522,25 @@ void pgraph_vk_finalize_reports(PGRAPHState *pg)
  * async path reads only the offset afterwards.
  */
 #define RE_HASH 4096
+#define RE_RING 16384
 #define RE_EARLY_BIT (1u << 31)
 
 static struct {
     int early;
     int64_t submit_us;
     uint64_t tab[RE_HASH];   /* (offset + 1) << 32 | count; 0 = empty */
+    /* the PFIFO thread's: each offset's last GET_REPORT and its guest frame */
+    uint32_t q_off[RE_HASH]; /* offset + 1; 0 = none */
+    int q_frame[RE_HASH];
     int64_t t_fin;           /* end of the last finish, when submit_us */
     int64_t t_win;
-    uint32_t n_early, n_cold, n_unarmed, n_submit;
+    uint32_t n_early, n_cold, n_unarmed, n_submit, n_skip0, n_skipn, n_full;
+    /* early answers in queue order, read back in the same order by ra_run */
+    struct {
+        uint32_t off, val;
+    } ring[RE_RING];
+    uint32_t ring_w, ring_r;
+    uint32_t n_stale, n_vis, n_desync;   /* ra_run's, taken by the window */
 } re;
 
 static void ra_write(uint8_t *dst, uint32_t result);
@@ -524,15 +549,18 @@ static void re_init(void)
 {
     const char *e = getenv("HAKUX_REPORT_EARLY");
     const char *s = getenv("HAKUX_REPORT_SUBMIT");
-    re.early = e && !strcmp(e, "1");
+    re.early = !e || strcmp(e, "0") != 0;
     re.submit_us = s ? MAX(atoi(s), 0) : 0;
     memset(re.tab, 0, sizeof(re.tab));
+    memset(re.q_off, 0, sizeof(re.q_off));
+    re.ring_w = re.ring_r = 0;
     if (!ra.on && (re.early || re.submit_us)) {
         RA_LOG("[rearly1018] needs HAKUX_REPORT_ASYNC=1: off");
         re.early = 0;
         re.submit_us = 0;
     }
-    RA_LOG("[rearly1018] early=%d submit_us=%" PRId64, re.early, re.submit_us);
+    RA_LOG("[rearly1018] early=%d submit_us=%" PRId64 " HAKUX_REPORT_EARLY=%s",
+           re.early, re.submit_us, e ? e : "(unset)");
 }
 
 static void re_queued(NV2AState *d, QueryReport *report)
@@ -541,25 +569,45 @@ static void re_queued(NV2AState *d, QueryReport *report)
     int64_t now = g_get_monotonic_time();
     bool armed = dst && ldl_le_p(dst + 12);
     bool answered = false;
+    uint32_t off = GET_MASK(report->parameter, NV097_GET_REPORT_OFFSET);
+    unsigned h = (off >> 4) % RE_HASH;
+    int frame = qatomic_read(&d->pgraph.frame_time);
+    /* frames since this offset's last GET_REPORT; -1 if none */
+    int gap = re.q_off[h] == off + 1 ? frame - re.q_frame[h] : -1;
 
+    re.q_off[h] = off + 1;
+    re.q_frame[h] = frame;
     if (!armed) {
         re.n_unarmed++;
     } else if (re.early && ra.started) {
-        uint32_t off = GET_MASK(report->parameter, NV097_GET_REPORT_OFFSET);
-        uint64_t v = qatomic_read(&re.tab[(off >> 4) % RE_HASH]);
-        if ((v >> 32) == (uint64_t)off + 1) {
+        uint64_t v = qatomic_read(&re.tab[h]);
+        uint32_t w = re.ring_w;
+        if ((v >> 32) != (uint64_t)off + 1) {
+            re.n_cold++;
+        } else if (gap == 0) {
+            re.n_skip0++;
+        } else if (gap != 1) {
+            re.n_skipn++;
+        } else if (w - qatomic_load_acquire(&re.ring_r) >= RE_RING) {
+            re.n_full++;
+        } else {
+            re.ring[w % RE_RING].off = off;
+            re.ring[w % RE_RING].val = (uint32_t)v;
+            qatomic_store_release(&re.ring_w, w + 1);
             ra_write(dst, (uint32_t)v);
             report->parameter |= RE_EARLY_BIT;
             answered = true;
             re.n_early++;
-        } else {
-            re.n_cold++;
         }
     }
     if (now - re.t_win >= 2000000) {
-        RA_LOG("[rearly1018] w early=%u cold=%u unarmed=%u submit=%u",
-               re.n_early, re.n_cold, re.n_unarmed, re.n_submit);
+        RA_LOG("[rearly1018] w early=%u cold=%u unarmed=%u submit=%u "
+               "skip0=%u skipn=%u full=%u stale=%u vis=%u desync=%u",
+               re.n_early, re.n_cold, re.n_unarmed, re.n_submit, re.n_skip0,
+               re.n_skipn, re.n_full, qatomic_xchg(&re.n_stale, 0),
+               qatomic_xchg(&re.n_vis, 0), qatomic_xchg(&re.n_desync, 0));
         re.n_early = re.n_cold = re.n_unarmed = re.n_submit = 0;
+        re.n_skip0 = re.n_skipn = re.n_full = 0;
         re.t_win = now;
     }
     if (armed && !answered && re.submit_us &&
@@ -633,6 +681,38 @@ static void ra_write(uint8_t *dst, uint32_t result)
 }
 
 /*
+ * An early report's own count has come: compare it with the answer the guest
+ * got. Early reports reach here in the order re_queued answered them, so the
+ * ring's next entry is this report's. If it is not, the entries before this
+ * report's (within 64) are skipped and counted as desync, so one lost report
+ * does not void the rest of the run; with no entry for it, it counts one and
+ * the ring stays. Called from ra_run only, which has one user at a time.
+ */
+static void re_check(uint32_t off, uint32_t v)
+{
+    uint32_t r0 = re.ring_r;
+    uint32_t w = qatomic_load_acquire(&re.ring_w);
+
+    for (uint32_t i = r0; i != w && i - r0 < 64; i++) {
+        if (re.ring[i % RE_RING].off == off) {
+            uint32_t ans = re.ring[i % RE_RING].val;
+            if (i != r0) {
+                qatomic_add(&re.n_desync, i - r0);
+            }
+            if (ans != v) {
+                qatomic_inc(&re.n_stale);
+            }
+            if ((ans == 0) != (v == 0)) {
+                qatomic_inc(&re.n_vis);
+            }
+            qatomic_store_release(&re.ring_r, i + 1);
+            return;
+        }
+    }
+    qatomic_inc(&re.n_desync);
+}
+
+/*
  * Read one batch's queries and write its reports, in queue order. On the
  * reader thread, or on the finishing thread for a wait_all batch once the
  * reader is idle; either way ra.sum has one user at a time.
@@ -686,6 +766,8 @@ static void ra_run(PGRAPHVkState *r, RaBatch *b)
             }
             if (!rep->early) {
                 ra_write(rep->dst, v);
+            } else {
+                re_check(rep->off, v);
             }
         }
     }
