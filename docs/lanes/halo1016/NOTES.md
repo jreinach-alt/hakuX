@@ -470,6 +470,26 @@ ms/f (0.15); N spread <= 0.08 (0.7).
   FLDCW, ~0.3 us a run), 17% at 0x18111b and 8% at 0x63482 (long chained loops, ~0.7 ms an entry: the title's
   own work). In the 30-fps window before it, 70% is the idle loop at 0xbb0d4..0xbb0ee.
 
+### Tier-1 arms judged: T, FIT (tier1read.py as committed in 82a151b922, 03:0x PDT 10-17)
+
+| arm | env over A | ms/f | x base 42.1 | gi | it | spin share (reportread.py) |
+|---|---|---|---|---|---|---|
+| A | -- | 42.6 | 1.012 | 8,005 | 50,088 | 0.267 |
+| A2 | -- | 41.6 | 0.988 | 174 | 42,213 | -- |
+| T (1781747) | `HAKUX_TIER1_THRESHOLD=0` | 40.8 | 0.969 | 0 | 42,090 | 0.296 |
+| IF | FLDCW_CHAIN + IBC | 39.2 | 0.932 | 28 | 5,740 | 0.441 |
+| FIT (1783282) | all three | 39.4 | 0.937 (1.005 x IF) | 0 | 6,904 | 0.430 |
+
+- N HIT (spread 0.023). TM HIT: `gi` 0 in T and FIT, so the CF_INVALID pinning is the whole of the `gi` exits.
+- TE MISS (0.969, bar 0.96), XS MISS (FIT 1.005 x IF), XE MISS, XG MISS.
+- **The three vCPU remedies are measured and the frame has a floor near 39 ms in the span that none of them
+  moves.** Splitting each arm's frame by its spin share (TB time is ~96% of the vCPU's wall here, census B), the
+  vCPU's own work per frame is A 31.2, T 28.7, IF 21.9, FIT 22.5 ms, and its polling is A 11.4, T 12.1, IF 17.3,
+  FIT 16.9 ms. IF removed 9.3 ms of work and the poll grew 5.9 ms. Whatever the poll waits on takes ~39 ms a frame
+  in these shots, whatever the vCPU does. That is what halo1016-reports.json's RT trace locates.
+- The vCPU remedies stay off-by-default switches. They are real savings, ~9 ms/f of vCPU work, that become
+  frame time only once the poll's wait shrinks, so RC and anything after it should be measured with IF on as well.
+
 ### vCPU arms judged: all five (vcpuread.py as committed in d70f782f45)
 
 A2 landed at 02:4x: 41.6 ms/f, so N HIT (A/A2 spread 0.023) and the base is 42.1. Against it: FE MISS (F 0.963),
