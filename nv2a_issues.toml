@@ -6325,3 +6325,152 @@ status = "open"
 dispatch_state = "available"
 blocked_on = ""
 status_note = "TARGETS 0.5.2 (owner 2026-10-16 ~22:50 PDT): 0.5.1 publishes without it and lists it in KNOWN_ISSUES.md. || Filed by lane.local 2026-10-16 22:0x PDT from the owner's hand play on 0.5.1-rc1 (owner: 'It's not clearing the 30 FPS bar'; 0.5.1 on hold until fixed). Owned by lane.halo1016 (deep dive, with #938). Capture: captures/owner-halo-1016/logcat-nova-full.txt."
+
+[issue.1020]
+title = "Area 51 (4D570005): 73% of gameplay at 30 fps or better in a 10-minute run on the Nova, bar 90%"
+suites = []
+no_suites = "A title's frame-rate or stall behaviour on the Nova in its own scripted route; no pgraph suite measures it."
+disposition = "defect"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "The first step needs no owner input: a perflog-tier capture of this title's route on the Nova to see where the time goes. Halo work (0.5.2) has the Nova's attention overnight, so it queues behind that."
+status_note = "Reconstructed 2026-10-16 from the 10-15/16 record (filed late: no issue was logged for about 15 hours). The verdict and run are named in the issue."
+
+[issue.1021]
+title = "Grand Theft Auto: San Andreas (54540082): a 624 ms stall about 8 minutes into a 10-minute run on the Nova"
+suites = []
+no_suites = "A title's frame-rate or stall behaviour on the Nova in its own scripted route; no pgraph suite measures it."
+disposition = "defect"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "The first step needs no owner input: a perflog-tier capture of this title's route on the Nova to see where the time goes. Halo work (0.5.2) has the Nova's attention overnight, so it queues behind that."
+status_note = "Reconstructed 2026-10-16 from the 10-15/16 record (filed late: no issue was logged for about 15 hours). The verdict and run are named in the issue."
+
+[issue.1022]
+title = "Star Wars Knights of the Old Republic II: The Sith Lords (4C410014): 66% of gameplay at 30 fps or better on the Nova, bar 90%"
+suites = []
+no_suites = "A title's frame-rate or stall behaviour on the Nova in its own scripted route; no pgraph suite measures it."
+disposition = "defect"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "The first step needs no owner input: a perflog-tier capture of this title's route on the Nova to see where the time goes. Halo work (0.5.2) has the Nova's attention overnight, so it queues behind that."
+status_note = "Reconstructed 2026-10-16 from the 10-15/16 record (filed late: no issue was logged for about 15 hours). The verdict and run are named in the issue."
+
+[issue.1023]
+title = "Aeon Flux (4D4A0014): 85% of gameplay at 30 fps or better in a 10-minute run on the Nova, bar 90%"
+suites = []
+no_suites = "A title's frame-rate or stall behaviour on the Nova in its own scripted route; no pgraph suite measures it."
+disposition = "defect"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "The first step needs no owner input: a perflog-tier capture of this title's route on the Nova to see where the time goes. Halo work (0.5.2) has the Nova's attention overnight, so it queues behind that."
+status_note = "Reconstructed 2026-10-16 from the 10-15/16 record (filed late: no issue was logged for about 15 hours). The verdict and run are named in the issue."
+
+[issue.1024]
+title = "Half-Life 2 (45410091): 74% of gameplay at 30 fps or better in a 10-minute run on the Nova, bar 90%"
+suites = []
+no_suites = "A title's frame-rate or stall behaviour on the Nova in its own scripted route; no pgraph suite measures it."
+disposition = "defect"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "The first step needs no owner input: a perflog-tier capture of this title's route on the Nova to see where the time goes. Halo work (0.5.2) has the Nova's attention overnight, so it queues behind that."
+status_note = "Reconstructed 2026-10-16 from the 10-15/16 record (filed late: no issue was logged for about 15 hours). The verdict and run are named in the issue."
+
+[issue.1025]
+title = "Plus Plumb 2 (544B0004): five stalls of 0.7-1.8 s in a 10-minute run on the Nova"
+suites = []
+no_suites = "A title's frame-rate or stall behaviour on the Nova in its own scripted route; no pgraph suite measures it."
+disposition = "defect"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "The first step needs no owner input: a perflog-tier capture of this title's route on the Nova to see where the time goes. Halo work (0.5.2) has the Nova's attention overnight, so it queues behind that."
+status_note = "Reconstructed 2026-10-16 from the 10-15/16 record (filed late: no issue was logged for about 15 hours). The verdict and run are named in the issue."
+
+[issue.1026]
+title = "Pac-Man World 2 (4E4D0006): a 590 ms stall about 6.5 minutes into a 10-minute run on the Nova"
+suites = []
+no_suites = "A title's frame-rate or stall behaviour on the Nova in its own scripted route; no pgraph suite measures it."
+disposition = "defect"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "The first step needs no owner input: a perflog-tier capture of this title's route on the Nova to see where the time goes. Halo work (0.5.2) has the Nova's attention overnight, so it queues behind that."
+status_note = "Reconstructed 2026-10-16 from the 10-15/16 record (filed late: no issue was logged for about 15 hours). The verdict and run are named in the issue."
+
+[issue.1027]
+title = "Oddworld: Stranger's Wrath (4541006D): 38% of gameplay at 30 fps or better in a 10-minute run on the Nova, median 27 fps"
+suites = []
+no_suites = "A title's frame-rate or stall behaviour on the Nova in its own scripted route; no pgraph suite measures it."
+disposition = "defect"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "The first step needs no owner input: a perflog-tier capture of this title's route on the Nova to see where the time goes. Halo work (0.5.2) has the Nova's attention overnight, so it queues behind that."
+status_note = "Reconstructed 2026-10-16 from the 10-15/16 record (filed late: no issue was logged for about 15 hours). The verdict and run are named in the issue."
+
+[issue.1028]
+title = "Burnout 3: Takedown (4541005B): 85% of gameplay at 30 fps or better in a 10-minute run on the Nova, bar 90%"
+suites = []
+no_suites = "A title's frame-rate or stall behaviour on the Nova in its own scripted route; no pgraph suite measures it."
+disposition = "defect"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "The first step needs no owner input: a perflog-tier capture of this title's route on the Nova to see where the time goes. Halo work (0.5.2) has the Nova's attention overnight, so it queues behind that."
+status_note = "Reconstructed 2026-10-16 from the 10-15/16 record (filed late: no issue was logged for about 15 hours). The verdict and run are named in the issue."
+
+[issue.1029]
+title = "Gene Troopers (544D0011): a 530 ms stall about 5.7 minutes into a 10-minute run on the Nova"
+suites = []
+no_suites = "A title's frame-rate or stall behaviour on the Nova in its own scripted route; no pgraph suite measures it."
+disposition = "defect"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "The first step needs no owner input: a perflog-tier capture of this title's route on the Nova to see where the time goes. Halo work (0.5.2) has the Nova's attention overnight, so it queues behind that."
+status_note = "Reconstructed 2026-10-16 from the 10-15/16 record (filed late: no issue was logged for about 15 hours). The verdict and run are named in the issue."
+
+[issue.1030]
+title = "Conflict: Vietnam (5343000A): no guest frames for 245 s in a 10-minute run on the Nova"
+suites = []
+no_suites = "A title's frame-rate or stall behaviour on the Nova in its own scripted route; no pgraph suite measures it."
+disposition = "defect"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "The first step needs no owner input: a perflog-tier capture of this title's route on the Nova to see where the time goes. Halo work (0.5.2) has the Nova's attention overnight, so it queues behind that."
+status_note = "Reconstructed 2026-10-16 from the 10-15/16 record (filed late: no issue was logged for about 15 hours). The verdict and run are named in the issue."
+
+[issue.1031]
+title = "NBA Inside Drive 2004 (4D53000B): 70% of gameplay at 30 fps or better in a 10-minute run on the Nova, 47 hitches"
+suites = []
+no_suites = "A title's frame-rate or stall behaviour on the Nova in its own scripted route; no pgraph suite measures it."
+disposition = "defect"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "The first step needs no owner input: a perflog-tier capture of this title's route on the Nova to see where the time goes. Halo work (0.5.2) has the Nova's attention overnight, so it queues behind that."
+status_note = "Reconstructed 2026-10-16 from the 10-15/16 record (filed late: no issue was logged for about 15 hours). The verdict and run are named in the issue."
+
+[issue.1032]
+title = "NBA 2K7 (545400AE): 75% of gameplay at 30 fps or better in a 10-minute run on the Nova, dips to 14 fps"
+suites = []
+no_suites = "A title's frame-rate or stall behaviour on the Nova in its own scripted route; no pgraph suite measures it."
+disposition = "defect"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "The first step needs no owner input: a perflog-tier capture of this title's route on the Nova to see where the time goes. Halo work (0.5.2) has the Nova's attention overnight, so it queues behind that."
+status_note = "Reconstructed 2026-10-16 from the 10-15/16 record (filed late: no issue was logged for about 15 hours). The verdict and run are named in the issue."
+
+[issue.1033]
+title = "Texture shadow comparator: the last four marker triangles draw in an earlier marker's colour on master"
+suites = ["Texture shadow comparator"]
+disposition = "defect"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "The first step needs no owner input: re-run the Texture shadow comparator suite on master and compare the last four marker triangles with the golden. Halo work (0.5.2) has the Nova's attention overnight, so it queues behind that."
+status_note = "Reconstructed 2026-10-16 from the 10-15/16 record (filed late: no issue was logged for about 15 hours). No lane owns it yet. See the verdict named in the issue."
+
+[issue.1034]
+title = "Brian Lara International Cricket 2005 (434D004E): 27-37 fps with the ball in play on the Nova, 52-60 fps otherwise"
+suites = []
+no_suites = "A title's frame-rate or stall behaviour on the Nova in its own scripted route; no pgraph suite measures it."
+disposition = "defect"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "The first step needs no owner input: a perflog-tier capture of this title's route on the Nova to see where the time goes. Halo work (0.5.2) has the Nova's attention overnight, so it queues behind that."
+status_note = "Reconstructed 2026-10-16 from the 10-15/16 record (filed late: no issue was logged for about 15 hours). The verdict and run are named in the issue."
