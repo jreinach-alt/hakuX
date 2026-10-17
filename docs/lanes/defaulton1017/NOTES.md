@@ -72,6 +72,9 @@
 - 06:58: RS judged: every leg hit; REPORT_EARLY acts there (7,640 early, vis 0.16%). No rival is in any
   shot, master's included, so #804's blink can't be read from this route (below). Waiting on the five TS
   rows.
+- 06:48 (host `date`; the "06:50" and "06:58" above were estimates and ran ahead: TSF's own shots end at
+  06:45:58, and RS and CLF/CLC were judged before it finished): TSF (chain off) DROPS like ON, so the chain
+  alone is not the cause (below, "TS isolation"). Waiting on TSFR, TSOFF, TSR, TSS.
 
 ## Pilot verdict (HON, HNI; screenread.py, as registered)
 
@@ -221,6 +224,19 @@ briefing (was 17 fps)`.
   That is about twice the spread halo1016 measured between two runs of one binary (2.4%), from a single
   pair of frame-dumping runs, so it is not a reading of the chain's cost. By mechanism the chain's flip exit (one `lookup_and_goto_ptr`) is no more
   work than master's `exit_tb` to the main loop and a lookup there.
+
+### TS isolation (`scratch/tsiso.py`, the reading written at 06:40, before any row returned)
+
+| row | result | env beyond ON | switch lines | controller select, s13-s25 | later | tsread play windows, signature | verdict |
+|---|---|---|---|---|---|---|---|
+| TSF | 1792243851-defaulton1017-3688312 | `HAKUX_FLDCW_CHAIN=0` | s2t on, early 1, chain 0 (`=0`), fist round ON | every A and the START dropped; the d-pad moved 1P to Team One (s17) and nothing took after it | player select by hold 2 (+40 s into the hold loop), match intro (PRESS START) by hold 3 | 33 of 105 on | **DROPS** |
+
+- **TSF drops, so the chain alone is not what breaks Top Spin's input.** Shots s13-s25 against master's
+  off run (sheets at /tmp/claude-1000/-home-justin-hakuX/tsf_s13_s19.png and tsf_s20_s25.png): master is
+  at player select by s15 and in the match by s16. TSF is still at controller select at s25, the same
+  failure as ON's two runs. Only the hold loop's dozens of As got it through, about one in a dozen taking.
+  That is where its first `[s2tcvt] on` line comes from (ON's runs never reached a match, so they had no
+  S2T line at all) and its 33 signature windows: the match intro, not the match. Route end, no crash.
 
 ## S2T_CVT's pixel item: TSC1, TSC2 (defaulton1017-tsc.json, as registered)
 
