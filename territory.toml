@@ -2921,6 +2921,7 @@ note = "BRIEFED by lane.xbox 2026-10-17 10:34 PDT, rows filed by lane.local ~10:
 issues = ["1039"]
 standing = false
 files = ["docs/lanes/haloship1017/**"]
+released = ["docs/lanes/haloship1017/**"]
 note = "BRIEFED by lane.xbox 2026-10-17 10:34 PDT, rows filed by lane.local ~10:45 PDT: Halo's opening cinematic: the ship's rear lighting shows through the front of the ship (hold released by the owner ~10:15 PDT). Emulator files (nv2a renderer) come by the lane's own board request."
 
 [lane.bindpose1017]
@@ -2934,3 +2935,9 @@ issues = ["433"]
 standing = false
 files = ["docs/gpu-driver.md", "docs/testing/public_docs.txt", "README.md", "CHANGELOG.md", "docs/COMPATIBILITY.md", "docs/releases/README.md", "docs/releases/v0.4.0-j1.md", "docs/releases/v0.4.1-j1.md", "docs/releases/v0.5.0.md", "docs/releases/v0.5.1.md", "docs/releases/v0.5.2.md", "android/RELEASING.md", "docs/testing/release_build.sh", "docs/testing/release_build_selftest.sh", "docs/testing/docs_freshness.py", "docs/testing/docs_freshness_selftest.py", "docs/testing/nightly_build.sh", "docs/testing/jobs/selftest.d/86-nightly-notes.sh", "docs/lanes/drivernotice1017/**"]
 note = "STARTED lane.local 2026-10-17 ~14:00 PDT on the owner's word: hakuX is tested only with the Turnip Adreno Driver T30 (@Mr_Purple_666); every release note links a page that says so (docs/gpu-driver.md), and release_build.sh / docs_freshness.py refuse a release note without the link. Owner's explicit exception to relnotes1017's features-and-fixes-only rule. Docs and harness scripts only; no emulator code."
+
+[lane.haloring1017]
+issues = ["939"]
+standing = false
+files = ["docs/lanes/haloring1017/**", "docs/testing/predictions/haloring1017-*"]
+note = "BRIEFED by lane.xbox 2026-10-17 14:25 PDT on the owner's word (hold released ~14:15 PDT): the Halo menu ring's missing surface layer and static inside surface (#939). Desktop first; emulator files come by the lane's own board request. Brief: briefs/haloring1017.md."

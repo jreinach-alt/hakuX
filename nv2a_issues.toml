@@ -6172,9 +6172,9 @@ suites = []
 no_suites = "A visual defect in a commercial title, not yet identified, so no pgraph suite is known to cover it."
 disposition = "defect"
 status = "open"
-dispatch_state = "blocked"
-blocked_on = "OWNER HOLD (owner 2026-10-16 ~22:00 PDT): low priority; do not dispatch until the 0.5.2 Halo defects #938 and #1018 are fixed. Release only on the owner's word."
-status_note = "TARGETS 0.5.2 (owner 2026-10-16 ~22:50 PDT): 0.5.1 publishes without it and lists it in KNOWN_ISSUES.md. || Filed by lane.local 2026-10-11 22:3x PDT from the owner's hands-on test. Not HAKUX_VTX_HAZARD: zero vtx_hazard finishes in two menu sessions with it on (22:24, 22:26), so it predates the switch. First step: an 8 s adb screenrecord of the menu to classify the bad frames. 2026-10-16 ~22:00 PDT (owner, compared against the console, 0.5.1-rc1 on the Nova): the ring's inside surface stays static while the ring rotates; the outer gray hull rotates correctly. The FIST rounding change in 0.5.1 fixed the bursts where the ring jumped back; the missing surface layer is not fixed. Whether the static inside surface shares a cause with the missing layer is not known."
+dispatch_state = "available"
+blocked_on = ""
+status_note = "Hold released by the owner 2026-10-17 ~14:15 PDT ('Go ahead and release the ring sprite lane's hold, lets see if we can get that to spin'); owned by lane.haloring1017. 0.5.2 ships without it. The 10-16 console comparison ran on the release app, which had no custom driver until 10-17 ~13:20 (#1043), so on the stock Qualcomm driver; the missing layer (a) also reproduces on the desktop (lavapipe), the static inside surface is not yet checked on Turnip. || TARGETS 0.5.2 (owner 2026-10-16 ~22:50 PDT): 0.5.1 publishes without it and lists it in KNOWN_ISSUES.md. || Filed by lane.local 2026-10-11 22:3x PDT from the owner's hands-on test. Not HAKUX_VTX_HAZARD: zero vtx_hazard finishes in two menu sessions with it on (22:24, 22:26), so it predates the switch. First step: an 8 s adb screenrecord of the menu to classify the bad frames. 2026-10-16 ~22:00 PDT (owner, compared against the console, 0.5.1-rc1 on the Nova): the ring's inside surface stays static while the ring rotates; the outer gray hull rotates correctly. The FIST rounding change in 0.5.1 fixed the bursts where the ring jumped back; the missing surface layer is not fixed. Whether the static inside surface shares a cause with the missing layer is not known."
 
 [issue.973]
 title = "Die Hard: Vendetta (Europe) (56560029): the game freezes about a minute into the first level on the Nova"
@@ -6324,7 +6324,7 @@ disposition = "defect"
 status = "open"
 dispatch_state = "available"
 blocked_on = ""
-status_note = "2026-10-17 0.5.2-rc1 (owner): much better, not blocking; dips into the teens. lane.xbox measured gfps 15-19 for ~45 s after a slot-2 load (10:20:21-10:21:07 device time), then 29; post-load warm-up vs scene not separated (capture /home/justin/hakux-work/captures/halo-shadow-1017/logcat.txt). Comment posted on the forge 10-17 (GitHub copy follows with the mirror's sync after the 17:00 PDT cap reset). || TARGETS 0.5.2 (owner 2026-10-16 ~22:50 PDT): 0.5.1 publishes without it and lists it in KNOWN_ISSUES.md. || Filed by lane.local 2026-10-16 22:0x PDT from the owner's hand play on 0.5.1-rc1 (owner: 'It's not clearing the 30 FPS bar'; 0.5.1 on hold until fixed). Owned by lane.halo1016 (deep dive, with #938). Capture: captures/owner-halo-1016/logcat-nova-full.txt."
+status_note = "LOW PRIORITY (owner 2026-10-17 ~14:15 PDT); not blocking 0.5.2. Owner's Turnip playthrough on the Nova release app, 2026-10-17 13:43-14:10 PDT (pid 26727; Turnip T30 confirmed by [gpl569] ext=1 lib=1 fast=1 interp=1 requested=3 mode=3): 798 hakuX-perf readings, gfps=29 in 731 (91.6%), 28-31 in 760 (95.2%). Under 25: one cutscene dip 14:10:00-14:10:06 at 23/19/19 gfps (G ~51 ms), and single readings of 21-23 at 13:46:22, 13:46:31, 13:46:57, 13:51:56, 13:57:01, 13:57:36 and 14:07:33. One gfps=0 reading at 13:48:43 is a 20 s no-flip gap from 13:48:20: the owner in the save-state menu, not a stall. Capture: captures/halo-shadow-1017-turnip/logcat-owner-halo-play-26727.txt (cut from lane.local's host logcat). || 2026-10-17 0.5.2-rc1 (owner): much better, not blocking; dips into the teens. lane.xbox measured gfps 15-19 for ~45 s after a slot-2 load (10:20:21-10:21:07 device time), then 29; post-load warm-up vs scene not separated (capture /home/justin/hakux-work/captures/halo-shadow-1017/logcat.txt). Comment posted on the forge 10-17 (GitHub copy follows with the mirror's sync after the 17:00 PDT cap reset). || TARGETS 0.5.2 (owner 2026-10-16 ~22:50 PDT): 0.5.1 publishes without it and lists it in KNOWN_ISSUES.md. || Filed by lane.local 2026-10-16 22:0x PDT from the owner's hand play on 0.5.1-rc1 (owner: 'It's not clearing the 30 FPS bar'; 0.5.1 on hold until fixed). Owned by lane.halo1016 (deep dive, with #938). Capture: captures/owner-halo-1016/logcat-nova-full.txt."
 
 [issue.1020]
 title = "Area 51 (4D570005): 73% of gameplay at 30 fps or better in a 10-minute run on the Nova, bar 90%"
@@ -6480,20 +6480,20 @@ title = "Character shadows draw as dark squares under the feet: Halo: Combat Evo
 suites = []
 no_suites = "A render-to-texture shadow defect in commercial titles, not yet identified, so no pgraph suite is known to cover it."
 disposition = "defect"
-status = "open"
-dispatch_state = "available"
+status = "closed"
+dispatch_state = "done"
 blocked_on = ""
-status_note = "Filed by lane.xbox 2026-10-17 from the owner's report and lane.xbox's capture on 0.5.2-rc1 (Nova). Cross-title (owner: 'prominent in several other titles'; in footage from August), owner calls it a huge win. Halo's chain: character into a 128x128 R5G6B5 target, a four-sample pass into a second 128x128 target, projected (PROJECT2D, border addressing) onto ground triangles; the whole projected square darkens, green most. Not from any 0.5.2 change: the owner saw it in 0.5.1-rc1, and it is in August footage. Capture: /home/justin/hakux-work/captures/halo-shadow-1017/ (screenshots s2-*, r2-*; framedump/ rtt+gd 8 frames; slot2.hxs; logcat.txt). Owned by lane.haloshadow1017."
+status_note = "Closed 2026-10-17: not reproduced on Turnip T30 (lane.xbox run 13:34 PDT, driver verified; owner-confirmed in a 27-minute playthrough 13:43-14:10 PDT). The filing capture ran on the stock Qualcomm driver in the release app, which had no custom driver until ~13:20 (#1043). The owner's August footage and the other titles named in the report were not re-checked on Turnip; reopen with a Turnip capture if the squares are seen there. || Filed by lane.xbox 2026-10-17 from the owner's report and lane.xbox's capture on 0.5.2-rc1 (Nova). Cross-title (owner: 'prominent in several other titles'; in footage from August), owner calls it a huge win. Halo's chain: character into a 128x128 R5G6B5 target, a four-sample pass into a second 128x128 target, projected (PROJECT2D, border addressing) onto ground triangles; the whole projected square darkens, green most. Not from any 0.5.2 change: the owner saw it in 0.5.1-rc1, and it is in August footage. Capture: /home/justin/hakux-work/captures/halo-shadow-1017/ (screenshots s2-*, r2-*; framedump/ rtt+gd 8 frames; slot2.hxs; logcat.txt). Owned by lane.haloshadow1017."
 
 [issue.1039]
 title = "Halo: Combat Evolved: the ship's rear lighting shows through the front of the ship in the opening cinematic"
 suites = []
 no_suites = "A visual defect in a commercial title, not yet identified, so no pgraph suite is known to cover it."
 disposition = "defect"
-status = "open"
-dispatch_state = "available"
+status = "closed"
+dispatch_state = "done"
 blocked_on = ""
-status_note = "lighting/draw order (owner's read): the ship's rear directional light is drawn through the hull after the camera cuts from behind to the front; confirmed against the console 10-17. Low priority, not game-blocking, same class as #939. Hold released by the owner 2026-10-17 ~10:15 PDT ('lets get the lighting in flight as well'); owned by lane.haloship1017. Owner 2026-10-17: present in both 0.5.1-rc1 and 0.5.2-rc1, so the 0.5.2-only REPORT_EARLY default is not its origin (lane.haloship1017's H1 is out as the cause; still measured for duration)."
+status_note = "Closed 2026-10-17: not reproduced on Turnip (owner-confirmed); both sightings ran on the stock Qualcomm driver in the release app. Desktop on-record note, not filed: HAKUX_REPORT_EARLY draws the 12 rear flares through the hull for one frame at the cut (lavapipe, r4b; EARLY=0 and ASYNC=0 clean). The guard design is in docs/lanes/haloship1017/NOTES.md. || lighting/draw order (owner's read): the ship's rear directional light is drawn through the hull after the camera cuts from behind to the front; confirmed against the console 10-17. Low priority, not game-blocking, same class as #939. Hold released by the owner 2026-10-17 ~10:15 PDT ('lets get the lighting in flight as well'); owned by lane.haloship1017. Owner 2026-10-17: present in both 0.5.1-rc1 and 0.5.2-rc1, so the 0.5.2-only REPORT_EARLY default is not its origin (lane.haloship1017's H1 is out as the cause; still measured for duration)."
 
 [issue.1043]
 title = "Characters stay in their bind pose with arms and legs outstretched: Tony Hawk's Pro Skater 4 (41560017) and Max Payne 2 (5454000C)"
