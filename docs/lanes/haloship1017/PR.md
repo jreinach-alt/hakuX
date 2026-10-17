@@ -4,7 +4,7 @@ State: draft
 
 Lane: haloship1017            Issue: #1039
 Base: master @ 8d260f39fc
-Files: docs/lanes/haloship1017/, hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/renderer.c, hw/xbox/nv2a/pgraph/vk/renderer.h, hw/xbox/nv2a/pgraph/vk/reports.c, ui/xemu-input.c
+Files: docs/lanes/haloship1017/, hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/renderer.c, hw/xbox/nv2a/pgraph/vk/renderer.h, hw/xbox/nv2a/pgraph/vk/reports.c, ui/xemu-input.c, ui/xemu.c
 Prediction: none: instrument only so far (no arm)
 Needs device: yes    Needs NDK: no
 

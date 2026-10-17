@@ -111,9 +111,19 @@ decides:
 3. Legs on the desktop, same input: EARLY=0, ASYNC=0, queries skipped. Nova legs queued to run when the owner
    frees it.
 
+## Desktop runs
+
+All runs: `docs/lanes/haloship1017/desk_route.py`, llvmpipe Vulkan, `-display none`, keyboard on port 1, the Nova
+titles disk copy (`titles-nova-e0446ac3006f`) as the HDD, the 0.5.2 fast-path defaults. Output in
+`build-linux/run/<run>/` (not committed: frames are large).
+
+| run | head | what | result |
+|---|---|---|---|
+| r1 | 084e5e266b + route runner | route to the profile screen, gated | boot reached the main menu (CAMPAIGN lit) in ~60-120 s. **START never reached the guest**: no `[pad1039]` line, pad file never read. Cause: with `-display none`, `sdl2_display_init` never runs, so the main thread waits on `display_init_sem` for good and `xemu_input_init` never binds a controller. Fix: `ui/xemu.c` binds input from a machine-ready notifier when `HAKUX_PAD_FILE` is set. Also the runner globbed `*.json` for `*.jsonl`, so every shot timed out (files were still moved). No crash |
+
 ## Crash log (desktop)
 
-None yet.
+None yet (r1: no dump in `wsl-crashes/`; C: 57 GB free after).
 
 ## Questions
 

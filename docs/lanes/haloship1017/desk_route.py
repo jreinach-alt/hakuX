@@ -129,7 +129,7 @@ class Run:
         end = time.time() + timeout
         done = False
         while time.time() < end and self.alive():
-            for j in glob.glob(os.path.join(self.dump, "framedump_*.json")):
+            for j in glob.glob(os.path.join(self.dump, "framedump_*.jsonl")):
                 try:
                     with open(j, "rb") as f:
                         f.seek(max(0, os.path.getsize(j) - 4096))
