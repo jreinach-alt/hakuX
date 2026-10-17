@@ -1,6 +1,6 @@
 # Moving from the official hakuX
 
-_Last updated 2026-10-16, for version 0.5.1._
+_Last updated 2026-10-17, for version 0.5.2._
 
 **You don't need to uninstall anything, and nothing you have is at risk.**
 

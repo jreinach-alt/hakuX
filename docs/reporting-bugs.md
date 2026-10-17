@@ -1,6 +1,6 @@
 # Reporting a bug
 
-_Last updated 2026-10-16, for version 0.5.1._
+_Last updated 2026-10-17, for version 0.5.2._
 
 A report that has the details below can be worked on straight away.
 

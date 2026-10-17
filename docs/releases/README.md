@@ -1,9 +1,10 @@
 # Release notes
 
-_Last updated 2026-10-16, for version 0.5.1._
+_Last updated 2026-10-17, for version 0.5.2._
 
 | Version | Highlights |
 |---|---|
+| [0.5.2](v0.5.2.md) | Halo: Combat Evolved's opening cinematic runs much faster (about 29 fps, was 17) |
 | [0.5.1](v0.5.1.md) | Signing key rotated (in-place update over 0.5.0), Android 13 minimum, renamed hakuX CE, new icon, launcher compatibility confirmed |
 | [0.5.0](v0.5.0.md) | 52 games rated Playable, save states, less shader stutter, several games folders, launching from ES-DE |
 | [0.4.1-j1](v0.4.1-j1.md) | A frame-rate fix for 0.4.0-j1 |
