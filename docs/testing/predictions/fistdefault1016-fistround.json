@@ -1,0 +1,22 @@
+{
+ "registered_utc": "2026-10-16T22:00:00Z",
+ "who": "lane.fistdefault1016",
+ "issue": "939",
+ "kind": "identify (confirms the default-on flip; V and R are judged against the fold's own device-run gate run, Forza Motorsport, 120 s, Nova -- this lane queues no device run of its own; T is a code-reading leg with no device run at all; not an A/B arm, the arms job skips it)",
+ "title": "N/A -- no title run queued by this lane; V/R read off the fold's gate run",
+ "device": "nova",
+ "ref": "357ef87f1f63b30b216626a51b506ded26aaf9ec",
+ "env": [],
+ "judge": "V: grep the fold gate run's logcat.txt for 'perfarch fist round=ON (default)' and confirm the run's env has no HAKUX_FIST_ROUND set. R: the fold's device-run gate (Forza, 120 s, Nova) reports no crash/hang. T: read tcg/aarch64/tcg-target.c.inc (tcg_out_fist, INDEX_op_flcr, BISECT_FP_FLCR) and target/i386/tcg/translate.c (gen_flcr) -- see docs/lanes/fistdefault1016/NOTES.md 'FRINTI and FPCR.RMode' for the full trace.",
+ "baseline": "Before this lane: hakux_fist_round defaulted false, so a shipped build truncated inline x87 FIST/FISTP on aarch64 (lane.x1port1012 run 13's baseline: 9 hull + 76 terrain-strip glitch frames, 4-5 X/Y alternation bursts per crop on the Halo menu ring, all traced to that truncation). lane.x1port1012 already proved HAKUX_FIST_ROUND=1 removes those bursts (run 13, B1/B2/B3 PASS) on the Nova; this prediction does not repeat that pixel-level A/B.",
+ "prediction": "With the default flipped, a build with no HAKUX_FIST_ROUND in its env behaves exactly as lane.x1port1012's HAKUX_FIST_ROUND=1 arm did: inline FIST/FISTP round per the guest's RC, Halo's menu-ring bursts stay gone, and nothing else regresses. A game that sets x87 RC to round-toward-zero before a FIST (the common (int)-cast idiom) still truncates, because FRINTI under FPCR.RMode=RZ already rounds toward zero before the FCVTZS, so the pair reproduces the old single-FCVTZS result exactly -- this is a reading of the code, not a device measurement, and is not expected to ever fail short of a future edit to tcg_out_fist or INDEX_op_flcr.",
+ "legs": {
+  "V (did it execute, else VOID)": "the fold gate run's logcat.txt carries 'perfarch fist round=ON (default)' once, and the run's dispatched env has no HAKUX_FIST_ROUND key.",
+  "R (regression, pass condition)": "the fold's device-run gate (Forza Motorsport, 120 s, Nova) lands clean: no crash, no hang.",
+  "T (code reading, pass condition, no device run)": "tcg_out_fist (tcg-target.c.inc:3161-3177) always emits FRINTI before FCVTZS when hakux_fist_round is true; INDEX_op_flcr's live path (BISECT_FP_FLCR=1, tcg-target.c.inc:3125,3680-3711) maps all four x87 RC values to FPCR.RMode including RZ=11; FRINTI under FPCR.RMode=RZ rounds toward zero, so round-toward-zero FIST still truncates with the switch on."
+ },
+ "expect_note": "EMPTY of captures ON PURPOSE: there is no golden-keyed suite here. V and R are read off the fold's own Forza gate run (queued by the fold, not by this lane); T is answered by code reading alone, already done in NOTES.md.",
+ "expect_counts": {},
+ "must_not_move": [],
+ "must_not_regress": []
+}
