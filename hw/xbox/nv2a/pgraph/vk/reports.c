@@ -1053,6 +1053,41 @@ static bool pfifowait_enabled(void)
     return on;
 }
 
+/*
+ * #1018 (halo1016): HAKUX_REPORT_CATCHUP=1, off unless set. A queued
+ * GET_REPORT is written at a caught-up FIFO even when the STALLED finish
+ * below would not run: no command buffer is open, or no draw came since the
+ * last STALLED finish. Without it such a report waits for the next finish of
+ * any kind (every finish writes the queue, pgraph_vk_finish's tail), while a
+ * guest polling its status word spins: Halo's cinematic polls each
+ * visibility test (D3D at 0x1810f0, from 0x63482) until the word leaves -1.
+ * Only a value report counts; a queue holding clears alone is left as it
+ * was. The value is the one the next finish would have written: the running
+ * count, read after the fences, by the same code.
+ */
+static bool report_catchup_enabled(void)
+{
+    static int on = -1;
+    if (on < 0) {
+        const char *v = getenv("HAKUX_REPORT_CATCHUP");
+        on = v && !strcmp(v, "1");
+        RA_LOG("[rcatch1018] %s HAKUX_REPORT_CATCHUP=%s", on ? "on" : "off",
+               v ? v : "(unset)");
+    }
+    return on;
+}
+
+static bool report_queue_has_value(PGRAPHVkState *r)
+{
+    QueryReport *report;
+    QSIMPLEQ_FOREACH(report, &r->report_queue, entry) {
+        if (!report->clear) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void pgraph_vk_process_pending_reports(NV2AState *d)
 {
     PGRAPHState *pg = &d->pgraph;
@@ -1060,6 +1095,27 @@ void pgraph_vk_process_pending_reports(NV2AState *d)
 
     uint32_t *dma_get = &d->pfifo.regs[NV_PFIFO_CACHE1_DMA_GET];
     uint32_t *dma_put = &d->pfifo.regs[NV_PFIFO_CACHE1_DMA_PUT];
+
+    if (*dma_get == *dma_put && report_catchup_enabled() &&
+        (!r->in_command_buffer || pg->draw_time == r->last_stall_draw_time) &&
+        report_queue_has_value(r)) {
+        static uint32_t n_open, n_closed;
+        static int64_t t_win;
+        int64_t now = g_get_monotonic_time();
+        if (r->in_command_buffer) {
+            n_open++;
+        } else {
+            n_closed++;
+        }
+        if (now - t_win >= 2000000) {
+            RA_LOG("[rcatch1018] w open=%u closed=%u", n_open, n_closed);
+            n_open = n_closed = 0;
+            t_win = now;
+        }
+        pgraph_vk_finish(pg, VK_FINISH_REASON_STALLED);
+        r->last_stall_draw_time = pg->draw_time;
+        return;
+    }
 
     if (*dma_get == *dma_put && r->in_command_buffer) {
         if (stall_reports_only() && QSIMPLEQ_EMPTY(&r->report_queue)) {

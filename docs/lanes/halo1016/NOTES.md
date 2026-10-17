@@ -4,7 +4,17 @@ Halo: Combat Evolved (4D530004), opening cinematic on the Nova. Found on 0.5.1-r
 (0.5.1 shipped without this lane, owner 10-16 ~22:50 PDT).
 Defects: **#938** quiet speech under loud music; **#1018** the cinematic drops to 8-19 fps for ~47 s.
 
-## Status (2026-10-17 02:10 PDT)
+## Status (2026-10-17 02:40 PDT)
+
+- #1018: **the heavy shots' "vCPU bound" is the guest polling an occlusion report.** The two hottest TB entries
+  are one loop: 0x63482 calls D3D's 0x1810f0 while it returns 0x88760828, which it does at 0x18111b when the
+  report's status word is still -1 (a visibility-test result poll). A's span spends 26.7% of TB time in that loop
+  and IF's 44.1%: the vCPU work R2 and #507 removed went mostly into polling longer, which is why each bought only
+  5% ("#1018 the spin"). The vCPU arms A, F, I, IF are judged (A2 pending): FL, FM, IM HIT; FE, IE, BE, G MISS.
+- The next arms (halo1016-reports.json, on the commit with `HAKUX_REPORT_CATCHUP`) measure where the poll's time
+  goes (`HAKUX_REPORT_TRACE=1`) and test the remedy for the one mechanism the code shows: a report queued after
+  the catch-up finish waits for the next finish of any kind.
+- Earlier, 02:10:
 
 - #1018 vCPU half: R2 is built (d70f782f45, `HAKUX_FLDCW_CHAIN=1`, off by default) and #507's inline probe
   (`HAKUX_IBC=1`) is the second remedy. Both are measured on the S2T_CVT base in five arms (A, F, I, IF, A2),
@@ -146,7 +156,8 @@ The frame period tracks p_run + sdown x ~0.5 ms. The guest idles exactly when th
 | | Hypothesis | P start | P now | Evidence |
 |---|---|---|---|---|
 | F1 | Synchronous GPU waits on the PFIFO thread | 0.45 | **0.95** (`cvt` downloads, one cause of two) | W hit: 61 sdown/f, 33 ms/f, equal to the unhooked blocked time; census K: all `cvt`; C: S2T_CVT takes them to 0 and the span 0.71 x |
-| F7 | The vCPU is the bound in the heavy shots once the downloads go | -- | **0.85** (the second cause) | census B: plateau 40-61 ms/f, guest idle 0, pidle 25-32 ms/f, gpu 17-23 ms/f |
+| F7 | The vCPU is the bound in the heavy shots once the downloads go | -- | 0.85, then **0.35** as the vCPU's own work | census B: plateau 40-61 ms/f, guest idle 0, pidle 25-32 ms/f, gpu 17-23 ms/f. The vcpu arms: removing 45 k main-loop returns (F) or 850 k helper lookups (I) a frame buys 2 ms/f each, and the spin's share of TB time rises |
+| F8 | The guest polls a visibility-test report in the heavy shots, and the poll's wait is the bound | -- | **0.8** | 0x63482/0x18111b disassembled ("#1018 the spin"); spin share 0.267 (A) -> 0.441 (IF) of TB time as ms/f falls 3.4 |
 | F6 | The heavy shots really carry more work | 0.3 | 0.6 (contributor) | draws 1000-1363/f against 650; p_run 22.6 against 13.5 ms. Alone it fits in 33 ms |
 | F2 | Host GPU-bound | 0.3 | 0.02 | G: gpu/P 0.17; sysmem P 0.96 |
 | F3 | Late notifier/interrupt delivery | 0.15 | 0.05 | busy spans begin on the NV2A wake, behind the downloads; iq flat |
@@ -165,6 +176,9 @@ ms/f with no downloads). Neither alone reaches 33.4.
 | R2 | FLDCW ends a TB only when the precision bit flips, and chains when it does (built, d70f782f45) | 0.55 | ~4.3 ms/f: 36 k main-loop returns a frame at ~118 ns of loop each | rr425: 36.2 k/f `eo` at 0x1ec3a of 49.9 k returns; loop 14% of the vCPU wall |
 | R3 | Tier-1 promotion off (`HAKUX_TIER1_THRESHOLD=0`, an existing switch): no hot block left CF_INVALID and unchainable | 0.45 | ~0.9 ms/f of loop for 7.9 k `gi` returns, plus their qht lookups; and it keeps R2's `_control87` block chainable | named below ("the `gi` exits are tier-1's"); `promote` lines name 0x19f23 and 0x1ec3d |
 | R3b | Name and remove the plateau's `x` longjmps | 0.3 | 2.8 k a frame, ~0.3 ms/f | unnamed |
+| R2, R4 measured (10-17 02:20) | F and I alone: 0.951 x A each; IF 0.921 | -- | 2.1 / 2.1 / 3.4 ms/f | the work is gone (eo 0, helper lookups 0.016 x) and the poll absorbs it (F8) |
+| R5 | `HAKUX_REPORT_CATCHUP=1` (built, off): write a queued GET_REPORT at the catch-up finish | 0.25 (= P(HS)) | up to the spin's share, ~11 ms/f of A's 42.6 (0.267) | "#1018 the spin": the one place in the code where a report waits with no work ahead of it |
+| R6 | The poll's answer without the PFIFO's backlog: record draws faster, or write the report's previous count at the guest's kick | 0.5 (= P(HB)) x mechanism unproven | the same ~11-17 ms/f | the 5-7 ms kick-to-dispatch latency in the heavy windows; ranked on the RT trace |
 | - | `TU_DEBUG=sysmem` | refuted | -- | cinesplit P 0.96 |
 
 P x win: R1 (0.9 x 17 ms) first, then R4 (0.5 x 9) and R2 (0.55 x 4.3), then R3 (0.3 x 1.3). B needs 8.5 ms/f off
@@ -456,8 +470,79 @@ ms/f (0.15); N spread <= 0.08 (0.7).
   FLDCW, ~0.3 us a run), 17% at 0x18111b and 8% at 0x63482 (long chained loops, ~0.7 ms an entry: the title's
   own work). In the 30-fps window before it, 70% is the idle loop at 0xbb0d4..0xbb0ee.
 
+### vCPU arms judged: A, F, I, IF (vcpuread.py as committed in d70f782f45; A2 pending)
+
+Over [mark+131, mark+191], per guest frame:
+
+| arm | env over A | ms/f | dispatched | eo at 0x1ec3a | gi | helper lookups | loop gap |
+|---|---|---|---|---|---|---|---|
+| A (1762649) | -- | 42.6 | 50,088 | 36,249 | 8,005 | 863 k | 13.8% |
+| F (1762816) | `HAKUX_FLDCW_CHAIN=1` | 40.5 | 5,263 | 0 | 29 | 927 k | 2.9% |
+| I (1762962) | `HAKUX_IBC=1` | 40.5 | 50,172 | 36,185 | 7,964 | 13.6 k | 14.5% |
+| IF (1763073) | both | 39.2 | 5,740 | 0 | 28 | 13.6 k | 2.9% |
+
+- FL HIT: 0 flips in 106 M FLDCWs (A). FM HIT: F's eo at 0x1ec3a 0 (<= 0.1 x A). IM HIT: I's helper lookups
+  0.016 x A.
+- FE MISS (F 0.951 x A, bar 0.93), IE MISS (I 0.951), BE MISS (IF 0.921, bar 0.87), G MISS (IF 39.2 > 33.4).
+  N waits on A2; the base is A alone until then.
+- Both mechanisms are gone in full and the frame barely moves. Per 10-s window, the +140 and +170 shots gain
+  2-9 ms and +130 (51-52 ms in every arm) gains nothing. Read with the spin below: the time removed from the
+  vCPU's work is spent polling.
+
+## #1018 the spin: the heavy shots poll a visibility test (read 02:20-02:40 PDT 10-17)
+
+Disassembly (`/mnt/d/hakux-staging/halo1016/q5_hot.py`, capstone, the title's own default.xbe):
+
+```
+0x00063482: lea edx,[esp+4]; push edx; lea eax,[esp+4]; push eax; push esi
+0x0006348d: call 0x1810f0                    ; D3D, 3 args, ret 0xc
+0x00063492: cmp eax, 0x88760828
+0x00063497: je 0x63482                       ; again while "not ready"
+0x001810f0: ... esi = table[idx >> 8]; eax = esi + (idx & 0xff) * 16
+0x0018110f: mov ecx,[eax+0xc]; cmp ecx,-1; jne 0x181123   ; status word still -1?
+0x0018111b: mov eax, 0x88760828; ret 0xc     ; not ready
+0x00181123: *pResult = [eax+8]; *pTimeStamp = [eax], [eax+4]; return 0
+```
+
+That is a visibility-test result read (index, result, timestamp) and a spin on it. The 16-byte record is the
+NV report layout pgraph writes at GET_REPORT (timestamp, count, status 0). The D3D section's one GET_REPORT
+emitter is at 0x181c5d (scratch/guestcode.md Q4).
+
+- **The spin is the bound, not the vCPU's work.** `[tpc787]` share of sampled TB time in the loop's four entry
+  pcs (0x63482, 0x63492, 0x1810f0, 0x18111b): A 0.267, IF 0.441 (reportread.py's table). IF removed ~10 ms/f of
+  vCPU work (loop gap 13.8% -> 2.9%, 45 k fewer returns) and ms/f fell 3.4; the poll grew by about the rest.
+- **Not the NOP callback.** The perflog `cblat` lines (scratch/cblat.py on A): one callback a frame (param
+  0x304), `pnop` 0, `pidle` 0 over the span. In the heavy windows its kick-to-dispatch latency is 5-7 ms, spent in
+  draws (`mdraw`): the PFIFO runs 5-7 ms behind the guest's kicks there, against 0.4 ms in the calm windows.
+- **Where a report waits** (reports.c, draw.c): GET_REPORT only queues (`pgraph_vk_get_report`); every finish
+  writes the queue at its tail (`pgraph_vk_finish` -> `pgraph_vk_process_pending_reports_internal`), whether or
+  not a command buffer was open. At a caught-up FIFO, `pgraph_vk_process_pending_reports` runs the STALLED finish
+  only with a command buffer open **and** a draw since the last STALLED finish. A GET_REPORT the PFIFO reaches
+  after that finish (the guest kicked the flare's draw, the PFIFO caught up and finished, then the report came)
+  sits in the queue until the next finish of any kind, while the guest spins.
+
+Three places the poll's wait can be, and what separates them (`HAKUX_REPORT_TRACE=1`, reportasync1010's
+instrument: per GET_REPORT, queued -> handed to the write (q2e) -> fence -> written (q2w)):
+
+| | Where the poll waits | P | Signature in the trace | Remedy |
+|---|---|---|---|---|
+| HB | upstream of the PFIFO reaching GET_REPORT: its backlog (5-7 ms in heavy windows) or the guest's kick | 0.5 | q2w < 1 ms for >= 70% | faster PFIFO draw recording, or answer the report without waiting for the PFIFO (stale count) |
+| HS | queued, waiting for a finish (above) | 0.25 | q2e >= 2 ms for >= 30% | `HAKUX_REPORT_CATCHUP=1` (built): write it at the catch-up |
+| HG | after the handoff, on the GPU and the fence | 0.15 | q2w - q2e >= 2 ms for >= 30% | `HAKUX_REPORT_ASYNC=1` (reportasync1010) or an earlier submit |
+
+HG is low because census B's PFIFO waits on fences 1.25 ms a frame in the span. HB is high because the callback
+latency shows the PFIFO 5-7 ms behind the guest in exactly the heavy windows.
+
+`HAKUX_REPORT_CATCHUP=1` (hw/xbox/nv2a/pgraph/vk/reports.c, off unless set): at a caught-up FIFO, a queue holding
+a value report (not only clears) gets a STALLED finish even with no command buffer open or no draw since the last.
+The value is the one the later finish would write (the running count, after the fences, same code). It logs
+`[rcatch1018] on|off` once and `[rcatch1018] w open= closed=` per 2 s while it acts. Syntax-checked with the
+nightly tree's arm64 Release compile command (scratch/synck.py, which fails a planted error); not built locally.
+
 ## What the next lane should not repeat
 
+- "Guest idle 0" is not "vCPU-bound": look at the hot entry pcs for a poll loop first (here, a visibility-test
+  spin), before building vCPU remedies.
 - Do not chase `TU_DEBUG=sysmem` or GPU-bound explanations for this cinematic: the cinesplit A/B refutes both.
 - A dispatcher soak with `--pull 'frametrace_*'` brings back old CSVs from the device; read only the run's own
   (cineread.py `run_csvs()`).
