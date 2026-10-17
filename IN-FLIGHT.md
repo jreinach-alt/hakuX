@@ -8,7 +8,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `gta3drive1017` | claude-opus-5-5 | 34 min | gta3drive1017: Grand Theft Auto III drops into the teens while driving (#433) |
+| `gta3drive1017` | claude-opus-5-5 | 36 min | gta3drive1017: Grand Theft Auto III drops into the teens while driving (#433) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -129,4 +129,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 release052: the 0.5.2 release commit (#433)
 - 2026-10-17 defaulton1017: S2T_CVT, REPORT_EARLY and FLDCW_CHAIN on by default, after one default-on screen
 
-_Updated 2026-10-17 16:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-17 16:32 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
