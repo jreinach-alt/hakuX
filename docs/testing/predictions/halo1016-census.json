@@ -1,0 +1,42 @@
+{
+  "registered_utc": "2026-10-17T07:40:00Z",
+  "who": "lane.halo1016",
+  "issues": ["1018"],
+  "kind": "soak env pair (one binary)",
+  "title": "Halo Combat Evolved.iso",
+  "device": "nova",
+  "seconds": 420,
+  "route": "halo-cinematic (docs/lanes/halo1016/routes/halo-cinematic.route, queued with TITLE_ROUTES=docs/lanes/halo1016/routes)",
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "a_ref": "214445e90e",
+  "b_ref": "214445e90e",
+  "a_env": [
+    "HAKUX_FRAMETRACE=1",
+    "HAKUX_PROBE_WAITS=1"
+  ],
+  "b_env": [
+    "HAKUX_FRAMETRACE=1",
+    "HAKUX_PROBE_WAITS=1",
+    "HAKUX_S2T_CVT=1"
+  ],
+  "queue_order": "Queued by the lane (an env pair; arms.sh skips a_ref == b_ref): two requests of one run each, A then B: TITLE_ROUTES=docs/lanes/halo1016/routes request.sh --who halo1016 --device nova --title 'Halo Combat Evolved.iso' --route halo-cinematic --seconds 420 --ref 214445e90e --perflog --pull 'frametrace_*' --env ... --issue 1018 --expect this file. 214445e90e is the lane's head with the [ovl1018] overlap-eviction census (hw/xbox/nv2a/pgraph/vk/surface.c, counters and a 5-s log line only) on master's emulator plus the lane's off-by-default APU meter.",
+  "judge": "python3 docs/lanes/halo1016/censusread.py <A> <B> --expect docs/testing/predictions/halo1016-census.json (written before either result is read and exercised on the 10-03 perflog soak 1-1791064684-lanelocal-4097992 by scratch/censusread_mock.py; it prints the per-block timeline and both arms' accounts whatever the verdict)",
+  "baseline": "cinesplit (halo1016-cinesplit.json, judged): A 0-0-x-1792217277-halo1016-932684 on d205bbe2fd, plain build, plateau mark+131..mark+191 at 65.9 ms per frame; probe1010 61.17 mid-frame non-deferred SURFACE_DOWN finishes per frame, 33.01 ms/f, ~0.5 ms each; gpu/P 0.17. Its [evict372] (same-address incompatible evictions) is flat across the plateau: 60 Z<->C 640x480 role swaps, all handed off on the GPU. The 10-03 perflog soak on effb0d001b (pre-cinematic and gameplay, cinematic skipped) shows SURFACE_DOWN 2 a frame, dif ovl 2/f and ovlSh 1/f, txr dl and scdl 0, [sdcall] surfupd 1 fin/f and tobuf 0.5/f: overlap eviction there, at 1/30 of the plateau's rate. No perflog reading of the plateau exists.",
+  "prediction": "#1018: whose SURFACE_DOWN finishes fill the plateau. Hypotheses and the leg that reads each, with P: O, overlap eviction (a new binding at another address overlapping a draw-dirty one, invalidate_overlapping_surfaces; the 10-03 soak's only source), P 0.55. K, the texture path (a surface sampled as a texture the surface-to-texture route refuses, downloaded and re-uploaded; txr dl or the range scan's scdl), P 0.25. R, CPU-range downloads ([sdcall] range: the guest reading surface memory), P 0.10. The rest (expire, pending/dirty fallbacks, reuse) 0.10. C, HAKUX_S2T_CVT (the 5/6-bit conversion route; off by default) removes them: P 0.10, near zero unless K hits with cvt the top txdl reason. Over the span [mark+131, mark+191] on A: O: [ovl1018] draw-dirty evictions >= 0.6 x Finish sd per frame and txr dl + scdl + range fin <= 0.3 x Finish sd. K: txr dl + scdl >= 0.6 x Finish sd. R: range fin >= 0.6 x Finish sd. C: B's Finish sd per frame <= 0.5 x A's and B's ms per frame <= 0.8 x A's. What the remedy depends on: an O hit with the pairs showing a fixed shape and offset names a GPU-side copy (the evicted image's overlapping texels into the new binding) or a SURFSPLICE extension; a K hit names the refusal reason (txdl) to route on the GPU; R would mean the guest reads the frame back, and a fix belongs in the access watch.",
+  "expect": {
+    "V_min_blocks": 5,
+    "V_a_span_msf_min": 50.0,
+    "O_ovl_share_min": 0.6,
+    "O_other_share_max": 0.3,
+    "K_share_min": 0.6,
+    "R_share_min": 0.6,
+    "C_sd_ratio_max": 0.5,
+    "C_msf_ratio_max": 0.8
+  },
+  "expect_note": "EMPTY of captures ON PURPOSE: a soak writes none. Named rules read by docs/lanes/halo1016/censusread.py --expect (legs V, O, K, R, C). V on both arms: `mark cinematic`, >= 5 stall blocks and [sdcall] lines in the span, [ovl1018] ticks bracketing it, `[s2tcvt] on` in B and not A, and A's span >= 50 ms per frame (the slow scene reproduced under perflog). A run whose route did not reach LOADING, or a V failure, is void, not a miss.",
+  "expect_counts": {},
+  "must_not_move": [],
+  "must_not_regress": []
+}
