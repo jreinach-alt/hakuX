@@ -1,0 +1,99 @@
+# lane.haloship1017 -- Halo CE: the ship's rear lights show through the hull after the cut to the front (#1039)
+
+Opening cinematic, The Pillar of Autumn (4D530004). Owner, 10-17: behind the ship its rear lights show (correct);
+after the cut to the front they show through the hull; an original Xbox does not. Not game-blocking, same class
+as #939. Branched from master @ 8d260f39fc.
+
+## Status
+
+Step 0 done (this file, before any code). Next: reproduce on the desktop and count the frames it lasts.
+
+## Step 0: what was searched
+
+- `git log --all -S` and `--grep` for: GET_REPORT, CLEAR_REPORT_VALUE, SET_ZPASS_PIXEL_COUNT_ENABLE, zpass/ZPASS,
+  occlusion, REPORT_ASYNC, REPORT_EARLY/rearly, REPORT_TRACE/rtrace, zeta, depth clear, w-buffer, zmin/zmax/depth
+  range/clamp, lens flare/flare/corona, halo (top 60), query pool/vkCmdBeginQuery/VK_QUERY_TYPE_OCCLUSION/PRECISE,
+  surface reload.
+- Tracker: `git show origin/board:nv2a_issues.toml` rows 1039, 939, 1018, 1038, 938, 737-739, 994, 527, 535, 804,
+  76, 276, 272, 989. No row mentions a flare or corona.
+- Lane notes read in full or in their report/depth sections: reportasync1010, halo1016 (reports sections, R1-R8,
+  "should not repeat" :809-823), defaulton1017 (verdict table :92-114, `vis` :352-357), accuracy804 :40-94 and
+  :493-577, cloud-527 (git 4e7ec92a67), notify488 :49-79, x1port1012 (gd, #939).
+- Docs: `docs/releases/v0.5.2.md:13-16`, `dispatch/board-requests/xbox.md:332, 381, 400-436`,
+  `docs/lanes/xbox/OUTBOX.md:3-29`, `docs/testing/desktop-runs.md`.
+- Code: `hw/xbox/nv2a/pgraph/vk/reports.c` (whole report path), `vk/draw.c` begin_query/end_query/begin_draw
+  (:3941-3974, :7170-7201), `vk/instance.c:892`, `pgraph.c:4456-4466` and `pgraph_write_zpass_pixel_cnt_report`.
+- `MainActivity.kt:38-42` FASTPATHS_VARS: REPORT_ASYNC, TEXSCAN, DRAWREC, UNI_BULK, UNI_UBERCACHE, UNI_FOGCACHE,
+  POSTED_PUT, LOCKFREE_WAKE, all "1" while the `fastpaths` pref is on (default true). Also default-on: SURFGPU=1,
+  GPL=3. C defaults in 0.5.2: S2T_CVT, REPORT_EARLY (needs ASYNC), FLDCW_CHAIN, FIST_ROUND on; IBC off. Prefs
+  off by default: skip_occlusion_queries, fast_fences, draw_reorder, frame_skip.
+
+**Found: no prior work on this defect.** No commit, tracker row or notes section covers geometry or lights
+showing through a hull in Halo. The nearest mechanism on record is REPORT_EARLY's predicted cost (a flare one
+frame late at a cut), which nobody captured.
+
+## Already tried
+
+| approach | where (commit, lane, NOTES line) | verdict | what it means here |
+|---|---|---|---|
+| A1. Async report reader (`HAKUX_REPORT_ASYNC`), armed gate | 2e9f535300, 477893cdbf, fold 6052ff98d4; reportasync1010 NOTES :20-21, :92, :294, :798 | ZPass 72/72 byte-identical; "a frame later, never a wrong count"; default-on via fastpaths | Halo spins on the status word (halo1016 :590-594), so ASYNC hands it the exact count, late. ASYNC alone cannot give Halo a wrong count. It was on in 0.5.1-rc1 |
+| A2. Early answer (`HAKUX_REPORT_EARLY`, R8), gap==1 gate, stale/vis counters | 08fd920b5c (fold 15f8524be1), 7f6b99db87 (fold c3660fdd86); halo1016 :668-688, :764-766, :800, :821; defaulton1017 :92-114, :352-357 | shipped default-on in 0.5.2 only; Halo HVIS 0.0055; its cost (flare one frame stale at a cut) predicted, **never captured** | the only recorded mechanism that shows a hidden light. It is not in 0.5.1-rc1, so it explains the sighting only if the build was 0.5.2-rc1 (tracker #1018 says the owner played 0.5.2-rc1 on 10-17). At most a frame or two per cut |
+| A3. Report CATCHUP (R5) / SUBMIT (R7) | 7da5534b6b, 08fd920b5c; halo1016 :220-221, :237, :748-755, :786, :823 | measured, lose (fps). Off | timing only, off by default: not in the shipped path. Not rerun |
+| A4. #804 stale query read: wait on fences (`HAKUX_OCCL_WAIT`, default 1) | 3ad43b49da, ee8999c296, 510ebb25f2, 5e16698c99 (fold 6f463a0ae2); accuracy804 :43-84, :493-507, :565-577 | folded; fixed RalliSport's alternate-frame bodies | Turnip's reset is a GPU command, so an early read returned the last cb's count. Fixed on the sync path; ASYNC waits on the fence by construction. `HAKUX_OCCL_WAIT=0` would reinstate it (a mutant, not a remedy) |
+| A5. Reports written after the report DMA is rebound (#527) | 9e19e81a05 (lane/cloud-527, PR #535 closed 10-12, never folded); cloud-527 NOTES | never landed; #527 orphaned. **Counter correctness unsettled**: ZPass's first report read 40,960 (right), 49,152 (0026f00534), and 65,536 on the Thor with sysmem and a kept cache, which is the depth-hidden quad counted | the only record of a handheld counting fragments that the depth test should have rejected. Directly relevant to H2 below |
+| A6. Query creation, PRECISE flag | upstream a5385803db, 80fda910b1, d47fef9467; hakuX: none | never changed | PRECISE only when `occlusionQueryPrecise` is offered (instance.c:892). Non-precise may inflate a nonzero count, never turn 0 into nonzero, so it cannot by itself show a fully hidden light |
+| A7. Skip occlusion queries (pref) | upstream 41586e3025; draw.c:7177-7201 | off by default | with it on the count is never written (0 or last). A discriminator here: lights gated by tests disappear or freeze; ordinary geometry is unaffected |
+| A8. Depth value fixes: D24 saturate, w-buffer slope offset, float depth encoding, F24 one unit high | c2336637cf (#266), bdc26fa5c8, 23a8962df2, c59ad280fd | folded | depth precision at the far end. A wrong depth here would show as z-fighting, not a whole light through a whole hull. Low prior for H5 |
+| A9. CULL_NEAR_FAR_EN / ZMinMax, zclamp | ed8e1cd3be, bf23a7f1ce (#276, PR #368), 2dc5d1b884 | folded, verification pending | a test quad clamped instead of clipped could pass. Relevant to H5 and to the test draw's own depth under H3 |
+| A10. `HAKUX_ZETA_D24` | ede7c891c5 (fpsbelow1012), surface.c:6685-6726 | off by default | not in the shipped path |
+| A11. Depth clear fixes | 51721e36aa (#414), cde230bf1d (#91), b991fb4c21 | folded | a cleared or reloaded zeta at the test is H3; these fixed specific clears, none in Halo |
+| A12. Zeta/colour role swaps of one 640x480 surface | halo1016 census (60 Z<->C swaps, f130 <-> f44, pitch 2560, handed off on the GPU) | observed, never judged | a candidate H3 mechanism: the test runs against a surface that held colour, or a zeta reloaded from guest memory without the hull |
+| A13. X1 BOX report path | halo1016 | = upstream's synchronous path | not to be ported |
+
+## Symptoms and their accounts (filled as measured)
+
+1. Behind the ship the rear lights show. Correct. Account: TBD (they are what H1-H5 gate).
+2. After the cut to the front, the lights show through the hull; hardware does not. Account: TBD.
+3. How many frames it lasts after the cut. Unknown; first measurement.
+4. Desktop: unknown.
+5. Fast paths off: unknown.
+
+## Hypotheses
+
+The rear lights are most likely Halo lens flares: Halo tests a light's visibility with a pixel count (544 armed
+GET_REPORTs a frame in this cinematic, polled about a frame later, halo1016 :590-599) and draws the flare with no
+depth test when the count is nonzero. Every L1 case is "the count is nonzero from the front".
+
+| # | hypothesis | Already-tried row | P | hit (instrument) | miss |
+|---|---|---|---|---|---|
+| H1 | L1(a): a stale count at the cut. EARLY answers the front shot's first test with the behind shot's count | A2 | 0.20 | defect lasts 1-2 frames after the cut; gone with `HAKUX_REPORT_EARLY=0`; per-offset trace shows the early answer nonzero and its own count 0 | lasts the whole shot, or shows with EARLY=0, or on a build with no EARLY |
+| H2 | L1(c): the host GPU counts samples that fail the depth test (Adreno LRZ/GMEM/binning, or a query span that takes in other draws) | A5 (Thor counted the hidden quad), A6 | 0.20 | Nova shows it, desktop does not; per-offset count nonzero on the Nova for the light's tests in the front shot where the desktop's is 0 | desktop shows it too (then H3/H4/H5) |
+| H3 | L1(b): the test draws against a zeta that lacks the hull: wrong surface bound, cleared, reloaded, or a Z<->C role swap | A11, A12 | 0.20 | gd dump of the front shot: at the test draws the bound zeta is not the surface the hull wrote, or was cleared/uploaded between hull and test | test draws bound to the hull's zeta with its depth intact |
+| H4 | L1(d): the counter's span or reset differs from the NV2A: CLEAR_REPORT_VALUE position, a query left open across draws with zpass off, the running sum | A1, A5 | 0.10 | per-report trace: a light's count equals hull + test, or carries across a clear | each count equals the test draw's own passing samples |
+| H5 | L2: the lights are ordinary geometry and their depth test does not reject them (depth values, range, clamp, clip) | A8, A9, A10 | 0.20 | lights still show through with queries skipped (A7); gd shows the light's draws with depth test on and passing where the hull is nearer | lights vanish or freeze with queries skipped |
+| H6 | L3: the aarch64 JIT computes the guest's visibility decision differently | new: searched FIST/FLDCW commits (#939 5d4b689ed9, 56fdef2c85), nothing on visibility | 0.05 | Nova shows, desktop does not, with identical per-offset counts | counts differ (then H2) |
+| H7 | L4: draw order or blend | new: searched draw reorder (off by default, refused while zpass is on, draw.c:9433), nothing | 0.05 | gd: the light drawn after the hull with blend over it, no depth involved | |
+
+**Build question (blocks only H1's weight).** lane.xbox's brief says the owner saw it on 0.5.1-rc1; tracker
+#1018 says the owner played 0.5.2-rc1 on 10-17. On 0.5.1-rc1 EARLY did not exist and ASYNC delivers the exact
+count, so only H2-H7 remain. Asked at the end; measured regardless (EARLY=0 is one leg).
+
+## Plan, by P x win
+
+The win is the same for every hypothesis (the defect gone, no fps cost), so the order is P and what each step
+decides:
+
+1. Desktop reproduction, every frame across the cut (`gd` frame dumps + `HAKUX_REPORT_TRACE=1`). Decides H2/H6
+   against the rest (symptom 4) and counts frames (symptom 3, H1 vs the rest).
+2. A per-report instrument: for each GET_REPORT, its offset, guest frame, count, and the draws its query spanned
+   (gd draw index, depth test/func/write, bound zeta address). Decides H3/H4/H5 in one dump of the front shot.
+3. Legs on the desktop, same input: EARLY=0, ASYNC=0, queries skipped. Nova legs queued to run when the owner
+   frees it.
+
+## Crash log (desktop)
+
+None yet.
+
+## Questions
+
+1. Which build did the owner see it on, 0.5.1-rc1 or 0.5.2-rc1? (lane.xbox's brief and tracker #1018 differ.)
