@@ -12,6 +12,10 @@ Coverage (the run counts only if all hold):
   C1  the log starts at n=0 and n has no gaps (every present from the first is in it);
   C2  it reaches a GPU picture: a present with src=n and lit >= LIT_PICTURE;
   C3  it runs at least TAIL_PRESENTS presents past that first GPU picture, so the launch window is closed.
+  C2 on a run with no src=n present at all (the desktop on lavapipe presents by download, so every present is src=v;
+  added after run d1, before d2): the first picture-class present with lit >= LIT_PICTURE whose start address differs
+  from that of the first such present (the kernel's logo), i.e. the title has moved the scan-out. A title that keeps
+  the kernel's address fails C2 under this rule, and the run says so.
 
 Classes, per present, over the centre half of the window (the probe's numbers):
   black    lit < LIT_BLACK
@@ -32,12 +36,22 @@ Hypotheses (NOTES.md table):
   H3 hit: a flash present has PVIDEO in use (pv bit 0).
   H5    : during the flash the guest has blanked (sr01 bit 5 set = screen off, or ari bit 5 clear = palette
           address source off, or cr17 bit 7 clear = sync off) -> silicon would show nothing; else silicon shows RAM too.
+          Each episode also says whether the present before it was blanked (blanked_prev): the desktop draws the VGA
+          image one refresh late, so its flash can be the image of a blanked present.
   H6 hit: start, lo, vga size or bpp changes within 2 presents of an episode's first present.
-RAM match (H1's "the pixels are guest RAM"): for each boot1045_r<n>.bin with a frame dump of the same n, the RAM is
-decoded at the logged bpp (32 = XRGB8888, 16 = RGB565, 15 = XRGB1555, little-endian) and line offset, at the logged
-VGA size, scaled to the picture's box in the frame (the box of rows and columns with any lit pixel), and its luma is
-correlated (Pearson) with the frame's luma. The null is the same decode shifted by 37 columns and 23 rows. A match
-needs r >= R_MATCH and r >= 3 x the null's |r|. Indexed modes (bpp 0 or 8) are reported, not decoded.
+RAM match (H1's "the pixels are guest RAM"): for each boot1045_r<n>.bin, the RAM is decoded at present n's logged bpp
+(32 = XRGB8888, 16 = RGB565, 15 = XRGB1555, little-endian), line offset and VGA size, scaled to the picture's box in
+the window frame (the box of rows and columns with any lit pixel), and its luma is correlated (Pearson) with the
+frame's luma. The null is the same decode shifted by 37 columns and 23 rows. A match needs r >= R_MATCH and r >= 3 x
+the null's |r|. Indexed modes (bpp 0 or 8) are reported, not decoded. Two pairings per dump (the second added after
+d1): "same", the window at present n (Android runs the VGA update before the draw), and "next", the window at
+present n+1 (the desktop runs it after the present, so it draws the image one refresh late). The window at present m
+is the latest frame dump at or before m: the probe skips a frame only when it hashes the same as the one before.
+
+Unblanked view (added after d1): for src=v presents the probe logs tnb/tlit/tgrn, the same numbers over the console
+surface the texture was made from, before any screen-off blank. Classed with the same bars (tcls), they show what a
+present path that ignores SR01 screen-off draws, which is the Android path (android_blit_frame has no screen-off
+check). Reported as episodes of noise or green, with how many of their presents had the screen off.
 """
 import json
 import math
@@ -68,6 +82,8 @@ def parse_log(path):
                 r[k] = int(kv.get(k, "0"))
             for k in ("t_ms", "nb", "lit", "grn", "ram_nb"):
                 r[k] = float(kv.get(k, "0"))
+            for k in ("tnb", "tlit", "tgrn"):
+                r[k] = float(kv.get(k, "-1"))
             for k in ("cr28", "gr06", "ari", "sr01", "cr17"):
                 r[k] = int(kv.get(k, "0"), 16)
             r["start"] = int(kv.get("start", "0x0"), 16)
@@ -144,17 +160,45 @@ def pearson(a, b):
     return sum((x - ma) * (y - mb) for x, y in zip(a, b)) / math.sqrt(sa * sb)
 
 
-def ram_match(d, row):
-    n = row["n"]
+def frame_at(m, frames):
+    """The window at present m: the latest frame dump at or before m (None if there is none)."""
+    best = None
+    for k in frames:
+        if k <= m:
+            best = k
+        else:
+            break
+    return best
+
+
+def ram_matches(d, rows):
+    by_n = {r["n"]: r for r in rows}
+    frames = sorted(int(f[10:15]) for f in os.listdir(d) if f.startswith("boot1045_f") and f.endswith(".ppm"))
+    dumps = sorted(int(f[10:15]) for f in os.listdir(d) if f.startswith("boot1045_r") and f.endswith(".bin"))
+    out = []
+    for n in dumps:
+        row = by_n.get(n)
+        m = {"n": n}
+        if row is None:
+            m["verdict"] = "no log line for this dump"
+            out.append(m)
+            continue
+        m.update({"start": "0x%08x" % row["start"], "bpp": row["bpp"], "lo": row["lo"], "vga": row["vga"],
+                  "sr01": "%02x" % row["sr01"]})
+        for name, at in (("same", n), ("next", n + 1)):
+            fn = frame_at(at, frames)
+            if fn is None:
+                m[name] = {"verdict": "no frame dump at or before %d" % at}
+                continue
+            m[name] = ram_match(d, row, n, fn)
+        out.append(m)
+    return out
+
+
+def ram_match(d, row, n, fn):
     rp = os.path.join(d, "boot1045_r%05u.bin" % n)
-    fp = os.path.join(d, "boot1045_f%05u.ppm" % n)
-    out = {"n": n, "bpp": row["bpp"], "cr28": row["cr28"], "lo": row["lo"], "vga": row["vga"]}
-    if not os.path.exists(rp):
-        out["verdict"] = "no ram dump"
-        return out
-    if not os.path.exists(fp):
-        out["verdict"] = "no frame dump at this n"
-        return out
+    fp = os.path.join(d, "boot1045_f%05u.ppm" % fn)
+    out = {"frame": fn}
     vw, vh = (int(x) for x in row["vga"].split("x"))
     with open(rp, "rb") as f:
         buf = f.read()
@@ -220,6 +264,16 @@ def judge(d):
     cov["C1_starts_at_0"] = ns[0] == 0
     cov["C1_gaps"] = sum(1 for a, b in zip(ns, ns[1:]) if b != a + 1)
     first_pic = next((i for i, r in enumerate(rows) if r["src"] == "n" and r["lit"] >= LIT_PICTURE), None)
+    cov["C2_rule"] = "src=n"
+    if not any(r["src"] == "n" for r in rows):
+        # Presenting by download: no src=n at all. The title's picture is the first lit picture at a start address
+        # other than the first lit picture's (the kernel's logo). Classes need nb_bar, which is set below from the
+        # tail; here a lit present with nb under NB_FLOOR is taken as a picture, the floor being the bar's minimum.
+        cov["C2_rule"] = "download: start moved"
+        pics = [i for i, r in enumerate(rows) if r["lit"] >= LIT_PICTURE and r["nb"] < NB_FLOOR]
+        if pics:
+            s0 = rows[pics[0]]["start"]
+            first_pic = next((i for i in pics if rows[i]["start"] != s0), None)
     cov["C2_first_gpu_picture_n"] = rows[first_pic]["n"] if first_pic is not None else None
     cov["C3_tail_presents"] = (len(rows) - 1 - first_pic) if first_pic is not None else 0
     ok = (cov["C1_starts_at_0"] and cov["C1_gaps"] == 0 and first_pic is not None
@@ -287,7 +341,8 @@ def judge(d):
                 "mode_prev": tl_mode(prev) if prev else None,
                 "mode_change_within_2": len({mode_key(r) for r in near}) > 1,
                 "pvideo_in_use": any(r["pv"] & 1 for r in seg),
-                "blanked": any((r["sr01"] & 0x20) or not (r["ari"] & 0x20) or not (r["cr17"] & 0x80) for r in seg),
+                "blanked": any(blanked(r) for r in seg),
+                "blanked_prev": blanked(prev) if prev else None,
                 "ram_nonzero_mean": round(sum(r["ram_nz"] for r in seg) / len(seg), 3),
                 "ram_nb_mean": round(sum(r["ram_nb"] for r in seg) / len(seg), 1),
                 "frames": [r["n"] for r in seg if r["dump"]][:20],
@@ -309,14 +364,46 @@ def judge(d):
             r["src"] == "n" for r in flash) else "MISS"
         h["H3"] = "HIT" if any(r["pv"] & 1 for r in flash) else "MISS"
         h["H5_blanked_during_flash"] = any(e["blanked"] for e in eps)
+        h["H5_blanked_before_flash"] = any(e["blanked_prev"] for e in eps)
         h["H6"] = "HIT" if any(e["mode_change_within_2"] for e in eps) else "MISS"
     fb = [r for r in rows if r["src"] == "v"]
     h["fallback_presents"] = len(fb)
     h["fallback_classes"] = srcs.get("v", {})
     res["hypotheses"] = h
 
-    res["ram_match"] = [ram_match(d, r) for r in rows if r["ramdump"]]
+    # The unblanked view: what the VGA texture held, before any screen-off blank.
+    tv = [r for r in rows if r["src"] == "v" and r["tlit"] >= 0]
+    for r in tv:
+        r["tcls"] = classify({"lit": r["tlit"], "grn": r["tgrn"], "nb": r["tnb"]}, nb_bar)
+    teps = []
+    i = 0
+    while i < len(tv):
+        if tv[i]["tcls"] in ("noise", "green"):
+            j = i
+            while j + 1 < len(tv) and tv[j + 1]["tcls"] in ("noise", "green") and tv[j + 1]["n"] == tv[j]["n"] + 1:
+                j += 1
+            seg = tv[i:j + 1]
+            teps.append({
+                "first_n": seg[0]["n"], "last_n": seg[-1]["n"], "presents": len(seg),
+                "ms": round(seg[-1]["t_ms"] - seg[0]["t_ms"], 1), "t_ms_first": seg[0]["t_ms"],
+                "classes": sorted({r["tcls"] for r in seg}),
+                "tnb_min_max": [min(r["tnb"] for r in seg), max(r["tnb"] for r in seg)],
+                "tgrn_max": max(r["tgrn"] for r in seg),
+                "screen_off_presents": sum(1 for r in seg if r["sr01"] & 0x20),
+                "window_classes": sorted({r["cls"] for r in seg}),
+                "mode_first": tl_mode(seg[0]),
+            })
+            i = j + 1
+        else:
+            i += 1
+    res["unblanked"] = {"presents_with_texture_numbers": len(tv), "episodes": teps}
+
+    res["ram_match"] = ram_matches(d, rows)
     return res
+
+
+def blanked(r):
+    return bool((r["sr01"] & 0x20) or not (r["ari"] & 0x20) or not (r["cr17"] & 0x80))
 
 
 def tl_mode(r):
@@ -342,6 +429,11 @@ def main():
     for e in res.get("episodes", []):
         print("  " + json.dumps(e))
     print("hypotheses:", json.dumps(res.get("hypotheses")))
+    ub = res.get("unblanked", {})
+    print("unblanked view (texture before any screen-off blank): %d presents with numbers" %
+          ub.get("presents_with_texture_numbers", 0))
+    for e in ub.get("episodes", []):
+        print("  " + json.dumps(e))
     print("ram match:")
     for m in res.get("ram_match", []):
         print("  " + json.dumps(m))

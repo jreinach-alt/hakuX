@@ -2041,12 +2041,17 @@ static void android_limiter_wait(int64_t deadline, int64_t now)
  * read back from the window. Each new frame (by hash) goes to
  * boot1045_f<n>.ppm, at most 320 pixels wide, up to HAKUX_BOOTPROBE_MAXDUMP
  * (default 600); after 30 presents of the nv2a source in a row only every
- * 10th is written. While the VGA fallback is drawn, each new image of guest RAM
- * at the scan-out address (by hash, up to 20) goes to boot1045_r<n>.bin, one
- * screen of it at the logged line offset, so the frame can be decoded from
- * the RAM it shows. The dir defaults to the app's external files dir on
- * Android and XEMU_FRAME_DUMP_DIR (or .) on the desktop. Unset, it is one
- * getenv.
+ * 10th is written. While the VGA fallback is drawn in a real mode (bpp > 0, at
+ * least 320x200), guest RAM at the scan-out address goes to boot1045_r<n>.bin,
+ * one screen of it at the logged line offset, so the frame can be decoded from
+ * the RAM it shows: each new image by hash, at least 4 presents apart, up to
+ * 24; and on every change of the start address or SR01, the present before and
+ * this one, up to 16, because the desktop draws the VGA image one refresh late.
+ * For VGA fallback presents the line also carries tnb/tlit/tgrn, the same
+ * numbers taken over the console surface the texture was made from: what a
+ * present path that ignores SR01's screen-off would show. The dir defaults to
+ * the app's external files dir on Android and XEMU_FRAME_DUMP_DIR (or .) on
+ * the desktop. Unset, it is one getenv.
  */
 static struct {
     int armed; /* -1 not read yet, 0 off, 1 recording, 2 done */
@@ -2060,12 +2065,23 @@ static struct {
     uint32_t last_hash;
     uint32_t last_ram_h;
     unsigned ram_dumps;
+    unsigned edge_dumps;
+    unsigned last_ram_dump_n;
+    uint32_t last_start;
+    uint8_t last_sr01;
+    uint8_t *ram_prev; /* the previous present's screen of RAM, real mode */
+    size_t ram_prev_len;
+    unsigned ram_prev_n;
+    int ram_prev_ok;
+    int ram_prev_written;
     char last_src;
     unsigned src_run;
     uint8_t *px;
     size_t px_size;
     uint8_t *ds;
     size_t ds_size;
+    int t_valid;
+    double t_nb, t_lit, t_grn;
 } boot1045 = { .armed = -1 };
 
 static void G_GNUC_PRINTF(1, 2) boot1045_say(const char *fmt, ...)
@@ -2140,6 +2156,61 @@ static void boot1045_arm(void)
 }
 
 /*
+ * The window's numbers (centre half, neighbour difference, lit and green
+ * shares) taken over the console surface the VGA fallback texture was just
+ * made from. Called right after xb_surface_gl_create_texture. At 4 bytes a
+ * pixel the green byte is the second in both byte orders, so the numbers do
+ * not depend on which of R and B comes first.
+ */
+static void boot1045_surface(DisplaySurface *s)
+{
+    if (boot1045.armed < 0) {
+        boot1045_arm();
+    }
+    if (boot1045.armed != 1 || !s || surface_bytes_per_pixel(s) != 4) {
+        return;
+    }
+    int w = surface_width(s), h = surface_height(s);
+    int stride = surface_stride(s);
+    const uint8_t *data = surface_data(s);
+    if (!data || w < 2 || h < 2) {
+        return;
+    }
+    uint64_t snb = 0, cnt = 0, lit = 0, grn = 0;
+    for (int y = h / 4; y < h * 3 / 4; y++) {
+        const uint8_t *row = data + (size_t)y * stride;
+        for (int x = w / 4; x < w * 3 / 4; x++) {
+            const uint8_t *p = row + (size_t)x * 4;
+            int c0 = p[0], g = p[1], c2 = p[2];
+            snb += abs(c0 - p[4]) + abs(g - p[5]) + abs(c2 - p[6]);
+            lit += MAX(c0, MAX(g, c2)) > 24;
+            grn += g >= 48 && g > c0 + 32 && g > c2 + 32;
+            cnt++;
+        }
+    }
+    if (!cnt) {
+        return;
+    }
+    boot1045.t_nb = (double)snb / (3.0 * cnt);
+    boot1045.t_lit = (double)lit / cnt;
+    boot1045.t_grn = (double)grn / cnt;
+    boot1045.t_valid = 1;
+}
+
+static int boot1045_write_ram(unsigned n, const uint8_t *p, size_t len)
+{
+    char path[800];
+    snprintf(path, sizeof(path), "%s/boot1045_r%05u.bin", boot1045.dir, n);
+    FILE *f = fopen(path, "wb");
+    if (!f) {
+        return 0;
+    }
+    fwrite(p, 1, len, f);
+    fclose(f);
+    return 1;
+}
+
+/*
  * Called after the frame is drawn into the window's back buffer and before the
  * swap, with the GL context current. `src` is which texture was drawn.
  */
@@ -2160,7 +2231,8 @@ static void boot1045_present(struct sdl2_console *scon, char src, GLuint tex,
         boot1045.log = NULL;
         g_free(boot1045.px);
         g_free(boot1045.ds);
-        boot1045.px = boot1045.ds = NULL;
+        g_free(boot1045.ram_prev);
+        boot1045.px = boot1045.ds = boot1045.ram_prev = NULL;
         boot1045.armed = 2;
         return;
     }
@@ -2204,23 +2276,56 @@ static void boot1045_present(struct sdl2_console *scon, char src, GLuint tex,
             ram_h = boot1045_fnv(p, ram_len, ram_h);
         }
     }
+    /*
+     * RAM dumps, in a real mode only: d1 spent its whole budget on the reset
+     * state (8x1, bpp 0). An edge is a change of start or SR01; the desktop
+     * draws the image the VGA update made one refresh earlier, so an edge
+     * writes the present before it as well.
+     */
     int ram_dumped = 0;
-    if (d && src == 'v' && ram_h != boot1045.last_ram_h &&
-        boot1045.ram_dumps < 20 && d->vga.vram_ptr &&
+    bool real = bpp > 0 && vw >= 320 && vh >= 200;
+    bool edge = n > 0 && (start != boot1045.last_start ||
+                          sr01 != boot1045.last_sr01);
+    if (d && src == 'v' && real && d->vga.vram_ptr &&
         start < d->vga.vram_size) {
-        size_t len = (lo && vh > 0) ? (size_t)lo * vh : 640 * 480 * 4;
+        const uint8_t *p = d->vga.vram_ptr + start;
+        size_t len = lo ? (size_t)lo * vh : (size_t)vw * vh * 4;
         len = MIN(len, (size_t)(d->vga.vram_size - start));
-        char path[800];
-        snprintf(path, sizeof(path), "%s/boot1045_r%05u.bin", boot1045.dir, n);
-        FILE *f = fopen(path, "wb");
-        if (f) {
-            fwrite(d->vga.vram_ptr + start, 1, len, f);
-            fclose(f);
+        if (edge && boot1045.edge_dumps < 16) {
+            if (boot1045.ram_prev_ok && !boot1045.ram_prev_written &&
+                boot1045.ram_prev_n + 1 == n &&
+                boot1045_write_ram(boot1045.ram_prev_n, boot1045.ram_prev,
+                                   boot1045.ram_prev_len)) {
+                ram_dumped |= 2;
+            }
+            if (boot1045_write_ram(n, p, len)) {
+                ram_dumped |= 1;
+            }
+            boot1045.edge_dumps++;
+        } else if (ram_h != boot1045.last_ram_h && boot1045.ram_dumps < 24 &&
+                   (!boot1045.ram_dumps ||
+                    n >= boot1045.last_ram_dump_n + 4) &&
+                   boot1045_write_ram(n, p, len)) {
+            ram_dumped |= 1;
             boot1045.ram_dumps++;
-            boot1045.last_ram_h = ram_h;
-            ram_dumped = 1;
+            boot1045.last_ram_dump_n = n;
         }
+        if (ram_dumped & 1) {
+            boot1045.last_ram_h = ram_h;
+        }
+        if (boot1045.ram_prev_len < len || !boot1045.ram_prev) {
+            boot1045.ram_prev = g_realloc(boot1045.ram_prev, len);
+        }
+        memcpy(boot1045.ram_prev, p, len);
+        boot1045.ram_prev_len = len;
+        boot1045.ram_prev_n = n;
+        boot1045.ram_prev_ok = 1;
+        boot1045.ram_prev_written = ram_dumped & 1;
+    } else {
+        boot1045.ram_prev_ok = 0;
     }
+    boot1045.last_start = start;
+    boot1045.last_sr01 = sr01;
 
     /* The window as it will be shown. */
     int w = 0, h = 0;
@@ -2306,7 +2411,7 @@ static void boot1045_present(struct sdl2_console *scon, char src, GLuint tex,
              " cr28=%02x gr06=%02x ari=%02x sr01=%02x cr17=%02x gc=%08x"
              " pv=%08x surf=%dx%d ram_nz=%u/%u ram_nb=%.1f ram_h=%08x"
              " win=%dx%d mean=%u,%u,%u nb=%.1f lit=%.3f grn=%.3f h=%08x"
-             " dump=%d ramdump=%d",
+             " dump=%d ramdump=%d tnb=%.1f tlit=%.3f tgrn=%.3f",
              n, (now - boot1045.t0_ns) / 1e6, g_get_real_time(),
              qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) / 1000000, src,
              (unsigned)tex, flip ? 1 : 0, start, lo, vw, vh, bpp, cr28, gr06,
@@ -2316,7 +2421,11 @@ static void boot1045_present(struct sdl2_console *scon, char src, GLuint tex,
              ram_len, ram_nb, ram_h, w, h, (unsigned)(sr / cnt),
              (unsigned)(sg / cnt), (unsigned)(sb / cnt),
              (double)snb / (3.0 * cnt), (double)lit / cnt,
-             (double)grn / cnt, hash, dumped, ram_dumped);
+             (double)grn / cnt, hash, dumped, ram_dumped,
+             (src == 'v' && boot1045.t_valid) ? boot1045.t_nb : -1.0,
+             (src == 'v' && boot1045.t_valid) ? boot1045.t_lit : -1.0,
+             (src == 'v' && boot1045.t_valid) ? boot1045.t_grn : -1.0);
+    boot1045.t_valid = 0;
     fprintf(boot1045.log, "%s\n", line);
     fflush(boot1045.log);
     /* logcat gets the first presents, every source change and 1 in 60. */
@@ -2618,6 +2727,9 @@ void sdl2_gl_refresh(DisplayChangeListener *dcl)
 #endif
         // FIXME: Don't upload if notdirty
         xb_surface_gl_create_texture(scon->surface);
+        if (boot1045.armed) {
+            boot1045_surface(scon->surface);
+        }
         scon->updates++;
         tex = scon->surface->texture;
         flip_required = true;

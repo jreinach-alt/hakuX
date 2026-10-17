@@ -139,8 +139,11 @@ The desktop build is `tools/setup_desk.py`, then `build-linux/cfg.py` (bindpose1
 
 `tools/deskboot.py d1 120 90`: THPS4, the goldens HDD, lavapipe, SDL's offscreen video driver (a GL window; SDL 2.30's
 offscreen driver cannot make a Vulkan window, so `ui/xemu.c` now asks for a GL window under that driver only; nothing
-on the desktop ever made a Vulkan surface of it). Coverage passed (n from 0 with no gaps, the title's picture reached,
-more than 120 presents after it). Evidence: `d1_flash.png` (presents 0, 61, 62, 221, by `tools/sheet.py`).
+on the desktop ever made a Vulkan surface of it). The judge said **not covered**. C1 held (n from 0, no gaps), but C2
+asks for a `src=n` picture and the desktop has none (below). The title's picture is there by eye at present 1354,
+with 3,200 presents after it. The judge now carries a declared desktop rule for C2 (the first lit picture at a start
+address other than the kernel's logo), committed before d2. Evidence: `d1_flash.png` (presents 0, 61, 62, 221, by
+`tools/sheet.py`).
 
 | presents | t (ms) | VGA state (probe) | window |
 |---|---|---|---|
@@ -189,11 +192,22 @@ Android); H2 0.08; H4 0.05; H6 0.05 (the static sits on a start-address change, 
 the same geometry, not as a wrong pitch or bpp); H7 0.02. The green look is still unseen. The static frame's green
 share is 0.11, not a green flash. Green P unchanged until the Nova shows it.
 
+### Instrument changes after d1, committed before d2
+
+- Probe: RAM dumps only in a real mode (bpp > 0, at least 320x200), each new image at least 4 presents apart (up to
+  24). On every change of start or SR01 (an edge) it also dumps the present before it, which the desktop draws one
+  refresh late (up to 16). For VGA fallback presents, `tnb/tlit/tgrn` are the window's numbers taken over the console
+  surface the texture was made from, before any screen-off blank. That is what a present path with no screen-off
+  check draws, so the desktop can measure what the Nova should show.
+- Judge: the desktop C2 rule above. RAM match pairs each dump with the window at the same present ("same", Android's
+  order) and at the next one ("next", the desktop's). The "unblanked view" reports episodes of noise or green in the
+  texture numbers, with their screen-off count. Each window episode says whether the present before it was blanked.
+- Self-test: cases D (the d1 shape, with a "next" RAM match) and E (its mutant: the leak frame unrelated to the RAM,
+  so no match). FAILS=0.
+
 ## Waiting / blocked
 
-Nothing outstanding. Next: a probe change that logs what the VGA texture holds as well as what the window shows (so
-the desktop can show what Android would draw in the screen-off window), RAM dumps only in a real mode (d1 spent its 20
-dumps on the reset state), then run d2 and judge the RAM match. Then queue the Nova.
+Nothing outstanding. Next: d2 on the desktop, judged. Then queue the Nova.
 
 ## Questions (for lane.xbox / the owner; work continues meanwhile)
 
