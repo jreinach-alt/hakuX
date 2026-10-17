@@ -60,9 +60,11 @@ check() {   # <description> <command...>
 # records whether it ran and, when $GRADLE_OK is set in its environment,
 # writes a fake APK (unsigned when $APK_UNSIGNED is set); aapt2 is a stub that prints canned badging/
 # resources output driven by files the test writes into $T/aapt2-answers.
-new_repo() {   # -> prints the repo path
+new_repo() {   # [note-text] -> prints the repo path; the note is docs/releases/v1.2.3.md
     local r="$T/repo-$$-$RANDOM"
-    mkdir -p "$r/docs/testing" "$r/android"
+    local note="${1-See [GPU driver](https://example.invalid/docs/gpu-driver.md).}"
+    mkdir -p "$r/docs/testing" "$r/android" "$r/docs/releases"
+    [ -z "$note" ] || printf '# v1.2.3\n\n%s\n' "$note" > "$r/docs/releases/v1.2.3.md"
     cp "$SCRIPT" "$r/docs/testing/release_build.sh"
     chmod +x "$r/docs/testing/release_build.sh"
     # The gradlew stub below writes its fake APK under android/app/build/,
@@ -164,6 +166,24 @@ SDK="$T/sdk-unsigned"; mk_aapt2 "$SDK" 1.2.3 false
 out=$(STUB_RAN="$T/ran-unsigned" GRADLE_OK=1 APK_UNSIGNED=1 ANDROID_SDK_ROOT="$SDK" bash "$R2/docs/testing/release_build.sh" 1.2.3 2>&1); rc=$?
 check "unsigned apk: exit 8" [ "$rc" -eq 8 ]
 check "unsigned apk: message says unsigned" grep -q "is unsigned" <<<"$out"
+
+echo "== release_build.sh: refuses a final release whose note lacks the GPU driver link"
+R3=$(new_repo ""); git -C "$R3" tag v1.2.3
+SDK="$T/sdk-nonote"; mk_aapt2 "$SDK" 1.2.3 false
+out=$(STUB_RAN="$T/ran-nonote" GRADLE_OK=1 ANDROID_SDK_ROOT="$SDK" bash "$R3/docs/testing/release_build.sh" 1.2.3 2>&1); rc=$?
+check "no release note: exit 10" [ "$rc" -eq 10 ]
+check "no release note: message names the note" grep -q "no release note at docs/releases/v1.2.3.md" <<<"$out"
+check "no release note: never reached gradlew" bash -c '[ ! -e "$1" ]' _ "$T/ran-nonote"
+R4=$(new_repo "A fix, and nothing about drivers."); git -C "$R4" tag v1.2.3
+out=$(STUB_RAN="$T/ran-nolink" GRADLE_OK=1 ANDROID_SDK_ROOT="$SDK" bash "$R4/docs/testing/release_build.sh" 1.2.3 2>&1); rc=$?
+check "note without the link: exit 10" [ "$rc" -eq 10 ]
+check "note without the link: message names gpu-driver.md" grep -q "does not link docs/gpu-driver.md" <<<"$out"
+check "note without the link: never reached gradlew" bash -c '[ ! -e "$1" ]' _ "$T/ran-nolink"
+git -C "$R4" tag v1.2.4-rc1
+git -C "$R4" checkout -q v1.2.4-rc1
+SDK="$T/sdk-rc"; mk_aapt2 "$SDK" 1.2.4-rc1 false
+out=$(STUB_RAN="$T/ran-rc" GRADLE_OK=1 ANDROID_SDK_ROOT="$SDK" bash "$R4/docs/testing/release_build.sh" 1.2.4-rc1 2>&1); rc=$?
+check "-rc build needs no release note: reached gradlew, exit 0" bash -c '[ -e "$1" ] && [ "$2" -eq 0 ]' _ "$T/ran-rc" "$rc"
 
 [ "$FAIL" -eq 0 ] && echo "release_build_selftest: all checks passed" || echo "release_build_selftest: FAILURES ABOVE"
 exit "$FAIL"

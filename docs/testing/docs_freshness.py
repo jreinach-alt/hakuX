@@ -15,11 +15,16 @@ names an older release than the one actually being built.
 
     docs_freshness.py [--repo DIR] [--max-age-days N] [--release X.Y.Z] [--today YYYY-MM-DD]
 
+It also checks that every docs/releases/v*.md links docs/gpu-driver.md (the
+one driver hakuX is tested with) and reports NO-DRIVER-LINK for any that does
+not.
+
 Exit 0 when every doc is OK, 1 when at least one is not, 2 on a usage error.
 Read-only: it never edits a doc, only reports on what it finds.
 """
 import argparse
 import datetime as dt
+import glob
 import os
 import re
 import sys
@@ -198,7 +203,22 @@ def main(argv):
     print("public docs: %d OK, %d not%s" % (
         ok_count, len(not_ok), (": " + ", ".join(not_ok)) if not_ok else ""))
 
-    return 0 if not not_ok else 1
+    # Every release note links the GPU driver page (owner, 2026-10-17).
+    notes = sorted(glob.glob(os.path.join(repo, "docs", "releases", "v*.md")))
+    no_link = []
+    for full in notes:
+        rel = os.path.relpath(full, repo)
+        with open(full, encoding="utf-8") as fh:
+            linked = "docs/gpu-driver.md" in fh.read()
+        print("%-12s %s" % ("OK" if linked else "NO-DRIVER-LINK", rel))
+        if not linked:
+            no_link.append(rel)
+    if notes:
+        print("release notes: %d link docs/gpu-driver.md, %d do not%s" % (
+            len(notes) - len(no_link), len(no_link),
+            (": " + ", ".join(no_link)) if no_link else ""))
+
+    return 0 if not (not_ok or no_link) else 1
 
 
 if __name__ == "__main__":

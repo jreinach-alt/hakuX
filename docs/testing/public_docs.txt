@@ -13,3 +13,4 @@ docs/es-de/README.md
 docs/releases/README.md
 android/README.md
 android/MIGRATING.md
+docs/gpu-driver.md
