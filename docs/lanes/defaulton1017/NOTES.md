@@ -102,6 +102,7 @@ briefing (was 17 fps)`.
 | MKSM | 1792239588-defaulton1017-3307916 | s2t on, early 1, chain 1 (unset); ibc 0 (`=0`) | yes, 333 s | 0 (no `w` line) | 131,073 / 1,048,576 | locked 54.3 fps |
 | SHR | 1792239591-defaulton1017-3308261 | early 1, chain 1 (unset); ibc 0 (`=0`); no s2t line | yes, 302 s | 10,984 in 116 windows, share 0.9999 | 0 / 1,048,576 | valid end, pace 308 s |
 | CLR | 1792239593-defaulton1017-3308455 | s2t on, early 1, chain 1 (unset); ibc 0 (`=0`) | no route; held 303 s | 82 (skipn 22,459), share 0.0036 | 1,043,567 / 1,048,576 | valid end, pace 301 s |
+| AMP | 1792239593-defaulton1017-3308736 | early 1, chain 1 (unset); ibc 0 (`=0`); no s2t line | yes, 580 s | 9 (skipn 5,551), share 0.0016 | no line (< 2^20 FLDCW) | valid end, pace 535 s |
 
 - **MKF HIT**: 54.3 fps locked over 1,800 frames from s13 (fps1015's on: 54.2-54.4), V cut 79, signature 55,
   play 130, 30 locked windows. Cutscene and gameplay medians are 59.0 gfps each.
@@ -128,6 +129,9 @@ briefing (was 17 fps)`.
   Conker alternates the precision bit on nearly every FLDCW, so the chain's exit (eip past the FLDCW, then
   `lookup_and_goto_ptr` under the new hflags) is the path it takes, ~3,500 times a second. No crash, valid
   end, pace 301 s. No route, so no shots to look at. Triggers the FLDCW conditional row (below, CLF/CLC).
+- **AMP: AV HIT, HDS HIT; VIS:AMP not judged** (early 9), FL not reached (fewer than 2^20 FLDCW in 578 s).
+  Amped 2 re-queues its report offsets two or more guest frames later too: 5,551 `skipn`, 3 cold, 9 early.
+  REPORT_EARLY's gate leaves it on the reader's path, as on master. Route end, held 580 s, no crash.
 
 ## Confirmed from the source files (not from the brief)
 
