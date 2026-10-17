@@ -39,6 +39,13 @@
   registered conditional row runs: MKC 1792240507-defaulton1017-3391984, MKSM with `HAKUX_FLDCW_CHAIN=0`.
 - 05:45: TS void on input (an A dropped at controller select; route never reached a match). Rerun queued:
   1792240997-defaulton1017-3446680.
+- 05:48: attempt 1 ended on its 300-turn cap, not on a defect or a block. Everything was pushed (575698eb5f).
+  It spent its turns on short status polls and one-call-per-question reads while nine rows ran; attempt 2
+  waits on DONE files with one long call each and judges each row in one script call.
+- 05:50 (attempt 2): SHR done, unjudged; CLR on the Nova since 05:47:49. RS never ran: its results dir holds
+  only `ERROR`, "title not on device: 4D53000F-RalliSport_Challenge.xiso.iso". "Runnable on the Nova now" in
+  the table below was wrong for it: the profile gate's list was read, not a live listing of the device.
+  lane.xbox asked lane.local to push the ISO; RS is requeued only once a live listing shows it.
 
 ## Pilot verdict (HON, HNI; screenread.py, as registered)
 
@@ -89,6 +96,7 @@ briefing (was 17 fps)`.
 | row | result | switches logged | route end, held | early | flips / FLDCW | figure |
 |---|---|---|---|---|---|---|
 | MKSM | 1792239588-defaulton1017-3307916 | s2t on, early 1, chain 1 (unset); ibc 0 (`=0`) | yes, 333 s | 0 (no `w` line) | 131,073 / 1,048,576 | locked 54.3 fps |
+| SHR | 1792239591-defaulton1017-3308261 | early 1, chain 1 (unset); ibc 0 (`=0`); no s2t line | yes, 302 s | 10,984 in 116 windows, share 0.9999 | 0 / 1,048,576 | valid end, pace 308 s |
 
 - **MKF HIT**: 54.3 fps locked over 1,800 frames from s13 (fps1015's on: 54.2-54.4), V cut 79, signature 55,
   play 130, 30 locked windows. Cutscene and gameplay medians are 59.0 gfps each.
@@ -104,6 +112,10 @@ briefing (was 17 fps)`.
   acted: no `[rearly1018] w` line (no report queued), no `[fldcw1018] n=` line (< 2^20 FLDCW), and no s2t
   line. Menus at 59 fps, no crash, pace to the end. A dropped input, not a defect the switches can be blamed
   for. Rerun once (single-run flake rule): TS 2nd queued, 1792240997-defaulton1017-3446680.
+- **SHR: SV HIT, VIS:SHR HIT, HDS HIT, FL HIT.** REPORT_EARLY acts in a second title: Simpsons Hit & Run
+  answers 10,984 reports early over the route (~47 a second), with 1 cold and no skip0/skipn, so it re-queues
+  each offset one guest frame later, as Halo does. vis 8 of 10,984 (0.07%, bar 2%), stale 1.5%, desync 0. No
+  crash, route end, pace to the log's end. No conditional row is triggered.
 
 ## Confirmed from the source files (not from the brief)
 
