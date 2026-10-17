@@ -128,17 +128,40 @@ code exists under hw/xbox/nv2a (`4D530004` only under docs/ and .github).
 | 5 | Since August, across builds and titles | The defect survived three surface-to-texture regimes (direct bind, CPU decode, GPU cvt). The cause must be in what all three share: the binding cache, the view or sampler, the shader, or the vertex/coordinate path. Not in any one regime's decode |
 | 6 | Desktop shows it? | Unknown. Next experiment |
 
-## 5. Hypotheses (ranked by P; re-ranked on F1-F6)
+## 5. Hypotheses (ranked by P; re-ranked on F1-F6, then on the code reads in 5.1)
 
 | id | Hypothesis | P | Already-tried row | Hit / miss, and the instrument |
 |---|---|---|---|---|
-| H-A | Stage 0 samples an image that does not hold the target's content: a stale binding (#184's unreached paths), a copy ordered before draw 740 or skipped by the `draw_time` test, a pool image never written, a dummy | 0.35 | #184 rebind; 344a87bdd1 / 25493a599b; zrtz272 swatch flip | **I1** (128x128 readback of the projection's sampled texture copy at draw 741). Hit: the copy is uniform, or differs from the sampled surface. Miss: the copy is the blurred silhouette on 0 |
-| H-C | The view or sampler returns constant rgb: component mapping ONE in rgb, or a view format whose read of 0 is not 0 | 0.30 | 997c8d0b30, 4946433d87 (view swizzle design) | **I2** (record stage 0's view format, component mapping and sampler). Hit: a non-identity rgb mapping on the bound view. Miss: identity on R8G8B8A8 or R5G6B5. A t0 of constant 1 fits F4 exactly (a full parallelogram with t1's gradient and no silhouette) |
+| H-A | Stage 0 samples an image that does not hold the target's content: a stale binding (#184's unreached paths), a copy ordered before draw 740 or skipped by the `draw_time` test, a pool image never written, **the dummy texture**, or a descriptor that names another node's view while `texture_bindings[0]` is right | 0.45 (was 0.35) | #184 rebind; 344a87bdd1 / 25493a599b; zrtz272 swatch flip; #274 retired-view-to-dummy | **I1** (`rttmax16384`: 128x128 readbacks of the sampled surface "srf" and the texture copy "tex" at draw 741) and **I3** (schema 10's "bv"/"pv"/"tv" and "ptd", and "pvi" for a foreign view). Hit: "bv" is "z" or "x", or "ptd" is 1, or the "tex" copy is uniform or differs from "srf". Miss: "bv":"n", "ptd":0 and "tex" is the blurred silhouette on 0 |
+| H-C | The view or sampler returns constant rgb: component mapping ONE in rgb, or a view format whose read of 0 is not 0 | 0.12 (was 0.30) | 997c8d0b30, 4946433d87 (view swizzle design) | Lowered: SZ_R5G6B5 maps to R8G8B8A8_UNORM with an identity mapping (constants.h:219), and the cvt writes that format. Still open for a view created with another node's format. I3's "pvi" readback and a view-format field would close it |
 | H-E | The pixel shader is mistranslated: t0 is read from another unit, or stage 1's input mapping differs from the guest's | 0.10 | new: searched the psh history above and the dumped GLSL, nothing yet | **I4** (read stage-0 sampler binding in the GLSL against the descriptor set). Hit: texSamp0 is bound to another stage's image |
 | H-B | The texture coordinates collapse onto one texel, and the square is the clipped ground geometry | 0.05 | new: searched PROJECT2D history (tie bias only), nothing | F4 argues against it: the [0,1] boundary falls on the square's edge, so bc varies correctly, and the fetch uses the same coordinate. A VS replay with save-state vertices would settle it |
 | H-G | Blending is not applied (S written directly) | 0.02 | new: searched blend history, nothing for 0x30a | With t0 = 0 the alpha test discards the fragment, so this cannot draw a square from a correct texture |
 | H-D | t1 or v0.a wrong (#1033 on the projection) | 0 for the square | #1033 | Scales S only; S = 0 wherever t0 = 0. Could explain a tint or gradient error, not the square |
-| H-other | Anything not above (zeta, the vertex hazard path, Adreno driver) | 0.18 | -- | the desktop experiment splits core from driver |
+| H-other | Anything not above (zeta, the vertex hazard path, Adreno driver) | 0.26 (was 0.18) | -- | the desktop experiment splits core from driver |
+
+### 5.1 What moved H-A up and H-C down (code reads, 10-17)
+
+- **The dummy texture is constant white.** `create_dummy_texture` (texture.c:2514-2640) makes a
+  16x16 R8_UNORM filled with 0xff, viewed R,R,R,R, so it samples (1,1,1,1). Bound at stage 0, t0 = 1
+  and S = (1-t1)·v0.a·(1-c0): the full [0,1] parallelogram with t1's gradient and no silhouette.
+  That is F4 exactly. Paths that put the dummy, or another view, under stage 0:
+  - texture.c:2843 (texture outside VRAM), 3909 (stage not enabled or not decodable), 4016 (the LRU
+    could serve no node on a first bind);
+  - `pgraph_vk_texture_surface_view_retired` (texture.c:4299): a slot whose pushed info names a
+    retired surface view is pointed at the dummy until its rebuild;
+  - `push_tex_infos[i]` is rebuilt only when `texture_bindings_changed` is set (shaders.c:938,
+    draw.c:6120 and 6308). `pgraph_vk_bind_textures` sets it when the node or `slot_view` changes;
+    a path that changes what the slot samples without either leaves the old infos pushed.
+- **The Nova pushes descriptors** (logcat line 503, VK_KHR_push_descriptor), so the push infos are
+  what the GPU reads. `tex_desc_cache` (the descriptor-set path) is not on the Nova's path.
+- **H-C's mechanism is absent for this format.** SZ_R5G6B5's texture view is R8G8B8A8 with an
+  identity mapping; R5G6B5 has no alpha, so a pad-alpha override cannot touch rgb.
+- **I3 is built (schema 10)**, diagnostics only, armed by the frame dump: per stage "bv" ("n" the
+  binding's view, "d" the direct surface view, "z" the dummy's, "x" another), "pv"/"tv" the handles,
+  per draw "ptd" (infos changed since the last push), an "rb" entry "pvi" reading the image of
+  the live node that owns a foreign "pv", and 16-bit surface readback so "srf" of the R5G6B5 targets
+  is written.
 
 Superseded: the brief's S1 (non-neutral background: clear missing, misdecoded or late) and S3
 (swizzle mismatch) are refuted by F2/F3. Its S2 (draw 740 reads stale input) is refuted for the save
@@ -148,8 +171,12 @@ moment: the blur output is correct. Its S5 (border edge texels) cannot darken th
 
 1. Desktop experiment (brief's first): C: >= 40 GB, then the x1port1012 desktop to the attract demo,
    frame-dump with images, look for squares. In parallel, read the copy and view code (I2/I4 offline).
-2. I1: a frame-dump spec token that raises FDUMP_RTT_MAX_TEXELS (renderer.c:2948) so schema 6 reads
-   back the 128x128 sampled surface and texture copy at the projection. Plus I2's view/sampler fields.
+   Desktop build: `tools/deskbuild.sh` (configured as x1port1012's build-linux); runs:
+   `tools/deskrun.py TOTAL_S OUTDIR SPEC [ENV=V ...]` (refuses under 40 GB free on C:, lists new crash
+   dumps). The Nova's defaults are set by env on the desktop: HAKUX_SURFGPU=1 and the eight
+   fastpaths vars =1 (MainActivity.kt:206-220); the ubershader (HAKUX_GPL=3) is the core's default.
+2. I1 + I3 (built, schema 10): `rttmax16384` reads back the 128x128 sampled surface and texture copy
+   at the projection, and "bv"/"pv"/"ptd"/"pvi" say which view the descriptor names.
 3. Queue the same dump for the Nova (owner holds it; queued requests run when it frees).
 
 ## 7. Desktop crash log
