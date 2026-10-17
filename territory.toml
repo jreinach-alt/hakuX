@@ -2884,3 +2884,9 @@ note = "ADDED by lane.local 2026-10-17 ~04:50 PDT on lane.xbox's board request (
 [lane.dispatchdoctor1017]
 files = ["docs/lanes/dispatchdoctor1017/**", "docs/testing/predictions/dispatchdoctor1017-*.json", "docs/testing/dispatcher.sh", "docs/testing/devices.sh", "docs/testing/request.sh", "docs/testing/dispatch_doctor.sh", "docs/testing/titles/titlestate.py", "docs/testing/titles/titlestate_selftest.py", "docs/testing/jobs/models.toml", "docs/testing/jobs/allowed-tools.doctor", "docs/testing/jobs/selftest.d/98-dispatch-doctor.sh"]
 note = "STARTED lane.local 2026-10-17 ~07:00 PDT (owner 10-17 ~06:50: \"fix the dispatcher so it is not inept and feckless... it should know to copy the disk image, the pathing, and the profile... The dispatcher should have sonnet reasoning. It should troubleshoot and resolve launch failures. It should not be just a script.\"). Sonnet, harness; brief briefs/dispatchdoctor1017.md; no issue (harness fix). Fast path: resolve a missing title from the host staging roots by TitleID and dev_push it inside the claim; a Sonnet doctor session (models.toml kind dispatchdoctor) for recoverable failures, one retry per request, hourly cap."
+
+[lane.release052]
+issues = ["433"]
+standing = false
+files = ["CHANGELOG.md", "docs/releases/v0.5.2.md", "docs/releases/README.md", "android/README.md", "android/MIGRATING.md", "README.md", "KNOWN_ISSUES.md", "ROADMAP.md", "CONTRIBUTING.md", "PRIVACY.md", "docs/COMPATIBILITY.md", "docs/reporting-bugs.md", "docs/es-de/README.md", "docs/lanes/release052/**"]
+note = "STARTED lane.local 2026-10-17 ~07:30 PDT (Sonnet, docs only, no device): owner 10-17 via lane.xbox: 0.5.2 rc signed and deployed once #1035 (defaulton1017) folds. The release commit: CHANGELOG, docs/releases/v0.5.2.md, public-docs date lines. Halo opening cinematic line only; #938 not claimed. Brief: briefs/release052.md."
