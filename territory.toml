@@ -101,7 +101,8 @@ note = "STARTED lane.local 2026-10-16 19:50 PDT for lane.xbox (board request 10-
 issues = ["433"]
 standing = false
 files = ["docs/frontends/**", "docs/releases/v0.5.1.md", "docs/lanes/frontends1016c/**"]
-note = "STARTED lane.local 2026-10-16 20:57 PDT (docs, no device): owner 10-16 ~20:40 PDT: stock launcher tested on the Nova (Retroid launcher) and Daijisho rewritten as user-facing add-as-an-app steps. One line in docs/releases/v0.5.1.md (Retroid variant now tested). Follow-up to lane.frontends1016b (folded). No brief."
+released = ["docs/frontends/**", "docs/releases/v0.5.1.md", "docs/lanes/frontends1016c/**"]
+note = "RELEASED at ready (lane.local 2026-10-16 21:00 PDT; PR.md ready, no device, no selftest needed). || STARTED lane.local 2026-10-16 20:57 PDT (docs, no device): owner 10-16 ~20:40 PDT: stock launcher tested on the Nova (Retroid launcher) and Daijisho rewritten as user-facing add-as-an-app steps. One line in docs/releases/v0.5.1.md (Retroid variant now tested). Follow-up to lane.frontends1016b (folded). No brief."
 
 [retired.compatpage1012]
 issues = ["433"]
@@ -2828,8 +2829,8 @@ note = "FILES MOVED to [lane.release051] (lane.local 2026-10-16 18:40 PDT; this 
 [lane.logo1016]
 issues = ["433"]
 standing = false
-files = [".github/hakux-logo.svg", "docs/lanes/logo1016/**", "docs/images/hakux-logo.svg", "docs/lanes/logo1016-move/**"]
-note = "ADDED by lane.local 2026-10-16 19:50 PDT for lane.xbox branch lane/logo1016-move (board request 10-16 19:26): docs/images/hakux-logo.svg, docs/lanes/logo1016-move/**. README.md is still held by [lane.release051]; add it when release051 releases it. || FILES MOVED to [lane.release051] (lane.local 2026-10-16 18:40 PDT; this lane is folded): README.md. || ADDED BY lane.local 2026-10-16 13:50 PDT (the branch was already pushed): lane.xbox, with the owner-approved hakuX CE logo at the top of README.md, docs only. Fold b735a42d97. README.md from the retired [lane.ce1016]."
+files = [".github/hakux-logo.svg", "docs/lanes/logo1016/**", "docs/images/hakux-logo.svg", "docs/lanes/logo1016-move/**", "README.md"]
+note = "ADDED README.md by lane.local 2026-10-16 21:00 PDT for lane.xbox branch lane/logo1016-move (board request 10-16 20:59; release051 released README.md 19:49 PDT). || ADDED by lane.local 2026-10-16 19:50 PDT for lane.xbox branch lane/logo1016-move (board request 10-16 19:26): docs/images/hakux-logo.svg, docs/lanes/logo1016-move/**. README.md is still held by [lane.release051]; add it when release051 releases it. || FILES MOVED to [lane.release051] (lane.local 2026-10-16 18:40 PDT; this lane is folded): README.md. || ADDED BY lane.local 2026-10-16 13:50 PDT (the branch was already pushed): lane.xbox, with the owner-approved hakuX CE logo at the top of README.md, docs only. Fold b735a42d97. README.md from the retired [lane.ce1016]."
 
 [lane.icon1016]
 issues = ["433"]
