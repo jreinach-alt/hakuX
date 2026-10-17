@@ -1919,6 +1919,35 @@ static bool texscan_on(void)
 }
 
 /*
+ * #433 (lane.gta3drive1017), HAKUX_S2T_DRAIN: create_texture's #474 drain
+ * ahead of a plain colour surface-to-texture copy. Unset or "0" skips it:
+ * the copy is recorded in the frame's own command buffer, and the barrier
+ * out of SHADER_READ_ONLY (image.c, srcStage FRAGMENT_SHADER) waits for the
+ * fragment reads of every earlier submission on the one queue, the same
+ * argument as texscan's copy. "1" restores the drain. GTA III drove at
+ * ~21 fps with 72 of these drains a flip, 11.6 ms of fence wait, while the
+ * GPU sat idle for half the frame. Zeta, HAKUX_S2T_CVT and upload copies
+ * keep the drain.
+ */
+static int s2t_drain_state = -1;
+
+static bool s2t_drain_on(void)
+{
+    if (s2t_drain_state < 0) {
+        const char *e = getenv("HAKUX_S2T_DRAIN");
+        s2t_drain_state = e && e[0] == '1';
+        if (s2t_drain_state) {
+#ifdef __ANDROID__
+            __android_log_print(ANDROID_LOG_INFO, "hakuX", "[s2tdrain] on");
+#else
+            fprintf(stderr, "[s2tdrain] on\n");
+#endif
+        }
+    }
+    return s2t_drain_state;
+}
+
+/*
  * #939 (lane.x1port1012), HAKUX_S2TSHELF: create_texture's shelf lookup,
  * which binds a shelved, still draw_dirty surface at the texture's address
  * when no active surface there is compatible. It runs after an incompatible
@@ -3286,8 +3315,17 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
                      * bind directly without this drain. On AUF (Nova) it ran
                      * 0.27 times a flip at 16.6 ms each, every one of them
                      * ahead of a direct bind.
+                     *
+                     * #433: the plain colour copy (vkCmdCopyImage) does not
+                     * need it either; see s2t_drain_on().
                      */
-                    if (snode->submit_time + r->num_active_frames >
+                    bool plain_copy =
+                        surface->color &&
+                        !(pgraph_vk_s2t_cvt_on() &&
+                          pgraph_texture_format_expands_by_replication(
+                              snode->key.state.color_format));
+                    if ((!plain_copy || s2t_drain_on()) &&
+                        snode->submit_time + r->num_active_frames >
                         r->submit_count) {
                         TXW_BEGIN(FAF);
                         pgraph_vk_flush_all_frames(pg);
