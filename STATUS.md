@@ -1,6 +1,6 @@
 # hakuX status
 
-_updated 2026-10-16 23:22 PDT_
+_updated 2026-10-16 23:55 PDT_
 
 0.6: Measured 261 / 300 · Playable 87 / 110.
 
@@ -67,8 +67,8 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | **Future Tactics: The Uprising** | 🟢 Playable | **59.9**<br>Nova, Oct 7 |
 | **Genma Onimusha** | 🟢 Playable | **59.9**<br>Nova, Oct 13 |
 | **Grabbed by the Ghoulies** | 🟢 Playable | **30.0**<br>Nova, Oct 12 |
-| **Grand Theft Auto III** | 🟢 Playable | **30.0**<br>Nova, Oct 12 |
-| **Grand Theft Auto: Vice City** | 🟢 Playable | **30.0**<br>Nova, Oct 13 |
+| **Grand Theft Auto III** | 🟢 Playable | **30.0**<br>Nova, Oct 16 |
+| **Grand Theft Auto: Vice City** | 🟢 Playable | **30.0**<br>Nova, Oct 16 |
 | **Guilty Gear XX #Reload** | 🟢 Playable | **59.9**<br>Nova, Oct 6 |
 | **Gunvalkyrie** | 🟢 Playable | **59.9**<br>Nova, Oct 3 |
 | **Halo: Combat Evolved** | 🟢 Playable | **30.0**<br>Nova, Oct 3 |
