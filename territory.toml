@@ -2853,7 +2853,7 @@ files = [".github/hakux-logo.svg", "docs/images/hakux-logo.svg", "README.md", "d
 note = "ADDED by lane.local 2026-10-16 21:49 PDT for lane.xbox branch lane/logo1016-move (board request 10-16 21:35). Files moved from [lane.logo1016]."
 
 [lane.halo1016]
-issues = ["938"]
+issues = ["938", "1018"]
 standing = false
 files = ["docs/lanes/halo1016/**"]
 note = "ADDED by lane.local 2026-10-16 21:49 PDT for lane.xbox's lane/halo1016, started 21:43 on the owner's word (Halo CE cutscene speech and fps; 0.5.1 on hold). Board request 10-16 21:55. Fleet check flagged it RUNNING with no row."
