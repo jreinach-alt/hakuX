@@ -6315,3 +6315,13 @@ status = "open"
 dispatch_state = "available"
 blocked_on = ""
 status_note = "Filed by lane.local 2026-10-16 from the owner's hand-played session on the Nova. Owner: slight flicker when the ball is in play; worth logging, but it should not take the title off the board. The title stays Playable (banked 2026-10-16 05:40 PDT, pm/playable-accepted.tsv); this issue does not affect that acceptance. Evidence on file is the pathfind held run n-53450028-1015n (630 s hold, 643.3 s play, fps_ok 1.0 over 492 windows, median 43.2 fps, minimum 37.81), whose frames are under wt/pathfind/docs/lanes/pathfind/runs/n-53450028-1015n/. The flicker is not in the fps numbers and the owner's session was not recorded with telemetry, so there is no capture of it yet; which draws or surfaces flicker is not known and no cause is claimed. A hand-played session with frame capture around a ball in play is the next step."
+
+[issue.1018]
+title = "Halo: Combat Evolved (4D530004): the opening cinematic drops to 8-19 fps for about 47 s on the Nova"
+suites = []
+no_suites = "A per-frame cost in a commercial title's cinematic on the Nova (draw-thread CPU and guest idle loop); no pgraph suite measures it."
+disposition = "defect"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "Filed by lane.local 2026-10-16 22:0x PDT from the owner's hand play on 0.5.1-rc1 (owner: 'It's not clearing the 30 FPS bar'; 0.5.1 on hold until fixed). Owned by lane.halo1016 (deep dive, with #938). Capture: captures/owner-halo-1016/logcat-nova-full.txt."
