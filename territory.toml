@@ -47,14 +47,16 @@ note = 'FILE RELEASED to [lane.fistdefault1016] (lane.local 2026-10-16 19:10 PDT
 [lane.docsfresh1012]
 issues = ['433']
 standing = false
-files = ['docs/testing/docs_freshness.py', 'docs/testing/docs_freshness_selftest.py', 'docs/testing/public_docs.txt', 'AGENTS.md', 'docs/lanes/docsfresh1012/**']
-note = 'STARTED lane.local 2026-10-12 23:41 PDT (Sonnet, docs tooling; no device): owner 10-12 ~23:40 PDT asked for last-updated dates on the docs and more frequent docs passes. A checker (a date line under the H1 of each public doc, max age 14 days, version = the release), an hourly-report section staged as lanes/docsfresh1012/hourly_report.sh.new for lane.local to install, a RELEASING.md step and an AGENTS.md Public docs section. AGENTS.md and RELEASING.md from [free]. Brief: briefs/docsfresh1012.md.'
+files = ["docs/testing/docs_freshness.py", "docs/testing/docs_freshness_selftest.py", "docs/testing/public_docs.txt", "AGENTS.md", "docs/lanes/docsfresh1012/**"]
+released = ["docs/testing/public_docs.txt"]
+note = 'FILE RELEASED to [lane.compat1016] (lane.local 2026-10-16 19:50 PDT; folded lane): docs/testing/public_docs.txt. || STARTED lane.local 2026-10-12 23:41 PDT (Sonnet, docs tooling; no device): owner 10-12 ~23:40 PDT asked for last-updated dates on the docs and more frequent docs passes. A checker (a date line under the H1 of each public doc, max age 14 days, version = the release), an hourly-report section staged as lanes/docsfresh1012/hourly_report.sh.new for lane.local to install, a RELEASING.md step and an AGENTS.md Public docs section. AGENTS.md and RELEASING.md from [free]. Brief: briefs/docsfresh1012.md.'
 
 [lane.docsrewrite1012]
 issues = ['433']
 standing = false
 files = ["docs/images/**", "docs/lanes/docsrewrite1012/**"]
-note = 'FILES MOVED to [lane.release051] (lane.local 2026-10-16 18:40 PDT; this lane is folded): docs/releases/README.md, android/README.md. || README.md MOVED to [lane.driverline1013] (lane.local 2026-10-13 09:05 PDT): the owner 10-13 ~08:05 asked that the pages name the GPU driver the ratings were measured on. || STARTED lane.local 2026-10-12 23:35 PDT (Opus, interactive; no unit): owner 10-12 ~23:35 PDT: the README is verbose, leaky, full of process notes and not written for someone deciding whether to try the build; same for the linked docs (known issues, roadmap...), which are stale from the pgraph era and carry no last-updated date. lane.local rewrites them in wt/docsrewrite1012 for a handheld player, each with a Last updated line. No code change.'
+released = ["docs/images/**"]
+note = 'RELEASED (lane.local 2026-10-16 19:50 PDT; folded lane): docs/images/** (docs/images/hakux-logo.svg goes to [lane.logo1016]). || FILES MOVED to [lane.release051] (lane.local 2026-10-16 18:40 PDT; this lane is folded): docs/releases/README.md, android/README.md. || README.md MOVED to [lane.driverline1013] (lane.local 2026-10-13 09:05 PDT): the owner 10-13 ~08:05 asked that the pages name the GPU driver the ratings were measured on. || STARTED lane.local 2026-10-12 23:35 PDT (Opus, interactive; no unit): owner 10-12 ~23:35 PDT: the README is verbose, leaky, full of process notes and not written for someone deciding whether to try the build; same for the linked docs (known issues, roadmap...), which are stale from the pgraph era and carry no last-updated date. lane.local rewrites them in wt/docsrewrite1012 for a handheld player, each with a Last updated line. No code change.'
 
 [lane.perflog1016]
 issues = ["998"]
@@ -73,7 +75,26 @@ note = "STARTED lane.local 2026-10-16 18:40 PDT (Sonnet, docs + one Kotlin DSL l
 issues = ["939", "433"]
 standing = false
 files = ["tcg/aarch64/tcg-target.c.inc", "docs/testing/predictions/fistdefault1016-*", "docs/lanes/fistdefault1016/**", "docs/testing/nv2a_index.json"]
-note = "STARTED lane.local 2026-10-16 19:00 PDT (Sonnet, emulator code, no device): owner 10-16 ~19:00 PDT: the Halo fix is HAKUX_FIST_ROUND, so it ships ON in 0.5.1. Flip the default (HAKUX_FIST_ROUND=0 is the escape hatch), tcg_target_init and the comment only. Fold runs the device-run gate. Brief: briefs/fistdefault1016.md."
+released = ["tcg/aarch64/tcg-target.c.inc", "docs/testing/predictions/fistdefault1016-*", "docs/lanes/fistdefault1016/**", "docs/testing/nv2a_index.json"]
+note = "RELEASED at ready (lane.local 2026-10-16 19:50 PDT; PR #1012 ready, waiting on its fold). || STARTED lane.local 2026-10-16 19:00 PDT (Sonnet, emulator code, no device): owner 10-16 ~19:00 PDT: the Halo fix is HAKUX_FIST_ROUND, so it ships ON in 0.5.1. Flip the default (HAKUX_FIST_ROUND=0 is the escape hatch), tcg_target_init and the comment only. Fold runs the device-run gate. Brief: briefs/fistdefault1016.md."
+
+[lane.statusdup1016]
+issues = ["433"]
+standing = false
+files = ["docs/testing/jobs/status_html.py", "docs/testing/jobs/selftest.d/66-status-titles.sh", "docs/lanes/statusdup1016/**"]
+note = "STARTED lane.local 2026-10-16 19:50 PDT for lane.xbox (board request 10-16 19:26, owner-approved visitor cleanup, branch lane/statusdup1016). Both job files are released by statusfix1013 and titlekey1016. Fold order: after release051, full selftest."
+
+[lane.visitordocs1016]
+issues = ["433"]
+standing = false
+files = ["SECURITY.md", "CODE_OF_CONDUCT.md", "docs/xbox-files.md", "docs/lanes/visitordocs1016/**"]
+note = "STARTED lane.local 2026-10-16 19:50 PDT for lane.xbox (board request 10-16 19:26, branch lane/visitordocs1016). All unclaimed. Fold order: after statusdup1016, no checks; refresh the Last updated dates to 0.5.1 first."
+
+[lane.compat1016]
+issues = ["433"]
+standing = false
+files = ["docs/testing/compat_notes.tsv", "docs/testing/compat_page.py", "docs/compatibility.csv", "docs/testing/public_docs.txt", "docs/lanes/compat1016/**"]
+note = "STARTED lane.local 2026-10-16 19:50 PDT for lane.xbox (board request 10-16 19:26, branch lane/compat1016, built after release051 folds). compat_notes.tsv and compat_page.py are released by titlekey1016; public_docs.txt released by folded docsfresh1012. docs/COMPATIBILITY.md is held by [lane.release051]: add it when released. Adds the three visitor docs to public_docs.txt, so fold after visitordocs1016 is on master at 0.5.1. Full selftest."
 
 [retired.compatpage1012]
 issues = ["433"]
@@ -2800,8 +2821,8 @@ note = "FILES MOVED to [lane.release051] (lane.local 2026-10-16 18:40 PDT; this 
 [lane.logo1016]
 issues = ["433"]
 standing = false
-files = [".github/hakux-logo.svg", "docs/lanes/logo1016/**"]
-note = "FILES MOVED to [lane.release051] (lane.local 2026-10-16 18:40 PDT; this lane is folded): README.md. || ADDED BY lane.local 2026-10-16 13:50 PDT (the branch was already pushed): lane.xbox, with the owner-approved hakuX CE logo at the top of README.md, docs only. Fold b735a42d97. README.md from the retired [lane.ce1016]."
+files = [".github/hakux-logo.svg", "docs/lanes/logo1016/**", "docs/images/hakux-logo.svg", "docs/lanes/logo1016-move/**"]
+note = "ADDED by lane.local 2026-10-16 19:50 PDT for lane.xbox branch lane/logo1016-move (board request 10-16 19:26): docs/images/hakux-logo.svg, docs/lanes/logo1016-move/**. README.md is still held by [lane.release051]; add it when release051 releases it. || FILES MOVED to [lane.release051] (lane.local 2026-10-16 18:40 PDT; this lane is folded): README.md. || ADDED BY lane.local 2026-10-16 13:50 PDT (the branch was already pushed): lane.xbox, with the owner-approved hakuX CE logo at the top of README.md, docs only. Fold b735a42d97. README.md from the retired [lane.ce1016]."
 
 [lane.icon1016]
 issues = ["433"]
