@@ -2,7 +2,7 @@
 
 State: draft
 
-Lane: halo1016            Issue: #938 #433
+Lane: halo1016            Issue: #938, #1018
 Base: master @ 61ae61dd91
 Files: docs/lanes/halo1016/PR.md, docs/lanes/halo1016/NOTES.md
 Prediction: none: analysis in progress
