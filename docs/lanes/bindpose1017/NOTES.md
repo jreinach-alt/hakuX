@@ -1,11 +1,12 @@
 # bindpose1017 NOTES (#1043)
 
-**Status (read first, 2026-10-17 ~13:30 PDT): root cause found, and it is not in the code.** Every bad result ran on the
+**Status (read first, 2026-10-17 ~13:45 PDT): root cause found, and it is not in the code.** Every bad result ran on the
 stock Qualcomm Adreno driver. Every good one ran on Mesa Turnip T30 (`vulkan.purple.so`, PurpleVK). The same apk
 bytes are good in `.debug` (Turnip installed since 09-11) and bad in `debug2` (no driver installed). The fix is to load
-Turnip in the package; under the owner's 10-17 rule the stock driver is never used or tested. Update 2 at the end has
-the evidence, an account of each symptom, and the remedies. Updates 1 and earlier are kept as written, apart from one
-corrected premise.
+Turnip in the package; under the owner's 10-17 rule the stock driver is never used or tested. The owner accepted it by
+eye on `.debug` (Turnip), and 0.5.2-rc1's own code (160728983a) animates THPS4 on the desktop (r4). Update 2 at the end
+has the evidence, an account of each symptom, and the remedies. Updates 1 and earlier are kept as written, apart from
+one corrected premise.
 
 Ack: Addenda 1-3 read (2026-10-17 ~12:40 PDT): the issue is #1043. The window is the fold 3c2338eb2b, which the owner's
 hand bisect makes the first bad build. FIST_ROUND, FLDCW_CHAIN, S2T_CVT, REPORT_EARLY, XVSS and S2TSHELF are excluded,
@@ -191,6 +192,7 @@ rolled out.
 | 8455537f10 and the bisect builds | debug2 | `GPU: Adreno (TM) 740 \| Driver: Qualcomm Technologies Inc. Adreno Vulkan Driver`; `files/gpu_driver/` empty | — | bind pose | for-c4/current-xemu-debug2.log |
 | 0.5.2-rc1 (owner, release app), 10-17 09:06 and 09:23 | release | `GPU driver: no custom driver installed, using system default` | `ext=0 lib=0 fast=0 interp=0 requested=3 mode=0` | bind pose (owner) | nova-rc1-input-0835.log:3413,3815; r1/logcat.txt:407,809 |
 | 0.5.2-rc1 on the Thor, 10-16 19:25 | release | `no custom driver installed, using system default` | `ext=0 ... mode=0` | bind pose (owner) | thor-live.log:10738,11191 |
+| 0.5.2-rc1 (160728983a) on the desktop, r4, 13:25 | desktop, the release app's defaults (`HAKUX_SURFGPU=1`, the eight fast-path switches =1) | lavapipe (llvmpipe, LLVM 20.1.2) | `ext=1 lib=1 fast=1 interp=1 requested=3 mode=3` | animates: t0225 a pedestrian walking, arms down; t0286 one skater mid-air with knees tucked, one crouched in a grab, a pedestrian with arms at his sides; t0301 a skater with knees bent | `bp1017desk/run/r4rc1/` (scratch), qemu.log:53 |
 
 Same apk bytes, two packages, two drivers, two results. Build bytes, launch path, validation layer, HDD and settings
 are all excluded by the `.debug` rows. lane.local found xemu.toml identical apart from paths. Nothing rolled the driver
@@ -216,9 +218,9 @@ this morning. So this is a first sighting on stock, not a regression in 0.5.2.
    mode 0, monolithic specialised pipelines), so neither desktop mode is in their path.
 7. The characters still move through the world: consistent with every vertex following one bone matrix. Not
    measured further on stock (R4).
-8. lane.local's dispatcher runs of bisect builds that booted to a black screen: **no account from this lane**. They
-   don't bear on the driver split, because today's `.debug` dispatcher runs of 8455537f10 booted and animated. If
-   they matter for the release, they belong in their own row.
+8. lane.local's dispatcher runs of bisect builds that booted to a black screen: per lane.local (13:40), those dispatcher
+   and pathfind runs took the Nova while the owner was using it. It was fixed by taking `hold/nova`, and it is not a
+   build defect.
 
 ### Hypotheses, closed
 
@@ -235,7 +237,7 @@ this morning. So this is a first sighting on stock, not a regression in 0.5.2.
 
 | # | remedy | P it clears the bind pose | win | status |
 |---|---|---|---|---|
-| R1 | Install Turnip T30 in the owner's release app and on the Thor: Settings > GPU Driver, the zip at `/sdcard/Android/data/<pkg>/files/gpu_drivers/` (recipe in lane.local's memory). | 0.95. Every Turnip row animates and every stock row doesn't, with the same bytes both ways. | The owner's installs today. Unblocks 0.5.2 testing. | **Chased: lane.local is taking it to the owner (the release interim below).** |
+| R1 | Install Turnip T30 in the owner's release app and on the Thor: Settings > GPU Driver, the zip at `/sdcard/Android/data/<pkg>/files/gpu_drivers/` (recipe in lane.local's memory). | 0.95. Every Turnip row animates and every stock row doesn't, with the same bytes both ways. | The owner's installs today. Unblocks 0.5.2 testing. | **Chased: lane.local (the release interim below).** debug2 has T30 since ~13:30. The release app's zip is staged, waiting on the owner's tap. The Thor is out of service. |
 | R2 | Turnip by default on Adreno 6xx/7xx: bundle a driver in the APK, install or load it when `files/gpu_driver/` is empty, keep the menu as the override, fall back to the system driver elsewhere. This is turnipfork's recipe, `docs/investigations/adreno-driver-feasibility.md:214-218`. | 0.9 on Adreno 6xx/7xx. Turnip's support for other Adreno generations is not covered by any test. | Every player on an Adreno handheld who never installs a driver. Today that is every release user, and the release falls back to stock. | **Chased to its decision.** Two blockers, both the owner's: (a) the PurpleVK build's licence and redistribution terms are not recorded anywhere in the repo (packager MrPurple666, fork commit 62ac221a33). Our own Mesa build from pinned `4c18636110` (MIT) matched T30 on 220 captures (`feasibility.md:142-146`). (b) 09-26 parked Turnip work until after 0.5. Today's rule ("never use or test the stock driver") reverses the premise of that parking. About 13-19 MB of APK. |
 | R3 | Guard at launch: on a kgsl device with no custom driver, stop before the Vulkan instance and say the Turnip driver is needed, with the install path. Also, name Turnip as required on the compat page and in the README (driverline1013 already names T30 as the driver tested on). | 0 by itself, but no player runs stock silently. | Every stock user learns why. | Proposed. It is cheap once R2 is decided, and the guard is moot if R2 lands. |
 | R4 | Work around the stock compiler in the generated vertex GLSL (the relative-addressed `c[]` read). | unknown | Stock users only. | **Not chased: the owner's 10-17 rule** ("never use or test the stock driver"; a bad-on-stock result is not a bug to chase). |
@@ -243,22 +245,39 @@ this morning. So this is a first sighting on stock, not a regression in 0.5.2.
 ### Release interim
 
 **The switch that clears the defect is the GPU driver: load Turnip T30 in the package.** No commit is needed or
-implicated. 0.5.2-rc1's code animates THPS4 on Turnip: the accepted 8455537f10 apk and its rebuild both did, and the
-fold adds no emulator change that touches vertex delivery (Step 0, "The fold, read against the mechanism"). Sent to
-lane.local, the contact for #1043 now that lane.xbox is on Halo only.
+implicated. ~~0.5.2-rc1's code animates THPS4 on Turnip: the accepted 8455537f10 apk and its rebuild both did~~
+**Corrected 13:45:** that sentence spoke for 8455537f10, not for rc1. 3c2338eb2b..160728983a changes 1,775 lines of
+hw/, target/ and tcg/ (pgraph.c, the vk renderer, draw, surface and texture, fpu_helper, translate.c), and no run had
+shown that code animating on a non-stock driver. Desktop r4 does: 160728983a with the release app's default switches
+animates THPS4 on lavapipe in mode 3 (the table above). Sent to lane.local, the contact for #1043 now that lane.xbox
+is on Halo only.
 
-### The verification still owed (Nova, named frames, Turnip)
+Driver state at 13:40 (lane.local): debug2 now has T30 (sha 1d80dfa0..., the same as `.debug`). The Nova release app
+has the zip staged in `files/gpu_drivers` and in `/sdcard/Download`, and it is waiting on the owner's tap in Settings >
+GPU Driver. The Thor is untouched (out of service). `ext=1` on release and debug2 is not yet confirmed.
 
-The brief asks for the fix measured on the Nova by named frames from the kept paths. The fix is "Turnip loaded", so
-the measurement is 0.5.2-rc1 (160728983a, or the 0.5.2 candidate) in a package on Turnip, following:
-- THPS4 `pathknow/paths/41560017.json`: steps 7-10 `submenu` (Tony Hawk at the career menu, arms down: acceptance
-  frame 010) and 11-12 `gameplay` (acceptance 014, then the hold frames: the skater riding, NPCs with arms down).
-- MP2 `pathknow/paths/5454000C.json`: steps 29-37 `cutscene` and 39 `gameplay` (acceptance 040, then the hold:
-  Max's arms at his sides, mid-stride at 075/099).
+### Verification: what was measured, and what was not
 
-The Nova is held by lane.local (`hold/nova`: "#1043 .debug no-validation-layer APK for owner hand test"), so I have
-queued nothing. I've asked lane.local to run these two or tell me when the hold lifts, so I can queue them with
-`--priority blocker`. On the release app the equivalent is the owner's hand test after R1.
+| check | build | driver | who | result |
+|---|---|---|---|---|
+| Owner, by eye, on the Nova (accepted as the acceptance per lane.local 13:40) | `.debug`: the dispatcher run, a hand launch, and a no-validation-layer build | Turnip T30 | owner | no bind pose |
+| Kept-path frames from the acceptance runs | 8455537f10 (apk 0874bf321e41) and the 10-08 MP2 build | Turnip T30 (`ext=1`) | pathfind | THPS4 010/014/074, MP2 030-038/040/051-099 animate |
+| Desktop r4 | 0.5.2-rc1, 160728983a | lavapipe, mode 3 | this lane | THPS4 animates (t0225, t0286, t0301) |
+
+**Not measured: the Nova kept-path named frames on 0.5.2-rc1 in a Turnip package.** The brief asked for them. They were
+not run, by the owner's direction relayed by lane.local at 13:40: the owner has judged this by eye and does not want
+Nova time spent on long runs, and the frames are to be run only if the owner asks. Not covered either way:
+- MP2 on rc1's code on any non-stock driver. The desktop has no route driver, so MP2 doesn't reach Max.
+- The release app on Turnip, which needs the owner's tap in Settings > GPU Driver.
+
+The owner's first play of the release app after that tap is the check for both. If they are wanted as frames, the
+recipe is pathfind in `.debug` on a 0.5.2 debug build:
+- THPS4 `pathknow/paths/41560017.json` steps 7-10 `submenu` and 11-12 `gameplay`, against acceptance frames 010, 014
+  and 074.
+- MP2 `pathknow/paths/5454000C.json` steps 29-37 `cutscene` and 39 `gameplay`, against acceptance frames 040, 075 and
+  099.
+
+pathfind drives the device itself and request.sh can't replay a pathknow path, so this lane can't queue it.
 
 ### What the next lane should not repeat
 
@@ -266,6 +285,9 @@ queued nothing. I've asked lane.local to run these two or tell me when the hold 
   or `GPU: PurpleVK` against `Qualcomm Technologies Inc. Adreno Vulkan Driver`, or `[gpl569] ext=1` against `ext=0`.
   This lane spent its Step 0 and a hand bisect of seven builds on a split that one log line decides.
 - Do not move `.debug`'s `files/gpu_driver` aside to "check stock" (owner, 10-17).
+- A good Turnip result on one sha says nothing about a later sha when a stock package hid every result in between.
+  This lane first wrote "rc1 animates on Turnip" on the strength of 8455537f10 alone. r4 (rc1 on the desktop) is the
+  run that backs the sentence.
 - `tools/cachels.py` lists an image's X/Y/Z cache partitions and one title's UDATA/TDATA, with a short-chain and
   zero-cluster check per file. The HDD was not the cause here, but the tool is general.
 
@@ -278,14 +300,16 @@ queued nothing. I've asked lane.local to run these two or tell me when the hold 
 | r1 | 3c2338eb2b, lavapipe, mode 3 | THPS4 to the main menu, 300 s, an image every 15 s | none |
 | r2 | same | 330 s, a 3-frame gd dump at t0317 (the skinning census) | none |
 | r3 | same, `HAKUX_GPL=4` | 360 s, an image every 15 s, a 3-frame dump at t0347 | none |
+| r4 | 160728983a (0.5.2-rc1), lavapipe, mode 3, the release app's default switches | 330 s, an image every 15 s | none |
 
 ## Questions (non-blocking)
 
 1. For the owner, R2: bundle a Turnip driver as the default on Adreno 6xx/7xx in the release APK? If yes, ours
-   (pinned Mesa, MIT) or PurpleVK T30 (licence unrecorded)? Is it before 0.5.2 or after?
-2. For lane.local: the black-screen boots of the dispatcher's bisect runs (symptom 8). Do they need a row of their
-   own?
+   (pinned Mesa, MIT) or PurpleVK T30 (licence unrecorded)? Is it before 0.5.2 or after? lane.local is putting this to
+   the owner. It is undecided, and it is the owner's call; this lane does not wait on it.
+2. ~~For lane.local: the black-screen boots (symptom 8).~~ Answered 13:40: the bisect runs took the Nova while the owner
+   was using it, and it is not a build defect (symptom 8 above).
 
-[lane.bindpose1017] waiting: lane.local, for (a) the Nova verification of 0.5.2-rc1 on Turnip (the THPS4 and MP2
-kept-path frames above, run by lane.local or queued by me once `hold/nova` lifts), and (b) the owner's ruling on R2.
-The resolving signal is a reply from lane.local, or `hold/nova` gone.
+[lane.bindpose1017] ready: root cause (stock Adreno driver vs Turnip T30), every symptom accounted for, remedies
+ranked. The release interim is to load Turnip T30, and 0.5.2-rc1's code animates on the desktop. R2 is the owner's,
+with lane.local. The Nova kept-path frames were not run, by the owner's direction.
