@@ -4,15 +4,16 @@ Halo: Combat Evolved (4D530004), opening cinematic on the Nova. Found on 0.5.1-r
 (0.5.1 shipped without this lane, owner 10-16 ~22:50 PDT).
 Defects: **#938** quiet speech under loud music; **#1018** the cinematic drops to 8-19 fps for ~47 s.
 
-## Status (2026-10-17 00:50 PDT)
+## Status (2026-10-17 01:45 PDT)
 
-- #1018: the cinesplit A/B is judged (below). The PFIFO thread's off-CPU half is synchronous surface downloads
-  (`VK_FINISH_REASON_SURFACE_DOWN`, 61 a frame, 33 ms a frame over the plateau). The GPU is not on the path, and
-  `TU_DEBUG=sysmem` is no remedy. Same-address incompatible evictions (`[evict372]`) are flat over the plateau, so
-  they are not the source either. The census pair (halo1016-census.json, on 214445e90e with the new `[ovl1018]`
-  overlap-eviction counter) is on the Nova: A = 0-0-x-1792222165-halo1016-1341449 (running since 00:37),
-  B (+`HAKUX_S2T_CVT=1`) = 0-0-x-1792222171-halo1016-1341994 (queued). It names whose downloads they are. Then the
-  remedy. The verdict is on #1018 (forge comment 19632).
+- #1018: the census is judged (below, "#1018 census verdict"). **Every plateau download is the texture path's
+  `cvt` refusal**: a 16-bit 5/6-bit texture over a 2-byte render target, the #986 MKSM mechanism. K and C HIT,
+  O and R MISS. `HAKUX_S2T_CVT=1` takes the downloads from 49.3 a frame to 0 and the plateau from 59.3 to
+  41.9 ms a frame. **It does not clear the plateau.** With the downloads gone, the shots still run at 40-61 ms
+  a frame, and now the guest never idles: the vCPU itself is the bound in those shots. That is a second cause,
+  and it is the next chase ("#1018 the guest-CPU half").
+- The cinesplit A/B (below) found the downloads: 61 a frame and 33 ms a frame over the plateau, with the GPU off
+  the path and `TU_DEBUG=sysmem` no remedy. That verdict is on #1018 (forge comment 19632).
 - #938: the speech legs are judged (below): B, L, N and S all MISS. The HRTF scale is not the lever: raw taps sum
   to l1 ~13, so today's division already cuts the bed, and raw plays it 20 dB louder and clips. Speech does not
   starve. What is over the speech is the 2D music, at the title's own registers through the same ADPCM decoder.
@@ -34,6 +35,14 @@ But it was all in commits and scratch files, and this file was never written:
 - the account stayed in `scratch/`.
 
 Attempt 2 pushed d9749388d6 first and queued the speech legs at 23:59. It writes this file before each device wait.
+
+## Why attempt 2 did not finish
+
+Attempt 2 also ended on its turn cap (301 turns), at 01:02:49 PDT. It judged the cinesplit and speech legs,
+posted both verdicts, built `[ovl1018]`, and queued the census pair, which landed at 00:56:20. `censusread.py`
+(committed before either arm ran) wrote `scratch/census-verdict.md` at 00:56. The session then spent its last
+turns on a dispatcher table (`scratch/rrtable.py`) before the verdict was in this file, so the verdict and six
+scratch files were left uncommitted. Attempt 3 committed the verdict first, before any further analysis.
 
 ## #1018 cinesplit verdict (judged with cineread.py as committed before either arm landed)
 
@@ -131,14 +140,30 @@ The frame period tracks p_run + sdown x ~0.5 ms. The guest idles exactly when th
 
 | | Hypothesis | P start | P now | Evidence |
 |---|---|---|---|---|
-| F1 | Synchronous GPU waits on the PFIFO thread | 0.45 | **0.90** (download form) | W hit: 61 sdown/f, 33 ms/f, equal to the unhooked blocked time; scales with the shot |
+| F1 | Synchronous GPU waits on the PFIFO thread | 0.45 | **0.95** (`cvt` downloads, one cause of two) | W hit: 61 sdown/f, 33 ms/f, equal to the unhooked blocked time; census K: all `cvt`; C: S2T_CVT takes them to 0 and the span 0.71 x |
+| F7 | The vCPU is the bound in the heavy shots once the downloads go | -- | **0.85** (the second cause) | census B: plateau 40-61 ms/f, guest idle 0, pidle 25-32 ms/f, gpu 17-23 ms/f |
 | F6 | The heavy shots really carry more work | 0.3 | 0.6 (contributor) | draws 1000-1363/f against 650; p_run 22.6 against 13.5 ms. Alone it fits in 33 ms |
 | F2 | Host GPU-bound | 0.3 | 0.02 | G: gpu/P 0.17; sysmem P 0.96 |
 | F3 | Late notifier/interrupt delivery | 0.15 | 0.05 | busy spans begin on the NV2A wake, behind the downloads; iq flat |
 | F4 | Idle-spin feedback loop | 0.1 | 0.05 | edges have eo up with no slowdown; p_rq 0% |
 | F5 | Disc waits | ~0 | 0 | ide425 w=0 |
 
-## #1018 remedies (ranked by P x win; P is provisional until the census names the refusal)
+## #1018 remedies after the census (ranked by P x win)
+
+The plateau needs both causes removed: the downloads (A: 59.3 ms/f over the span) and the vCPU's excess (B: 41.9
+ms/f with no downloads). Neither alone reaches 33.4.
+
+| # | Remedy | P it works | Win at full scale | Evidence |
+|---|---|---|---|---|
+| R1 | `HAKUX_S2T_CVT` on by default (built, fps1015) | 0.9 measured | span 59.3 -> 41.9 ms/f; whole cinematic 39.3 -> 35.9 | census C HIT; MKSM and Top Spin A/Bs. Blocked on its pixel leg (Texture_shadow_comparator, a vk/draw.c regression on master) and one mechanism screen, both fps1015's |
+| R2 | FLDCW ends a TB only when the precision bit flips, and chains when it does | 0.6 | up to the plateau's 11-16% loop time, ~5-8 ms/f of B's 42-61 | rr425: 1-2 M `eo` per 2 s at 0x1ec3a; gapus 11-16% against 2-6% |
+| R3 | Name and remove the plateau's `x` longjmps | 0.3 | unknown until named; 96-197 k per 2 s | rr425 `x` triples in the plateau |
+| - | `TU_DEBUG=sysmem` | refuted | -- | cinesplit P 0.96 |
+
+R1 is another lane's switch, and its blockers are another lane's files. R2 is this lane's to build: it is the
+vCPU half, and it needs only target/i386/tcg/translate.c.
+
+### Earlier ranking (before the census named the refusal)
 
 Win at full scale: up to 33 ms a frame. That is p_run 22.6 plus pidle 7.3, about 30 ms, which puts the plateau back
 at the 30-fps pair.
@@ -214,7 +239,72 @@ What each verdict sends to the remedy:
   Texture_shadow_comparator is the blocker on making that default-on.
 - **R:** the access watch, not the surface cache.
 
-## #938 (speech)
+## #1018 census verdict (judged 00:56 PDT 10-17 by censusread.py as committed in 7a960726d8)
+
+- A = 0-0-x-1792222165-halo1016-1341449: 214445e90e, perflog, `HAKUX_FRAMETRACE=1 HAKUX_PROBE_WAITS=1`.
+- B = 0-0-x-1792222171-halo1016-1341994: the same, plus `HAKUX_S2T_CVT=1`.
+- Full output: `scratch/census-verdict.md` (per-block surface table) and `scratch/census-frametrace.md` (per-window
+  pace, guest idle, dispatcher and draw-thread table).
+- V valid: both reached `mark cinematic`; A's span [mark+131, mark+191] runs 59.3 ms a frame, B's 41.9.
+
+| Leg | Result | Measured (A over the span unless named) | Threshold |
+|---|---|---|---|
+| O overlap eviction | MISS | `[ovl1018]` draw-dirty 0.00/f against Finish sd 49.28/f | >= 0.6 x |
+| K texture path | **HIT** | txr dl + scdl 49.28/f = 1.00 x Finish sd; txdl reasons: `cvt` 50261, every other reason 0 | >= 0.6 x |
+| R CPU range read | MISS | `[sdcall]` range fin 0.00/f | >= 0.6 x |
+| C `HAKUX_S2T_CVT` | **HIT** | B/A Finish sd 0.00; B/A ms per frame 0.71 (41.9 / 59.3) | sd <= 0.5, ms <= 0.8 |
+
+Over the whole cinematic from mark+40 to mark+260 (not judged), A runs 39.3 ms a frame with 20.8 downloads a
+frame (117018 `cvt`, 187 `pitch`), and B runs 35.9 ms with 0.03. B's `s2tc` (GPU decode copies) is 64.6 a frame
+over the span and 29.3 over the whole.
+
+Read:
+- **The downloads are #986's.** Each is a draw-dirty 2-byte colour surface sampled as a 5/6-bit texture. #59's guard
+  in `check_surface_to_texture_compatiblity()` refuses it, so `surface_download_if_dirty` reads it back with a
+  submit and a fence wait, and the texture path uploads it again. Same-address evictions, overlap evictions and
+  CPU reads are all zero.
+- **They scale with the shot.** A's downloads per 2-s block go from 0-1300 before mark+120 to 2400-4800 in plateau
+  1 and 7200-7600 in plateau 2 (mark+176..182, 100 ms a frame).
+- **`HAKUX_S2T_CVT` removes every one.** B's span holds 0 downloads, 0 `cvt` refusals and 64.6 GPU copies a frame.
+  It is the same switch that took MKSM's cutscene from 28 to 54 fps (fps1015).
+- **It does not clear the plateau.** B, per window (census-frametrace.md):
+
+| t-mark s | A ms/f | B ms/f | B guest idle | B p_run | B pidle | B gpu |
+|---|---|---|---|---|---|---|
+| 0-110 | 33.4 | 33.4 | 0 | 2-10 | 22-31 | 1-10 |
+| 123-131 | 50-54 | 39-51 | 0 | 14-21 | 24-28 | 14-19 |
+| 134-147 | 66-85 | 46-61 | 0 | 18-22 | 25-32 | 17-23 |
+| 149-154 | 52-70 | 36-43 | 0 | 14-16 | 17-24 | 12-16 |
+| 156-162 | 33-34 | 33-36 | 0 | 11-13 | 21-23 | 9-12 |
+| 164-179 | 41-100 | 40-53 | 0 | 15-19 | 25-31 | 15-21 |
+| 181-198 | 33-62 | 34-39 | 0 | 11-16 | 15-22 | 8-14 |
+| 200-346 | 33.4 | 33.4 | 0 | 6-16 | 19-28 | 3-14 |
+
+  In A the guest idled 26-58% of each plateau window, waiting on the downloads. In B it never idles, and the draw
+  thread waits for work (pidle) 25-32 ms a frame while the GPU's own time is 17-23 ms. **So in B the vCPU is the
+  bound**: the guest needs 40-61 ms of emulated CPU a frame in these shots, against 20 ms in the late 30-fps
+  section (A's idle share 0.3-0.4 there).
+
+## #1018 the guest-CPU half (B's plateau)
+
+The dispatcher table over B (`scratch/rrtable.py <B> 100 260`; `[rr425]` legend at accel/tcg/cpu-exec.c:1093):
+
+| span | TBs dispatched /2 s | `eo` /2 s | top `eo` pc | `x` longjmps /2 s | loop time (gapus) |
+|---|---|---|---|---|---|
+| mark+101..115, 30 fps | 0.18-0.35 M | 0.09-0.14 M | 0x1ec3a | 17-70 k | 1.7-3.8% |
+| mark+117..197, plateau | 1.9-2.8 M | 1.36-2.16 M | 0x1ec3a (97%) | 96-197 k | 11-16% |
+| mark+199..259, 30 fps | 0.39-0.69 M | 0.24-0.40 M | 0x1ec3a | 33-73 k | 2.6-5.9% |
+
+- `eo` is EOB_ONLY: a TB that ends and returns to the main loop with no chaining. 97% of them in the plateau are
+  one guest instruction, 0x1ec3a `fldcw [ebp+0xc]` (`d9 6d 0c`), inside the title's CRT `_control87(new, 0xffff)`
+  (scratch/guestcode.md). Its 11 callers are MSVC math support: NaN-safe compares and round/classify helpers
+  beside `frndint`. The heavy shots call it about 40 k times a frame, against 6.5 k in the late section.
+- The TB ends there because of hakuX's FP JIT, not the guest: target/i386/tcg/translate.c:3423 ends every TB after
+  FLDCW (`gen_eob(s, DISAS_EOB_ONLY)`), since the native-float code is specialised on the precision-control bit
+  (`HF_FPU_PC_MASK`, cpu.h:2825). The FP JIT is on by default on Android (`fp_jit` true).
+- The plateau's loop time is 11-16% of the vCPU's wall, against 2-6% at 30 fps. That is the cost of the ~1 M
+  unchained exits a second.
+- `x` (longjmps into the loop: exceptions, HLT, PAUSE, MMIO recompiles) triples in the plateau. Not yet named.
 
 Offline (scratch/audio/REPORT.md):
 - MON_VP plays the dialogue (v65) +4.1 dB over the music at slot0 and +1.0 at slot1, exactly the title's register
