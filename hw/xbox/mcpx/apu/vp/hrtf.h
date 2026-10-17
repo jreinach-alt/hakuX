@@ -56,9 +56,19 @@ static inline void hrtf_filter_clear_history(HrtfFilter *f)
     memset(f->ch[1].buf, 0, sizeof(f->ch[1].buf));
 }
 
+/*
+ * How an uploaded HRIR is scaled (HAKUX_APU_HRTF_NORM, read in vp.c):
+ *   HRTF_NORM_L1   each ear divided by its sum |c|: peak gain exactly 1 at
+ *                  every frequency bound, broadband gain l2/l1 (upstream)
+ *   HRTF_NORM_CAP  the same division only where sum |c| > 1: an HRIR that
+ *                  cannot overload plays as uploaded, one that could is cut
+ *   HRTF_NORM_RAW  as uploaded, int8/128, no division
+ */
+enum { HRTF_NORM_L1 = 0, HRTF_NORM_CAP = 1, HRTF_NORM_RAW = 2 };
+
 static inline void
 hrtf_filter_set_target_params(HrtfFilter *f, float hrir_coeff[2][HRTF_NUM_TAPS],
-                              float itd)
+                              float itd, int norm)
 {
     f->itd_tar =
         fmaxf(-HRTF_MAX_DELAY_SAMPLES, fminf(itd, HRTF_MAX_DELAY_SAMPLES));
@@ -74,6 +84,9 @@ hrtf_filter_set_target_params(HrtfFilter *f, float hrir_coeff[2][HRTF_NUM_TAPS],
         }
         if (s == 0.0f || s == 1.0f) {
             continue; /* this channel only: the other is still to normalise */
+        }
+        if (norm == HRTF_NORM_RAW || (norm == HRTF_NORM_CAP && s < 1.0f)) {
+            continue;
         }
         for (int k = 0; k < HRTF_NUM_TAPS; k++) {
             coeff[k] /= s;
