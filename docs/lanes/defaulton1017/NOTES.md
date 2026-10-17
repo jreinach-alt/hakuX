@@ -37,6 +37,8 @@
   refreshes line numbers. So the index stays out of the diff (unlike halo1016, which added two sites).
 - 05:35: MKSM judged: MKF HIT (54.3 fps), MKE HIT, FL MISS (131k precision flips in the first 24 s). The
   registered conditional row runs: MKC 1792240507-defaulton1017-3391984, MKSM with `HAKUX_FLDCW_CHAIN=0`.
+- 05:45: TS void on input (an A dropped at controller select; route never reached a match). Rerun queued:
+  1792240997-defaulton1017-3446680.
 
 ## Pilot verdict (HON, HNI; screenread.py, as registered)
 
@@ -93,6 +95,15 @@ briefing (was 17 fps)`.
 - **MKE HIT**: no early answer. MKSM queues no armed visibility report.
 - **FL MISS** (P 0.5 as registered): MKSM flips precision, 1 call in 8, and only in its first 24 s. The
   conditional MKC row is queued (below, "Conditional rows").
+- **TS VOID, input** (1792239589-defaulton1017-3308032): the route left at controller select. s13 is the same
+  screen as fps1015's on run (0-1792170178-fps1015-2310292; mean difference 0.0 on 64x48 grey,
+  `scratch/shotdiff.py`), with the same `press A` at the same offsets. There it went on to player select; here
+  the A presses at s13 and s14 did nothing, and the rest of the route ran on the wrong screens (difference
+  45-64 from s15 on). It ended at player select, never in a match, so tsread's V has no signature (0) and no
+  `[s2tcvt]` line (the check is not reached in menus). Up to the divergence none of the switches shows it
+  acted: no `[rearly1018] w` line (no report queued), no `[fldcw1018] n=` line (< 2^20 FLDCW), and no s2t
+  line. Menus at 59 fps, no crash, pace to the end. A dropped input, not a defect the switches can be blamed
+  for. Rerun once (single-run flake rule): TS 2nd queued, 1792240997-defaulton1017-3446680.
 
 ## Confirmed from the source files (not from the brief)
 
