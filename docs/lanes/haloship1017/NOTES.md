@@ -74,9 +74,30 @@ depth test when the count is nonzero. Every L1 case is "the count is nonzero fro
 | H6 | L3: the aarch64 JIT computes the guest's visibility decision differently | new: searched FIST/FLDCW commits (#939 5d4b689ed9, 56fdef2c85), nothing on visibility | 0.05 | Nova shows, desktop does not, with identical per-offset counts | counts differ (then H2) |
 | H7 | L4: draw order or blend | new: searched draw reorder (off by default, refused while zpass is on, draw.c:9433), nothing | 0.05 | gd: the light drawn after the hull with blend over it, no depth involved | |
 
-**Build question (blocks only H1's weight).** lane.xbox's brief says the owner saw it on 0.5.1-rc1; tracker
-#1018 says the owner played 0.5.2-rc1 on 10-17. On 0.5.1-rc1 EARLY did not exist and ASYNC delivers the exact
-count, so only H2-H7 remain. Asked at the end; measured regardless (EARLY=0 is one leg).
+**Build question: answered from the owner's own save.** The owner's 10-16 Halo states
+(`captures/owner-halo-1016/states/4d530004/slot0`) carry build 2636e89f4a, and
+`git merge-base --is-ancestor 15f8524be1 2636e89f4a` exits 1: the EARLY fold is not in it. The owner, 10-17
+~11:55 PDT (via lane.xbox, brief ADDENDUM 1): "The lighting issue was present in both builds." The sighting was on
+a build with ASYNC (exact count, a frame late, Halo spins until it lands) and no EARLY. So **H1 cannot be the
+origin** (P 0.20 -> 0.03, kept only as "EARLY may lengthen it in 0.5.2", which the EARLY=0 leg measures). Its
+weight goes to H2-H5, and H8 joins:
+
+| # | hypothesis | P | hit | miss |
+|---|---|---|---|---|
+| H8 | a draw that writes the hull's depth is skipped on the host at the cut (pipeline or shader still compiling: `{"t":"skip"}` in gd), so the tests pass where the hull should be | 0.10 | skip records for hull-like draws in the first frames after the cut, defect lasts until they compile | no skips across the cut |
+
+Re-ranked: H3 0.25, H2 0.20, H5 0.20, H4 0.12, H8 0.10, H6 0.05, H7 0.05, H1 0.03.
+
+## Instrument (#1039, committed before its data)
+
+Frame dump schema 10 (`vk/renderer.c`): each draw record gets `"zq"` (serial of the occlusion query it was
+counted in, -1 none) and `"zp"` (the guest's ZPASS enable); each GET_REPORT/CLEAR_REPORT_VALUE writes
+`{"t":"rep","f","n","rs","qs","clr","off","zq"}`. `HAKUX_ZREP=<path>[,<MB>]` (`vk/reports.c`) writes, from
+whichever path reads the queries (async reader or sync finish), `q <serial> <samples>` per query and
+`r <rs> <qs> <off> <value> <early>` / `c <rs> <qs>` per report, starting at the first dump armed. Joined on
+the serials, one dump says for every report which draws it counted (with their depth state, zeta address and
+colour target) and what it came to. Desktop input with no window: `HAKUX_PAD_FILE=<path>` (`ui/xemu-input.c`)
+presses the button a file names, as pad.sh does on a device. All off unless set.
 
 ## Plan, by P x win
 
@@ -96,4 +117,4 @@ None yet.
 
 ## Questions
 
-1. Which build did the owner see it on, 0.5.1-rc1 or 0.5.2-rc1? (lane.xbox's brief and tracker #1018 differ.)
+1. ~~Which build did the owner see it on?~~ Answered from slot0's meta: 2636e89f4a, no EARLY (above).
