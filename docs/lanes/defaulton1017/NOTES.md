@@ -50,6 +50,13 @@
   (only RalliSport Challenge 2). The master regression behind TSC is filed already: #1033 (open).
 - 05:57: CLR judged: FL MISS (99.5% of FLDCW flip). Conditional rows CLF 1792241775-defaulton1017-3512155
   and CLC 1792241776-defaulton1017-3512282 queued (Conker, frames every 5 s, ON and CHAIN=0).
+- 06:06: AMP judged (valid end). RS still not on the Nova (live `ls` of its path). Default-on re-scan
+  (`scratch/defaulton_scan.py`, 12 open lane PRs): the same two lines as at 05:30, memfast's F3 plan and
+  verdict433's mention of kabukistall; no new candidate.
+- 06:08: TSC1 done. lane.xbox: hakux-0b pushed RalliSport to the Nova at 06:05 (sha256 matches the host's),
+  and the 88 s push overlapped about the first minute of TSC1. So if TSC1 and TSC2 differ, the push is one
+  possible cause and the difference does not decide the pixel item; if they match byte for byte, the
+  overlap does not matter. Live listing confirms the ISO; RS requeued: 1792242364-defaulton1017-3562768.
 
 ## Pilot verdict (HON, HNI; screenread.py, as registered)
 
