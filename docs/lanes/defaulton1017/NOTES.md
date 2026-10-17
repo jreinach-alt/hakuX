@@ -35,6 +35,8 @@
   fps (was 17 fps)". nv2a index: `nv2a_index.py check` against fold-pins (6743b6ab, 104 suites) passes, with line
   drift only (9 symbols, anchors unchanged). Its own output says not to commit a rebuild for drift; fold.sh
   refreshes line numbers. So the index stays out of the diff (unlike halo1016, which added two sites).
+- 05:35: MKSM judged: MKF HIT (54.3 fps), MKE HIT, FL MISS (131k precision flips in the first 24 s). The
+  registered conditional row runs: MKC 1792240507-defaulton1017-3391984, MKSM with `HAKUX_FLDCW_CHAIN=0`.
 
 ## Pilot verdict (HON, HNI; screenread.py, as registered)
 
@@ -66,6 +68,10 @@ Both: every switch logged as the default with its variable unset (HNI: `[ibc507]
   one run does not show the 0.5 ms/f that would pay for #507's energy cost (Forza x1.10 J/frame).
 - **FL HIT**: 0 flips in 120M FLDCW calls.
 
+What changes for the rest: the title rows (MKSM, TS, RS, SHR, CLR, AMP) are queued with `HAKUX_IBC=0`, the
+shipped configuration; screenread's V reads the IBC state each row's request asks for. HOFF is unchanged.
+Nothing else in the plan moves.
+
 HOFF (1792239587-defaulton1017-3307802, 05:21-05:28): all four log off with `=0`, route end, held 423 s, no
 crash. Span 58.9 ms/f; the +130..+180 windows are 62.4, 78.7, 52.5, 41.2, 95.2 and 73.1. **HOFF HIT** (>= 52): the
 escape hatch restores the pre-fix behaviour (census A was 59.3). `[fldcw1018] n=` 93.3M and no `w` lines, as
@@ -76,9 +82,17 @@ Release note, from these rows over the same span (lane.xbox's correction, 05:2x)
 `Release note (performance): Halo: Combat Evolved's opening cinematic runs at about 29 fps through the hangar
 briefing (was 17 fps)`.
 
-What changes for the rest: the title rows (MKSM, TS, RS, SHR, CLR, AMP) are queued with `HAKUX_IBC=0`, the
-shipped configuration; screenread's V reads the IBC state each row's request asks for. HOFF is unchanged.
-Nothing else in the plan moves.
+## Title rows (screenread.py, as registered)
+
+| row | result | switches logged | route end, held | early | flips / FLDCW | figure |
+|---|---|---|---|---|---|---|
+| MKSM | 1792239588-defaulton1017-3307916 | s2t on, early 1, chain 1 (unset); ibc 0 (`=0`) | yes, 333 s | 0 (no `w` line) | 131,073 / 1,048,576 | locked 54.3 fps |
+
+- **MKF HIT**: 54.3 fps locked over 1,800 frames from s13 (fps1015's on: 54.2-54.4), V cut 79, signature 55,
+  play 130, 30 locked windows. Cutscene and gameplay medians are 59.0 gfps each.
+- **MKE HIT**: no early answer. MKSM queues no armed visibility report.
+- **FL MISS** (P 0.5 as registered): MKSM flips precision, 1 call in 8, and only in its first 24 s. The
+  conditional MKC row is queued (below, "Conditional rows").
 
 ## Confirmed from the source files (not from the brief)
 
@@ -182,6 +196,13 @@ Conditional rows, queued only on a trigger, each with its own line here first:
 - an ON row that crashes, hangs or leaves its route where the last master run of it did not: that row again
   with one switch `=0` at a time (the owner's isolation rule);
 - a title with flips > 0: its `HAKUX_FLDCW_CHAIN=0` arm, route end and frames against the ON row.
+  - **Triggered, MKC** (05:35): MKSM's ON row logged `[fldcw1018] n=1048576 flips=131073 cw=007f` 24 s after
+    start (boot and publisher logos, before s04), and no second line in the remaining 300 s (fewer than 2^20
+    more calls). So the chain's exit, which `lookup_and_goto_ptr`s to the TB for the new precision, ran ~131k
+    times there. What we are looking for: MKSM with `HAKUX_FLDCW_CHAIN=0` (the TB ends at every FLDCW, as on
+    master) reaches the same route end, signature and locked fps, and its s01-s28 and hold shots match the ON
+    row's screen for screen. A hang, crash, a different screen at a shot, or a fight that plays out differently
+    (same inputs) in ON only is the chain's failure. 330 s, ~7 Nova min. Queued with `scratch/queue_screen.sh MKC`.
 
 Judge: `docs/lanes/defaulton1017/screenread.py` (written before the first verdict) with halo1016's `vcpuread`
 and `earlyread` readers for Halo, fps1015's `s2tread.py` and `tsread.py` for MKSM and Top Spin.
