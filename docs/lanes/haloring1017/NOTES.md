@@ -6,7 +6,7 @@ Brief: `/home/justin/hakux-work/briefs/haloring1017.md`.
 The owner's goal is the ring the way the console draws it. Every surface turns with the ring, and the bright mottled
 grey layer covers the whole ring, the unlit side included.
 
-[lane.haloring1017] working: Step 0 committed; first measurement (c) off the stock driver.
+[lane.haloring1017] working: M1 done (the guest turns the inside band at the hull's rate); M2, (c) on screen off the stock driver, next.
 
 ## Step 0: what was searched
 
@@ -78,11 +78,42 @@ console's brightness.
 | R1 | the reflection term is wrong: R lands on the wrong face, or v1 scales it to near zero | (a) | 0.35 | A8, A10, A15 | the console look returns with the cube term forced to a bright face and v1 replaced | forcing it gives a coloured sheen, not grey crater mottling | `swr.py`-style software render of `n5` from the dg dump, and a desktop PSHDBG mode once A7's crash is fixed |
 | R1b | ...the global cube mirror | (a) | in R1 | A10 | the mirrored R lands on face 0 or 4 (bright) over most of the hull at photo 5's pose | mirrored R still on dark faces | `vpemu.py` R per vertex, face histogram per mirror |
 | R2 | another draw (`n4`, `n6`, `n0`) ignores its own scroll | (c) | 0.3 if (c) reproduces | new: searched x1 NOTES and git, nothing (A6 left them undone) | across consecutive frames, a per-frame change in the draw's guest state that its generated shader does not use | every per-frame change is used, and the output moves | `gdread.py diff` over consecutive frames, per draw |
-| R2b | the guest computes `n4`'s scroll wrongly (a CPU defect, like (b)) | (c) | 0.1 | new: A12 measured c13.w on `n5` only | `n4`'s w rate (0.0000977/frame, ~8x below `n5`'s 0.00078) times its c13.x gives a different angular rate from `n5`'s | rates agree, so the guest means the band to turn at the hull's speed | `gdread.py draw` for c13 on `n4`/`n5` in two frames |
+| R2b | the guest computes `n4`'s scroll wrongly (a CPU defect, like (b)) | (c) | 0.1 -> 0.02 (M1: missed; the rates agree to three figures, on Turnip, run 13) | new: A12 measured c13.w on `n5` only | `n4`'s w rate (0.0000977/frame, ~8x below `n5`'s 0.00078) times its c13.x gives a different angular rate from `n5`'s | rates agree, so the guest means the band to turn at the hull's speed | `gdread.py draw` for c13 on `n4`/`n5` in two frames |
 | R3 | v0.a non-zero on hardware: the final combiner lerps toward c0_8 (white) | (a), and a common wash of `n4`+`n5` | 0.2 | A14 | a software render with v0.a = k matches photo 5's brightness and keeps faint panel lines; the terrain band whitens by the same k | the panel lines vanish before the brightness is reached, or the band's whitening differs | software render against the pose-matched pair |
 | R4 | the static inside surface was the stock driver | (c) | 0.25 | new: searched tracker #1038/#1039 (stock-driver defects that week), nothing on #939 | (c) absent in run 13's Turnip video and on the desktop | (c) present off the stock driver | run 13's video; a desktop clip; per-draw scroll in a `gd` dump |
 | R5 | other combiner or final-combiner semantics, or the fast paths, for (a) | (a) | 0.1 | A3 (for (b) only), A20 | a fast-paths-off clip (A3's video) shows the layer, or a combiner op proves wrong against the hardware docs | | A3's video; reading `psh.c` against nv2a docs |
+| R7 | `n5` follows `n4` in the same shader with only c13 changed; the second draw's constants never reach the GPU | (c) | 0.05 | new (M1). Code read: `vsh.c:1213` copies all of c[] every draw; `shaders.c:2108-2138` marks the upload by dirty flag or by layout hash, so a c13 change is caught either way | on screen, one of `n4`/`n5` scrolls at the other's rate or not at all | each scrolls at its own c13.w rate | M2 (`bandfit.py`) |
 | R6 | unwritten VP outputs take the attribute registers' current values on hardware (Cxbx-R PR #2109); hakuX sets them to (0,0,0,1). The hull never writes oT0/oT1/oT2.zw (the PROJECT2D q), oT3.w, oB0, oB1 | (a), perhaps (c) | 0.1 | new: searched hakuX git and `vsh.c`, nothing; Cxbx-R PR #2109 | inline attribute values for v9-v12 (or the slots each output maps to) give q != 1, and a render with that q matches the console | q = 1 under that model | the `gd` dump's inline attribute values; a software render |
+
+## Measurements
+
+### M1: (c) in the guest's own state (run 13, Turnip, `gd` frame 100; `constmove.py`, `otwrites.py`, `ringuv.py`)
+
+The ring does not turn by moving geometry. Every ring draw carries bone 0 only: v5 = (0, 253) and v6 = 32767 on
+every vertex, so c60-62 (the ring's model matrix) with weight 1. The second index, 253, is out of range with weight 0.
+The surfaces turn by scrolling texture u: oT0.x = c13.x*u + c13.y*v + c13.w.
+
+| draw | count | shader | what it is | c13.w per frame | du/dtheta (`ringuv.py`) | angular rate |
+|---|---|---|---|---|---|---|
+| `n5` | 4362 | ac5a40cb | outer hull; s0 green panels, s1 crater grey, s3 cube | +0.00078 | 0.157 /rad (x 2 pi = 0.99: one u wrap per turn) | 0.00497 rad/frame |
+| `n4` | 864 | ac5a40cb (the hull's own shader) | inside terrain band; s0 0x02ad4000, 2048x128 terrain and cloud | +0.0000976 (1/8 of `n5`'s) | 0.0196 /rad (x 2 pi = 0.123: 1/8 wrap per turn) | 0.00498 rad/frame |
+| `n6` | 510 | 1a607806 | inside multiply pass; s0 0x02be8000, 1024x32 white trapezoid, a lit/dark mask | constant (c15 = 48.67, c16) | u 0.0204..0.0409 x 48.67 = one wrap | 0: fixed to the sun, by design |
+
+So the guest turns the inside terrain at the hull's angular rate, to three figures. R2b misses. `n6` is meant to stay
+still: it is the day/night mask, not a surface. The rate is measured in the guest's state as hakuX records it, so it
+cannot see what happens to c13 after the dump: uniform upload, caching, or the driver. `n4` and `n5` run one shader
+back to back, and only c13 (and the textures) change between them. A missed c13 upload for the second draw of a
+shader would freeze one of the two. Whether (c) shows on screen off the stock driver is M2.
+
+The bone mechanism of #1043 (the stock driver mishandles relative-addressed c[A0+N]) cannot freeze this geometry,
+because nothing on the ring moves by bone. Every vertex reads bone 0.
+
+### M1b: x1port1012's software render of the hull (unrecorded in its NOTES)
+
+`x1port1012/build-linux/run/swr.py` renders `n5` from the dump in software, term by term. Its last panel set
+(console photo 5, hakuX run 13, then t1 x 10, t2.r, t0, and the full combiner) shows the console's bright mottling
+looks like t1 (the crater grey, 0x02be4000) at full strength with t2.r's structure. hakuX's combiner draws t1 as a
+dim multiplier of t0's green panels.
 
 ## Plan
 

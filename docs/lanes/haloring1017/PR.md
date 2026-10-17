@@ -4,7 +4,7 @@ State: draft
 
 Lane: haloring1017            Issue: #939
 Base: master @ 9abd80e90c
-Files: docs/lanes/haloring1017/PR.md, docs/lanes/haloring1017/NOTES.md, docs/lanes/haloring1017/tools/constmove.py, docs/lanes/haloring1017/tools/otwrites.py
+Files: docs/lanes/haloring1017/PR.md, docs/lanes/haloring1017/NOTES.md, docs/lanes/haloring1017/tools/constmove.py, docs/lanes/haloring1017/tools/otwrites.py, docs/lanes/haloring1017/tools/ringuv.py
 Prediction: none: analysis-only (so far)
 Needs device: no    Needs NDK: no
 
