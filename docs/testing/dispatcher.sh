@@ -213,6 +213,14 @@ device_present() {
 # the worker leaves through the post-claim exit it would have taken anyway.
 ADB_INSTALL_TIMEOUT="${ADB_INSTALL_TIMEOUT:-300}"   # a ~100 MB apk over USB
 ADB_QUICK_TIMEOUT="${ADB_QUICK_TIMEOUT:-30}"        # a pref read, a force-stop
+
+# THE FLOOR (dispatchdoctor1017, #938-adjacent owner word 2026-10-13): a push
+# that stages a missing title never leaves less than this much free on the
+# device's games card. Never touched to make the push fit; a push that would
+# cross it fails, after make_room_for_push has already tried to clear owned,
+# verified-elsewhere-safe ISOs out of the way. Overridable, like every other
+# constant in this file, so a selftest fixture can work in kilobytes.
+FREE_FLOOR_BYTES="${FREE_FLOOR_BYTES:-$((25 * 1024 * 1024 * 1024))}"
 adb_error() {   # <what failed> -> the ERROR line, naming a hung call if any
     if [ -s "${ADB_HUNG_FILE:-}" ]; then
         echo "$1: adb hung -- $(head -1 "$ADB_HUNG_FILE")"
@@ -967,6 +975,146 @@ dev_push() {
     dev_make_660 "$dst.new" || { dev_push_drop "$dst"; return 1; }
     adb_call "$ADB_QUICK_TIMEOUT" "mv $dst" shell "mv -f '$dst.new' '$dst'" >/dev/null 2>&1 || { dev_push_drop "$dst"; return 1; }
     [ "$(dev_sha256 "$dst")" = "$want" ] && [ "$(dev_mode "$dst")" = 660 ]
+}
+
+# dev_free_bytes <device dir> -> bytes free on the filesystem holding it, or
+# -1 when adb could not say. `df -k`'s Available column, counted from the
+# end (Mounted-on, Use%, Available), so a Filesystem field is never mistaken
+# for it.
+dev_free_bytes() {
+    local dir="${1:?dev_free_bytes needs a device dir}" line avail
+    line=$(adb_call "${ADB_QUICK_TIMEOUT:-30}" "df $dir" shell \
+        "df -k $(_dev_sq "$dir") 2>/dev/null | tail -1" 2>/dev/null | tr -d '\r')
+    avail=$(printf '%s\n' "$line" | awk '{print $(NF-2)}')
+    [[ "$avail" =~ ^[0-9]+$ ]] && echo $((avail * 1024)) || echo -1
+}
+
+# title_claimed <title id>: 0 when a queued or running request names this
+# title, by title_id or by its own --title string resolving to it; 1 when
+# none does. Read before make_room_for_push deletes an on-device ISO -- a
+# title another request is about to need is never cleared to make room for
+# this one.
+title_claimed() {
+    local tid="${1:-}" f rid rtitle
+    [ -n "$tid" ] || return 1
+    for f in "$D"/queue/*.req "$D"/running/*.req; do
+        [ -f "$f" ] || continue
+        rid=$(jq_get "$f" title_id "")
+        [ "$rid" = "$tid" ] && return 0
+        rtitle=$(jq_get "$f" title "")
+        [ -n "$rtitle" ] && [ "$(python3 "$TITLESTATE" tid-for-iso "$rtitle" 2>/dev/null)" = "$tid" ] && return 0
+    done
+    return 1
+}
+
+# make_room_for_push <device root> <need bytes> <rdir>: delete on-device
+# ISOs, as listed, until <device root> has <need bytes> plus FREE_FLOOR_BYTES
+# free -- never to make an unrelated push fit, only to admit the title THIS
+# claim needs. Deletes a file only when it (a) is not named by any queued or
+# running request (title_claimed) and (b) verifies by sha256 against a copy
+# this host also holds on D: staging -- an ISO this host does not also hold
+# is never deleted, whatever the floor needs (owner, 2026-10-13: pushes and
+# deletes on the Nova are fine; the floor itself and app data are not touched
+# to make room). Every deletion is logged to dispatcher.log and rdir/room.log.
+# 1 when the floor still cannot be met from what could be verified; the
+# caller must fail the claim rather than push into it.
+make_room_for_push() {
+    local root="$1" need="$2" rdir="$3" free f base tid staged ssha dsha
+    free=$(dev_free_bytes "$root")
+    [ "$free" -ge 0 ] || { log "  make_room: could not read free space on $root"; return 1; }
+    [ $((free - need)) -ge "$FREE_FLOOR_BYTES" ] && return 0
+    log "  make_room: $root has $((free / 1048576)) MiB free, need $(( (need + FREE_FLOOR_BYTES) / 1048576 )) MiB clear"
+    while IFS= read -r base; do
+        case "$base" in
+            [0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]-*) ;;
+            *) continue ;;
+        esac
+        tid=$(printf '%s' "${base:0:8}" | tr '[:lower:]' '[:upper:]')
+        if title_claimed "$tid"; then
+            log "  make_room: keeping $base, a queued or running request names it"; continue
+        fi
+        if ! staged=$(staging_find_tid "$tid"); then
+            log "  make_room: keeping $base, no copy on D: staging to verify it against"; continue
+        fi
+        dsha=$(dev_sha256 "$root/$base")
+        ssha=$(staging_file_sha "$staged")
+        if [ -z "$dsha" ] || [ "$dsha" != "$ssha" ]; then
+            log "  make_room: keeping $base, its sha does not verify against $staged"; continue
+        fi
+        adb_call "$ADB_QUICK_TIMEOUT" "rm $root/$base" shell "rm -f $(_dev_sq "$root/$base")" >/dev/null 2>&1
+        printf '%s deleted %s (verified against %s)\n' "$(date '+%m-%d %H:%M:%S')" "$base" "$staged" >> "$rdir/room.log"
+        log "  make_room: deleted $base (verified against $staged)"
+        free=$(dev_free_bytes "$root")
+        [ $((free - need)) -ge "$FREE_FLOOR_BYTES" ] && return 0
+    done < <(adb_call "$ADB_QUICK_TIMEOUT" "ls $root" shell "ls -1 $(_dev_sq "$root")" 2>/dev/null | tr -d '\r')
+    log "  make_room: still short of the floor after clearing every ISO that could be verified"
+    return 1
+}
+
+# console_stage_tid <title id> <rdir>: last resort, when no staging root has
+# the title -- titles/bin/stage_xiso.py's read-only FTP mirror from the
+# console (outside this repo; never edited here). Respects its own
+# PAUSE/STOP control files and is given a generous timeout (manifest history:
+# 300-450s/title). The staged path on stdout and 0 when the mirror produced
+# one; 1 and nothing otherwise (console unreachable, PAUSE/STOP set, the
+# title is not on the console, or the mirror exceeded the timeout) -- never
+# itself a claim failure, only "this did not help".
+STAGE_XISO="${STAGE_XISO:-/home/justin/hakux-work/titles/bin/stage_xiso.py}"
+console_stage_tid() {
+    local tid="$1" rdir="$2" xdir="${HAKUX_XISO_DIR:-/mnt/d/hakux-staging/xiso}"
+    [ -f "$xdir/PAUSE" ] && { log "  console stage: $xdir/PAUSE is set, not touching the console"; return 1; }
+    [ -f "$xdir/STOP" ] && { log "  console stage: $xdir/STOP is set, not touching the console"; return 1; }
+    [ -f "$STAGE_XISO" ] || { log "  console stage: $STAGE_XISO not found"; return 1; }
+    log "  console stage: mirroring $tid from the console (can take 5-8 minutes)"
+    timeout -k 10 900 python3 "$STAGE_XISO" --only "$tid" --max 1 >> "$rdir/console-stage.log" 2>&1
+    staging_find_tid "$tid"
+}
+
+# ensure_title_staged <title> <rdir> <req>: the deterministic fast path
+# (dispatchdoctor1017 Section 1), called only after device_title_path has
+# already missed. Finds TITLE under a host staging root by its TitleID
+# head, makes room if the push would cross FREE_FLOOR_BYTES, and pushes it
+# to the device under the exact TITLE string the request named, so the
+# caller's immediately-following device_title_path("$title") finds it.
+#
+# Reads only its own three arguments, never an outer-scope $ttid or $id:
+# the soak block's `local tpath ... fi`, which calls this, is sed-extracted
+# VERBATIM by jobs/selftest.d/99-iso-roots.sh and run with only $title,
+# $rdir and $req bound -- an unbound variable there would fail that fixture
+# under `set -u`, not this one.
+#
+# 0 when the title is on the device by the time this returns (pushed now, or
+# a console mirror just produced it); 1, with the reason logged, when it is
+# not -- the caller's existing ERROR path is unchanged either way.
+ensure_title_staged() {
+    local title="$1" rdir="$2" req="$3" tid src need free
+    tid=$(jq_get "$req" title_id "" 2>/dev/null)
+    [ -n "$tid" ] || tid=$(python3 "$TITLESTATE" tid-for-iso "$title" 2>/dev/null)
+    if [ -z "$tid" ]; then
+        log "  stage: $title has no title_id (no targets.toml \`iso\` entry, no 8-hex prefix); cannot look it up on staging"
+        return 1
+    fi
+    if ! src=$(staging_find_tid "$tid"); then
+        if ! src=$(console_stage_tid "$tid" "$rdir"); then
+            log "  stage: $tid not under any staging root ($(staging_roots | paste -sd, - | sed 's/,/, /g')), and console retrieval did not produce it"
+            return 1
+        fi
+    fi
+    need=$(stat -c %s "$src" 2>/dev/null || echo -1)
+    [ "$need" -ge 0 ] || { log "  stage: could not stat $src"; return 1; }
+    free=$(dev_free_bytes "$DEVICE_ISO_ROOT")
+    if [ "$free" -lt 0 ] || [ $((free - need)) -lt "$FREE_FLOOR_BYTES" ]; then
+        make_room_for_push "$DEVICE_ISO_ROOT" "$need" "$rdir" || {
+            log "  stage: not enough free space on $DEVICE_ISO_ROOT for $tid, even after clearing what could be verified"
+            return 1
+        }
+    fi
+    if dev_push "$src" "$DEVICE_ISO_ROOT/$title"; then
+        log "  stage: pushed $src -> $DEVICE_ISO_ROOT/$title"
+        return 0
+    fi
+    log "  stage: push of $src to $DEVICE_ISO_ROOT/$title failed"
+    return 1
 }
 
 # profile_gate_check <request.json path> <rdir> [<title id>]: titlestate.py
@@ -1726,13 +1874,27 @@ PYEOF
     # it -- and no human has to hold the handheld.
     if [ -n "$title" ]; then
         log "  soak: $title for ${seconds}s"
-        # Under the first of the device's roots that has it (devices.sh).
+        touch "$LEASE"
+        # Under the first of the device's roots that has it (devices.sh). A
+        # miss is not immediately an ERROR (dispatchdoctor1017, #938-adjacent
+        # owner word 2026-10-13, "it should know to copy the disk image ...
+        # to the right location and not just fail"): try the deterministic
+        # fast path once -- stage it from D:, or the console -- before
+        # giving up on it.
         local tpath
         if ! tpath=$(device_title_path "$title"); then
-            adb_error "$(device_title_miss "$title")" > "$rdir/ERROR"
-            log "  TITLE NOT FOUND"; mv "$req" "$rdir/request.json"; return 0
+            if ensure_title_staged "$title" "$rdir" "$req"; then
+                tpath=$(device_title_path "$title") || tpath=""
+            fi
+            if [ -z "$tpath" ]; then
+                # device_title_miss's own text goes LAST and unchanged: a
+                # Nova (single-root) miss's ERROR is matched to end exactly
+                # with "searched <root>" by jobs/selftest.d/99-iso-roots.sh,
+                # which is not this lane's to edit.
+                adb_error "staging searched $(staging_roots | paste -sd, - | sed 's/,/, /g'), none had it; $(device_title_miss "$title")" > "$rdir/ERROR"
+                log "  TITLE NOT FOUND"; mv "$req" "$rdir/request.json"; return 0
+            fi
         fi
-        touch "$LEASE"
         # Before the titles disk, which edits the same file: a build from
         # before libfolders needs the old games folder key to boot anything.
         if ! ensure_legacy_folder_pref; then
