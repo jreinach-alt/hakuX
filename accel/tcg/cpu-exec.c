@@ -1805,9 +1805,12 @@ const void *HELPER(lookup_tb_ptr)(CPUArchState *env)
  * the vCPU on GTA, docs/lanes/vcpuplan/NOTES.md). A miss still calls the
  * helper, so the qht, breakpoints and translation stay here.
  *
- * Off unless HAKUX_IBC=1 or 2. With the idle halt off, the vCPU time it
- * saves on the Nova became guest spin, not fps: J/frame x1.02 on GTA and
- * x1.10 on Forza, fps unchanged (docs/lanes/ibcache/NOTES.md, 5c and 5d).
+ * On unless HAKUX_IBC=0 (since #1018); 2 also counts hits. With the idle
+ * halt off, the vCPU time it saves on the Nova became guest spin, not fps:
+ * J/frame x1.02 on GTA and x1.10 on Forza, fps unchanged
+ * (docs/lanes/ibcache/NOTES.md, 5c and 5d). Where the vCPU is the bound it is
+ * frame time: Halo's opening cinematic with the report wait gone
+ * (docs/lanes/halo1016/NOTES.md, #1018).
  */
 uint64_t hakux_ibc_hits;
 
@@ -1818,7 +1821,7 @@ bool hakux_ibc_enabled(HakuxIbcLayout *l)
         0xffffffff, 0x7ffe0,
     };
     const char *e = getenv("HAKUX_IBC");
-    bool on = e && (e[0] == '1' || e[0] == '2');
+    bool on = !e || strcmp(e, "0") != 0;
     bool ok = true;
 
     l->array_ofs = offsetof(CPUJumpCache, array);

@@ -6314,9 +6314,10 @@ static bool check_surface_internal_formats_supported(
 }
 
 /*
- * #433, HAKUX_S2T_CVT=1 (off by default): a 16-bit colour surface sampled as
- * an A1R5G5B5, X1R5G5B5 or R5G6B5 texture is decoded on the GPU into the
- * texture's RGBA8 image, in place of a download to VRAM and the CPU decode.
+ * #433, HAKUX_S2T_CVT (on unless set to 0, since #1018): a 16-bit colour
+ * surface sampled as an A1R5G5B5, X1R5G5B5 or R5G6B5 texture is decoded on
+ * the GPU into the texture's RGBA8 image, in place of a download to VRAM and
+ * the CPU decode.
  *
  * Those texture formats are expanded to RGBA8 by bit replication (#59), so
  * check_surface_to_texture_compatiblity() refuses them and create_texture()
@@ -6376,9 +6377,11 @@ bool pgraph_vk_s2t_cvt_on(void)
 {
     if (s2t_cvt_state < 0) {
         const char *e = getenv("HAKUX_S2T_CVT");
-        s2t_cvt_state = e && e[0] == '1';
+        s2t_cvt_state = !e || strcmp(e, "0") != 0;
         if (s2t_cvt_state) {
-            SURF92_LOG("[s2tcvt] on");
+            SURF92_LOG("[s2tcvt] on HAKUX_S2T_CVT=%s", e ? e : "(unset)");
+        } else {
+            SURF92_LOG("[s2tcvt] off HAKUX_S2T_CVT=0");
         }
     }
     return s2t_cvt_state;
