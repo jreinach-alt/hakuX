@@ -55,7 +55,7 @@ The binary is `build/qemu-system-i386`.
 ## Testing games
 
 1. Install a build, then add your games folder from the library.
-2. Play. Check [Known issues](https://github.com/jreinach-alt/hakuX/blob/master/KNOWN_ISSUES.md) and the
+2. Play. Check [Known issues](KNOWN_ISSUES.md) and the
    [issue tracker](https://github.com/jreinach-alt/hakuX/issues) for what you
    find.
 3. If it is new, file it with the **Title / Compatibility Report** form.
@@ -67,8 +67,8 @@ The binary is `build/qemu-system-i386`.
 2. One change per pull request. Put an unrelated cleanup in its own PR.
 3. Say what you tested and on which device. No hosted CI runs on pull
    requests, so your description is the record that the change was tried.
-4. The [pull request template](https://github.com/jreinach-alt/hakuX/blob/master/.github/pull_request_template.md) is the
+4. The [pull request template](.github/pull_request_template.md) is the
    checklist.
 5. Contributions are under the project's licence, GPL-2.0. See
-   [LICENSE](https://github.com/jreinach-alt/hakuX/blob/master/LICENSE), [COPYING](https://github.com/jreinach-alt/hakuX/blob/master/COPYING) and [COPYING.LIB](https://github.com/jreinach-alt/hakuX/blob/master/COPYING.LIB). No
+   [LICENSE](LICENSE), [COPYING](COPYING) and [COPYING.LIB](COPYING.LIB). No
    sign-off line is needed.

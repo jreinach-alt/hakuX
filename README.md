@@ -82,7 +82,7 @@ this build. Coming from the official hakuX?
   Settings → Audio → Real-time DSP processing.
 - No account and no analytics. The app goes online only for box art and for
   online play, and both are off until you turn them on. See
-  [Privacy](https://github.com/jreinach-alt/hakuX/blob/master/PRIVACY.md).
+  [Privacy](PRIVACY.md).
 - 0.5.0 is this build's own version number, not an official hakuX release.
   The official line is at 0.3.1.
 
@@ -93,14 +93,14 @@ this build. Coming from the official hakuX?
 | [Status](STATUS.md) | Every title's status, and how close the next release is, with charts |
 | [Compatibility](https://github.com/jreinach-alt/hakuX/blob/master/docs/COMPATIBILITY.md) | Every tested game and how it ran |
 | [Release notes](https://github.com/jreinach-alt/hakuX/blob/master/docs/releases/README.md) | What changed in each version |
-| [Known issues](https://github.com/jreinach-alt/hakuX/blob/master/KNOWN_ISSUES.md) | What to expect before you report a bug |
+| [Known issues](KNOWN_ISSUES.md) | What to expect before you report a bug |
 | [Roadmap](https://github.com/jreinach-alt/hakuX/blob/master/ROADMAP.md) | What is coming next |
 | [ES-DE setup](https://github.com/jreinach-alt/hakuX/blob/master/docs/es-de/README.md) | Launching games from ES-DE |
 | [Moving from the official build](https://github.com/jreinach-alt/hakuX/blob/master/android/MIGRATING.md) | Bringing your saves across |
 | [Reporting a bug](https://github.com/jreinach-alt/hakuX/blob/master/docs/reporting-bugs.md) | What to include |
-| [Privacy](https://github.com/jreinach-alt/hakuX/blob/master/PRIVACY.md) | What stays on your device |
+| [Privacy](PRIVACY.md) | What stays on your device |
 | [Building from source](https://github.com/jreinach-alt/hakuX/blob/master/android/README.md) | For developers |
-| [Contributing](https://github.com/jreinach-alt/hakuX/blob/master/CONTRIBUTING.md) | For developers |
+| [Contributing](CONTRIBUTING.md) | For developers |
 
 ## Support the project
 
@@ -139,5 +139,5 @@ This build stands on the work of:
 ## License
 
 GNU GPL v2, as inherited from xemu and QEMU; some components use other
-GPLv2-compatible licences. See [LICENSE](https://github.com/jreinach-alt/hakuX/blob/master/LICENSE). Not affiliated with
+GPLv2-compatible licences. See [LICENSE](LICENSE). Not affiliated with
 Microsoft.
