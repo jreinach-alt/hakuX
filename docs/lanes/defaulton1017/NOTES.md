@@ -10,6 +10,12 @@
   `docs/testing/predictions/defaulton1017-screen.json` (title rows) and `defaulton1017-tsc.json` (the pgraph item).
 - 05:15: pilot queued on the Nova (`scratch/queue_screen.sh HON HNI`): HON 1792238475-defaulton1017-3197170,
   HNI 1792238476-defaulton1017-3197283. The rest waits on the pilot's verdict.
+- 05:30: `screenread.py` written and dry-run on old results before any row returned: it reproduces EIF's
+  33.8 ms/f and windows 33.4-34.7, E's 35.9, MKSM on1's locked 54.4 fps and Top Spin on1's play 59.0 (each voids
+  on the switch lines, as it should: those runs set the env). fps1015's readers name the arm from the env, so
+  screenread calls their `read_run` and sets the arm to `on` itself. Correction to the prediction's `baseline`
+  prose: the EIF id written there (0-0-x-1792231796-halo1016-2209151) is arm EV's; EIF is
+  0-0-x-1792231794-halo1016-2208719. The figures quoted (33.8, 33.4-34.7) are EIF's and are what the legs use.
 
 ## Confirmed from the source files (not from the brief)
 
