@@ -20,9 +20,20 @@ is on the [compatibility page](docs/COMPATIBILITY.md); open bugs are in the
   and a game you have played before reuses what it built last time.
 - **The ubershader can cost frame rate in some games.** ToeJam & Earl III ran
   at 54 fps instead of 60 with it on. It can be turned off for one game.
+- **Halo: Combat Evolved's opening cinematic slows down.** On the Retroid
+  Pocket Nova it runs at 8 to 19 fps for about 47 seconds, then speeds up.
+  Tracked in [#1018](https://github.com/jreinach-alt/hakuX/issues/1018), aimed at 0.5.2.
+- **Halo: Combat Evolved's menu ring is not quite right.** The surface layer
+  the console draws over the ring is missing, and the ring's inside surface
+  does not move as the ring rotates. 0.5.1 fixes the ring jumping back in
+  bursts. Tracked in
+  [#939](https://github.com/jreinach-alt/hakuX/issues/939), aimed at 0.5.2.
 
 ## Audio
 
+- **Halo: Combat Evolved's cutscene speech is quiet under the music.** The
+  voices are there but hard to hear. Tracked in
+  [#938](https://github.com/jreinach-alt/hakuX/issues/938), aimed at 0.5.2.
 - **Audio effects processing is off by default.** Games that use the Xbox's
   audio effects may sound thin, without reverb. Turn on Settings → Audio →
   Real-time DSP processing; it can cost speed on slower devices.
