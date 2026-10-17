@@ -7,7 +7,8 @@ update over an official 0.5.0 build, keeping your saves, rather than
 requiring an uninstall. It raises the minimum to Android 13. The app is
 renamed hakuX CE and gets a new icon, and launching it is now confirmed
 working from ES-DE, Daijisho, Pegasus and the stock Android launcher.
-Carried over from X1 BOX: a game with bad audio data no longer closes the
+Halo's menu ring no longer jumps back in bursts: float-to-integer stores
+now round the way the Xbox does. Carried over from X1 BOX: a game with bad audio data no longer closes the
 emulator, a texture pointing outside video memory draws blank instead of
 crashing, out-of-range ADPCM audio plays instead of producing noise, a
 corrupt pipeline cache is discarded instead of crashing at start, a missing

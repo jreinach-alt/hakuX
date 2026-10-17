@@ -13,6 +13,8 @@ Release note (other): docs-only release commit, plus `android/app/build.gradle.k
 CHANGELOG/release-notes page, and refreshed public docs (dates, versions, Android-13 wording already
 landed by earlier lanes). No emulator behaviour changes.
 
+Release note (rendering): Halo's menu ring no longer jumps back in bursts; float-to-integer stores round as on the Xbox. (Carried by the merge of master @ 56834e79cd, lane fistdefault1016; this lane adds the release-notes and CHANGELOG line only.)
+
 ## What this is
 
 The 0.5.1 release commit per the brief: `CHANGELOG.md` entry, `docs/releases/v0.5.1.md`, the one-line
