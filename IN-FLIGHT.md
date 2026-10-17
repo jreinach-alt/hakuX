@@ -6,9 +6,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Right now
 
-| Lane | Model | Running for | Working on |
-|---|---|---|---|
-| `dispatchdoctor1017` | claude-sonnet-5 | 29 min | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what  |
+No lane session is running.
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -114,22 +112,13 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Work in progress
 
-| Branch | Topic | Tip | Last change |
-|---|---|---|---|
-| `lane/dispatchdoctor1017` | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what stops a ru | `c6a51983c5` | 2026-10-17 07:00 |
+No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-17 defaulton1017: S2T_CVT, REPORT_EARLY and FLDCW_CHAIN on by default, after one default-on screen
 - 2026-10-17 halo1016: Halo CE cutscenes on the Nova -- quiet speech under loud music (#938), cinematic at 8-19 fps (#1018)
 - 2026-10-16 release051b: three Halo known issues for 0.5.1, aimed at 0.5.2 (#433)
 - 2026-10-16 logo1016-move: the README logo moves to docs/images (#433)
-- 2026-10-16 visitordocs1016: security policy, code of conduct, getting your Xbox files
-- 2026-10-16 frontends1016c: stock launcher tested on the Nova, Daijisho page rewritten for users (#433)
-- 2026-10-16 0.5.1 release commit
-- 2026-10-16 HAKUX_FIST_ROUND on by default for 0.5.1 (#939 (b))
-- 2026-10-16 frontends1016b: Pegasus tested, Daijisho integrated via its Apps tab (#433)
-- 2026-10-16 selftestclean1011: selftest.sh removes its fake host when it passes (#433)
-- 2026-10-16 icon1016: hakuX CE app icon (#433)
-- 2026-10-16 x1port1012-halo: #939 (b) root-caused and fixed behind HAKUX_FIST_ROUND=1 (verified on the Nova, run 13)
 
-_Updated 2026-10-17 07:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-17 07:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
