@@ -1,19 +1,28 @@
 # Changelog
 
+## v0.5.2 — 2026-10-17
+
+Halo: Combat Evolved's opening cinematic was running at 17 fps on Android
+handhelds; it now holds about 29 fps through the hangar briefing. The fix
+answers the game's occlusion (visibility) tests as soon as they are queued
+instead of waiting on the GPU to confirm each one, skips a slower texture
+path the cinematic's colour surfaces were taking, and stops the CPU
+translator recompiling around one floating-point instruction. Answering
+occlusion tests early means a visual effect can show a frame
+late at a camera cut.
+
+See [docs/releases/v0.5.2.md](docs/releases/v0.5.2.md).
+
 ## v0.5.1 — 2026-10-16
 
-This release rotates the app's signing key: it installs as an in-place
-update over an official 0.5.0 build, keeping your saves, rather than
-requiring an uninstall. It raises the minimum to Android 13. The app is
-renamed hakuX CE and gets a new icon, and launching it is now confirmed
-working from ES-DE, Daijisho, Pegasus and the stock Android launcher.
-Halo's menu ring no longer jumps back in bursts: float-to-integer stores
-now round the way the Xbox does. Carried over from X1 BOX: a game with bad audio data no longer closes the
-emulator, a texture pointing outside video memory draws blank instead of
-crashing, out-of-range ADPCM audio plays instead of producing noise, a
-corrupt pipeline cache is discarded instead of crashing at start, a missing
-audio device is no longer fatal, and the setup wizard rejects a BIOS file
-that is not 256 KB, 512 KB or 1 MB.
+The app is renamed hakuX CE and gets a new icon. Halo's menu ring no longer
+jumps back in bursts: float-to-integer stores now round the way the Xbox
+does. Also fixed: a game with bad audio data no longer closes the emulator,
+a texture pointing outside video memory draws blank instead of crashing,
+out-of-range ADPCM audio plays instead of producing noise, a corrupt
+pipeline cache is discarded instead of crashing at start, a missing audio
+device is no longer fatal, and the setup wizard rejects a BIOS file that is
+not 256 KB, 512 KB or 1 MB.
 
 See [docs/releases/v0.5.1.md](docs/releases/v0.5.1.md).
 

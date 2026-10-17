@@ -1,0 +1,22 @@
+{
+  "registered_utc": "2026-10-17T12:00:25Z",
+  "who": "lane.defaulton1017",
+  "issue": "1018",
+  "prediction": "fps1015's open pixel item on HAKUX_S2T_CVT (#986, #1018): its A/B (f5a67ba52c, A no env, B HAKUX_S2T_CVT=1) moved 64 of 288 Texture_shadow_comparator captures, a suite master broke in both arms between e654516849 and 0e5fab6bef (vk/draw.c, forge #1033), whose depth formats the switch's gate cannot reach. Two runs of that suite alone on arm A (f5a67ba52c, no env), TSC1 and TSC2, compared with each other. Registered check: must_not_move Texture_shadow_comparator/*, which is the hypothesis that the switch moved the stale colours (A against A byte-identical). My prior is P 0.6 that it FAILS: the stale colour a marker keeps depends on where finishes fall, which moves run to run. FAIL = run-to-run in a broken suite, nothing against the switch; PASS = the switch moves the stale colours, and the suite is read again once #1033 is fixed.",
+  "a_ref": "f5a67ba52c",
+  "b_ref": "f5a67ba52c",
+  "must_not_move": [
+    "Texture_shadow_comparator/*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Texture_shadow_comparator"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}

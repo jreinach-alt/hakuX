@@ -1,6 +1,6 @@
 # Building the Android app
 
-_Last updated 2026-10-16, for version 0.5.1._
+_Last updated 2026-10-17, for version 0.5.2._
 
 This folder is the Android app: a Gradle and CMake project that builds the
 xemu core as native libraries, wrapped in a Kotlin app with setup, settings

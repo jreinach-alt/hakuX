@@ -3162,7 +3162,8 @@ static void gen_jmp_rel_csize(DisasContext *s, int diff, int tb_num)
  *
  * Halo's CRT _control87 (0x1ec3a) runs ~1 M FLDCW a second in the opening
  * cinematic's heavy shots, 97% of the TB exits that reach the main loop
- * there (docs/lanes/halo1016/NOTES.md). Off unless HAKUX_FLDCW_CHAIN=1.
+ * there (docs/lanes/halo1016/NOTES.md). On unless HAKUX_FLDCW_CHAIN=0
+ * (since #1018).
  */
 #ifdef __ANDROID__
 #include <android/log.h>
@@ -3180,7 +3181,7 @@ static bool hakux_fldcw_chain(DisasContext *s)
     if (unlikely(hakux_fldcw_chain_state < 0)) {
         const char *e = getenv("HAKUX_FLDCW_CHAIN");
 
-        hakux_fldcw_chain_state = e && e[0] == '1';
+        hakux_fldcw_chain_state = !e || strcmp(e, "0") != 0;
         FLDCW1018_LOG("[fldcw1018] chain=%d HAKUX_FLDCW_CHAIN=%s",
                       hakux_fldcw_chain_state, e ? e : "(unset)");
     }

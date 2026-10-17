@@ -1,6 +1,6 @@
 # Compatibility
 
-_Last updated 2026-10-16, for version 0.5.1._
+_Last updated 2026-10-17, for version 0.5.2._
 
 This lists Xbox titles tried on this project's test devices, split into three groups: titles that clear the **Playable** bar, titles that run but fall short of 30 fps, and titles that do not yet play. It is not a full compatibility list: plenty of other titles have simply not been tried yet. See [`KNOWN_ISSUES.md`](../KNOWN_ISSUES.md) and the [issue tracker](https://github.com/jreinach-alt/hakuX/issues) for what is tracked about titles not on this page.
 
