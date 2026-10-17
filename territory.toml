@@ -2871,3 +2871,9 @@ issues = []
 standing = false
 files = []
 note = "ADDED by lane.local 2026-10-16 21:49 PDT. Record reconstruction: reads transcripts, writes only under ~/hakux-work/issue-recon (outside the repo). No repository files."
+
+[lane.defaulton1017]
+issues = ["1018"]
+standing = false
+files = ["docs/lanes/defaulton1017/**", "docs/testing/predictions/defaulton1017-*.json"]
+note = "ADDED by lane.local 2026-10-17 ~04:50 PDT on lane.xbox's board request (04:45): the follow-up to #1017 that turns the Halo #1018 switches on by default. Docs and prediction files only until it asks for more; any source file it needs is a widening request. Fleet check flagged it RUNNING with no row."
