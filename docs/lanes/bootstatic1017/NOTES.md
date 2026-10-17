@@ -135,10 +135,65 @@ unrelated to the RAM: no match; noise from `src=n`: H1 MISS, H2 HIT), FAILS=0.
 
 The desktop build is `tools/setup_desk.py`, then `build-linux/cfg.py` (bindpose1017's recipe).
 
+## Desktop run d1: the static reproduces, for one present
+
+`tools/deskboot.py d1 120 90`: THPS4, the goldens HDD, lavapipe, SDL's offscreen video driver (a GL window; SDL 2.30's
+offscreen driver cannot make a Vulkan window, so `ui/xemu.c` now asks for a GL window under that driver only; nothing
+on the desktop ever made a Vulkan surface of it). Coverage passed (n from 0 with no gaps, the title's picture reached,
+more than 120 presents after it). Evidence: `d1_flash.png` (presents 0, 61, 62, 221, by `tools/sheet.py`).
+
+| presents | t (ms) | VGA state (probe) | window |
+|---|---|---|---|
+| 0-34 | 0-940 | reset: 8x1, CR28 0 (bpp 0), SR01 0x00, start 0 | black |
+| 35-60 | ~960-1288 | the kernel's mode: 640x480, CR28 0x83 (32 bpp), pitch 2560, **SR01 0x21 (screen off)**, start **0** | black |
+| **61** | **1516** | start **0x032a4000**, **SR01 0x01 (screen on)**; guest RAM there is all zero | **whole-screen coloured static**, nb 46.4, lit 0.52, green share 0.11 |
+| 62-220 | 1529-5391 | same; RAM there still zero | black |
+| 221-223 | 5870-6058 | same | the Xbox logo |
+| 224-1353 | 6150-26911 | SR01 0x21 again (screen off while the title loads) | black |
+| 1354- | 26971- | start 0x018e8000, screen on | the title |
+
+Every present on the desktop is `src=v`: the desktop's Vulkan has no `VK_KHR_external_semaphore_fd` on lavapipe, so
+it presents by download (`instance.c:559-571`), `pgraph_vk_get_framebuffer_surface` returns 0, and the window always
+shows the VGA view of guest RAM. So on the desktop, `src` cannot separate H1 from H2. On Android, external memory is
+always on (`instance.c:555-558`), so the Nova's probe can.
+
+What the static is. During presents 35-60 the VGA view is set to 640x480 at 32 bpp with start 0: it reads
+`0x0-0x12c000` of guest RAM, which is the kernel's low memory (the first 64 KB went from 8% to 48% non-zero over those
+presents, with a neighbour difference of 44 by the end, the same figure as the static's 46). RAM at the new start
+is all zero at present 61 and shows black one present later, so the static is not RAM at the new start. The leading
+reading is the VGA view of RAM at address 0, drawn one refresh earlier (below). `tools/rowlit.py` puts the static's
+dark bands at guest rows 194-267 (`0x79400-0xa7800` at pitch 2560, if the image fills the window) and a few thin
+ones. That is a layout of mostly empty memory, but it is not yet matched to RAM: d1's RAM dumps were all spent on the
+reset state. d2 dumps RAM at start 0 in the kernel's mode, and the judge's correlation decides.
+
+Why it shows for exactly one present on the desktop:
+- **The desktop blanks while the guest says screen off.** Upstream added this in `129c48dd6e` (2023, "ui: Blank
+  screen when VGA SCREEN_OFF is set"). `RenderFramebuffer` (`ui/xui/gl-helpers.cc:923`) skips the draw while SR01
+  bit 5 is set. That is why 35-60 and 224-1353 are black although guest RAM is not.
+- **The desktop's VGA image is one refresh old.** On the desktop, `graphic_hw_update` runs at the end of a refresh
+  (`ui/xemu.c:2714`), after the present. So the texture drawn at present 61 was rendered at the end of present 60,
+  from start 0. The kernel turned the screen on and moved the start between those two points. One present of the old
+  image gets through before the next update redraws from the new start.
+
+**The Android present has no screen-off check.** `android_blit_frame` (`ui/xemu.c:342`) draws whatever `tex` is, and
+nothing on Android reads SR01. `nv2a_get_screen_off` has one caller in the tree, the desktop's `RenderFramebuffer`.
+On Android, `graphic_hw_update` runs before the draw (`ui/xemu.c:2615`). So every Android refresh during the kernel's
+screen-off window (presents 35-60 here, about 330 ms on this host) should show the VGA view of kernel memory: whole
+screen, static, before the logo. That is the owner's report, at about 20 frames rather than one. The window after
+the logo (224-1353 here) would show whatever the scan-out holds while the title loads, on hardware black. That is
+the next thing to see on the Nova.
+
+So H1 (the pixels) and H5 (the blank we ignore) are one account, with the screen-off check missing on Android.
+Re-rank, static: H1+H5 together 0.80 (desktop reproduction plus a code reading that names the missing check on
+Android); H2 0.08; H4 0.05; H6 0.05 (the static sits on a start-address change, but it decodes as the old start at
+the same geometry, not as a wrong pitch or bpp); H7 0.02. The green look is still unseen. The static frame's green
+share is 0.11, not a green flash. Green P unchanged until the Nova shows it.
+
 ## Waiting / blocked
 
-Nothing outstanding. Next: the desktop boot run with the probe. The board request for `ui/xemu.c` is filed with this
-commit.
+Nothing outstanding. Next: a probe change that logs what the VGA texture holds as well as what the window shows (so
+the desktop can show what Android would draw in the screen-off window), RAM dumps only in a real mode (d1 spent its 20
+dumps on the reset state), then run d2 and judge the RAM match. Then queue the Nova.
 
 ## Questions (for lane.xbox / the owner; work continues meanwhile)
 
