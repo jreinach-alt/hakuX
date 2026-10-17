@@ -4,18 +4,22 @@ Halo: Combat Evolved (4D530004), opening cinematic on the Nova. Found on 0.5.1-r
 (0.5.1 shipped without this lane, owner 10-16 ~22:50 PDT).
 Defects: **#938** quiet speech under loud music; **#1018** the cinematic drops to 8-19 fps for ~47 s.
 
-## Status (2026-10-17 00:45 PDT)
+## Status (2026-10-17 00:50 PDT)
 
 - #1018: the cinesplit A/B is judged (below). The PFIFO thread's off-CPU half is synchronous surface downloads
   (`VK_FINISH_REASON_SURFACE_DOWN`, 61 a frame, 33 ms a frame over the plateau). The GPU is not on the path, and
   `TU_DEBUG=sysmem` is no remedy. Same-address incompatible evictions (`[evict372]`) are flat over the plateau, so
   they are not the source either. The census pair (halo1016-census.json, on 214445e90e with the new `[ovl1018]`
-  overlap-eviction counter) is queued on the Nova: A = 1792222165-halo1016-1341449, B (+`HAKUX_S2T_CVT=1`) =
-  1792222171-halo1016-1341994. It names whose downloads they are. Then the remedy.
+  overlap-eviction counter) is on the Nova: A = 0-0-x-1792222165-halo1016-1341449 (running since 00:37),
+  B (+`HAKUX_S2T_CVT=1`) = 0-0-x-1792222171-halo1016-1341994 (queued). It names whose downloads they are. Then the
+  remedy. The verdict is on #1018 (forge comment 19632).
 - #938: the speech legs are judged (below): B, L, N and S all MISS. The HRTF scale is not the lever: raw taps sum
   to l1 ~13, so today's division already cuts the bed, and raw plays it 20 dB louder and clips. Speech does not
   starve. What is over the speech is the 2D music, at the title's own registers through the same ADPCM decoder.
-  It sits 1-3 dB under speech while the early lines play, and 4-8 dB over it in the score's swell at mark+133..163.
+  Scaled to the frames it plays, speech's median margin over the music is +1.9 dB before mark+130 and -1.7 dB after,
+  in the score's swells (scratch/mixregs.py). The verdict is on #938 (forge comment 19633).
+- Device runs already carry `[surfgpu] on` (the app's Graphics default since lane.surfgpudefault1009), so the
+  SURFSPLICE route is live in every arm here. Any remedy for an eviction download has to go past what that covers.
 
 ## Why attempt 1 did not finish
 
