@@ -1947,6 +1947,22 @@ static bool s2t_drain_on(void)
     return s2t_drain_state;
 }
 
+/* Once per process: the first plain copy that skipped a drain it would have
+ * had, so a run shows the switch acted, not only that it was read. */
+static void s2t_drain_note_skip(void)
+{
+    static bool noted;
+
+    if (!noted) {
+        noted = true;
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_INFO, "hakuX", "[s2tdrain] first skip");
+#else
+        fprintf(stderr, "[s2tdrain] first skip\n");
+#endif
+    }
+}
+
 /*
  * #939 (lane.x1port1012), HAKUX_S2TSHELF: create_texture's shelf lookup,
  * which binds a shelved, still draw_dirty surface at the texture's address
@@ -3324,12 +3340,14 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
                         !(pgraph_vk_s2t_cvt_on() &&
                           pgraph_texture_format_expands_by_replication(
                               snode->key.state.color_format));
-                    if ((!plain_copy || s2t_drain_on()) &&
-                        snode->submit_time + r->num_active_frames >
-                        r->submit_count) {
+                    bool in_flight = snode->submit_time +
+                                     r->num_active_frames > r->submit_count;
+                    if (in_flight && (!plain_copy || s2t_drain_on())) {
                         TXW_BEGIN(FAF);
                         pgraph_vk_flush_all_frames(pg);
                         TXW_END(FAF);
+                    } else if (in_flight) {
+                        s2t_drain_note_skip();
                     }
                     TXW_BEGIN(CP);
                     copy_surface_to_texture(pg, surface, snode);
