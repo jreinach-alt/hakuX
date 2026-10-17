@@ -88,7 +88,7 @@ android {
     minSdk = 33
     targetSdk = 36
 
-    versionCode = 9
+    versionCode = 10
     versionName = versionedRelease ?: stampedVersionName()
 
     // The checkable marker on the artifact itself: release_build.sh verifies
