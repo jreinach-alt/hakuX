@@ -38,6 +38,10 @@ for row in "$@"; do
         RS) title RS 4D53000F-RalliSport_Challenge.xiso.iso docs/lanes/accuracy804 rallisport-804g 240 ;;
         SHR) title SHR 56550015-The_Simpsons_Hit_Run.xiso.iso docs/testing/titles/routes simpsons-hit-run 300 ;;
         CLR) title CLR 'Conker Live & Reloaded.iso' docs/testing/titles/routes '' 300 ;;
+        # conditional: CLR flipped precision on 99.5% of its FLDCW calls, and kept no frames to compare
+        CLF) title CLF 'Conker Live & Reloaded.iso' docs/testing/titles/routes '' 300 --frames-every 5 ;;
+        CLC) title CLC 'Conker Live & Reloaded.iso' docs/testing/titles/routes '' 300 --frames-every 5 \
+            --env HAKUX_FLDCW_CHAIN=0 ;;
         AMP) title AMP 'Amped 2 (USA).xiso.iso' docs/testing/titles/routes amped2 578 ;;
         TSC1|TSC2)
             "$W/docs/testing/request.sh" --who defaulton1017 --device nova --suites Texture_shadow_comparator \

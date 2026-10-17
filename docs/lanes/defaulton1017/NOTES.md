@@ -46,6 +46,10 @@
   only `ERROR`, "title not on device: 4D53000F-RalliSport_Challenge.xiso.iso". "Runnable on the Nova now" in
   the table below was wrong for it: the profile gate's list was read, not a live listing of the device.
   lane.xbox asked lane.local to push the ISO; RS is requeued only once a live listing shows it.
+- 05:52: SHR judged (all hit). Live listing at 05:51: RalliSport Challenge (4D53000F) still not on the Nova
+  (only RalliSport Challenge 2). The master regression behind TSC is filed already: #1033 (open).
+- 05:57: CLR judged: FL MISS (99.5% of FLDCW flip). Conditional rows CLF 1792241775-defaulton1017-3512155
+  and CLC 1792241776-defaulton1017-3512282 queued (Conker, frames every 5 s, ON and CHAIN=0).
 
 ## Pilot verdict (HON, HNI; screenread.py, as registered)
 
@@ -97,6 +101,7 @@ briefing (was 17 fps)`.
 |---|---|---|---|---|---|---|
 | MKSM | 1792239588-defaulton1017-3307916 | s2t on, early 1, chain 1 (unset); ibc 0 (`=0`) | yes, 333 s | 0 (no `w` line) | 131,073 / 1,048,576 | locked 54.3 fps |
 | SHR | 1792239591-defaulton1017-3308261 | early 1, chain 1 (unset); ibc 0 (`=0`); no s2t line | yes, 302 s | 10,984 in 116 windows, share 0.9999 | 0 / 1,048,576 | valid end, pace 308 s |
+| CLR | 1792239593-defaulton1017-3308455 | s2t on, early 1, chain 1 (unset); ibc 0 (`=0`) | no route; held 303 s | 82 (skipn 22,459), share 0.0036 | 1,043,567 / 1,048,576 | valid end, pace 301 s |
 
 - **MKF HIT**: 54.3 fps locked over 1,800 frames from s13 (fps1015's on: 54.2-54.4), V cut 79, signature 55,
   play 130, 30 locked windows. Cutscene and gameplay medians are 59.0 gfps each.
@@ -116,6 +121,13 @@ briefing (was 17 fps)`.
   answers 10,984 reports early over the route (~47 a second), with 1 cold and no skip0/skipn, so it re-queues
   each offset one guest frame later, as Halo does. vis 8 of 10,984 (0.07%, bar 2%), stale 1.5%, desync 0. No
   crash, route end, pace to the log's end. No conditional row is triggered.
+- **CLR: CV HIT, HDS HIT, FL MISS; VIS:CLR not judged** (early 82 < 1000). Conker logs `[s2tcvt] on`
+  (S2T's check is reached), and REPORT_EARLY's gate declines almost every report: 22,459 `skipn` (offset
+  re-queued two or more guest frames later, NFS's pattern), 34 cold, 82 early, desync 0. The gap-1 gate does
+  what it was added for, in a title nobody had read it in. FLDCW: **1,043,567 flips in 1,048,576 calls**:
+  Conker alternates the precision bit on nearly every FLDCW, so the chain's exit (eip past the FLDCW, then
+  `lookup_and_goto_ptr` under the new hflags) is the path it takes, ~3,500 times a second. No crash, valid
+  end, pace 301 s. No route, so no shots to look at. Triggers the FLDCW conditional row (below, CLF/CLC).
 
 ## Confirmed from the source files (not from the brief)
 
@@ -226,6 +238,18 @@ Conditional rows, queued only on a trigger, each with its own line here first:
     master) reaches the same route end, signature and locked fps, and its s01-s28 and hold shots match the ON
     row's screen for screen. A hang, crash, a different screen at a shot, or a fight that plays out differently
     (same inputs) in ON only is the chain's failure. 330 s, ~7 Nova min. Queued with `scratch/queue_screen.sh MKC`.
+  - **Triggered, CLF + CLC** (05:58): CLR flipped on 99.5% of 1,048,576 FLDCW. MKSM runs the chain's
+    stay path 7 calls in 8; Conker runs its exit path almost alone, so the two rows test the two halves.
+    CLR has no route and kept no frames, so a CHAIN=0 row alone would have nothing to be compared with. A
+    no-input Conker boot (rtdbench-3, 0-0-y-1790395182, frames every 10 s; its `frames/f000*.png`)
+    plays the Rare logo, the intro, the "Xbox Live & Co" menu and attract-mode gameplay clips with a HUD
+    and a running clock. If those clips are in-engine replays of recorded input, a precision fault shows as
+    a replay that walks somewhere else. Two rows, one binary, both `--frames-every 5` (frames cost frame
+    rate, so their pace is compared only with each other): CLF = Conker ON (the shipped configuration), CLC
+    = the same with `HAKUX_FLDCW_CHAIN=0` (the TB ends at every FLDCW, as on master). What we are looking
+    for: the same attract sequence in both, in the same order at about the same times, and the gameplay
+    clips showing the same scenes; a hang, a crash, a screen or a clip in CLF that CLC does not show (or the
+    reverse) is the chain's failure. 2 x 300 s, ~13 Nova min. Queued with `scratch/queue_screen.sh CLF CLC`.
 
 Judge: `docs/lanes/defaulton1017/screenread.py` (written before the first verdict) with halo1016's `vcpuread`
 and `earlyread` readers for Halo, fps1015's `s2tread.py` and `tsread.py` for MKSM and Top Spin.
