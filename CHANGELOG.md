@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.5.2 — 2026-10-17
+
+Halo: Combat Evolved's opening cinematic was running at 17 fps on Android
+handhelds; it now holds about 29 fps through the hangar briefing. The fix
+answers the game's occlusion (visibility) tests as soon as they are queued
+instead of waiting on the GPU to confirm each one, skips a slower texture
+path the cinematic's colour surfaces were taking, and stops the CPU
+translator recompiling around one floating-point instruction. Answering
+occlusion tests early means a visual effect can show a frame
+late at a camera cut.
+
+See [docs/releases/v0.5.2.md](https://github.com/jreinach-alt/hakuX/blob/master/docs/releases/v0.5.2.md).
+
 ## v0.5.1 — 2026-10-16
 
 This release rotates the app's signing key: it installs as an in-place

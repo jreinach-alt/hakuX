@@ -1,8 +1,8 @@
 # Known issues
 
-_Last updated 2026-10-16, for version 0.5.1._
+_Last updated 2026-10-17, for version 0.5.2._
 
-What to expect from 0.5.1 before you report a bug. How each tested game runs
+What to expect from 0.5.2 before you report a bug. How each tested game runs
 is on the [compatibility page](https://github.com/jreinach-alt/hakuX/blob/master/docs/COMPATIBILITY.md); open bugs are in the
 [issue tracker](https://github.com/jreinach-alt/hakuX/issues).
 
@@ -20,9 +20,11 @@ is on the [compatibility page](https://github.com/jreinach-alt/hakuX/blob/master
   and a game you have played before reuses what it built last time.
 - **The ubershader can cost frame rate in some games.** ToeJam & Earl III ran
   at 54 fps instead of 60 with it on. It can be turned off for one game.
-- **Halo: Combat Evolved's opening cinematic slows down.** On the Retroid
-  Pocket Nova it runs at 8 to 19 fps for about 47 seconds, then speeds up.
-  Tracked in [#1018](https://github.com/jreinach-alt/hakuX/issues/1018), aimed at 0.5.2.
+- **Halo: Combat Evolved's opening cinematic can still dip under 30 fps.**
+  0.5.2 raised it from 17 fps to about 28.6 fps through the hangar briefing
+  on the Retroid Pocket Nova, but it is not a flat 30: some stretches still
+  run as low as about 26 fps. Tracked in
+  [#1018](https://github.com/jreinach-alt/hakuX/issues/1018).
 - **Halo: Combat Evolved's menu ring is not quite right.** The surface layer
   the console draws over the ring is missing, and the ring's inside surface
   does not move as the ring rotates. 0.5.1 fixes the ring jumping back in

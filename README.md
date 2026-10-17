@@ -2,14 +2,14 @@
 
 # hakuX CE
 
-_Last updated 2026-10-16, for version 0.5.1._
+_Last updated 2026-10-17, for version 0.5.2._
 
 **Original Xbox games on your Android handheld.** hakuX CE is the Community
 Edition: an independent build of the hakuX emulator, tested game by game on
 Snapdragon handhelds.
 
-**[Download 0.5.1](https://github.com/jreinach-alt/hakuX/releases/latest)** ·
-[What's new](https://github.com/jreinach-alt/hakuX/blob/master/docs/releases/v0.5.1.md) ·
+**[Download 0.5.2](https://github.com/jreinach-alt/hakuX/releases/latest)** ·
+[What's new](https://github.com/jreinach-alt/hakuX/blob/master/docs/releases/v0.5.2.md) ·
 [Sponsor](https://github.com/sponsors/jreinach-alt)
 
 **87 games rated Playable so far.** [The list, with progress charts.](STATUS.md)
@@ -86,7 +86,7 @@ this build. Coming from the official hakuX?
 - No account and no analytics. The app goes online only for box art and for
   online play, and both are off until you turn them on. See
   [Privacy](PRIVACY.md).
-- 0.5.1 is this build's own version number, not an official hakuX release.
+- 0.5.2 is this build's own version number, not an official hakuX release.
   The official line is at 0.3.1.
 
 ## More
