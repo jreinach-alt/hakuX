@@ -1,0 +1,92 @@
+--- a/hw/xbox/mcpx/apu/vp/hrtf.h
++++ b/hw/xbox/mcpx/apu/vp/hrtf.h
+@@ -56,9 +56,19 @@
+     memset(f->ch[1].buf, 0, sizeof(f->ch[1].buf));
+ }
+ 
++/*
++ * How an uploaded HRIR is scaled (HAKUX_APU_HRTF_NORM, read in vp.c):
++ *   HRTF_NORM_L1   each ear divided by its sum |c|: peak gain exactly 1 at
++ *                  every frequency bound, broadband gain l2/l1 (upstream)
++ *   HRTF_NORM_CAP  the same division only where sum |c| > 1: an HRIR that
++ *                  cannot overload plays as uploaded, one that could is cut
++ *   HRTF_NORM_RAW  as uploaded, int8/128, no division
++ */
++enum { HRTF_NORM_L1 = 0, HRTF_NORM_CAP = 1, HRTF_NORM_RAW = 2 };
++
+ static inline void
+ hrtf_filter_set_target_params(HrtfFilter *f, float hrir_coeff[2][HRTF_NUM_TAPS],
+-                              float itd)
++                              float itd, int norm)
+ {
+     f->itd_tar =
+         fmaxf(-HRTF_MAX_DELAY_SAMPLES, fminf(itd, HRTF_MAX_DELAY_SAMPLES));
+@@ -75,6 +85,9 @@
+         if (s == 0.0f || s == 1.0f) {
+             continue; /* this channel only: the other is still to normalise */
+         }
++        if (norm == HRTF_NORM_RAW || (norm == HRTF_NORM_CAP && s < 1.0f)) {
++            continue;
++        }
+         for (int k = 0; k < HRTF_NUM_TAPS; k++) {
+             coeff[k] /= s;
+         }
+--- a/hw/xbox/mcpx/apu/vp/vp.c
++++ b/hw/xbox/mcpx/apu/vp/vp.c
+@@ -517,6 +517,35 @@
+     d->vp.hrtf.entries[entry].hrir[channel][coeff_idx] = int8_to_float(value);
+ }
+ 
++/*
++ * HAKUX_APU_HRTF_NORM (#938): how a 3D voice's HRIR is scaled (hrtf.h).
++ * Unset or "l1": divided by sum |c| per ear, as upstream and as today.
++ * "cap": divided only where sum |c| > 1. "raw": as the guest uploaded it.
++ * "off": no HRTF filter at all, the voice's mono samples to both ears, as
++ * [audio] hrtf = false gives, so an A/B leg needs no toml edit. Read once
++ * and said once in logcat, so a run shows the switch reached the APU.
++ */
++#define HRTF_NORM_OFF 3
++static int hrtf_norm(void)
++{
++    static int m = -1;
++    if (m < 0) {
++        const char *e = getenv("HAKUX_APU_HRTF_NORM");
++        m = !e || !strcmp(e, "l1") ? HRTF_NORM_L1 :
++            !strcmp(e, "cap")      ? HRTF_NORM_CAP :
++            !strcmp(e, "raw")      ? HRTF_NORM_RAW :
++            !strcmp(e, "off")      ? HRTF_NORM_OFF : HRTF_NORM_L1;
++        static const char *const name[] = { "l1", "cap", "raw", "off" };
++#ifdef __ANDROID__
++        __android_log_print(4, "hakuX-audio", "hrtf_norm: %s%s", name[m],
++                            e ? "" : " (default)");
++#else
++        fprintf(stderr, "hrtf_norm: %s%s\n", name[m], e ? "" : " (default)");
++#endif
++    }
++    return m;
++}
++
+ static void fe_method(MCPXAPUState *d, uint32_t method, uint32_t argument)
+ {
+     unsigned int slot;
+@@ -718,7 +747,9 @@
+             assert(handle < HRTF_ENTRY_COUNT);
+             hrtf_filter_set_target_params(&d->vp.filters[current_voice].hrtf,
+                                           d->vp.hrtf.entries[handle].hrir,
+-                                          d->vp.hrtf.entries[handle].itd);
++                                          d->vp.hrtf.entries[handle].itd,
++                                          hrtf_norm() == HRTF_NORM_OFF ?
++                                              HRTF_NORM_L1 : hrtf_norm());
+         }
+         break;
+     }
+@@ -2132,7 +2163,8 @@
+         }
+     }
+ 
+-    if (v < MCPX_HW_MAX_3D_VOICES && g_config.audio.hrtf) {
++    if (v < MCPX_HW_MAX_3D_VOICES && g_config.audio.hrtf &&
++        hrtf_norm() != HRTF_NORM_OFF) {
+         uint16_t hrtf_handle =
+             voice_get_mask(d, v, NV_PAVS_VOICE_CFG_HRTF_TARGET,
+                            NV_PAVS_VOICE_CFG_HRTF_TARGET_HANDLE);

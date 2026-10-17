@@ -1,0 +1,1 @@
+{"expect": {"V_min_cine_shots": 2, "V_min_speech_windows": 2, "B_sm_min_db": 0.0, "L_l1_max": 1.0, "N_bed_drop_db": 3.0, "N_sr_gain_db": 3.0, "S_sslempty_min": 1, "S_pause_slow_min": 1}}
