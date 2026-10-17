@@ -46,8 +46,10 @@ Snapdragon handhelds.
 - Ratings come from a Retroid Pocket Nova and an AYN Thor, both Snapdragon 8
   Gen 2 (Adreno 740) on Android 13, using the **Turnip Adreno Driver T30
   (@Mr_Purple_666)** GPU driver, installed under Settings → Graphics → GPU
-  Driver. On a slower chip, expect fewer games at full speed; with another
-  driver, results may differ.
+  Driver. On a slower chip, expect fewer games at full speed. This is the
+  only driver hakuX is tested with: the phone's own driver and other Turnip
+  builds are untested and draw some games wrongly. See
+  [GPU driver](https://github.com/jreinach-alt/hakuX/blob/master/docs/gpu-driver.md) for what to install and how.
 
 ## What you need
 
