@@ -4,18 +4,29 @@
 # different places, radar turning. gta-3.route is the on-foot measurement and
 # stays as it is.
 #
-# Boot: copied verbatim from gta-3.route through its `waitfor fist-hud` (see
-# that file's header for why there is no START and why the mark is gated on
-# the weapon icon). The crop is the same file, refs/gta-3-drive/fist-hud.png =
-# refs/gta-3/fist-hud.png.
+# Boot: copied verbatim from gta-3.route up to its `waitfor fist-hud` (see
+# that file's header for why there is no START).
 #
-# Entry: the spawn frame of 1-1791792686-lane.local-32437
-# (route-frames/012712-gameplay.png) shows the Kuruma about 3 m to Claude's
-# right, with the mission's blue marker over it. GTA III's enter/exit is Y on
-# the Xbox pad. The game takes the nearest upright car within 10 units of the
-# player (re3 CPlayerInfo::FindClosestCarSectorList, `dist <= 10.0f`), so one
-# Y press walks Claude to its door and in. The 7 s after it lets 8-Ball take
-# the passenger seat (the first mission's objective) before the throttle.
+# Entry gate: NOT fist-hud. Both pilots (1-1792275531-...-343857 and
+# 1-1792275540-...-346093) matched fist-hud at once on the game's own intro
+# drive (Chinatown, clock 05:23, $0, HUD up: route-frames/154632-fist-hud.png),
+# which runs before the "Give Me Liberty" cutscene; the Y press landed there
+# and Claude was never put in the car by it. The weapon icon is up on every
+# in-game screen, so it cannot say "on foot next to the Kuruma". The tutorial
+# box "Enter or exit a vehicle: Y" can: it is up only then (pilot 2,
+# 154830-drive.png and 154907-drive.png, ~2 min after `pregameplay`).
+# refs/gta-3-drive/enter-help.png is that box cut from 154830-drive.png at
+# 104,84,380,88. tools/route_gate.py scored the region on every frame of both
+# pilots and of the Playable run 1-1791792686-lane.local-32437: 0.00 and 4.45
+# on the two frames with the box, 31.45 and up on the 26 without it, including
+# the same box with other text ("Brake or reverse", 31.62). Threshold 15.
+#
+# Entry: press Y until the box changes (press-until's reference is the state
+# before the press works). The game takes the nearest upright car within 10
+# units (re3 CPlayerInfo::FindClosestCarSectorList, `dist <= 10.0f`), so one Y
+# walks Claude to the door and in; up to 3 presses 5 s apart cover a press
+# the host's adb drops (both pilots logged vsock accept timeouts). The 6 s
+# after it lets 8-Ball take the passenger seat before the throttle.
 # `mark gameplay` is after the entry, so the scored window is driving.
 #
 # Driving: RT accelerates (pad.sh: the triggers are not swapped; max is full
@@ -35,10 +46,10 @@ repeat 12 {
     wait 5
 }
 shot pregameplay
-waitfor fist-hud 60 1020,88,140,130 20
+waitfor enter-help 240 104,84,380,88 15
 shot onfoot
-press Y 300
-wait 7
+press-until Y enter-help 3 5 104,84,380,88 15
+wait 6
 shot incar
 mark gameplay
 repeat forever {

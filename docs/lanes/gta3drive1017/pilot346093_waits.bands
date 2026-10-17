@@ -1,0 +1,4 @@
+band	n	fps	Ri	faf_ms	faf_n	cp_n	up_n	bt_ms	s2t_n	prun	pblk	p_fence	v_lock	vgw	vgi	gpu50	pm_run	pm_bgpu	pm_pgraph
+>=28.5	113	30.0	18.8	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-
+26-28.5	33	27.1	6.5	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-
+<26	45	22.9	3.6	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-

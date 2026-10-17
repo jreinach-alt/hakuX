@@ -1,17 +1,16 @@
 # lane.gta3drive1017 -- GTA III drops into the teens while driving (#433)
 
-Status: Step 0 is done (this file, committed before any code), and no emulator code has been touched. Two Nova
-pilots are queued; each is a route proof plus a wait split (section 5, step 3):
-- `1-1792275531-lane.gta3drive1017-343857`: perflog + FRAMETRACE + GPUXFR;
-- `1-1792275540-lane.gta3drive1017-346093`: plain build.
+Status (attempt 2, 10-17 16:20 PDT): the wait is located (section 6). The remedy R1 is being built (section 7). The
+driving route needed a new gate (section 6.3) and is not proven yet.
 
-The board request for the route (pending proof) is in board-requests/xbox.md, 15:19 PDT.
+**Why attempt 1 did not finish.** It ended its session on purpose, waiting on two Nova pilots queued behind lane.local's
+hold:
+- `1-1792275531-lane.gta3drive1017-343857` (perflog + FRAMETRACE + GPUXFR), finished ~15:42;
+- `1-1792275540-lane.gta3drive1017-346093` (plain build), finished ~15:51.
 
-[lane.gta3drive1017] waiting: Nova pilots 1-1792275531-lane.gta3drive1017-343857 and 1-1792275540-lane.gta3drive1017-346093
-(queued 10-17 15:18 PDT behind lane.local's hold). Their result dirs in dispatch/results resolve the wait;
-`tools/drive_split.py` reads them.
+Their data was the next step, and a headless session cannot sleep through a device wait. Nothing was left half-done.
 
-## 1. What was searched (Step 0)
+## 1. What was searched## 1. What was searched (Step 0)
 
 | where | how | result |
 |---|---|---|
@@ -141,16 +140,17 @@ read with `tools/drive_split.py` after its `mark gameplay`):
 
 P is lane.xbox's start, then mine after section 3. Each names its section-2 row.
 
-| # | hypothesis | row | start P | P now | evidence that moved it |
-|---|---|---|---|---|---|
-| D1 | texture work on the PFIFO thread (dirty checks, hash, upload) grows while driving | #461 M1-M3, a1fa1156b9, #992, texscan1010 | 0.35 | 0.20 | walks are us; Tq x1.6; can only explain part of the +9 ms CPU, none of the +22 ms blocked |
-| D2 | vertex sync / draw CPU work grows | drawrec1010, fpsbelow1012, 2790e4b700 | 0.25 | 0.10 | vtx walk time is us; spans x5 but bytes unknown; draws per flip not in the capture |
-| D3 | the GPU is the limit (GMEM replay, render mode): the PFIFO thread waits on fences | #530, #871, #474 | 0.20 | 0.25 | the blocked time fits a GPU wait; no GPU busy figure yet |
-| D6 | synchronous finishes in the draw path: VTX_HAZARD (RenderWare immediate mode) or surface downloads block the PFIFO thread on the GPU per occurrence | gtasagpu1011 263-336, #794/#796, #372 | new | 0.30 | the blocked shape; same engine family as the SA hazard; count not in this capture |
-| D7 | lock contention: PFIFO waits for pgraph.lock held across a render-thread GPU wait | #474 tracker 4304-4318 | new | 0.10 | blocked shape; indistinguishable from D3/D6 without a wait split |
-| D4 | guest-side cost (JIT invalidation, slow stores) | 72541aa1b3, #864 | 0.15 | 0.05 | the renderer is saturated (Ri ~1), the guest's growth is after the GPU interrupt |
-| D5 | real Xbox drops too | targets.toml (no sourced figure) | 0.05 | 0.05 | no console figure |
-| D8 | pipeline creation stalls as the city streams new shaders in | #569, #413 | new | 0.02 | reading 9: at most ~2 ms per flip, in two windows |
+| # | hypothesis | row | start P | after the capture | after the pilots | evidence that moved it |
+|---|---|---|---|---|---|---|
+| D1 | texture work on the PFIFO thread grows while driving | #461 M1-M3, a1fa1156b9, #992, texscan1010; **#474 drain (PR #517 row)** | 0.35 | 0.20 | **0.85, as D1' below** | the texture path is where the wait is, but as a wait, not as CPU: section 6 |
+| D1' | **new:** the #474 drain ahead of each surface-to-texture colour copy (texture.c:3290) blocks the PFIFO thread on the GPU's fences, once per copy of a node sampled in the last 3 submits | #474 tracker 4304-4318; PR #517 (bind drain); texscan1010 (skips this drain for its cube) | -- | -- | 0.85 | pilot 1, <26 band: 71.9 drains per flip, 11.6 ms per flip in them, against 2.0 and 2.5 at >=28.5; fence wait 14.3 vs 2.4 ms per flip; dose-response over all 220 windows |
+| D2 | vertex sync / draw CPU work grows | drawrec1010, fpsbelow1012, 2790e4b700 | 0.25 | 0.10 | 0.15 | prun +10 ms per flip in the dips (perflog doubles it); draws 500-634 per frame. Real, but second to the wait |
+| D3 | the GPU is the limit | #530, #871, #474 | 0.20 | 0.25 | 0.05 | gpu50 21.9 ms per frame in the dips against a 47 ms frame: the GPU idles half the frame |
+| D6 | synchronous finishes in the draw path (VTX_HAZARD, downloads) | gtasagpu1011 263-336, #794/#796, #372 | new | 0.30 | 0.02 | `vtx_hazard` ~0.3 finishes per flip driving (0.1 on foot); finish counts flat across bands |
+| D7 | pgraph.lock contention on the PFIFO thread | #474 tracker 4304-4318 | new | 0.10 | 0.02 | ft1 lw = 0 in every band. The vCPU does wait on the lock (7.5 ms per flip in the dips), because the drain holds it |
+| D4 | guest-side cost | 72541aa1b3, #864 | 0.15 | 0.05 | 0.03 | vgw (guest work per frame) 19.9 -> 23.3 ms: under 33 ms in every band |
+| D5 | real Xbox drops too | targets.toml (no sourced figure) | 0.05 | 0.05 | 0.05 | no console figure |
+| D8 | pipeline creation stalls | #569, #413 | new | 0.02 | 0.02 | reading 9 |
 
 The next measurement separates D6, D3 and D7. It is one split of the PFIFO thread's blocked time on a driving window:
 finish waits by cause, fence waits, lock waits and queue-full waits. **It needs no code.** A `--perflog` build
@@ -196,6 +196,129 @@ What each outcome means, decided before the data:
 4. From the located wait (the outcome table in section 4): register the discriminator arms in
    `docs/testing/predictions/gta3drive1017-*`, run them paired and interleaved, rank remedies by P x win, and chase the
    top two.
+
+## 6. The pilots (attempt 2)
+
+Both runs are on Turnip: `[gpl569] ... mode=3` is in each logcat (64 and 80 matching lines). Ref cf0318d210, 540 s each.
+The perflog run is apk 4e5896bfefee and the plain run is e10dd136f0ee.
+
+`tools/ft_waits.py` reads the perflog pilot's `txw[]` (texture-bind wall time by part), `hakuX-ft1` wait split and
+GPUXFR lines per 60-flip window. **It was written after the data arrived.** `drive_split.py`, committed before, does
+not parse those fields. The route's `mark gameplay` fell on the game's intro drive (6.3), so these use every window
+of the run (`--all`): intro, cutscenes, on foot and driving together. The question is per window: what does the
+PFIFO thread wait on when the frame is long? Scene does not change that.
+
+Outputs: `pilot343857_waits.tsv` / `.bands`, `pilot346093_waits.tsv` / `.bands`.
+
+### 6.1 The wait split, perflog pilot 343857, band medians
+
+| band | windows | fps | Ri | **faf ms/flip** | **faf calls/flip** | cp calls/flip | up calls/flip | bind ms/flip | s2t/frame (GPUXFR) | PFIFO run | PFIFO blocked | **PFIFO fence wait** | vCPU lock wait | guest work | guest idle | GPU ms (p50) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| >= 28.5 | 78 | 29.9 | 12.7 | 2.5 | 2.0 | 2.0 | 0.1 | 3.2 | 1.2 | 16.7 | 16.4 | 2.4 | 1.5 | 19.9 | 9.7 | 14.1 |
+| 26-28.5 | 31 | 27.5 | 0.9 | 7.4 | 13.0 | 13.2 | 0.0 | 8.6 | 3.6 | 23.3 | 12.5 | 8.5 | 3.5 | 20.9 | 10.3 | 16.2 |
+| < 26 | 111 | 21.2 | 0.2 | **11.6** | **71.9** | 72.8 | 0.0 | 13.3 | 30.5 | 27.1 | 18.5 | **14.3** | 7.5 | 23.3 | 13.9 | 21.9 |
+
+- `faf` is `pgraph_vk_flush_all_frames` called from create_texture ahead of a copy or an upload (txw FAF). `cp` is
+  `copy_surface_to_texture` (txw CP); `up` is `upload_texture_image`. Times are ms per flip unless named.
+- GPUXFR's s2t count undercounts: its ring logged `dropped N` in the dips. txw cp is the exact count.
+- The plain pilot 346093 prints only the pace fields: >= 28.5 113 windows (30.0 fps, Ri 18.8); 26-28.5 33 (27.1, Ri
+  6.5); < 26 45 (22.9, Ri 3.6). The same three bands, at higher fps: the perflog build roughly doubles the PFIFO
+  thread's CPU. So perflog figures are for the wait split, not for timing.
+
+### 6.2 The located wait
+
+**In the dips the PFIFO thread sleeps in vkWaitForFences inside `pgraph_vk_flush_all_frames`
+(vk/draw.c:5136). The caller is create_texture's #474 drain, vk/texture.c:3290-3295, ahead of each
+`copy_surface_to_texture` colour copy.**
+
+```
+} else {                       /* surface sampled as a texture, not direct-bindable */
+    if (snode->submit_time + r->num_active_frames > r->submit_count) {
+        pgraph_vk_flush_all_frames(pg);     /* waits every submitted frame's fence */
+    }
+    copy_surface_to_texture(pg, surface, snode);
+}
+```
+
+- **Dose-response.** Drain calls go 2.0 -> 13.0 -> 71.9 per flip across the bands. Their time goes 2.5 -> 7.4 -> 11.6
+  ms per flip. The PFIFO thread's fence wait (ft1 pw[5]) goes 2.4 -> 8.5 -> 14.3, and the drain is ~80% of it.
+- **How one drain costs several ms.** The drain does not submit the command buffer being recorded. It waits for the
+  frames already submitted, up to NUM_SUBMIT_FRAMES = 3, which are the GPU's whole backlog. So the PFIFO thread
+  cannot record frame N+1 while the GPU runs frame N.
+  - The first drain of a frame pays for the GPU's backlog; later ones are cheap until the next submit.
+  - Windows with only 3-5 drains per flip still lose ~10 ms of faf (15:41:50-15:42:01, ~27.5 fps).
+- **Serialization, not a GPU bound.** The GPU's busy time is 21.9 ms (p50) of a 47 ms frame in the dips. drain474's
+  lesson applies: a drain is worth removing only when the GPU idles during it, and here it does.
+- **The vCPU's lock wait follows from it.** The drain runs inside a pgraph method, under pgraph.lock. The vCPU's
+  PGRAPH register reads wait on that lock: 1.5 -> 7.5 ms per flip (ft1 vw[2]). That is reading 3's "guest waits on
+  the GPU side", now with its mechanism.
+- **Why the drain fires.** A colour surface is sampled as a texture after being drawn to again since its last copy
+  (`surface->draw_time != snode->draw_time`), and `surface_view_decodes_as_texture()` refuses a direct bind. The node
+  was bound within the last 3 submits, so the drain runs. While driving this happens ~73 times a flip.
+- **Ruled out in the same windows:**
+  - D6, the vertex hazard and downloads: finish counts flat, `vtx_hazard` ~0.3 per flip.
+  - D7, the lock on the PFIFO side: ft1 lw = 0.
+  - D8, pipeline compile: reading 9.
+  - Texture dirty walks: microseconds, readings 2 and 7.
+  - The guest's own work: 23.3 ms, under a 33 ms frame.
+
+The PFIFO thread's CPU also grows (prun 16.7 -> 27.1 ms per flip in the perflog build, about half that in the shipped
+build). The growth comes from draws (500-634 per frame), render passes (22-30 per frame, each copy breaks one) and
+the copies' recording. That cost is real and is R2/R3's (section 7), but it is second to the wait.
+
+### 6.3 The route: why it did not drive, and the new gate
+
+- **The fist-hud gate matched too early.** In both pilots `waitfor fist-hud` matched at 0 s on the game's own intro
+  drive: Chinatown, clock 05:23, $0, HUD up (`154632-fist-hud.png`).
+  - That sequence runs *before* the "Give Me Liberty" cutscene (`154716-drive.png`). The cutscene sets the mission
+    clock to ~04:10, which is why it looked like a restart.
+  - The single Y press landed on the intro, and `mark gameplay` with it.
+  - Claude reached the Kuruma only later: pilot 2 shows "Enter or exit a vehicle: Y" at 15:48:30 and 15:49:07, then
+    drives Chinatown at 15:49:44-15:50:21 with the money rising. Pilot 1 drove from the alley to Eddie's,
+    ~15:38:27-15:40:24.
+  - The weapon icon is up on every in-game screen, so it cannot say "on foot next to the car".
+- **The host's adb dropped presses.** Both pilots logged `UtilAcceptVsock accept4 failed 110` (13 in pilot 1, one in
+  pilot 2). A press-until with a retry covers that for the entry.
+- **The new gate is the tutorial box.** `routes/refs/gta-3-drive/enter-help.png` is cut from `154830-drive.png` at
+  104,84,380,88. `tools/route_gate.py` scores that region on every frame of both pilots and of the Playable run
+  32437, by waitfor_match.py's own `region_score`:
+  - 0.00 and 4.45 on the two frames with the box;
+  - 31.45 and up on the 26 frames without it, including the same box with other text ("Brake or reverse", 31.62).
+  - Threshold 15.
+- **The route now** waits up to 240 s for the box, then `press-until Y enter-help 3 5` (pressing Y until the box
+  changes), waits 6 s, and marks gameplay. `route.sh --check` passes.
+- **Still unproven.** The first run with it must show the car moving minutes apart before any arm counts. The arms
+  below carry that proof in their own frames: an arm whose frames do not show driving is void, not a result.
+
+## 7. Remedies, ranked by P x win
+
+The win is the share of the dip the remedy can remove. In the shipped build the < 26 band is 22.9 fps (43.7 ms); the
+bar is 35.1 ms (28.5 fps), so the dip needs ~9 ms.
+
+| # | remedy | P(it removes its cost) | win at full scale | P(clears the bar alone) | expected impact | evidence |
+|---|---|---|---|---|---|---|
+| R1 | Skip the #474 drain ahead of a **plain colour** surface-to-texture copy (vkCmdCopyImage). The barrier out of SHADER_READ_ONLY already orders the copy after every earlier fragment read on the queue. Keep the drain for zeta (its own copy path, not read for this), HAKUX_S2T_CVT (a compute pass with its own finish) and uploads. Kill switch `HAKUX_S2T_DRAIN=1` | 0.85 | ~11.6 ms per flip of faf in the dips (perflog); in the shipped build the wait is GPU time, so about the same; about 9-12 of the 9 needed | 0.5 | **0.85 x (9-12 ms) -- top** | 6.2; the same copy already runs with no drain for any node older than 3 submits; texscan1010 skips this drain on the same argument (texture.c:2253-2260) |
+| R2 | Direct-bind the surfaces the copies come from: count the refusal reasons in `surface_view_decodes_as_texture` (format, swizzle, pad alpha, component map) and widen the one GTA III hits | 0.4 (only if one reason dominates and is safe to widen) | the copies themselves, ~73 per flip: their recording CPU and the render-pass break each one costs (rpc 22-30 per frame); a few ms of PFIFO CPU and GMEM load/store | 0.2 | 0.4 x (3-6 ms) | 6.2; bind_surface_as_texture also breaks the render pass, so the GMEM half of the win is smaller than the copy count says |
+| R3 | Copy once per surface draw_time, not per sampling node: share one copy between nodes that sample the same surface state | 0.3 (not yet known whether several nodes sample one surface) | part of R2's | 0.1 | 0.3 x (2-4 ms) | needs the per-surface count; same instrument as R2 |
+| -- | sysmem render mode, a faster clock or a performance mode | -- | -- | -- | not remedies | the GPU idles half the frame (D3 0.05); the brief forbids clock and mode fixes |
+
+R1 goes first because it is the largest expected impact, not because it is cheap: it removes the measured wait
+itself. R2 is the second chase if R1 lands short of the bar. Its first step is one refusal-reason counter (perflog
+only), which decides between R2 and R3.
+
+**R1's correctness argument, read in the code:**
+- vk/image.c:137-142: SHADER_READ_ONLY -> TRANSFER_DST uses srcStage FRAGMENT_SHADER. A barrier's first scope is
+  every command earlier in submission order on the queue, across submits.
+- There is one VkQueue (instance.c:1428).
+- The PFIFO thread records; finished command buffers go to the render thread's FIFO (draw.c:5612-5651), and only
+  that thread submits frames. So every frame recorded before the copy is submitted before it.
+- The in-flight frames' descriptors keep pointing at the node's image view, which is not destroyed or recreated here.
+  Those frames read the image before the barrier lets the copy write it.
+- The drain's side work (deferred framebuffer, texture and surface releases; staging resets; the descriptor ring
+  reclaim) is per slot. It runs anyway at the slot's own fence wait when the slot comes round again; skipping it here
+  only delays it.
+- The no-drain copy already runs today whenever the node is older than 3 submits. R1 makes that the rule for the
+  plain colour path.
 
 ## Questions
 
