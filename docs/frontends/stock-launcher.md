@@ -53,9 +53,44 @@ in-app Game Library; the user always picks the specific game from inside
 hakuX, not from the launcher itself. This is a property of generic Android
 launchers, not something this wiring could change.
 
-## Retroid stock launcher — not yet tested
+## Retroid launcher (Nova) — tested on the Nova
 
-The Retroid stock launcher is a different app, installed on the Nova, which
-is under an owner-play hold and was not touched by this lane. That section
-stays **not yet tested** until it's run on the Nova (tracked separately, not
-part of this lane's device access).
+| | |
+|---|---|
+| Frontend | RetroidLauncher, `com.retroidpocket.gamelauncher/.activities.RpGameLauncher` |
+| Device | Nova (Retroid handheld), 1280x960 screen |
+| hakuX CE | 0.5.1-rc1, package `com.jreinach.hakux` |
+
+### Config
+
+None needed. hakuX CE is listed in the launcher's **Apps** screen under its
+display name:
+
+![RetroidLauncher's Apps screen with hakuX CE next to a debug build](images/retroid-app-list.png)
+
+(A second tile, "hakuX (test…", is a developer debug build. Players will
+only see **hakuX CE**.)
+
+### Steps
+
+1. On the launcher's platform screen, press **B** (Apps). Touch only moves
+   the focus on this launcher; the D-pad moves it and **A** opens.
+2. Move the focus to **hakuX CE** and press **A**.
+3. hakuX CE opens on its own Game Library. Pick a game and press Play.
+4. The pause menu works and **Exit** returns to the Game Library.
+
+Checked on the Nova on 2026-10-16: a cold start after a full force-stop, a
+game booting at 59 FPS, the pause menu, and Exit. No crash or hang.
+
+The launcher's **Games** tab shows "No games found". It lists only the
+systems the Retroid launcher knows about, and hakuX CE is started from
+**Apps**, not from there.
+
+### Switching the home app
+
+Which launcher is the home app does not change how hakuX CE runs. The test
+above switched the Nova's home app from ES-DE to the Retroid launcher and
+back with the package manager (`adb shell cmd package set-home-activity
+<package>/<activity>`), not through Settings. Android's own Home app setting
+(Settings > Apps > Default apps) does the same thing, but its exact menu
+path varies by device and was not tried here.

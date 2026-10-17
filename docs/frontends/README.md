@@ -8,7 +8,7 @@ hakuX CE release build, package `com.jreinach.hakux`). Status of each:
 | [ES-DE](es-de.md) | **Tested on the Thor** | Custom system + find rule, confirmed launching a game twice |
 | [Daijisho](daijisho.md) | **Tested on the Thor** | Its built-in Apps tab lists hakuX CE directly; no custom platform needed, confirmed launching a game twice |
 | [Pegasus](pegasus.md) | **Tested on the Thor** | Its built-in Android collection lists hakuX CE directly; confirmed launching a game twice |
-| [Stock launcher](stock-launcher.md) | **Tested on the Thor** (AYN odinlauncher); Retroid variant **not yet tested** | Launches hakuX's own Game Library; no ROM-passing mechanism, by design of a generic Android launcher |
+| [Stock launcher](stock-launcher.md) | **Tested on the Thor** (AYN odinlauncher) and **on the Nova** (Retroid launcher) | Launches hakuX's own Game Library; no ROM-passing mechanism, by design of a generic Android launcher |
 
 Never treat an untested step as tested: "tested on the Thor" above means a
 real launch was run and screenshotted on that device, in this lane. Anything
