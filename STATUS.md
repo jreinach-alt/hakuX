@@ -25,646 +25,650 @@ Playable **87** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓▓░░`
 | 0.9 | 725 | 2026-11-16 | 480 | 2026-12-19 |
 | 1.0 | 876 | 2026-11-26 | 789 | 2027-02-08 |
 
-Measured: any gameplay fps reading (the median frame rate in the play window) on either handheld, at any build and mode. Each title is plotted at its first reading (a soak's finish, a verdict, a held run, or the pass-1 review's date). Playable: the Playable ledger, each title at its acceptance (a 600 s held run with every kept frame reviewed). The 1.0 projection uses each series' rolling 7-day rate (titles gained in the last 7 days / 7), not the all-time rate.
+Measured: titles with a frame rate reading taken during gameplay, on either handheld. Playable: titles rated Playable. The charts place each title on the date it first qualified, and the projected dates in the table assume the last 7 days' pace continues.
 
 Ships when both are met. At the last 48 h rate: about 2026-10-20.
 
-Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/Nova handhelds (#433).
+Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/Nova handhelds.
 
 
-Key -- fps cell: handheld, date, then its performance mode when recorded (max perf or default perf) and how the reading was made (hand-reviewed, screen: 90-240 s only, or soak).<br>Status: red blocked, green Playable, orange soak pending, yellow below 30, purple inputs ready, blue copied, grey not copied.
+🟢 **Playable**: reaches gameplay on a handheld and holds 30 fps (within 5%) for at least 90% of a timed run, with no crash or hang. 🟡 **Below 30 fps**: runs, but not at full speed. 🔴 **Crashes or hangs**: crashes, hangs or does not start in a timed run. 🔵 **Measured, not rated yet**: has a frame rate reading; its rating is still to come. **fps**: the median frame rate during gameplay, the handheld it was measured on, and the date.
 
-| Title and next step | Status | fps |
+
+
+
+
+| Title | Status | fps |
 |---|---|---|
-| **187: Ride or Die**<br>done | 🟢 Playable | **59.9**<br>97% at 28.5+<br>Nova · 10-11 · max perf |
-| **25 to Life**<br>done | 🟢 Playable | **59.9**<br>97% at 28.5+<br>Nova · 10-13<br>Thor 35.7 |
-| **Alien Hominid**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Thor · 10-01 · default perf |
-| **AMF Bowling 2004**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-05 |
-| **ATV Quad Power Racing 2**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-13 |
-| **Auto Modellista**<br>reach gameplay | 🟣 inputs ready | **59.9**<br>100% at 28.5+<br>Nova · 10-06 |
-| **Bad Boys Miami Takedown USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-14 |
-| **Baldur's Gate: Dark Alliance**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 09-30 · default perf |
-| **Battlestar Galactica USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-13 |
-| **Black Stone: Magic & Steel**<br>reach gameplay | 🟣 inputs ready | **59.9**<br>100% at 28.5+<br>Nova · 10-02 · max perf |
-| **Bruce Lee: Quest of the Dragon**<br>**blocked: hang: 21.2 s without 60 guest flips after the mark** | 🔴 blocked | **59.9**<br>81% at 28.5+<br>Thor · 09-26 · max perf |
-| **Capcom Classics Collection Vol. 2**<br>**blocked: crash: guest exited after 390s** | 🔴 blocked | **59.9**<br>100% at 28.5+<br>Thor · 09-30 · max perf |
-| **Castlevania: Curse of Darkness**<br>done | 🟢 Playable | **59.9**<br>97% at 28.5+<br>Thor · 10-01 · max perf<br>Nova 59.9 |
-| **Conspiracy Weapons of Mass Destruction Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-14 |
-| **Crazy Taxi 3 High Roller USA**<br>reach gameplay | 🔵 copied | **59.9**<br>77% at 28.5+<br>Nova · 10-13 |
-| **Dance Dance Revolution Ultramix 3 USA**<br>reach gameplay | 🔵 copied | **59.9**<br>95% at 28.5+<br>Nova · 10-16 |
-| **Darkwatch**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-13 |
-| **David Beckham Soccer Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-15 |
-| **ESPN International Winter Sports 2002 USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-16 |
-| **ESPN MLS ExtraTime 2002 USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-16 |
-| **Future Tactics: The Uprising**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-07 |
-| **Genma Onimusha**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-13 |
-| **Guilty Gear XX #Reload**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-06 |
-| **Gunvalkyrie**<br>done | 🟢 Playable | **59.9**<br>99% at 28.5+<br>Nova · 10-03 · default perf |
-| **Hello Kitty Roller Rescue Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-14 |
-| **Kabuki Warriors**<br>done | 🟢 Playable | **59.9**<br>95% at 28.5+<br>Nova · 10-03 · default perf |
-| **KOF: Maximum Impact – Maniax**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-12 · max perf |
-| **Largo Winch Empire Under Threat Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-14 |
-| **Legends of Wrestling II USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-14 |
-| **Legends of Wrestling USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-14 |
-| **Manhunt USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-08 |
-| **Max Payne 2 The Fall of Max Payne USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-08 |
-| **Max Payne 2: The Fall of Max Payne**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-11 · max perf, screen: 90-240 s only |
-| **Micro Machines Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-14 |
-| **MLB SlugFest 2003**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-05 |
-| **Motor Trend Presents Lotus Challenge USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-15 |
-| **MVP Baseball 2003 USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-16 |
-| **NFL Blitz 2002 USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-11 · max perf, screen: 90-240 s only |
-| **Nickelodeon Avatar The Last Airbender USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-07 |
-| **Nickelodeon SpongeBob SquarePants Battle for Bikini Bottom USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-07 |
-| **Ninja Gaiden**<br>**blocked: reached_gameplay: unconfirmed (generic route) -- review the contact sheet, then rerun with --reviewed-gameplay yes\|no** | 🔴 blocked | **59.9**<br>64% at 28.5+<br>Thor · 09-30 · max perf, soak |
-| **Pac-Man World 2**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-13 |
-| **Petit Copter**<br>reach gameplay | 🔵 copied | **59.9**<br>78% at 28.5+<br>Thor · 10-01 · max perf, screen: 90-240 s only |
-| **Phantom Crash**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-04 · default perf |
-| **Plus Plumb 2**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-13 |
-| **RalliSport Challenge**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-04 |
-| **Rayman 3 Hoodlum Havoc**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-13 |
-| **Rent a Hero No 1 Japan**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-07 |
-| **Scooby Doo Unmasked Europe**<br>reach gameplay | 🔵 copied | **59.9**<br>99% at 28.5+<br>Nova · 10-13 |
-| **Ski Racing 2005 Europe**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-16 |
-| **Sonic Heroes**<br>**blocked: crash: guest exited after 247s** | 🔴 blocked | **59.9**<br>100% at 28.5+<br>Thor · 10-01 · max perf |
-| **Spikeout: Battle Street**<br>done<br>#303 open · nothing in flight | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-03 |
-| **Strike Force Bowling**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-05 |
-| **Tecmo Classic Arcade**<br>reach gameplay | 🟣 inputs ready | **59.9**<br>100% at 28.5+<br>Nova · 10-06 |
-| **TimeSplitters 2**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-13 |
-| **Ultimate Pro Pinball Europe**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-16 |
-| **Whacked**<br>**blocked: reached_gameplay: unconfirmed (generic route) -- review the contact sheet, then rerun with --reviewed-gameplay yes\|no** | 🔴 blocked | **59.9**<br>66% at 28.5+<br>Nova · 10-04 · default perf |
-| **World Soccer Winning Eleven 9**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-06 |
-| **WWE Raw 2**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-11 · max perf, soak |
-| **XIII USA Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-07 |
-| **Brian Lara International Cricket 2005 Europe**<br>reach gameplay | 🔵 copied | **59.9**<br>96% at 28.5+<br>Nova · 10-15 |
-| **Deathrow**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Thor · 09-30 · max perf, screen: 90-240 s only |
-| **Fantastic 4**<br>reach gameplay | 🔵 copied | **59.9**<br>43% at 28.5+<br>Nova · 10-07 |
-| **Indigo Prophecy USA**<br>reach gameplay | 🔵 copied | **59.9**<br>99% at 28.5+<br>Nova · 10-07 |
-| **Kung Fu Chaos USA Asia En Fr De**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-14 |
-| **LEGO Star Wars: The Video Game**<br>reach gameplay | 🟣 inputs ready | **59.9**<br>98% at 28.5+<br>Nova · 10-05 |
-| **Lemony Snicket s A Series of Unfortunate Events USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-12 |
-| **Medal of Honor Frontline USA**<br>reach gameplay | 🔵 copied | **59.9**<br>86% at 28.5+<br>Nova · 10-07 |
-| **Ricky Ponting International Cricket 2005 Australia**<br>reach gameplay | 🔵 copied | **59.9**<br>98% at 28.5+<br>Nova · 10-15 |
-| **Tony Hawk's Pro Skater 3**<br>**blocked: crash: guest exited after 205s** | 🔴 blocked | **59.9**<br>100% at 28.5+<br>Thor · 10-01 · max perf, soak |
-| **Tony Hawk's Pro Skater 2x**<br>done | 🟢 Playable | **59.8**<br>100% at 28.5+<br>Thor · 10-01 · max perf<br>Nova 59.8 |
-| **Capcom vs. SNK 2 EO**<br>done | 🟢 Playable | **59.8**<br>100% at 28.5+<br>Nova · 10-07 |
-| **Knockout Kings 2002 USA**<br>reach gameplay | 🔵 copied | **59.8**<br>100% at 28.5+<br>Nova · 10-16 |
-| **Tony Hawk s Underground 2 USA Europe En Fr De**<br>reach gameplay | 🔵 copied | **59.7**<br>100% at 28.5+<br>Nova · 10-13 |
-| **Mortal Kombat: Armageddon**<br>done | 🟢 Playable | **59.2**<br>100% at 28.5+<br>Nova · 10-06 |
-| **MLB SlugFest - Loaded**<br>done | 🟢 Playable | **58.9**<br>100% at 28.5+<br>Nova · 10-05 |
-| **Rogue Trooper**<br>done | 🟢 Playable | **58.9**<br>100% at 28.5+<br>Nova · 10-06 |
-| **AMF Xtreme Bowling**<br>**blocked: crash: exiting due to SIG_DFL handler for signal 11, ucontext 0x6fcde81e20** | 🔴 blocked | **58.7**<br>100% at 28.5+<br>Nova · 10-05 |
-| **Gui Yi Taiwan**<br>reach gameplay | 🔵 copied | **57.7**<br>94% at 28.5+<br>Nova · 10-07 |
-| **Ghost Master The Gravenville Chronicles Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **57.6**<br>100% at 28.5+<br>Nova · 10-13 |
-| **Stake USA En Fr De Es It**<br>reach gameplay | 🔵 copied | **57.6**<br>99% at 28.5+<br>Nova · 10-16 |
-| **MTV Celebrity Deathmatch**<br>done | 🟢 Playable | **57.2**<br>99% at 28.5+<br>Nova · 10-04 |
-| **NBA 2K7 USA Europe**<br>reach gameplay | 🔵 copied | **57.2**<br>75% at 28.5+<br>Nova · 10-16 |
-| **NBA 2K2**<br>done | 🟢 Playable | **57.0**<br>100% at 28.5+<br>Nova · 10-05 |
-| **FILA World Tour Tennis Europe**<br>reach gameplay | 🔵 copied | **56.8**<br>100% at 28.5+<br>Nova · 10-15 |
-| **Tony Hawk's Pro Skater 4**<br>done | 🟢 Playable | **56.6**<br>98% at 28.5+<br>Nova · 10-13 |
-| **Batman Dark Tomorrow**<br>reach gameplay | 🔵 copied | **56.5**<br>98% at 28.5+<br>Nova · 10-07 |
-| **Project Gotham Racing 2**<br>**blocked: void: thermal-pause: thermal-pause-F8 1/1 began after +140 s and by +172 s (device 09-29 13:22:54); still paused at the last reading, relative to the mark** | 🔴 blocked | **55.7**<br>40% at 28.5+<br>Thor · 09-29 · max perf, screen: 90-240 s only |
-| **Rugby League 2 Europe**<br>reach gameplay | 🔵 copied | **55.1**<br>100% at 28.5+<br>Nova · 10-15 |
-| **Burnout Revenge**<br>done | 🟢 Playable | **54.8**<br>100% at 28.5+<br>Nova · 10-12 · max perf |
-| **Tron 2.0 : Killer App**<br>reach gameplay | 🔵 copied | **54.8**<br>92% at 28.5+<br>Nova · 10-06 · default perf |
-| **Panzer Dragoon Orta**<br>done | 🟢 Playable | **54.1**<br>100% at 28.5+<br>Nova · 10-03 |
-| **Mercenaries USA Europe**<br>reach gameplay | 🔵 copied | **53.3**<br>100% at 28.5+<br>Nova · 10-12 |
-| **4x4 Evo 2**<br>reach gameplay | 🔵 copied | **53.2**<br>100% at 28.5+<br>Nova · 10-13 |
-| **Ratatouille**<br>done | 🟢 Playable | **52.8**<br>100% at 28.5+<br>Nova · 10-06 |
-| **Dead or Alive 3**<br>soak for Playable | soak pending | **50.1**<br>100% at 28.5+<br>Nova · 10-12 · max perf<br>Thor 52.2 |
-| **X Men The Official Game Europe**<br>reach gameplay | 🔵 copied | **49.3**<br>100% at 28.5+<br>Nova · 10-12 |
-| **Super Monkey Ball Deluxe**<br>**blocked: crash: guest exited after 250s** | 🔴 blocked | **48.1**<br>100% at 28.5+<br>Thor · 10-01 · max perf |
-| **Ty the Tasmanian Tiger Night of the Quinkan USA Australia**<br>reach gameplay | 🔵 copied | **47.8**<br>79% at 28.5+<br>Nova · 10-07 |
-| **Legacy of Kain Defiance USA**<br>reach gameplay | 🔵 copied | **47.6**<br>97% at 28.5+<br>Nova · 10-07 |
-| **Crash Bandicoot: The Wrath of Cortex**<br>reach gameplay | 🟣 inputs ready | **46.9**<br>100% at 28.5+<br>Nova · 10-07 |
-| **Jacked Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **46.1**<br>100% at 28.5+<br>Nova · 10-14 |
-| **Dark Summit**<br>done | 🟢 Playable | **45.9**<br>93% at 28.5+<br>Nova · 10-04 |
-| **Mortal Kombat: Shaolin Monks**<br>reach gameplay | 🟣 inputs ready | **45.9**<br>49% at 28.5+<br>Nova · 10-06 |
-| **NFL Blitz 2002**<br>done | 🟢 Playable | **45.0**<br>100% at 28.5+<br>Nova · 10-05 |
-| **Big Mutha Truckers USA**<br>reach gameplay | 🔵 copied | **45.0**<br>89% at 28.5+<br>Nova · 10-14 |
-| **MLB SlugFest 2004**<br>done | 🟢 Playable | **44.4**<br>100% at 28.5+<br>Nova · 10-05 |
-| **Tenchu 3 Kaiki no Shou Japan**<br>reach gameplay | 🔵 copied | **44.3**<br>100% at 28.5+<br>Nova · 10-12 |
-| **Arx Fatalis**<br>reach gameplay | 🔵 copied | **43.9**<br>100% at 28.5+<br>Nova · 10-07 |
-| **Fight Club**<br>done | 🟢 Playable | **43.4**<br>94% at 28.5+<br>Nova · 10-06 |
-| **ESPN Major League Baseball USA**<br>reach gameplay | 🔵 copied | **43.2**<br>100% at 28.5+<br>Nova · 10-16 |
-| **NBA 2K3**<br>done | 🟢 Playable | **42.9**<br>96% at 28.5+<br>Nova · 10-06 |
-| **ToeJam & Earl III: Mission to Earth**<br>done | 🟢 Playable | **42.1**<br>73% at 28.5+<br>Nova · 10-03 |
-| **RalliSport Challenge 2**<br>reach gameplay | 🟣 inputs ready | **41.7**<br>96% at 28.5+<br>Nova · 10-07 |
-| **Harry Potter and the Philosopher's Stone**<br>done | 🟢 Playable | **41.5**<br>95% at 28.5+<br>Nova · 10-13 |
-| **Conflict Desert Storm II Back to Baghdad USA**<br>reach gameplay | 🔵 copied | **41.1**<br>93% at 28.5+<br>Nova · 10-13 |
-| **Backyard Wrestling 2 There Goes the Neighborhood USA**<br>reach gameplay | 🔵 copied | **40.8**<br>99% at 28.5+<br>Nova · 10-14 |
-| **Dead or Alive 1 Ultimate**<br>reach gameplay<br>#413 open · nothing in flight | 🟣 inputs ready | **40.4**<br>100% at 28.5+<br>Nova · 10-07 |
-| **007: Nightfire**<br>reach gameplay | 🟣 inputs ready | **40.0**<br>89% at 28.5+<br>Nova · 10-06 |
-| **Mortal Kombat: Deadly Alliance**<br>reach gameplay | 🟣 inputs ready | **39.9**<br>100% at 28.5+<br>Nova · 10-06 |
-| **Torino 2006 Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **39.1**<br>66% at 28.5+<br>Nova · 10-15 |
-| **Ninja Gaiden Black**<br>reach gameplay | 🔵 copied | **38.0**<br>97% at 28.5+<br>Nova · 10-12 · max perf |
-| **The Simpsons Hit & Run**<br>done | 🟢 Playable | **37.9**<br>100% at 28.5+<br>Nova · 10-04 |
-| **NHL Hitz Pro**<br>reach gameplay | 🔵 copied | **37.4**<br>75% at 28.5+<br>Nova · 10-05 |
-| **Blood Wake**<br>**blocked: hang: 10.6 s without 60 guest flips after the mark** | 🔴 blocked | **37.4**<br>30% at 28.5+<br>Thor · 09-27 · max perf<br>Nova 59.9 |
-| **NBA Live 2004**<br>done | 🟢 Playable | **35.5**<br>100% at 28.5+<br>Nova · 10-06 |
-| **Slam Tennis Europe**<br>reach gameplay | 🔵 copied | **35.4**<br>98% at 28.5+<br>Nova · 10-16 |
-| **Yetisports Arctic Adventures Europe**<br>reach gameplay | 🔵 copied | **35.1**<br>97% at 28.5+<br>Nova · 10-16 |
-| **NHL 2K3**<br>reach gameplay | 🔵 copied | **35.0**<br>69% at 28.5+<br>Nova · 10-05 |
-| **Bistro Cupid**<br>reach gameplay | 🔵 copied | **34.4**<br>87% at 28.5+<br>Thor · 09-30 · max perf, soak |
-| **Top Spin**<br>soak for Playable | soak pending | **32.6**<br>91% at 28.5+<br>Nova · 10-09 · max perf |
-| **NBA Inside Drive 2004 USA**<br>reach gameplay | 🔵 copied | **31.1**<br>70% at 28.5+<br>Nova · 10-16 |
-| **Aliens Versus Predator: Extinction**<br>reach gameplay | 🟣 inputs ready | **31.0**<br>100% at 28.5+<br>Nova · 10-05 |
-| **Burnout 3: Takedown**<br>reach gameplay | 🟣 inputs ready | **30.8**<br>85% at 28.5+<br>Nova · 10-14 |
-| **Fuzion Frenzy**<br>**blocked: hang: 13.4 s without 60 guest flips after the mark** | 🔴 blocked | **30.6**<br>54% at 28.5+<br>Nova · 09-27 · max perf |
-| **Panzer Elite Action Fields of Glory Europe**<br>reach gameplay | 🔵 copied | **30.4**<br>90% at 28.5+<br>Nova · 10-07 |
-| **Big Bumpin USA**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-15 |
-| **Crimson Skies: High Road to Revenge**<br>done | 🟢 Playable | **30.0**<br>95% at 28.5+<br>Nova · 10-13 · default perf<br>Thor **23.4** |
-| **50 Cent: Bulletproof**<br>done<br>#382 open · nothing in flight | 🟢 Playable | **30.0**<br>99% at 28.5+<br>Nova · 09-30 · default perf, soak |
-| **Azurik: Rise of Perathia**<br>done | 🟢 Playable | **30.0**<br>95% at 28.5+<br>Nova · 09-29 · default perf<br>Thor 30.0 |
-| **Blade II**<br>done | 🟢 Playable | **30.0**<br>100% at 28.5+<br>Nova · 10-07 |
-| **Blazing Angels Squadrons of WWII USA Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-13 |
-| **BloodRayne 2 USA**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-08 |
-| **Blowout**<br>done | 🟢 Playable | **30.0**<br>100% at 28.5+<br>Nova · 10-06 |
-| **Buffy the Vampire Slayer**<br>review frames for Playable | soak pending | **30.0**<br>100% at 28.5+<br>Nova · 10-12 · max perf |
-| **Conan Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-12 |
-| **Conflict Global Terror USA**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-13 |
-| **Family Guy Video Game**<br>done | 🟢 Playable | **30.0**<br>98% at 28.5+<br>Thor · 10-01 · max perf |
-| **GoldenEye: Rogue Agent**<br>**blocked: reached_gameplay: no `mark gameplay` in logcat** | 🔴 blocked | **30.0**<br>94% at 28.5+<br>Nova · 09-27 · max perf, screen: 90-240 s only |
-| **Grabbed by the Ghoulies**<br>done<br>#311 closed | 🟢 Playable | **30.0**<br>98% at 28.5+<br>Nova · 10-12 · max perf<br>Thor 30.0 |
-| **Grand Theft Auto III**<br>done | 🟢 Playable | **30.0**<br>100% at 28.5+<br>Nova · 10-12 · max perf |
-| **Grand Theft Auto: Vice City**<br>done | 🟢 Playable | **30.0**<br>99% at 28.5+<br>Nova · 10-13 · max perf |
-| **Halo 2**<br>reach gameplay | 🔵 copied | **30.0**<br>96% at 28.5+<br>Nova · 10-03 · default perf |
-| **Halo: Combat Evolved**<br>done | 🟢 Playable | **30.0**<br>99% at 28.5+<br>Nova · 10-03 · default perf |
-| **Knights of the Temple II Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-14 |
-| **Marvel Nemesis: Rise of the Imperfects**<br>reach gameplay | 🔵 copied | **30.0**<br>99% at 28.5+<br>Nova · 10-06 |
-| **Mat Hoffman s Pro BMX 2 USA**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-14 |
-| **MTV Music Generator 3 This Is the Remix USA En Es**<br>reach gameplay | 🔵 copied | **30.0**<br>88% at 28.5+<br>Nova · 10-07 |
-| **Prince of Persia: The Sands of Time**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-13 |
-| **Shadow of Memories Europe**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-13 |
-| **TY the Tasmanian Tiger USA**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-14 |
-| **Aeon Flux**<br>reach gameplay | 🔵 copied | **30.0**<br>85% at 28.5+<br>Nova · 10-13 |
-| **Alias**<br>done | 🟢 Playable | **30.0**<br>100% at 28.5+<br>Nova · 10-14 |
-| **Area 51**<br>reach gameplay | 🟣 inputs ready | **30.0**<br>73% at 28.5+<br>Nova · 10-08 |
-| **Batman Begins**<br>reach gameplay | 🟣 inputs ready | **30.0**<br>95% at 28.5+<br>Nova · 10-06 |
-| **Beyond Good & Evil**<br>reach gameplay | 🟣 inputs ready | **30.0**<br>93% at 28.5+<br>Nova · 10-06 |
-| **Gene Troopers Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **30.0**<br>91% at 28.5+<br>Nova · 10-14 |
-| **Grand Theft Auto: San Andreas**<br>soak for Playable | soak pending | **30.0**<br>98% at 28.5+<br>Nova · 10-12 · max perf |
-| **Lord of the Rings The The Fellowship of the Ring USA**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-07 |
-| **MechAssault 2: Lone Wolf**<br>reach gameplay | 🟣 inputs ready | **30.0**<br>89% at 28.5+<br>Nova · 10-08 · max perf, soak |
-| **Shin Megami Tensei: NINE**<br>soak for Playable | soak pending | **30.0**<br>97% at 28.5+<br>Thor · 09-30 · max perf |
-| **Tork: Prehistoric Punk**<br>done | 🟢 Playable | **30.0**<br>59% at 28.5+<br>Thor · 09-30 · max perf<br>Nova 30.0 |
-| **Conflict Vietnam USA**<br>**blocked: hang: 245.2 s without 60 guest flips after the mark** | 🔴 blocked | **29.9**<br>70% at 28.5+<br>Nova · 10-15 |
-| **Battlefield 2: Modern Combat**<br>reach gameplay | 🟣 inputs ready | **29.9**<br>67% at 28.5+<br>Nova · 10-01 · default perf |
-| **Cel Damage**<br>reach gameplay | 🔵 copied | **29.9**<br>98% at 28.5+<br>Nova · 10-07 |
-| **Star Wars Knights of the Old Republic II The Sith Lords Europe**<br>reach gameplay | 🔵 copied | **29.9**<br>66% at 28.5+<br>Nova · 10-12 |
-| **BloodRayne**<br>reach gameplay | 🟣 inputs ready | **29.9**<br>88% at 28.5+<br>Nova · 10-14 |
-| **Turok Evolution**<br>reach gameplay | 🔵 copied | **29.9**<br>84% at 28.5+<br>Nova · 10-07 |
-| **Half Life 2**<br>reach gameplay | 🔵 copied | **29.8**<br>74% at 28.5+<br>Nova · 10-13 |
-| **Shrek 2**<br>done | 🟢 Playable | **29.8**<br>92% at 28.5+<br>Nova · 10-13 |
-| **Call of Duty 3**<br>done | 🟢 Playable | **29.4**<br>100% at 28.5+<br>Nova · 10-06 |
-| **Star Wars The Clone Wars USA**<br>reach gameplay | 🔵 copied | **29.4**<br>61% at 28.5+<br>Nova · 10-08 |
-| **Phantom Dust**<br>reach gameplay | 🔵 copied | **29.4**<br>74% at 28.5+<br>Thor · 09-30 · max perf, screen: 90-240 s only |
-| **Ultimate Spider Man**<br>reach gameplay | 🔵 copied | **29.4**<br>89% at 28.5+<br>Nova · 10-07 |
-| **Blinx 2: Battle of Time & Space ~ Blinx 2: Masters of Time & Space**<br>reach gameplay | 🟣 inputs ready | **29.3**<br>57% at 28.5+<br>Nova · 09-27 · max perf<br>Thor **21.7** |
-| **The Incredible Hulk: Ultimate Destruction**<br>reach gameplay | 🟣 inputs ready | **29.2**<br>64% at 28.5+<br>Nova · 10-05 |
-| **Dragon Ball Z Sagas**<br>reach gameplay | 🔵 copied | **29.2**<br>57% at 28.5+<br>Nova · 10-07 |
-| **Forza Motorsport**<br>reach gameplay<br>#414 open · nothing in flight | 🔵 copied | **29.0**<br>45% at 28.5+<br>Nova · 09-30 · default perf<br>Thor **16.7** |
-| **Scooby Doo Mystery Mayhem Europe**<br>reach gameplay | 🔵 copied | **29.0**<br>100% at 28.5+<br>Nova · 10-12 |
-| **Legacy of Kain: Defiance**<br>done | 🟢 Playable | **29.0**<br>37% at 28.5+<br>Nova · 10-11 · max perf, screen: 90-240 s only |
-| **Forgotten Realms Demon Stone USA**<br>reach gameplay | 🔵 copied | **28.9**<br>51% at 28.5+<br>Nova · 10-08 |
-| **Midnight Club 3: DUB Edition**<br>below the bar | below 30 | **28.9**<br>40% at 28.5+<br>Nova · 10-12 · max perf, soak |
-| **Star Wars: Episode III: Revenge of the Sith**<br>reach gameplay | 🟣 inputs ready | **28.5**<br>47% at 28.5+<br>Nova · 10-06 · default perf |
-| **Amped 2**<br>reach gameplay | 🔵 copied | **28.4**<br>44% at 28.5+<br>Nova · 10-04 |
-| **Otogi: Myth of Demons**<br>reach gameplay | 🟣 inputs ready | **28.1**<br>35% at 28.5+<br>Thor · 09-30 · default perf |
-| **The Lord of the Rings: The Return of the King**<br>reach gameplay | 🟣 inputs ready | **27.7**<br>33% at 28.5+<br>Nova · 10-05 |
-| **Dino Crisis 3**<br>**blocked: hang: 17.3 s without 60 guest flips after the mark** | 🔴 blocked | **27.2**<br>16% at 28.5+<br>Nova · 10-02 · max perf |
-| **Stranger's Wrath**<br>reach gameplay | 🔵 copied | **27.0**<br>38% at 28.5+<br>Nova · 10-13 |
-| **Counter-Strike**<br>below the bar | below 30 | **25.9**<br>0% at 28.5+<br>Nova · 10-03 · max perf, soak |
-| **Spider-Man 2**<br>reach gameplay | 🟣 inputs ready | **25.8**<br>29% at 28.5+<br>Nova · 10-05 |
-| **Need for Speed: Most Wanted**<br>done | 🟢 Playable | **25.8**<br>19% at 28.5+<br>Nova · 10-05 |
-| **Galleon**<br>below the bar | below 30 | **24.7**<br>10% at 28.5+<br>Thor · 09-30 · max perf |
-| **Jet Set Radio Future**<br>done | 🟢 Playable | **24.2**<br>11% at 28.5+<br>Thor · 09-27 · max perf<br>Nova 59.9 |
-| **Tom Clancy s Splinter Cell Double Agent USA**<br>reach gameplay | 🔵 copied | **23.5**<br>3% at 28.5+<br>Nova · 10-12 |
-| **World Snooker Championship 2005 Europe**<br>reach gameplay | 🔵 copied | **23.4**<br>0% at 28.5+<br>Nova · 10-15 |
-| **Pilot Down Behind Enemy Lines Europe**<br>reach gameplay | 🔵 copied | **23.3**<br>23% at 28.5+<br>Nova · 10-07 |
-| **Midnight Club II**<br>reach gameplay | 🟣 inputs ready | **23.1**<br>0% at 28.5+<br>Nova · 10-05 |
-| **007: Agent Under Fire**<br>reach gameplay<br>#412 open · nothing in flight | 🟣 inputs ready | **22.1**<br>0% at 28.5+<br>Nova · 09-30 · default perf |
-| **World Series Baseball USA**<br>reach gameplay | 🔵 copied | **22.0**<br>1% at 28.5+<br>Nova · 10-16 |
-| **Psychonauts**<br>reach gameplay | 🔵 copied | **22.0**<br>0% at 28.5+<br>Thor · 09-30 · max perf, screen: 90-240 s only |
-| **Arctic Thunder**<br>below the bar | below 30 | **21.4**<br>9% at 28.5+<br>Thor · 09-27 · max perf<br>Nova 30.2 |
-| **Amped: Freestyle Snowboarding**<br>reach gameplay | 🟣 inputs ready | **20.6**<br>9% at 28.5+<br>Nova · 10-04 |
-| **Tiger Woods PGA Tour 2003 USA**<br>reach gameplay | 🔵 copied | **20.3**<br>0% at 28.5+<br>Nova · 10-16 |
-| **Tiger Woods PGA Tour 06 USA**<br>reach gameplay | 🔵 copied | **20.1**<br>0% at 28.5+<br>Nova · 10-16 |
-| **Tiger Woods PGA Tour 07 USA**<br>reach gameplay | 🔵 copied | **20.0**<br>0% at 28.5+<br>Nova · 10-16 |
-| **Dead or Alive Xtreme Beach Volleyball**<br>reach gameplay | 🟣 inputs ready | **20.0**<br>12% at 28.5+<br>Nova · 09-27 · max perf, screen: 90-240 s only |
-| **NBA Live 07**<br>reach gameplay | 🟣 inputs ready | **20.0**<br>1% at 28.5+<br>Nova · 10-06 |
-| **NBA Live 06**<br>reach gameplay | 🟣 inputs ready | **20.0**<br>0% at 28.5+<br>Nova · 10-06 |
-| **NBA Live 2005**<br>reach gameplay | 🟣 inputs ready | **20.0**<br>0% at 28.5+<br>Nova · 10-03 |
-| **Conker: Live & Reloaded**<br>reach gameplay | 🔵 copied | **15.8**<br>16% at 28.5+<br>Nova · 10-03 · max perf, screen: 90-240 s only |
-| **Crash Twinsanity**<br>below the bar | below 30 | **15.7**<br>0% at 28.5+<br>Thor · 09-27 · max perf |
-| **Blinx: The Time Sweeper**<br>reach gameplay<br>#372 open · nothing in flight | 🟣 inputs ready | **14.8**<br>0% at 30+<br>Thor · 09-26 · hand-reviewed |
-| **Project Gotham Racing**<br>**blocked: hang: 11.6 s without 60 guest flips after the mark** | 🔴 blocked | **14.3**<br>0% at 28.5+<br>Thor · 09-26 · max perf |
-| **Gauntlet: Dark Legacy**<br>reach gameplay | 🟣 inputs ready | **14.2**<br>0% at 28.5+<br>Thor · 09-30 · max perf, screen: 90-240 s only |
-| **Brute Force**<br>below the bar | below 30 | **13.2**<br>0% at 28.5+<br>Thor · 09-27 · max perf |
-| **Dungeons & Dragons Heroes**<br>reach gameplay | 🟣 inputs ready | **12.5**<br>0% at 28.5+<br>Nova · 10-06 · default perf |
-| **Burnout**<br>below the bar | below 30 | **10.8**<br>7% at 28.5+<br>Thor · 09-27 · max perf |
-| **Bloody Roar: Extreme**<br>below the bar | below 30 | **9.8**<br>0% at 28.5+<br>Nova · 10-02 · max perf |
-| **Black**<br>below the bar | below 30 | **7.5**<br>0% at 28.5+<br>Thor · 09-26 · max perf |
-| **Mission Impossible Operation Surma USA**<br>**blocked: hang: 10.0 s without 60 guest flips after the mark** | 🔴 blocked | **6.9**<br>0% at 28.5+<br>Nova · 10-12 |
-| **Midtown Madness 3**<br>**blocked: hang: 12.0 s without 60 guest flips after the mark** | 🔴 blocked | **3.1**<br>0% at 28.5+<br>Thor · 09-27 · max perf |
-| **Die Hard Vendetta Europe En Fr Es It**<br>**blocked: booted: the guest never appeared or never flipped 60 frames** | 🔴 blocked |  |
-| **SSX Tricky**<br>**blocked: reached_gameplay: unconfirmed (generic route) -- review the contact sheet, then rerun with --reviewed-gameplay yes\|no** | 🔴 blocked |  |
-| **Avatar: The Last Airbender**<br>done | 🟢 Playable |  |
-| **Backyard Wrestling 2: There Goes the Neighborhood**<br>done | 🟢 Playable |  |
-| **Bad Boys: Miami Takedown**<br>done | 🟢 Playable |  |
-| **BloodRayne 2**<br>done | 🟢 Playable |  |
-| **Conan (Europe)**<br>done | 🟢 Playable |  |
-| **Conspiracy: Weapons of Mass Destruction**<br>done | 🟢 Playable |  |
-| **Dance Dance Revolution Ultramix 3**<br>done | 🟢 Playable |  |
-| **David Beckham Soccer**<br>done | 🟢 Playable |  |
-| **ESPN Major League Baseball**<br>done | 🟢 Playable |  |
-| **ESPN MLS ExtraTime 2002**<br>done | 🟢 Playable |  |
-| **FILA World Tour Tennis**<br>done | 🟢 Playable |  |
-| **Hello Kitty: Roller Rescue**<br>done | 🟢 Playable |  |
-| **Indigo Prophecy**<br>done | 🟢 Playable |  |
-| **Jacked**<br>done | 🟢 Playable |  |
-| **Knockout Kings 2002**<br>done | 🟢 Playable |  |
-| **Manhunt**<br>done | 🟢 Playable |  |
-| **Mat Hoffman's Pro BMX 2**<br>done | 🟢 Playable |  |
-| **Max Payne**<br>done | 🟢 Playable |  |
-| **Mercenaries: Playground of Destruction**<br>done | 🟢 Playable |  |
-| **MVP Baseball 2003**<br>done | 🟢 Playable |  |
-| **Ricky Ponting International Cricket 2005**<br>done | 🟢 Playable |  |
-| **Scooby-Doo! Mystery Mayhem (Europe)**<br>done | 🟢 Playable |  |
-| **Scooby-Doo! Unmasked (Europe)**<br>done | 🟢 Playable |  |
-| **Shadow of Memories (Europe)**<br>done | 🟢 Playable |  |
-| **Slam Tennis**<br>done | 🟢 Playable |  |
-| **SpongeBob SquarePants: Battle for Bikini Bottom**<br>done | 🟢 Playable |  |
-| **The Lord of the Rings: The Fellowship of the Ring**<br>done | 🟢 Playable |  |
-| **Tony Hawk's Underground 2**<br>done | 🟢 Playable |  |
-| **TY the Tasmanian Tiger**<br>done | 🟢 Playable |  |
-| **X-Men: The Official Game (Europe)**<br>done | 🟢 Playable |  |
-| **Antz Extreme Racing**<br>reach gameplay | 🔵 copied |  |
-| **Aoi Namida**<br>reach gameplay | 🔵 copied |  |
-| **MechAssault**<br>reach gameplay | 🔵 copied |  |
-| **AFL Live 2003**<br>reach gameplay | ⚪ not copied |  |
-| **AFL Live 2004**<br>reach gameplay | ⚪ not copied |  |
-| **AFL Live Premiership Edition**<br>reach gameplay | ⚪ not copied |  |
-| **AFL Premiership 2005**<br>reach gameplay | ⚪ not copied |  |
-| **Aggressive Inline**<br>reach gameplay | ⚪ not copied |  |
-| **All Star Baseball 2003 featuring Derek Jeter**<br>reach gameplay | ⚪ not copied |  |
-| **All Star Baseball 2004 featuring Derek Jeter**<br>reach gameplay | ⚪ not copied |  |
-| **All Star Baseball 2005 featuring Derek Jeter**<br>reach gameplay | ⚪ not copied |  |
-| **Alter Echo**<br>reach gameplay | ⚪ not copied |  |
-| **America s Army Rise of a Soldier**<br>reach gameplay | ⚪ not copied |  |
+| **187: Ride or Die** | 🟢 Playable | **59.9**<br>Nova, Oct 11 |
+| **25 to Life** | 🟢 Playable | **59.9**<br>Nova, Oct 13 |
+| **50 Cent: Bulletproof** | 🟢 Playable | **30.0**<br>Nova, Sep 30 |
+| **Alias** | 🟢 Playable | **30.0**<br>Nova, Oct 14 |
+| **Alien Hominid** | 🟢 Playable | **59.9**<br>Thor, Oct 1 |
+| **AMF Bowling 2004** | 🟢 Playable | **59.9**<br>Nova, Oct 5 |
+| **ATV Quad Power Racing 2** | 🟢 Playable | **59.9**<br>Nova, Oct 13 |
+| **Avatar: The Last Airbender** | 🟢 Playable |  |
+| **Azurik: Rise of Perathia** | 🟢 Playable | **30.0**<br>Nova, Sep 29 |
+| **Backyard Wrestling 2: There Goes the Neighborhood** | 🟢 Playable |  |
+| **Bad Boys: Miami Takedown** | 🟢 Playable |  |
+| **Baldur's Gate: Dark Alliance** | 🟢 Playable | **59.9**<br>Nova, Sep 30 |
+| **Blade II** | 🟢 Playable | **30.0**<br>Nova, Oct 7 |
+| **BloodRayne 2** | 🟢 Playable |  |
+| **Blowout** | 🟢 Playable | **30.0**<br>Nova, Oct 6 |
+| **Burnout Revenge** | 🟢 Playable | **54.8**<br>Nova, Oct 12 |
+| **Call of Duty 3** | 🟢 Playable | **29.4**<br>Nova, Oct 6 |
+| **Capcom vs. SNK 2 EO** | 🟢 Playable | **59.8**<br>Nova, Oct 7 |
+| **Castlevania: Curse of Darkness** | 🟢 Playable | **59.9**<br>Thor, Oct 1 |
+| **Conan (Europe)** | 🟢 Playable |  |
+| **Conspiracy: Weapons of Mass Destruction** | 🟢 Playable |  |
+| **Crimson Skies: High Road to Revenge** | 🟢 Playable | **30.0**<br>Nova, Oct 13 |
+| **Dance Dance Revolution Ultramix 3** | 🟢 Playable |  |
+| **Dark Summit** | 🟢 Playable | **45.9**<br>Nova, Oct 4 |
+| **David Beckham Soccer** | 🟢 Playable |  |
+| **ESPN Major League Baseball** | 🟢 Playable |  |
+| **ESPN MLS ExtraTime 2002** | 🟢 Playable |  |
+| **Family Guy Video Game** | 🟢 Playable | **30.0**<br>Thor, Oct 1 |
+| **Fight Club** | 🟢 Playable | **43.4**<br>Nova, Oct 6 |
+| **FILA World Tour Tennis** | 🟢 Playable |  |
+| **Future Tactics: The Uprising** | 🟢 Playable | **59.9**<br>Nova, Oct 7 |
+| **Genma Onimusha** | 🟢 Playable | **59.9**<br>Nova, Oct 13 |
+| **Grabbed by the Ghoulies** | 🟢 Playable | **30.0**<br>Nova, Oct 12 |
+| **Grand Theft Auto III** | 🟢 Playable | **30.0**<br>Nova, Oct 12 |
+| **Grand Theft Auto: Vice City** | 🟢 Playable | **30.0**<br>Nova, Oct 13 |
+| **Guilty Gear XX #Reload** | 🟢 Playable | **59.9**<br>Nova, Oct 6 |
+| **Gunvalkyrie** | 🟢 Playable | **59.9**<br>Nova, Oct 3 |
+| **Halo: Combat Evolved** | 🟢 Playable | **30.0**<br>Nova, Oct 3 |
+| **Harry Potter and the Philosopher's Stone** | 🟢 Playable | **41.5**<br>Nova, Oct 13 |
+| **Hello Kitty: Roller Rescue** | 🟢 Playable |  |
+| **Indigo Prophecy** | 🟢 Playable |  |
+| **Jacked** | 🟢 Playable |  |
+| **Jet Set Radio Future** | 🟢 Playable | **24.2**<br>Thor, Sep 27 |
+| **Kabuki Warriors** | 🟢 Playable | **59.9**<br>Nova, Oct 3 |
+| **Knockout Kings 2002** | 🟢 Playable |  |
+| **KOF: Maximum Impact – Maniax** | 🟢 Playable | **59.9**<br>Nova, Oct 12 |
+| **Legacy of Kain: Defiance** | 🟢 Playable | **29.0**<br>Nova, Oct 11 |
+| **Manhunt** | 🟢 Playable |  |
+| **Mat Hoffman's Pro BMX 2** | 🟢 Playable |  |
+| **Max Payne** | 🟢 Playable |  |
+| **Max Payne 2: The Fall of Max Payne** | 🟢 Playable | **59.9**<br>Nova, Oct 11 |
+| **Mercenaries: Playground of Destruction** | 🟢 Playable |  |
+| **MLB SlugFest - Loaded** | 🟢 Playable | **58.9**<br>Nova, Oct 5 |
+| **MLB SlugFest 2003** | 🟢 Playable | **59.9**<br>Nova, Oct 5 |
+| **MLB SlugFest 2004** | 🟢 Playable | **44.4**<br>Nova, Oct 5 |
+| **Mortal Kombat: Armageddon** | 🟢 Playable | **59.2**<br>Nova, Oct 6 |
+| **MTV Celebrity Deathmatch** | 🟢 Playable | **57.2**<br>Nova, Oct 4 |
+| **MVP Baseball 2003** | 🟢 Playable |  |
+| **NBA 2K2** | 🟢 Playable | **57.0**<br>Nova, Oct 5 |
+| **NBA 2K3** | 🟢 Playable | **42.9**<br>Nova, Oct 6 |
+| **NBA Live 2004** | 🟢 Playable | **35.5**<br>Nova, Oct 6 |
+| **Need for Speed: Most Wanted** | 🟢 Playable | **25.8**<br>Nova, Oct 5 |
+| **NFL Blitz 2002** | 🟢 Playable | **45.0**<br>Nova, Oct 5 |
+| **Panzer Dragoon Orta** | 🟢 Playable | **54.1**<br>Nova, Oct 3 |
+| **Ratatouille** | 🟢 Playable | **52.8**<br>Nova, Oct 6 |
+| **Rayman 3 Hoodlum Havoc** | 🟢 Playable | **59.9**<br>Nova, Oct 13 |
+| **Ricky Ponting International Cricket 2005** | 🟢 Playable |  |
+| **Rogue Trooper** | 🟢 Playable | **58.9**<br>Nova, Oct 6 |
+| **Scooby-Doo! Mystery Mayhem (Europe)** | 🟢 Playable |  |
+| **Scooby-Doo! Unmasked (Europe)** | 🟢 Playable |  |
+| **Shadow of Memories (Europe)** | 🟢 Playable |  |
+| **Shrek 2** | 🟢 Playable | **29.8**<br>Nova, Oct 13 |
+| **Slam Tennis** | 🟢 Playable |  |
+| **Spikeout: Battle Street** | 🟢 Playable | **59.9**<br>Nova, Oct 3 |
+| **SpongeBob SquarePants: Battle for Bikini Bottom** | 🟢 Playable |  |
+| **The Lord of the Rings: The Fellowship of the Ring** | 🟢 Playable |  |
+| **The Simpsons Hit & Run** | 🟢 Playable | **37.9**<br>Nova, Oct 4 |
+| **TimeSplitters 2** | 🟢 Playable | **59.9**<br>Nova, Oct 13 |
+| **ToeJam & Earl III: Mission to Earth** | 🟢 Playable | **42.1**<br>Nova, Oct 3 |
+| **Tony Hawk's Pro Skater 2x** | 🟢 Playable | **59.8**<br>Thor, Oct 1 |
+| **Tony Hawk's Pro Skater 4** | 🟢 Playable | **56.6**<br>Nova, Oct 13 |
+| **Tony Hawk's Underground 2** | 🟢 Playable |  |
+| **Tork: Prehistoric Punk** | 🟢 Playable | **30.0**<br>Thor, Sep 30 |
+| **TY the Tasmanian Tiger** | 🟢 Playable |  |
+| **World Soccer Winning Eleven 9** | 🟢 Playable | **59.9**<br>Nova, Oct 6 |
+| **WWE Raw 2** | 🟢 Playable | **59.9**<br>Nova, Oct 11 |
+| **X-Men: The Official Game (Europe)** | 🟢 Playable |  |
+| **Arctic Thunder** | 🟡 Below 30 fps | **21.4**<br>Thor, Sep 27 |
+| **Black** | 🟡 Below 30 fps | **7.5**<br>Thor, Sep 26 |
+| **Bloody Roar: Extreme** | 🟡 Below 30 fps | **9.8**<br>Nova, Oct 2 |
+| **Brute Force** | 🟡 Below 30 fps | **13.2**<br>Thor, Sep 27 |
+| **Burnout** | 🟡 Below 30 fps | **10.8**<br>Thor, Sep 27 |
+| **Counter-Strike** | 🟡 Below 30 fps | **25.9**<br>Nova, Oct 3 |
+| **Crash Twinsanity** | 🟡 Below 30 fps | **15.7**<br>Thor, Sep 27 |
+| **Galleon** | 🟡 Below 30 fps | **24.7**<br>Thor, Sep 30 |
+| **Midnight Club 3: DUB Edition** | 🟡 Below 30 fps | **28.9**<br>Nova, Oct 12 |
+| **AMF Xtreme Bowling** | 🔴 Crashes or hangs | **58.7**<br>Nova, Oct 5 |
+| **Blood Wake** | 🔴 Crashes or hangs | **37.4**<br>Thor, Sep 27 |
+| **Bruce Lee: Quest of the Dragon** | 🔴 Crashes or hangs | **59.9**<br>Thor, Sep 26 |
+| **Capcom Classics Collection Vol. 2** | 🔴 Crashes or hangs | **59.9**<br>Thor, Sep 30 |
+| **Conflict Vietnam USA** | 🔴 Crashes or hangs | **29.9**<br>Nova, Oct 15 |
+| **Die Hard Vendetta Europe En Fr Es It** | 🔴 Crashes or hangs |  |
+| **Dino Crisis 3** | 🔴 Crashes or hangs | **27.2**<br>Nova, Oct 2 |
+| **Fuzion Frenzy** | 🔴 Crashes or hangs | **30.6**<br>Nova, Sep 27 |
+| **Midtown Madness 3** | 🔴 Crashes or hangs | **3.1**<br>Thor, Sep 27 |
+| **Mission Impossible Operation Surma USA** | 🔴 Crashes or hangs | **6.9**<br>Nova, Oct 12 |
+| **Project Gotham Racing** | 🔴 Crashes or hangs | **14.3**<br>Thor, Sep 26 |
+| **Sonic Heroes** | 🔴 Crashes or hangs | **59.9**<br>Thor, Oct 1 |
+| **Super Monkey Ball Deluxe** | 🔴 Crashes or hangs | **48.1**<br>Thor, Oct 1 |
+| **Tony Hawk's Pro Skater 3** | 🔴 Crashes or hangs | **59.9**<br>Thor, Oct 1 |
+| **007: Agent Under Fire** | 🔵 Measured, not rated yet | **22.1**<br>Nova, Sep 30 |
+| **007: Nightfire** | 🔵 Measured, not rated yet | **40.0**<br>Nova, Oct 6 |
+| **4x4 Evo 2** | 🔵 Measured, not rated yet | **53.2**<br>Nova, Oct 13 |
+| **Aeon Flux** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 13 |
+| **Aliens Versus Predator: Extinction** | 🔵 Measured, not rated yet | **31.0**<br>Nova, Oct 5 |
+| **Amped 2** | 🔵 Measured, not rated yet | **28.4**<br>Nova, Oct 4 |
+| **Amped: Freestyle Snowboarding** | 🔵 Measured, not rated yet | **20.6**<br>Nova, Oct 4 |
+| **Area 51** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 8 |
+| **Arx Fatalis** | 🔵 Measured, not rated yet | **43.9**<br>Nova, Oct 7 |
+| **Auto Modellista** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 6 |
+| **Backyard Wrestling 2 There Goes the Neighborhood USA** | 🔵 Measured, not rated yet | **40.8**<br>Nova, Oct 14 |
+| **Bad Boys Miami Takedown USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 14 |
+| **Batman Begins** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 6 |
+| **Batman Dark Tomorrow** | 🔵 Measured, not rated yet | **56.5**<br>Nova, Oct 7 |
+| **Battlefield 2: Modern Combat** | 🔵 Measured, not rated yet | **29.9**<br>Nova, Oct 1 |
+| **Battlestar Galactica USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 13 |
+| **Beyond Good & Evil** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 6 |
+| **Big Bumpin USA** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 15 |
+| **Big Mutha Truckers USA** | 🔵 Measured, not rated yet | **45.0**<br>Nova, Oct 14 |
+| **Bistro Cupid** | 🔵 Measured, not rated yet | **34.4**<br>Thor, Sep 30 |
+| **Black Stone: Magic & Steel** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 2 |
+| **Blazing Angels Squadrons of WWII USA Europe En Fr De Es It** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 13 |
+| **Blinx 2: Battle of Time & Space ~ Blinx 2: Masters of Time & Space** | 🔵 Measured, not rated yet | **29.3**<br>Nova, Sep 27 |
+| **Blinx: The Time Sweeper** | 🔵 Measured, not rated yet | **14.8**<br>Thor, Sep 26 |
+| **BloodRayne** | 🔵 Measured, not rated yet | **29.9**<br>Nova, Oct 14 |
+| **BloodRayne 2 USA** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 8 |
+| **Brian Lara International Cricket 2005 Europe** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 15 |
+| **Buffy the Vampire Slayer** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 12 |
+| **Burnout 3: Takedown** | 🔵 Measured, not rated yet | **30.8**<br>Nova, Oct 14 |
+| **Cel Damage** | 🔵 Measured, not rated yet | **29.9**<br>Nova, Oct 7 |
+| **Conan Europe En Fr De Es It** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 12 |
+| **Conflict Desert Storm II Back to Baghdad USA** | 🔵 Measured, not rated yet | **41.1**<br>Nova, Oct 13 |
+| **Conflict Global Terror USA** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 13 |
+| **Conker: Live & Reloaded** | 🔵 Measured, not rated yet | **15.8**<br>Nova, Oct 3 |
+| **Conspiracy Weapons of Mass Destruction Europe En Fr De Es It** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 14 |
+| **Crash Bandicoot: The Wrath of Cortex** | 🔵 Measured, not rated yet | **46.9**<br>Nova, Oct 7 |
+| **Crazy Taxi 3 High Roller USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 13 |
+| **Dance Dance Revolution Ultramix 3 USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 16 |
+| **Darkwatch** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 13 |
+| **David Beckham Soccer Europe En Fr De Es It** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 15 |
+| **Dead or Alive 1 Ultimate** | 🔵 Measured, not rated yet | **40.4**<br>Nova, Oct 7 |
+| **Dead or Alive 3** | 🔵 Measured, not rated yet | **50.1**<br>Nova, Oct 12 |
+| **Dead or Alive Xtreme Beach Volleyball** | 🔵 Measured, not rated yet | **20.0**<br>Nova, Sep 27 |
+| **Deathrow** | 🔵 Measured, not rated yet | **59.9**<br>Thor, Sep 30 |
+| **Dragon Ball Z Sagas** | 🔵 Measured, not rated yet | **29.2**<br>Nova, Oct 7 |
+| **Dungeons & Dragons Heroes** | 🔵 Measured, not rated yet | **12.5**<br>Nova, Oct 6 |
+| **ESPN International Winter Sports 2002 USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 16 |
+| **ESPN Major League Baseball USA** | 🔵 Measured, not rated yet | **43.2**<br>Nova, Oct 16 |
+| **ESPN MLS ExtraTime 2002 USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 16 |
+| **Fantastic 4** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 7 |
+| **FILA World Tour Tennis Europe** | 🔵 Measured, not rated yet | **56.8**<br>Nova, Oct 15 |
+| **Forgotten Realms Demon Stone USA** | 🔵 Measured, not rated yet | **28.9**<br>Nova, Oct 8 |
+| **Forza Motorsport** | 🔵 Measured, not rated yet | **29.0**<br>Nova, Sep 30 |
+| **Gauntlet: Dark Legacy** | 🔵 Measured, not rated yet | **14.2**<br>Thor, Sep 30 |
+| **Gene Troopers Europe En Fr De Es It** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 14 |
+| **Ghost Master The Gravenville Chronicles Europe En Fr De Es It** | 🔵 Measured, not rated yet | **57.6**<br>Nova, Oct 13 |
+| **GoldenEye: Rogue Agent** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Sep 27 |
+| **Grand Theft Auto: San Andreas** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 12 |
+| **Gui Yi Taiwan** | 🔵 Measured, not rated yet | **57.7**<br>Nova, Oct 7 |
+| **Half Life 2** | 🔵 Measured, not rated yet | **29.8**<br>Nova, Oct 13 |
+| **Halo 2** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 3 |
+| **Hello Kitty Roller Rescue Europe En Fr De Es It** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 14 |
+| **Indigo Prophecy USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 7 |
+| **Jacked Europe En Fr De Es It** | 🔵 Measured, not rated yet | **46.1**<br>Nova, Oct 14 |
+| **Knights of the Temple II Europe En Fr De Es It** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 14 |
+| **Knockout Kings 2002 USA** | 🔵 Measured, not rated yet | **59.8**<br>Nova, Oct 16 |
+| **Kung Fu Chaos USA Asia En Fr De** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 14 |
+| **Largo Winch Empire Under Threat Europe En Fr De Es It** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 14 |
+| **Legacy of Kain Defiance USA** | 🔵 Measured, not rated yet | **47.6**<br>Nova, Oct 7 |
+| **Legends of Wrestling II USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 14 |
+| **Legends of Wrestling USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 14 |
+| **LEGO Star Wars: The Video Game** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 5 |
+| **Lemony Snicket s A Series of Unfortunate Events USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 12 |
+| **Lord of the Rings The The Fellowship of the Ring USA** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 7 |
+| **Manhunt USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 8 |
+| **Marvel Nemesis: Rise of the Imperfects** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 6 |
+| **Mat Hoffman s Pro BMX 2 USA** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 14 |
+| **Max Payne 2 The Fall of Max Payne USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 8 |
+| **MechAssault 2: Lone Wolf** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 8 |
+| **Medal of Honor Frontline USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 7 |
+| **Mercenaries USA Europe** | 🔵 Measured, not rated yet | **53.3**<br>Nova, Oct 12 |
+| **Micro Machines Europe En Fr De Es It** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 14 |
+| **Midnight Club II** | 🔵 Measured, not rated yet | **23.1**<br>Nova, Oct 5 |
+| **Mortal Kombat: Deadly Alliance** | 🔵 Measured, not rated yet | **39.9**<br>Nova, Oct 6 |
+| **Mortal Kombat: Shaolin Monks** | 🔵 Measured, not rated yet | **45.9**<br>Nova, Oct 6 |
+| **Motor Trend Presents Lotus Challenge USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 15 |
+| **MTV Music Generator 3 This Is the Remix USA En Es** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 7 |
+| **MVP Baseball 2003 USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 16 |
+| **NBA 2K7 USA Europe** | 🔵 Measured, not rated yet | **57.2**<br>Nova, Oct 16 |
+| **NBA Inside Drive 2004 USA** | 🔵 Measured, not rated yet | **31.1**<br>Nova, Oct 16 |
+| **NBA Live 06** | 🔵 Measured, not rated yet | **20.0**<br>Nova, Oct 6 |
+| **NBA Live 07** | 🔵 Measured, not rated yet | **20.0**<br>Nova, Oct 6 |
+| **NBA Live 2005** | 🔵 Measured, not rated yet | **20.0**<br>Nova, Oct 3 |
+| **NFL Blitz 2002 USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 11 |
+| **NHL 2K3** | 🔵 Measured, not rated yet | **35.0**<br>Nova, Oct 5 |
+| **NHL Hitz Pro** | 🔵 Measured, not rated yet | **37.4**<br>Nova, Oct 5 |
+| **Nickelodeon Avatar The Last Airbender USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 7 |
+| **Nickelodeon SpongeBob SquarePants Battle for Bikini Bottom USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 7 |
+| **Ninja Gaiden** | 🔵 Measured, not rated yet | **59.9**<br>Thor, Sep 30 |
+| **Ninja Gaiden Black** | 🔵 Measured, not rated yet | **38.0**<br>Nova, Oct 12 |
+| **Otogi: Myth of Demons** | 🔵 Measured, not rated yet | **28.1**<br>Thor, Sep 30 |
+| **Pac-Man World 2** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 13 |
+| **Panzer Elite Action Fields of Glory Europe** | 🔵 Measured, not rated yet | **30.4**<br>Nova, Oct 7 |
+| **Petit Copter** | 🔵 Measured, not rated yet | **59.9**<br>Thor, Oct 1 |
+| **Phantom Crash** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 4 |
+| **Phantom Dust** | 🔵 Measured, not rated yet | **29.4**<br>Thor, Sep 30 |
+| **Pilot Down Behind Enemy Lines Europe** | 🔵 Measured, not rated yet | **23.3**<br>Nova, Oct 7 |
+| **Plus Plumb 2** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 13 |
+| **Prince of Persia: The Sands of Time** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 13 |
+| **Project Gotham Racing 2** | 🔵 Measured, not rated yet | **55.7**<br>Thor, Sep 29 |
+| **Psychonauts** | 🔵 Measured, not rated yet | **22.0**<br>Thor, Sep 30 |
+| **RalliSport Challenge** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 4 |
+| **RalliSport Challenge 2** | 🔵 Measured, not rated yet | **41.7**<br>Nova, Oct 7 |
+| **Rent a Hero No 1 Japan** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 7 |
+| **Ricky Ponting International Cricket 2005 Australia** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 15 |
+| **Rugby League 2 Europe** | 🔵 Measured, not rated yet | **55.1**<br>Nova, Oct 15 |
+| **Scooby Doo Mystery Mayhem Europe** | 🔵 Measured, not rated yet | **29.0**<br>Nova, Oct 12 |
+| **Scooby Doo Unmasked Europe** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 13 |
+| **Shadow of Memories Europe** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 13 |
+| **Shin Megami Tensei: NINE** | 🔵 Measured, not rated yet | **30.0**<br>Thor, Sep 30 |
+| **Ski Racing 2005 Europe** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 16 |
+| **Slam Tennis Europe** | 🔵 Measured, not rated yet | **35.4**<br>Nova, Oct 16 |
+| **Spider-Man 2** | 🔵 Measured, not rated yet | **25.8**<br>Nova, Oct 5 |
+| **Stake USA En Fr De Es It** | 🔵 Measured, not rated yet | **57.6**<br>Nova, Oct 16 |
+| **Star Wars Knights of the Old Republic II The Sith Lords Europe** | 🔵 Measured, not rated yet | **29.9**<br>Nova, Oct 12 |
+| **Star Wars The Clone Wars USA** | 🔵 Measured, not rated yet | **29.4**<br>Nova, Oct 8 |
+| **Star Wars: Episode III: Revenge of the Sith** | 🔵 Measured, not rated yet | **28.5**<br>Nova, Oct 6 |
+| **Stranger's Wrath** | 🔵 Measured, not rated yet | **27.0**<br>Nova, Oct 13 |
+| **Strike Force Bowling** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 5 |
+| **Tecmo Classic Arcade** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 6 |
+| **Tenchu 3 Kaiki no Shou Japan** | 🔵 Measured, not rated yet | **44.3**<br>Nova, Oct 12 |
+| **The Incredible Hulk: Ultimate Destruction** | 🔵 Measured, not rated yet | **29.2**<br>Nova, Oct 5 |
+| **The Lord of the Rings: The Return of the King** | 🔵 Measured, not rated yet | **27.7**<br>Nova, Oct 5 |
+| **Tiger Woods PGA Tour 06 USA** | 🔵 Measured, not rated yet | **20.1**<br>Nova, Oct 16 |
+| **Tiger Woods PGA Tour 07 USA** | 🔵 Measured, not rated yet | **20.0**<br>Nova, Oct 16 |
+| **Tiger Woods PGA Tour 2003 USA** | 🔵 Measured, not rated yet | **20.3**<br>Nova, Oct 16 |
+| **Tom Clancy s Splinter Cell Double Agent USA** | 🔵 Measured, not rated yet | **23.5**<br>Nova, Oct 12 |
+| **Tony Hawk s Underground 2 USA Europe En Fr De** | 🔵 Measured, not rated yet | **59.7**<br>Nova, Oct 13 |
+| **Top Spin** | 🔵 Measured, not rated yet | **32.6**<br>Nova, Oct 9 |
+| **Torino 2006 Europe En Fr De Es It** | 🔵 Measured, not rated yet | **39.1**<br>Nova, Oct 15 |
+| **Tron 2.0 : Killer App** | 🔵 Measured, not rated yet | **54.8**<br>Nova, Oct 6 |
+| **Turok Evolution** | 🔵 Measured, not rated yet | **29.9**<br>Nova, Oct 7 |
+| **Ty the Tasmanian Tiger Night of the Quinkan USA Australia** | 🔵 Measured, not rated yet | **47.8**<br>Nova, Oct 7 |
+| **TY the Tasmanian Tiger USA** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 14 |
+| **Ultimate Pro Pinball Europe** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 16 |
+| **Ultimate Spider Man** | 🔵 Measured, not rated yet | **29.4**<br>Nova, Oct 7 |
+| **Whacked** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 4 |
+| **World Series Baseball USA** | 🔵 Measured, not rated yet | **22.0**<br>Nova, Oct 16 |
+| **World Snooker Championship 2005 Europe** | 🔵 Measured, not rated yet | **23.4**<br>Nova, Oct 15 |
+| **X Men The Official Game Europe** | 🔵 Measured, not rated yet | **49.3**<br>Nova, Oct 12 |
+| **XIII USA Europe En Fr De Es It** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 7 |
+| **Yetisports Arctic Adventures Europe** | 🔵 Measured, not rated yet | **35.1**<br>Nova, Oct 16 |
 
-<details><summary>344 more not copied</summary>
+<details><summary>358 titles not tested yet</summary>
 
-| Title and next step | Status | fps |
-|---|---|---|
-| **American Chopper**<br>reach gameplay | ⚪ not copied |  |
-| **American Chopper 2 Full Throttle**<br>reach gameplay | ⚪ not copied |  |
-| **American McGee Presents Scrapland**<br>reach gameplay | ⚪ not copied |  |
-| **AND 1 Streetball**<br>reach gameplay | ⚪ not copied |  |
-| **Angelic Concert**<br>reach gameplay | ⚪ not copied |  |
-| **Animaniacs The Great Edgar Hunt**<br>reach gameplay | ⚪ not copied |  |
-| **Aquaman Battle for Atlantis**<br>reach gameplay | ⚪ not copied |  |
-| **Arena Football**<br>reach gameplay | ⚪ not copied |  |
-| **Armed and Dangerous**<br>reach gameplay | ⚪ not copied |  |
-| **Army Men Major Malfunction**<br>reach gameplay | ⚪ not copied |  |
-| **Army Men Sarge s War**<br>reach gameplay | ⚪ not copied |  |
-| **Atari Anthology**<br>reach gameplay | ⚪ not copied |  |
-| **Backyard Wrestling Don t Try This at Home**<br>reach gameplay | ⚪ not copied |  |
-| **Baldur s Gate Dark Alliance II**<br>reach gameplay | ⚪ not copied |  |
-| **Barbarian**<br>reach gameplay | ⚪ not copied |  |
-| **Barbie Horse Adventures Wild Horse Rescue**<br>reach gameplay | ⚪ not copied |  |
-| **Bass Pro Shops Trophy Bass 2007**<br>reach gameplay | ⚪ not copied |  |
-| **Bass Pro Shops Trophy Hunter 2007**<br>reach gameplay | ⚪ not copied |  |
-| **Batman Rise of Sin Tzu**<br>reach gameplay | ⚪ not copied |  |
-| **Batman Vengeance**<br>reach gameplay | ⚪ not copied |  |
-| **Battle Engine Aquila**<br>reach gameplay | ⚪ not copied |  |
-| **Battlestar Galactica**<br>reach gameplay | ⚪ not copied |  |
-| **Beat Down Fists of Vengeance**<br>reach gameplay | ⚪ not copied |  |
-| **Bicycle Casino Includes Texas Hold em**<br>reach gameplay | ⚪ not copied |  |
-| **Big Bumpin**<br>reach gameplay | ⚪ not copied |  |
-| **Big Mutha Truckers**<br>reach gameplay | ⚪ not copied |  |
-| **Big Mutha Truckers 2**<br>reach gameplay | ⚪ not copied |  |
-| **Bionicle**<br>reach gameplay | ⚪ not copied |  |
-| **Bistro Cupid 2**<br>reach gameplay | ⚪ not copied |  |
-| **Blazing Angels Squadrons of WWII**<br>reach gameplay | ⚪ not copied |  |
-| **Blitz The League**<br>reach gameplay | ⚪ not copied |  |
-| **Blood Omen 2 The Legacy of Kain Series**<br>reach gameplay | ⚪ not copied |  |
-| **BMX XXX**<br>reach gameplay | ⚪ not copied |  |
-| **Braveknight Lieveland Eiyuuden**<br>reach gameplay | ⚪ not copied |  |
-| **Breakdown**<br>reach gameplay | ⚪ not copied |  |
-| **Breeders Cup World Thoroughbred Championships**<br>reach gameplay | ⚪ not copied |  |
-| **Brian Lara International Cricket 2005**<br>reach gameplay | ⚪ not copied |  |
-| **Broken Sword The Sleeping Dragon**<br>reach gameplay | ⚪ not copied |  |
-| **Buffy the Vampire Slayer Chaos Bleeds**<br>reach gameplay | ⚪ not copied |  |
-| **Burnout 2 Point of Impact**<br>reach gameplay | ⚪ not copied |  |
-| **C A T Cyber Attack Team**<br>reach gameplay | ⚪ not copied |  |
-| **Cabela s Big Game Hunter 2005 Adventures**<br>reach gameplay | ⚪ not copied |  |
-| **Cabela s Dangerous Hunts**<br>reach gameplay | ⚪ not copied |  |
-| **Cabela s Dangerous Hunts 2**<br>reach gameplay | ⚪ not copied |  |
-| **Cabela s Deer Hunt 2004 Season**<br>reach gameplay | ⚪ not copied |  |
-| **Cabela s Deer Hunt 2005 Season**<br>reach gameplay | ⚪ not copied |  |
-| **Cabela s Outdoor Adventures**<br>reach gameplay | ⚪ not copied |  |
-| **Call of Cthulhu Dark Corners of the Earth**<br>reach gameplay | ⚪ not copied |  |
-| **Call of Duty 2 Big Red One**<br>reach gameplay | ⚪ not copied |  |
-| **Capcom Classics Collection Vol 1**<br>reach gameplay | ⚪ not copied |  |
-| **Capcom Fighting Evolution Capcom Fighting Jam**<br>reach gameplay | ⚪ not copied |  |
-| **Carmen Sandiego The Secret of the Stolen Drums**<br>reach gameplay | ⚪ not copied |  |
-| **Catwoman**<br>reach gameplay | ⚪ not copied |  |
-| **CDS II**<br>reach gameplay | ⚪ not copied |  |
-| **Championship Bowling**<br>reach gameplay | ⚪ not copied |  |
-| **Championship Manager 2006**<br>reach gameplay | ⚪ not copied |  |
-| **Championship Manager 5**<br>reach gameplay | ⚪ not copied |  |
-| **Championship Manager Season 01 02**<br>reach gameplay | ⚪ not copied |  |
-| **Championship Manager Season 02 03**<br>reach gameplay | ⚪ not copied |  |
-| **Charlie and the Chocolate Factory**<br>reach gameplay | ⚪ not copied |  |
-| **Chase Hollywood Stunt Driver**<br>reach gameplay | ⚪ not copied |  |
-| **Chessmaster**<br>reach gameplay | ⚪ not copied |  |
-| **Chicago Enforcer**<br>reach gameplay | ⚪ not copied |  |
-| **Circus Maximus Chariot Wars**<br>reach gameplay | ⚪ not copied |  |
-| **Classified The Sentinel Crisis**<br>reach gameplay | ⚪ not copied |  |
-| **Close Combat First to Fight United States Marines**<br>reach gameplay | ⚪ not copied |  |
-| **Club Football**<br>reach gameplay | ⚪ not copied |  |
-| **Club Football 2005**<br>reach gameplay | ⚪ not copied |  |
-| **Codename Kids Next Door Operation V I D E O G A M E**<br>reach gameplay | ⚪ not copied |  |
-| **Cold Fear**<br>reach gameplay | ⚪ not copied |  |
-| **Cold War**<br>reach gameplay | ⚪ not copied |  |
-| **Colin McRae Rally 04**<br>reach gameplay | ⚪ not copied |  |
-| **Colin McRae Rally 2005**<br>reach gameplay | ⚪ not copied |  |
-| **Colin McRae Rally 3**<br>reach gameplay | ⚪ not copied |  |
-| **College Hoops 2K6**<br>reach gameplay | ⚪ not copied |  |
-| **College Hoops 2K7**<br>reach gameplay | ⚪ not copied |  |
-| **Combat Elite WWII Paratroopers**<br>reach gameplay | ⚪ not copied |  |
-| **Commandos 2 Men of Courage**<br>reach gameplay | ⚪ not copied |  |
-| **Commandos Strike Force**<br>reach gameplay | ⚪ not copied |  |
-| **Conflict Desert Storm**<br>reach gameplay | ⚪ not copied |  |
-| **Conflict Global Storm**<br>reach gameplay | ⚪ not copied |  |
-| **Conflict Vietnam**<br>reach gameplay | ⚪ not copied |  |
-| **Constantine**<br>reach gameplay | ⚪ not copied |  |
-| **Corvette**<br>reach gameplay | ⚪ not copied |  |
-| **Crash n Burn**<br>reach gameplay | ⚪ not copied |  |
-| **Crash Tag Team Racing**<br>reach gameplay | ⚪ not copied |  |
-| **CRAZY TAXI 3 High Roller**<br>reach gameplay | ⚪ not copied |  |
-| **Cricket 2005**<br>reach gameplay | ⚪ not copied |  |
-| **Crime Life Gang Wars**<br>reach gameplay | ⚪ not copied |  |
-| **Crouching Tiger Hidden Dragon**<br>reach gameplay | ⚪ not copied |  |
-| **Crusty Demons**<br>reach gameplay | ⚪ not copied |  |
-| **CSI Crime Scene Investigation**<br>reach gameplay | ⚪ not copied |  |
-| **Curious George**<br>reach gameplay | ⚪ not copied |  |
-| **Curse The Eye of Isis**<br>reach gameplay | ⚪ not copied |  |
-| **Daisenryaku VII**<br>reach gameplay | ⚪ not copied |  |
-| **Dakar 2**<br>reach gameplay | ⚪ not copied |  |
-| **Dance Dance Revolution Ultramix**<br>reach gameplay | ⚪ not copied |  |
-| **Dance Dance Revolution Ultramix 2**<br>reach gameplay | ⚪ not copied |  |
-| **Dance Dance Revolution Ultramix 4**<br>reach gameplay | ⚪ not copied |  |
-| **Dance UK**<br>reach gameplay | ⚪ not copied |  |
-| **Dave Mirra Freestyle BMX 2**<br>reach gameplay | ⚪ not copied |  |
-| **Dead Man s Hand**<br>reach gameplay | ⚪ not copied |  |
-| **Dead to Rights**<br>reach gameplay | ⚪ not copied |  |
-| **Dead to Rights II**<br>reach gameplay | ⚪ not copied |  |
-| **Defender**<br>reach gameplay | ⚪ not copied |  |
-| **Delta Force Black Hawk Down**<br>reach gameplay | ⚪ not copied |  |
-| **Dennou Taisen DroneZ**<br>reach gameplay | ⚪ not copied |  |
-| **Destroy All Humans**<br>reach gameplay | ⚪ not copied |  |
-| **Destroy All Humans 2**<br>reach gameplay | ⚪ not copied |  |
-| **Deus Ex Invisible War**<br>reach gameplay | ⚪ not copied |  |
-| **Die Hard Vendetta**<br>reach gameplay | ⚪ not copied |  |
-| **Digimon Battle Chronicle**<br>reach gameplay | ⚪ not copied |  |
-| **Digimon World X**<br>reach gameplay | ⚪ not copied |  |
-| **Dinotopia The Sunstone Odyssey**<br>reach gameplay | ⚪ not copied |  |
-| **Disney Pixar Cars**<br>reach gameplay | ⚪ not copied |  |
-| **Disney Pixar Finding Nemo**<br>reach gameplay | ⚪ not copied |  |
-| **Disney Pixar The Incredibles**<br>reach gameplay | ⚪ not copied |  |
-| **Disney Pixar The Incredibles Rise of the Underminer**<br>reach gameplay | ⚪ not copied |  |
-| **Disney s Chicken Little**<br>reach gameplay | ⚪ not copied |  |
-| **Disney s Extreme Skate Adventure**<br>reach gameplay | ⚪ not copied |  |
-| **Disney s The Haunted Mansion**<br>reach gameplay | ⚪ not copied |  |
-| **Doom 3**<br>reach gameplay | ⚪ not copied |  |
-| **Doom 3 Resurrection of Evil**<br>reach gameplay | ⚪ not copied |  |
-| **Dr Seuss The Cat in the Hat**<br>reach gameplay | ⚪ not copied |  |
-| **Dragon s Lair 3D Return to the Lair**<br>reach gameplay | ⚪ not copied |  |
-| **Drake of the 99 Dragons**<br>reach gameplay | ⚪ not copied |  |
-| **Dreamfall The Longest Journey**<br>reach gameplay | ⚪ not copied |  |
-| **DreamWorks Madagascar**<br>reach gameplay | ⚪ not copied |  |
-| **DreamWorks Shark Tale**<br>reach gameplay | ⚪ not copied |  |
-| **DreamWorks Shrek SuperSlam**<br>reach gameplay | ⚪ not copied |  |
-| **Drihoo**<br>reach gameplay | ⚪ not copied |  |
-| **Driver Parallel Lines**<br>reach gameplay | ⚪ not copied |  |
-| **Dynasty Warriors 4**<br>reach gameplay | ⚪ not copied |  |
-| **Dynasty Warriors 5**<br>reach gameplay | ⚪ not copied |  |
-| **Ed Edd n Eddy The Mis Edventures**<br>reach gameplay | ⚪ not copied |  |
-| **Eggo Mania**<br>reach gameplay | ⚪ not copied |  |
-| **Enclave**<br>reach gameplay | ⚪ not copied |  |
-| **England International Football 2004 Edition**<br>reach gameplay | ⚪ not copied |  |
-| **Enter the Matrix**<br>reach gameplay | ⚪ not copied |  |
-| **Eragon**<br>reach gameplay | ⚪ not copied |  |
-| **ESPN College Hoops**<br>reach gameplay | ⚪ not copied |  |
-| **ESPN College Hoops 2K5**<br>reach gameplay | ⚪ not copied |  |
-| **ESPN International Winter Sports 2002**<br>reach gameplay | ⚪ not copied |  |
-| **ESPN NBA 2K5**<br>reach gameplay | ⚪ not copied |  |
-| **ESPN NBA Basketball**<br>reach gameplay | ⚪ not copied |  |
-| **ESPN NFL 2K5**<br>reach gameplay | ⚪ not copied |  |
-| **ESPN NFL PrimeTime 2002**<br>reach gameplay | ⚪ not copied |  |
-| **ESPN NHL 2K5**<br>reach gameplay | ⚪ not copied |  |
-| **ESPN NHL Hockey**<br>reach gameplay | ⚪ not copied |  |
-| **ESPN Winter X Games Snowboarding 2002**<br>reach gameplay | ⚪ not copied |  |
-| **Evil Dead A Fistful of Boomstick**<br>reach gameplay | ⚪ not copied |  |
-| **Evil Dead Regeneration**<br>reach gameplay | ⚪ not copied |  |
-| **Ex Chaser**<br>reach gameplay | ⚪ not copied |  |
-| **Exaskeleton**<br>reach gameplay | ⚪ not copied |  |
-| **F1 2001**<br>reach gameplay | ⚪ not copied |  |
-| **F1 Career Challenge**<br>reach gameplay | ⚪ not copied |  |
-| **Fable The Lost Chapters**<br>reach gameplay | ⚪ not copied |  |
-| **Fallout Brotherhood of Steel**<br>reach gameplay | ⚪ not copied |  |
-| **Far Cry Instincts**<br>reach gameplay | ⚪ not copied |  |
-| **Far Cry Instincts Evolution**<br>reach gameplay | ⚪ not copied |  |
-| **Fatal Frame**<br>reach gameplay | ⚪ not copied |  |
-| **FIFA 07**<br>reach gameplay | ⚪ not copied |  |
-| **FIFA Football 2004**<br>reach gameplay | ⚪ not copied |  |
-| **FIFA Soccer 06**<br>reach gameplay | ⚪ not copied |  |
-| **FIFA Soccer 2003**<br>reach gameplay | ⚪ not copied |  |
-| **FIFA Soccer 2005**<br>reach gameplay | ⚪ not copied |  |
-| **FIFA Street**<br>reach gameplay | ⚪ not copied |  |
-| **FIFA Street 2**<br>reach gameplay | ⚪ not copied |  |
-| **FIFA World Cup Germany 2006**<br>reach gameplay | ⚪ not copied |  |
-| **Fight Night 2004**<br>reach gameplay | ⚪ not copied |  |
-| **Fight Night Round 2**<br>reach gameplay | ⚪ not copied |  |
-| **Fight Night Round 3**<br>reach gameplay | ⚪ not copied |  |
-| **Final Fight Streetwise**<br>reach gameplay | ⚪ not copied |  |
-| **FlatOut**<br>reach gameplay | ⚪ not copied |  |
-| **FlatOut 2**<br>reach gameplay | ⚪ not copied |  |
-| **Flight Academy**<br>reach gameplay | ⚪ not copied |  |
-| **Ford Mustang The Legend Lives**<br>reach gameplay | ⚪ not copied |  |
-| **Ford Racing 2**<br>reach gameplay | ⚪ not copied |  |
-| **Ford Racing 3**<br>reach gameplay | ⚪ not copied |  |
-| **Ford Street Racing**<br>reach gameplay | ⚪ not copied |  |
-| **Forgotten Realms Demon Stone**<br>reach gameplay | ⚪ not copied |  |
-| **Frankie Dettori Racing**<br>reach gameplay | ⚪ not copied |  |
-| **Freaky Flyers**<br>reach gameplay | ⚪ not copied |  |
-| **Freedom Fighters**<br>reach gameplay | ⚪ not copied |  |
-| **Freestyle Metal X**<br>reach gameplay | ⚪ not copied |  |
-| **Frogger Ancient Shadow**<br>reach gameplay | ⚪ not copied |  |
-| **Frogger Beyond**<br>reach gameplay | ⚪ not copied |  |
-| **Full Spectrum Warrior**<br>reach gameplay | ⚪ not copied |  |
-| **Full Spectrum Warrior Ten Hammers**<br>reach gameplay | ⚪ not copied |  |
-| **Furious Karting**<br>reach gameplay | ⚪ not copied |  |
-| **Futurama**<br>reach gameplay | ⚪ not copied |  |
-| **Gauntlet Seven Sorrows**<br>reach gameplay | ⚪ not copied |  |
-| **Gene Troopers**<br>reach gameplay | ⚪ not copied |  |
-| **Ghost Master The Gravenville Chronicles**<br>reach gameplay | ⚪ not copied |  |
-| **Gladiator Sword of Vengeance**<br>reach gameplay | ⚪ not copied |  |
-| **Gladius**<br>reach gameplay | ⚪ not copied |  |
-| **Goblin Commander Unleash the Horde**<br>reach gameplay | ⚪ not copied |  |
-| **Godzilla Destroy All Monsters Melee**<br>reach gameplay | ⚪ not copied |  |
-| **Godzilla Save the Earth**<br>reach gameplay | ⚪ not copied |  |
-| **Gotcha**<br>reach gameplay | ⚪ not copied |  |
-| **Gravity Games Bike Street Vert Dirt**<br>reach gameplay | ⚪ not copied |  |
-| **Greg Hastings Tournament Paintball**<br>reach gameplay | ⚪ not copied |  |
-| **Greg Hastings Tournament Paintball Max d**<br>reach gameplay | ⚪ not copied |  |
-| **Grooverider Slot Car Thunder**<br>reach gameplay | ⚪ not copied |  |
-| **Group S Challenge**<br>reach gameplay | ⚪ not copied |  |
-| **Guilty Gear Isuka**<br>reach gameplay | ⚪ not copied |  |
-| **Gun**<br>reach gameplay | ⚪ not copied |  |
-| **Gun Metal**<br>reach gameplay | ⚪ not copied |  |
-| **Gungriffon Allied Strike**<br>reach gameplay | ⚪ not copied |  |
-| **Halo 2 Multiplayer Map Pack**<br>reach gameplay | ⚪ not copied |  |
-| **Harry Potter and the Chamber of Secrets**<br>reach gameplay | ⚪ not copied |  |
-| **Harry Potter and the Goblet of Fire**<br>reach gameplay | ⚪ not copied |  |
-| **Harry Potter and the Prisoner of Azkaban**<br>reach gameplay | ⚪ not copied |  |
-| **Harry Potter Quidditch World Cup**<br>reach gameplay | ⚪ not copied |  |
-| **Headhunter Redemption**<br>reach gameplay | ⚪ not copied |  |
-| **Heroes of the Pacific**<br>reach gameplay | ⚪ not copied |  |
-| **High Heat Major League Baseball 2004**<br>reach gameplay | ⚪ not copied |  |
-| **High Rollers Casino**<br>reach gameplay | ⚪ not copied |  |
-| **Hitman 2 Silent Assassin**<br>reach gameplay | ⚪ not copied |  |
-| **Hot Wheels Stunt Track Challenge**<br>reach gameplay | ⚪ not copied |  |
-| **Hulk**<br>reach gameplay | ⚪ not copied |  |
-| **Hummer Badlands**<br>reach gameplay | ⚪ not copied |  |
-| **Hunter The Reckoning**<br>reach gameplay | ⚪ not copied |  |
-| **Hyper Sports 2002 Winter**<br>reach gameplay | ⚪ not copied |  |
-| **I Ninja**<br>reach gameplay | ⚪ not copied |  |
-| **Ice Age 2 The Meltdown**<br>reach gameplay | ⚪ not copied |  |
-| **IHRA Drag Racing 2004**<br>reach gameplay | ⚪ not copied |  |
-| **IHRA Drag Racing Sportsman Edition**<br>reach gameplay | ⚪ not copied |  |
-| **IHRA Professional Drag Racing 2005**<br>reach gameplay | ⚪ not copied |  |
-| **Indiana Jones and the Emperor s Tomb**<br>reach gameplay | ⚪ not copied |  |
-| **IndyCar Series**<br>reach gameplay | ⚪ not copied |  |
-| **IndyCar Series 2005**<br>reach gameplay | ⚪ not copied |  |
-| **Innocent Tears**<br>reach gameplay | ⚪ not copied |  |
-| **Inside Pitch 2003**<br>reach gameplay | ⚪ not copied |  |
-| **Intellivision Lives**<br>reach gameplay | ⚪ not copied |  |
-| **International Superstar Soccer 2**<br>reach gameplay | ⚪ not copied |  |
-| **Iron Phoenix**<br>reach gameplay | ⚪ not copied |  |
-| **Jade Empire**<br>reach gameplay | ⚪ not copied |  |
-| **James Cameron s Dark Angel**<br>reach gameplay | ⚪ not copied |  |
-| **Jaws Unleashed**<br>reach gameplay | ⚪ not copied |  |
-| **Jikkyou World Soccer 2002**<br>reach gameplay | ⚪ not copied |  |
-| **Judge Dredd Dredd vs Death**<br>reach gameplay | ⚪ not copied |  |
-| **Juiced**<br>reach gameplay | ⚪ not copied |  |
-| **Jurassic Park Operation Genesis**<br>reach gameplay | ⚪ not copied |  |
-| **Just Cause**<br>reach gameplay | ⚪ not copied |  |
-| **Justice League Heroes**<br>reach gameplay | ⚪ not copied |  |
-| **Knight s Apprentice Memorick s Adventures**<br>reach gameplay | ⚪ not copied |  |
-| **Knights of the Temple II**<br>reach gameplay | ⚪ not copied |  |
-| **Kung Fu Chaos**<br>reach gameplay | ⚪ not copied |  |
-| **Largo Winch Empire Under Threat**<br>reach gameplay | ⚪ not copied |  |
-| **Legends of Wrestling**<br>reach gameplay | ⚪ not copied |  |
-| **Legends of Wrestling II**<br>reach gameplay | ⚪ not copied |  |
-| **Lemony Snicket s A Series of Unfortunate Events**<br>reach gameplay | ⚪ not copied |  |
-| **LMA Manager 2003**<br>reach gameplay | ⚪ not copied |  |
-| **Loons The Fight for Fame**<br>reach gameplay | ⚪ not copied |  |
-| **Mace Griffin Bounty Hunter**<br>reach gameplay | ⚪ not copied |  |
-| **Madden NFL 07**<br>reach gameplay | ⚪ not copied |  |
-| **Madden NFL 08**<br>reach gameplay | ⚪ not copied |  |
-| **Madden NFL 2002**<br>reach gameplay | ⚪ not copied |  |
-| **Magi Death Fight**<br>reach gameplay | ⚪ not copied |  |
-| **Mashed Drive to Survive**<br>reach gameplay | ⚪ not copied |  |
-| **Maximum Chase**<br>reach gameplay | ⚪ not copied |  |
-| **Medal of Honor European Assault**<br>reach gameplay | ⚪ not copied |  |
-| **Medal of Honor Frontline**<br>reach gameplay | ⚪ not copied |  |
-| **Metal Arms**<br>reach gameplay | ⚪ not copied |  |
-| **Metal Dungeon**<br>reach gameplay | ⚪ not copied |  |
-| **Metal Gear Solid 2 Substance**<br>reach gameplay | ⚪ not copied |  |
-| **Micro Machines**<br>reach gameplay | ⚪ not copied |  |
-| **Midway Arcade Treasures**<br>reach gameplay | ⚪ not copied |  |
-| **Midway Arcade Treasures 2**<br>reach gameplay | ⚪ not copied |  |
-| **Mission Impossible Operation Surma**<br>reach gameplay | ⚪ not copied |  |
-| **Monopoly Party**<br>reach gameplay | ⚪ not copied |  |
-| **Monster Garage**<br>reach gameplay | ⚪ not copied |  |
-| **Motor Trend Presents Lotus Challenge**<br>reach gameplay | ⚪ not copied |  |
-| **Namco Museum**<br>reach gameplay | ⚪ not copied |  |
-| **NBA 2K6**<br>reach gameplay | ⚪ not copied |  |
-| **NBA 2K7**<br>reach gameplay | ⚪ not copied |  |
-| **NBA Inside Drive 2004**<br>reach gameplay | ⚪ not copied |  |
-| **Need for Speed Hot Pursuit 2**<br>reach gameplay | ⚪ not copied |  |
-| **Neighbours from Hell**<br>reach gameplay | ⚪ not copied |  |
-| **NFL 2K2 (USA).7z**<br>reach gameplay | ⚪ not copied |  |
-| **PsiOps**<br>reach gameplay | ⚪ not copied |  |
-| **Psyvariar 2 Extend Edition**<br>reach gameplay | ⚪ not copied |  |
-| **RAW**<br>reach gameplay | ⚪ not copied |  |
-| **RLH Run Like Hell**<br>reach gameplay | ⚪ not copied |  |
-| **Robotech Invasion**<br>reach gameplay | ⚪ not copied |  |
-| **RollerCoaster Tycoon**<br>reach gameplay | ⚪ not copied |  |
-| **Rugby League 2**<br>reach gameplay | ⚪ not copied |  |
-| **Sega GT 2002**<br>reach gameplay | ⚪ not copied |  |
-| **Sega GT 2002 + JSRF: Jet Set Radio Future**<br>reach gameplay | ⚪ not copied |  |
-| **Shadow The Hedgehog**<br>reach gameplay | ⚪ not copied |  |
-| **Shrek**<br>reach gameplay | ⚪ not copied |  |
-| **Ski Racing 2005**<br>reach gameplay | ⚪ not copied |  |
-| **Spartan: Total Warrior**<br>reach gameplay | ⚪ not copied |  |
-| **Splat Magazine Renegade Paintball**<br>reach gameplay | ⚪ not copied |  |
-| **Stake**<br>reach gameplay | ⚪ not copied |  |
-| **Star Wars Battlefront**<br>reach gameplay | ⚪ not copied |  |
-| **Star Wars Battlefront II**<br>reach gameplay | ⚪ not copied |  |
-| **Star Wars Knights of the Old Republic II The Sith Lords**<br>reach gameplay | ⚪ not copied |  |
-| **Star Wars Starfighter Special Edition**<br>reach gameplay | ⚪ not copied |  |
-| **Star Wars The Clone Wars**<br>reach gameplay | ⚪ not copied |  |
-| **Still Life**<br>reach gameplay | ⚪ not copied |  |
-| **Super Bubble Pop**<br>reach gameplay | ⚪ not copied |  |
-| **Superman Returns**<br>reach gameplay | ⚪ not copied |  |
-| **Takahashi Junko no Mahjong Seminar**<br>reach gameplay | ⚪ not copied |  |
-| **Tetris Worlds**<br>reach gameplay | ⚪ not copied |  |
-| **The Bard s Tale**<br>reach gameplay | ⚪ not copied |  |
-| **The Baseball 2002 Battle Ball Park Sengen**<br>reach gameplay | ⚪ not copied |  |
-| **The Bible Game**<br>reach gameplay | ⚪ not copied |  |
-| **The Hustle Detroit Streets**<br>reach gameplay | ⚪ not copied |  |
-| **The King of Fighters 2002**<br>reach gameplay | ⚪ not copied |  |
-| **The Lord of the Rings The Third Age**<br>reach gameplay | ⚪ not copied |  |
-| **The Matrix Path of Neo**<br>reach gameplay | ⚪ not copied |  |
-| **The Simpsons Road Rage**<br>reach gameplay | ⚪ not copied |  |
-| **The Urbz Sims in the City**<br>reach gameplay | ⚪ not copied |  |
-| **The Wild Rings**<br>reach gameplay | ⚪ not copied |  |
-| **Tiger Woods PGA Tour 06**<br>reach gameplay | ⚪ not copied |  |
-| **Tiger Woods PGA Tour 07**<br>reach gameplay | ⚪ not copied |  |
-| **Tiger Woods PGA Tour 2003**<br>reach gameplay | ⚪ not copied |  |
-| **Tiger Woods PGA Tour 2004**<br>reach gameplay | ⚪ not copied |  |
-| **Tiger Woods PGA Tour 2005**<br>reach gameplay | ⚪ not copied |  |
-| **TimeSplitters Future Perfect**<br>reach gameplay | ⚪ not copied |  |
-| **Tom Clancy s Splinter Cell Double Agent**<br>reach gameplay | ⚪ not copied |  |
-| **Torino 2006**<br>reach gameplay | ⚪ not copied |  |
-| **Total Club Manager 2004**<br>reach gameplay | ⚪ not copied |  |
-| **Triangle Again**<br>reach gameplay | ⚪ not copied |  |
-| **Triple Play 2002**<br>reach gameplay | ⚪ not copied |  |
-| **Trivial Pursuit Unhinged**<br>reach gameplay | ⚪ not copied |  |
-| **UEFA Champions League 2004 2005**<br>reach gameplay | ⚪ not copied |  |
-| **Ultimate Pro Pinball**<br>reach gameplay | ⚪ not copied |  |
-| **Umezawa Yukari no Igo Seminar**<br>reach gameplay | ⚪ not copied |  |
-| **Unreal Championship**<br>reach gameplay | ⚪ not copied |  |
-| **Virtual Pool Tournament Edition**<br>reach gameplay | ⚪ not copied |  |
-| **Voodoo Vince**<br>reach gameplay | ⚪ not copied |  |
-| **Whiteout**<br>reach gameplay | ⚪ not copied |  |
-| **World Series Baseball**<br>reach gameplay | ⚪ not copied |  |
-| **World Snooker Championship 2005**<br>reach gameplay | ⚪ not copied |  |
-| **World Soccer Winning Eleven 8 International**<br>reach gameplay | ⚪ not copied |  |
-| **World War II Combat Road to Berlin**<br>reach gameplay | ⚪ not copied |  |
-| **Xbox Live Arcade**<br>reach gameplay | ⚪ not copied |  |
-| **Xiaolin Showdown**<br>reach gameplay | ⚪ not copied |  |
-| **XIII**<br>reach gameplay | ⚪ not copied |  |
-| **Yetisports Arctic Adventures**<br>reach gameplay | ⚪ not copied |  |
-| **Yonenaga Kunio no Shougi Seminar**<br>reach gameplay | ⚪ not copied |  |
+| Title |
+|---|
+| AFL Live 2003 |
+| AFL Live 2004 |
+| AFL Live Premiership Edition |
+| AFL Premiership 2005 |
+| Aggressive Inline |
+| All Star Baseball 2003 featuring Derek Jeter |
+| All Star Baseball 2004 featuring Derek Jeter |
+| All Star Baseball 2005 featuring Derek Jeter |
+| Alter Echo |
+| America s Army Rise of a Soldier |
+| American Chopper |
+| American Chopper 2 Full Throttle |
+| American McGee Presents Scrapland |
+| AND 1 Streetball |
+| Angelic Concert |
+| Animaniacs The Great Edgar Hunt |
+| Antz Extreme Racing |
+| Aoi Namida |
+| Aquaman Battle for Atlantis |
+| Arena Football |
+| Armed and Dangerous |
+| Army Men Major Malfunction |
+| Army Men Sarge s War |
+| Atari Anthology |
+| Backyard Wrestling Don t Try This at Home |
+| Baldur s Gate Dark Alliance II |
+| Barbarian |
+| Barbie Horse Adventures Wild Horse Rescue |
+| Bass Pro Shops Trophy Bass 2007 |
+| Bass Pro Shops Trophy Hunter 2007 |
+| Batman Rise of Sin Tzu |
+| Batman Vengeance |
+| Battle Engine Aquila |
+| Battlestar Galactica |
+| Beat Down Fists of Vengeance |
+| Bicycle Casino Includes Texas Hold em |
+| Big Bumpin |
+| Big Mutha Truckers |
+| Big Mutha Truckers 2 |
+| Bionicle |
+| Bistro Cupid 2 |
+| Blazing Angels Squadrons of WWII |
+| Blitz The League |
+| Blood Omen 2 The Legacy of Kain Series |
+| BMX XXX |
+| Braveknight Lieveland Eiyuuden |
+| Breakdown |
+| Breeders Cup World Thoroughbred Championships |
+| Brian Lara International Cricket 2005 |
+| Broken Sword The Sleeping Dragon |
+| Buffy the Vampire Slayer Chaos Bleeds |
+| Burnout 2 Point of Impact |
+| C A T Cyber Attack Team |
+| Cabela s Big Game Hunter 2005 Adventures |
+| Cabela s Dangerous Hunts |
+| Cabela s Dangerous Hunts 2 |
+| Cabela s Deer Hunt 2004 Season |
+| Cabela s Deer Hunt 2005 Season |
+| Cabela s Outdoor Adventures |
+| Call of Cthulhu Dark Corners of the Earth |
+| Call of Duty 2 Big Red One |
+| Capcom Classics Collection Vol 1 |
+| Capcom Fighting Evolution Capcom Fighting Jam |
+| Carmen Sandiego The Secret of the Stolen Drums |
+| Catwoman |
+| CDS II |
+| Championship Bowling |
+| Championship Manager 2006 |
+| Championship Manager 5 |
+| Championship Manager Season 01 02 |
+| Championship Manager Season 02 03 |
+| Charlie and the Chocolate Factory |
+| Chase Hollywood Stunt Driver |
+| Chessmaster |
+| Chicago Enforcer |
+| Circus Maximus Chariot Wars |
+| Classified The Sentinel Crisis |
+| Close Combat First to Fight United States Marines |
+| Club Football |
+| Club Football 2005 |
+| Codename Kids Next Door Operation V I D E O G A M E |
+| Cold Fear |
+| Cold War |
+| Colin McRae Rally 04 |
+| Colin McRae Rally 2005 |
+| Colin McRae Rally 3 |
+| College Hoops 2K6 |
+| College Hoops 2K7 |
+| Combat Elite WWII Paratroopers |
+| Commandos 2 Men of Courage |
+| Commandos Strike Force |
+| Conflict Desert Storm |
+| Conflict Global Storm |
+| Conflict Vietnam |
+| Constantine |
+| Corvette |
+| Crash n Burn |
+| Crash Tag Team Racing |
+| CRAZY TAXI 3 High Roller |
+| Cricket 2005 |
+| Crime Life Gang Wars |
+| Crouching Tiger Hidden Dragon |
+| Crusty Demons |
+| CSI Crime Scene Investigation |
+| Curious George |
+| Curse The Eye of Isis |
+| Daisenryaku VII |
+| Dakar 2 |
+| Dance Dance Revolution Ultramix |
+| Dance Dance Revolution Ultramix 2 |
+| Dance Dance Revolution Ultramix 4 |
+| Dance UK |
+| Dave Mirra Freestyle BMX 2 |
+| Dead Man s Hand |
+| Dead to Rights |
+| Dead to Rights II |
+| Defender |
+| Delta Force Black Hawk Down |
+| Dennou Taisen DroneZ |
+| Destroy All Humans |
+| Destroy All Humans 2 |
+| Deus Ex Invisible War |
+| Die Hard Vendetta |
+| Digimon Battle Chronicle |
+| Digimon World X |
+| Dinotopia The Sunstone Odyssey |
+| Disney Pixar Cars |
+| Disney Pixar Finding Nemo |
+| Disney Pixar The Incredibles |
+| Disney Pixar The Incredibles Rise of the Underminer |
+| Disney s Chicken Little |
+| Disney s Extreme Skate Adventure |
+| Disney s The Haunted Mansion |
+| Doom 3 |
+| Doom 3 Resurrection of Evil |
+| Dr Seuss The Cat in the Hat |
+| Dragon s Lair 3D Return to the Lair |
+| Drake of the 99 Dragons |
+| Dreamfall The Longest Journey |
+| DreamWorks Madagascar |
+| DreamWorks Shark Tale |
+| DreamWorks Shrek SuperSlam |
+| Drihoo |
+| Driver Parallel Lines |
+| Dynasty Warriors 4 |
+| Dynasty Warriors 5 |
+| Ed Edd n Eddy The Mis Edventures |
+| Eggo Mania |
+| Enclave |
+| England International Football 2004 Edition |
+| Enter the Matrix |
+| Eragon |
+| ESPN College Hoops |
+| ESPN College Hoops 2K5 |
+| ESPN International Winter Sports 2002 |
+| ESPN NBA 2K5 |
+| ESPN NBA Basketball |
+| ESPN NFL 2K5 |
+| ESPN NFL PrimeTime 2002 |
+| ESPN NHL 2K5 |
+| ESPN NHL Hockey |
+| ESPN Winter X Games Snowboarding 2002 |
+| Evil Dead A Fistful of Boomstick |
+| Evil Dead Regeneration |
+| Ex Chaser |
+| Exaskeleton |
+| F1 2001 |
+| F1 Career Challenge |
+| Fable The Lost Chapters |
+| Fallout Brotherhood of Steel |
+| Far Cry Instincts |
+| Far Cry Instincts Evolution |
+| Fatal Frame |
+| FIFA 07 |
+| FIFA Football 2004 |
+| FIFA Soccer 06 |
+| FIFA Soccer 2003 |
+| FIFA Soccer 2005 |
+| FIFA Street |
+| FIFA Street 2 |
+| FIFA World Cup Germany 2006 |
+| Fight Night 2004 |
+| Fight Night Round 2 |
+| Fight Night Round 3 |
+| Final Fight Streetwise |
+| FlatOut |
+| FlatOut 2 |
+| Flight Academy |
+| Ford Mustang The Legend Lives |
+| Ford Racing 2 |
+| Ford Racing 3 |
+| Ford Street Racing |
+| Forgotten Realms Demon Stone |
+| Frankie Dettori Racing |
+| Freaky Flyers |
+| Freedom Fighters |
+| Freestyle Metal X |
+| Frogger Ancient Shadow |
+| Frogger Beyond |
+| Full Spectrum Warrior |
+| Full Spectrum Warrior Ten Hammers |
+| Furious Karting |
+| Futurama |
+| Gauntlet Seven Sorrows |
+| Gene Troopers |
+| Ghost Master The Gravenville Chronicles |
+| Gladiator Sword of Vengeance |
+| Gladius |
+| Goblin Commander Unleash the Horde |
+| Godzilla Destroy All Monsters Melee |
+| Godzilla Save the Earth |
+| Gotcha |
+| Gravity Games Bike Street Vert Dirt |
+| Greg Hastings Tournament Paintball |
+| Greg Hastings Tournament Paintball Max d |
+| Grooverider Slot Car Thunder |
+| Group S Challenge |
+| Guilty Gear Isuka |
+| Gun |
+| Gun Metal |
+| Gungriffon Allied Strike |
+| Halo 2 Multiplayer Map Pack |
+| Harry Potter and the Chamber of Secrets |
+| Harry Potter and the Goblet of Fire |
+| Harry Potter and the Prisoner of Azkaban |
+| Harry Potter Quidditch World Cup |
+| Headhunter Redemption |
+| Heroes of the Pacific |
+| High Heat Major League Baseball 2004 |
+| High Rollers Casino |
+| Hitman 2 Silent Assassin |
+| Hot Wheels Stunt Track Challenge |
+| Hulk |
+| Hummer Badlands |
+| Hunter The Reckoning |
+| Hyper Sports 2002 Winter |
+| I Ninja |
+| Ice Age 2 The Meltdown |
+| IHRA Drag Racing 2004 |
+| IHRA Drag Racing Sportsman Edition |
+| IHRA Professional Drag Racing 2005 |
+| Indiana Jones and the Emperor s Tomb |
+| IndyCar Series |
+| IndyCar Series 2005 |
+| Innocent Tears |
+| Inside Pitch 2003 |
+| Intellivision Lives |
+| International Superstar Soccer 2 |
+| Iron Phoenix |
+| Jade Empire |
+| James Cameron s Dark Angel |
+| Jaws Unleashed |
+| Jikkyou World Soccer 2002 |
+| Judge Dredd Dredd vs Death |
+| Juiced |
+| Jurassic Park Operation Genesis |
+| Just Cause |
+| Justice League Heroes |
+| Knight s Apprentice Memorick s Adventures |
+| Knights of the Temple II |
+| Kung Fu Chaos |
+| Largo Winch Empire Under Threat |
+| Legends of Wrestling |
+| Legends of Wrestling II |
+| Lemony Snicket s A Series of Unfortunate Events |
+| LMA Manager 2003 |
+| Loons The Fight for Fame |
+| Mace Griffin Bounty Hunter |
+| Madden NFL 07 |
+| Madden NFL 08 |
+| Madden NFL 2002 |
+| Magi Death Fight |
+| Mashed Drive to Survive |
+| Maximum Chase |
+| MechAssault |
+| Medal of Honor European Assault |
+| Medal of Honor Frontline |
+| Metal Arms |
+| Metal Dungeon |
+| Metal Gear Solid 2 Substance |
+| Micro Machines |
+| Midway Arcade Treasures |
+| Midway Arcade Treasures 2 |
+| Mission Impossible Operation Surma |
+| Monopoly Party |
+| Monster Garage |
+| Motor Trend Presents Lotus Challenge |
+| Namco Museum |
+| NBA 2K6 |
+| NBA 2K7 |
+| NBA Inside Drive 2004 |
+| Need for Speed Hot Pursuit 2 |
+| Neighbours from Hell |
+| NFL 2K2 (USA).7z |
+| PsiOps |
+| Psyvariar 2 Extend Edition |
+| RAW |
+| RLH Run Like Hell |
+| Robotech Invasion |
+| RollerCoaster Tycoon |
+| Rugby League 2 |
+| Sega GT 2002 |
+| Sega GT 2002 + JSRF: Jet Set Radio Future |
+| Shadow The Hedgehog |
+| Shrek |
+| Ski Racing 2005 |
+| Spartan: Total Warrior |
+| Splat Magazine Renegade Paintball |
+| SSX Tricky |
+| Stake |
+| Star Wars Battlefront |
+| Star Wars Battlefront II |
+| Star Wars Knights of the Old Republic II The Sith Lords |
+| Star Wars Starfighter Special Edition |
+| Star Wars The Clone Wars |
+| Still Life |
+| Super Bubble Pop |
+| Superman Returns |
+| Takahashi Junko no Mahjong Seminar |
+| Tetris Worlds |
+| The Bard s Tale |
+| The Baseball 2002 Battle Ball Park Sengen |
+| The Bible Game |
+| The Hustle Detroit Streets |
+| The King of Fighters 2002 |
+| The Lord of the Rings The Third Age |
+| The Matrix Path of Neo |
+| The Simpsons Road Rage |
+| The Urbz Sims in the City |
+| The Wild Rings |
+| Tiger Woods PGA Tour 06 |
+| Tiger Woods PGA Tour 07 |
+| Tiger Woods PGA Tour 2003 |
+| Tiger Woods PGA Tour 2004 |
+| Tiger Woods PGA Tour 2005 |
+| TimeSplitters Future Perfect |
+| Tom Clancy s Splinter Cell Double Agent |
+| Torino 2006 |
+| Total Club Manager 2004 |
+| Triangle Again |
+| Triple Play 2002 |
+| Trivial Pursuit Unhinged |
+| UEFA Champions League 2004 2005 |
+| Ultimate Pro Pinball |
+| Umezawa Yukari no Igo Seminar |
+| Unreal Championship |
+| Virtual Pool Tournament Edition |
+| Voodoo Vince |
+| Whiteout |
+| World Series Baseball |
+| World Snooker Championship 2005 |
+| World Soccer Winning Eleven 8 International |
+| World War II Combat Road to Berlin |
+| Xbox Live Arcade |
+| Xiaolin Showdown |
+| XIII |
+| Yetisports Arctic Adventures |
+| Yonenaga Kunio no Shougi Seminar |
 
 </details>
 
-620 titles: 19 blocked, 87 Playable, 5 soak pending, 9 below 30, 34 inputs ready, 112 copied, 354 not copied.
+620 titles: 87 Playable, 9 below 30 fps, 14 crash or hang, 152 measured but not rated yet, 358 not tested yet.
 
 ---
 
