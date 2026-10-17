@@ -1227,6 +1227,34 @@ if [ -n "$TITLE" ] && [[ "$(basename "$TITLE")" =~ ^[0-9A-Fa-f]{8}$ ]]; then
     exit 2
 fi
 [ -z "$TITLE" ] || TITLE_ID=$(python3 "$TS_PY" tid-for-iso "$TITLE" 2>/dev/null)
+
+# dispatchdoctor1017 Section 1b (owner 10-17, "it should know to copy ...
+# the pathing ... to the right locations"; brief verbatim: "no route (or
+# only survey)"). A soak that typed no --route, or literally `--route
+# survey`, gets this title's best recorded route attached here instead, so
+# the rest of this block (resolve, crop-embed, --check, the profile gate
+# below) runs exactly as it would for a user-chosen --route. This never
+# invents a route: when suggest-route finds nothing proven or configured,
+# ROUTE is left exactly as typed -- empty runs with no scripted input,
+# `survey` resolves to the real, generic survey.route, same as before this
+# existed, which is how "a deliberate survey run must still be possible"
+# is satisfied (there is no separate opt-out flag; a disc/nxdk test never
+# reaches here at all, since it never sets --title and $TITLE stays empty).
+# Never when --find-route/--remake-profile/--path-broken is also given: each
+# names a specific, deliberate intent about this title's route or profile
+# that an attach would second-guess -- --find-route in particular means "I
+# know of no route, go blind", which a silently-attached one would quietly
+# defeat. See NOTES.md for this reading of the brief.
+if [ -n "$TITLE" ] && [ -n "$TITLE_ID" ] && { [ -z "$ROUTE" ] || [ "$ROUTE" = survey ]; } \
+   && [ -z "$FIND_ROUTE" ] && [ -z "$REMAKE_PROFILE" ] && [ -z "$PATH_BROKEN" ]; then
+    SUG=$(python3 "$TS_PY" suggest-route --title-id "$TITLE_ID" 2>/dev/null)
+    SUGNAME=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("name") or "")' "$SUG" 2>/dev/null)
+    if [ -n "$SUGNAME" ]; then
+        SUGSRC=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("source") or "")' "$SUG" 2>/dev/null)
+        echo "route: no --route given; attaching recorded route '$SUGNAME' ($SUGSRC) for $TITLE_ID" >&2
+        ROUTE="$SUGNAME"
+    fi
+fi
 if [ -n "$ROUTE" ]; then
     [ -n "$TITLE" ] || { echo "--route only means anything on a soak (--title)" >&2; exit 2; }
     RES=$(python3 "$TS_PY" resolve-route --route "$ROUTE" ${TITLE_ID:+--title-id "$TITLE_ID"} \

@@ -160,9 +160,113 @@ chain so the leftover-state legs have what they need (`SELFTEST_ONLY="50-arms-re
 51-dispatch-hardening"`, 77/77 since 51 chains off what 10-50 leave) and
 alone (`97-dispatch-deploy`, `99-iso-roots`, `98-dispatch-late-device`,
 `99-dispatch-gate`, `99-profile-gate`, `99-title-state`, `99-battery-admit`,
-`99-lane-model-file`, 168/168): all 0 failed. The one true full-suite run
-(no `SELFTEST_ONLY`) was not completed end to end this session -- it alone
-takes 18-25 min per the file's own CI note, over the 600s-per-Bash-call
-cap -- but every fragment this diff could plausibly affect (touches
-`dispatcher.sh`/`devices.sh`) ran green, foreground, polled to completion
-rather than left running past a turn boundary.
+`99-lane-model-file`, 168/168): all 0 failed. A full, un-scoped run (all 147
+fragments) was started and left polling across several foreground windows
+(each bounded by its own `timeout`, never a bare background job past a turn
+boundary) rather than scoped narrower, since it was already in flight when
+Section 1b's own verification need came up -- see that section below for the
+result.
+
+## Section 1b -- auto-attach a recorded route when a soak names none (done)
+
+The brief, verbatim: "it should know to copy ... the pathing ... to the
+right locations". A request that names no `--route`, or only the generic
+`survey`, now gets this title's best recorded route attached automatically,
+at both the points a request could reach the device without one: queue time
+(`request.sh`, before this session's existing resolve/crop-embed/`--check`/
+profile-gate block) and claim time (`dispatcher.sh`'s new
+`ensure_route_attached()`, for a request written before this existed, or by
+a tool other than `request.sh`). Both call the same two new
+`titlestate.py` subcommands, so an auto-attached route travels identically
+to a user-typed `--route` from that point on -- same resolve, same `--check`,
+same profile-gate re-run, same crop embedding.
+
+### What changed
+
+- `docs/testing/titles/titlestate.py`: `suggest_route(title_id)` -- tries
+  `known_path(title_id, broad=False)` first (a route this host has actually
+  PROVEN reaches gameplay, via a `mark gameplay` route text plus a judged
+  `reached_gameplay` result -- the same, narrow R3 test the profile gate
+  itself uses, never the broader "a pathknow session happened once"
+  signal); falls back to `targets.toml`'s own configured route for the
+  title (the same field `route_path()`/`single_route()` already trust);
+  returns `(None, note)` when neither exists -- nothing is ever invented.
+  `route_refs(route_path_, cap)` -- the reference-crop embedding logic
+  (Addendum 3, #433) factored out of `request.sh` so `dispatcher.sh`'s
+  claim-time attach can reuse it verbatim rather than duplicating it in
+  bash. Both exposed as CLI subcommands (`suggest-route`, `route-refs`) for
+  the bash callers.
+
+- `docs/testing/request.sh`: right after `TITLE_ID` is computed, before the
+  existing `if [ -n "$ROUTE" ]` block -- if `$TITLE_ID` is known and `$ROUTE`
+  is empty or literally `survey`, and none of `--find-route`/
+  `--remake-profile`/`--path-broken` was also given, call `suggest-route`
+  and, if it names one, set `ROUTE` to it (logged to stderr) before the rest
+  of the block runs. No separate opt-out flag exists or was added: an empty
+  `--route` with no suggestion available still runs with no scripted input,
+  and a deliberate `--route survey` with no suggestion available still
+  resolves to the real, generic `survey.route`, exactly as before this
+  existed.
+
+- `docs/testing/dispatcher.sh`: `ensure_route_attached()`, called from the
+  soak block right after `ttid` is computed and before `tstate`/`tsave` are
+  read (so a route it attaches is visible to everything downstream exactly
+  like a user's own `--route`). Same no-override-flags guard as
+  `request.sh`. Resolves the suggested route via `titlestate.py
+  resolve-route` (the same path a user-chosen name takes), runs
+  `route.sh --check` on it, embeds crops via `route-refs`, and only then
+  mutates the request JSON in place (`route_name`, `route`, `title_state`,
+  `route_refs`) via a small inline `python3 -c`. Any failure at any of
+  those steps (resolve refuses, `--check` fails, crop cap exceeded) is
+  logged and the request is left exactly as queued -- the soak still runs,
+  on survey, same as if this never existed.
+
+### The judgment call
+
+Auto-attach is suppressed whenever `--find-route`, `--remake-profile`, or
+`--path-broken` is also given, in both files. First version did not have
+this guard and broke three legs of the out-of-territory
+`99-profile-gate.sh` (A3, A4, M9): with `ROUTE` empty, auto-attach fired
+*before* `admit()`'s own R3/override logic ever ran, attaching a
+fixture route that then failed its own `--check` (no `# state:` line) and
+masked the expected "already has a proven route, queue it instead of
+finding one blind" refusal, and separately defeated `--path-broken`'s
+override outright. Each of those three flags is itself a deliberate,
+specific statement about how the caller wants this title's route/profile
+state handled right now -- forcing a full resolve ahead of that is second-
+guessing it, not helping it. Fixed by excluding all three from eligibility;
+re-verified the three previously-red legs plus the rest of
+`99-profile-gate.sh` green together with `97-dispatch-deploy`,
+`98-dispatch-doctor`, `99-iso-roots`, `99-title-state`, `99-battery-admit`
+(179 passed, 0 failed).
+
+### Selftest
+
+`docs/testing/jobs/selftest.d/98-dispatch-doctor.sh` grew 4 new legs (10
+total): a title known only via `targets.toml` gets that route attached
+("target" source); a title with a proven dispatch-history route gets that
+one instead, outranking a merely-configured target ("proven" source,
+confirmed to win when both exist); a title with neither recorded nor
+configured gets nothing, and the request is left exactly as queued; a
+request that already names its own route is never touched. All against a
+fake `adb`/`log()` harness mirroring `99-iso-roots.sh`'s pattern, with
+`dispatcher.sh` sourced under `TITLE_TARGETS`/`TITLE_ROUTES`/
+`DISPATCH_DIR` pointed at the fixture.
+
+The override-guard itself (no attach when `--find-route`/`--remake-profile`/
+`--path-broken` is set) has no dedicated leg in `98-dispatch-doctor.sh` --
+it is covered only by `99-profile-gate.sh`'s own A3/A4/M9 legs passing
+(out-of-territory, not written by this lane). Worth a dedicated leg if this
+file is touched again.
+
+A full, un-scoped selftest run (no `SELFTEST_ONLY`, all 147 fragments, this
+session's earlier Section-1-era run never reached this point) completed
+end to end this session, polled in the foreground across several
+`timeout`-bounded windows rather than left running past a turn boundary:
+**3580 passed, 0 failed, all 147 fragments.** This is the first full,
+complete, unscoped confirmation this lane has had -- it covers
+`50-arms-requeue`/`51-dispatch-hardening` (flagged after Section 1 as still
+needing re-confirmation post-1b) along with everything else.
+
+No live device was used for this section either -- same as Section 1,
+decided entirely by selftest. `Prediction: none` still stands.

@@ -1148,6 +1148,73 @@ profile_gate_check() {
     return 3
 }
 
+# ensure_route_attached <title id> <title> <rdir> <req>: dispatchdoctor1017
+# Section 1b (owner 10-17, "it should know to copy ... the pathing ... to
+# the right locations"). A request that names no route, or only the generic
+# `survey` (never one typed deliberately -- see NOTES.md), gets this title's
+# best recorded route attached here exactly as request.sh --route resolves
+# one, mutating $req in place before profile_gate_check/titles_disk_prepare
+# read it, so a request queued before this existed (or queued by a tool
+# other than request.sh) is treated identically to a user-chosen --route.
+# Never overrides a route the request already names; never invents one --
+# titlestate.py suggest_route only returns a PROVEN route or targets.toml's
+# own configured one, the same two sources route_path()/single_route() already
+# trust. A route that fails to resolve or fails its own --check is logged and
+# left unattached: the soak still runs, on survey, same as before this
+# existed.
+ensure_route_attached() {
+    local ttid="$1" title="$2" rdir="$3" req="$4"
+    local cur sug name src res refuse path rname state refsout refsrefuse
+    cur=$(jq_get "$req" route_name "")
+    [ -z "$cur" ] || [ "$cur" = survey ] || return 0
+    [ -n "$ttid" ] || return 0
+    # Never on a request that already names a deliberate profile-gate
+    # override: see request.sh's matching guard, same reasoning.
+    if [ -n "$(jq_get "$req" find_route "")" ] || [ -n "$(jq_get "$req" remake_profile "")" ] \
+       || [ -n "$(jq_get "$req" path_broken "")" ]; then
+        return 0
+    fi
+    sug=$(python3 "$TITLESTATE" suggest-route --title-id "$ttid" 2>&1)
+    name=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("name") or "")' "$sug" 2>/dev/null)
+    if [ -z "$name" ]; then
+        log "  route: $(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("note") or "no recorded or proven route")' "$sug" 2>/dev/null) for $ttid; leaving on survey"
+        return 0
+    fi
+    src=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("source") or "")' "$sug" 2>/dev/null)
+    res=$(python3 "$TITLESTATE" resolve-route --route "$name" --title-id "$ttid" ${DEVICE_LABEL:+--device "$DEVICE_LABEL"} 2>&1)
+    refuse=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("refuse") or "")' "$res" 2>/dev/null) || refuse="titlestate.py resolve-route failed: $res"
+    if [ -n "$refuse" ]; then
+        log "  route: recorded route '$name' ($src) for $ttid does not resolve: $refuse; leaving on survey"
+        return 0
+    fi
+    path=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["path"])' "$res")
+    rname=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["route_name"])' "$res")
+    state=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["state"])' "$res")
+    if ! bash "$HERE/titles/route.sh" --check "$path" >/dev/null 2>&1; then
+        log "  route: recorded route '$rname' ($src) for $ttid failed its own --check; leaving on survey"
+        return 0
+    fi
+    refsout=$(python3 "$TITLESTATE" route-refs --route-path "$path" 2>&1)
+    refsrefuse=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("refuse") or "")' "$refsout" 2>/dev/null) || refsrefuse="titlestate.py route-refs failed: $refsout"
+    if [ -n "$refsrefuse" ]; then
+        log "  route: recorded route '$rname' ($src) for $ttid: $refsrefuse; leaving on survey"
+        return 0
+    fi
+    python3 -c '
+import json, sys
+req, path, rname, state, refsjson = sys.argv[1:6]
+d = json.load(open(req))
+d["route_name"] = rname
+d["route"] = open(path).read()
+d["title_state"] = state
+refs = json.loads(refsjson).get("refs") or {}
+if refs:
+    d["route_refs"] = refs
+json.dump(d, open(req, "w"))
+' "$req" "$path" "$rname" "$state" "$refsout"
+    log "  route: auto-attached '$rname' ($src) for $ttid, state=$state"
+}
+
 # titles_disk_prepare <id> <rdir> [<request env json>] [<title id>] [<state>] [<save>]:
 # make the device's titles disk the composed goldens for this title and state
 # (titlestate.py, GOLDENS: every title's golden profile, minus this title's on
@@ -1907,6 +1974,13 @@ PYEOF
         local ttid tstate tsave trc
         ttid=$(jq_get "$req" title_id "")
         [ -n "$ttid" ] || ttid=$(python3 "$TITLESTATE" tid-for-iso "$title" 2>/dev/null)
+
+        # dispatchdoctor1017 Section 1b: a request with no route (or only
+        # the generic survey) gets one attached here, before tstate/tsave
+        # are read, so a route this call attaches is seen by everything
+        # below exactly as a user's own --route would be.
+        ensure_route_attached "$ttid" "$title" "$rdir" "$req"
+
         tstate=$(jq_get "$req" title_state any)
         tsave=$(jq_get "$req" save "")
 

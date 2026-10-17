@@ -29,6 +29,15 @@
 #                   clear the floor, then the push lands.
 #   claimed kept    the same ISO, but a queued request names its title_id:
 #                   it is kept, the floor stays short, the push is refused.
+#
+# Section 1b (ensure_route_attached, claim-time fallback for a request that
+# named no route): a proven route (dispatch/results history, "mark
+# gameplay" plus a reached_gameplay verdict) outranks a merely-configured
+# targets.toml one; neither is invented when nothing is known or proven;
+# and a request already naming its own route is never touched. The same
+# suggest-route/route-refs titlestate.py subcommands drive request.sh's
+# queue-time attach (97-dispatch-deploy.sh does not cover this; smoke-tested
+# by hand against request.sh directly while writing this -- see NOTES.md).
 
 echo "== dispatch doctor: the staging fast path finds, verifies and clears room for a missing title"
 DD="$T/dispatchdoctor"; rm -rf "$DD"; mkdir -p "$DD/bin" "$DD/stage"
@@ -130,4 +139,93 @@ if [ "$rc" != 0 ] && [ -f "$DD/fs$NOVA/FEED0002-Old_Game.xiso.iso" ] && [ ! -f "
     ok "claimed kept: a queued request's title is never deleted to make room, so the push stays refused"
 else
     bad "claimed kept: rc=$rc, old=$([ -f "$DD/fs$NOVA/FEED0002-Old_Game.xiso.iso" ] && echo kept || echo gone)"
+fi
+
+echo "== dispatch doctor: Section 1b, the dispatcher attaches a recorded route to a soak that named none"
+# A title id CAFE1001 gets a route only from targets.toml (unproven: "target"
+# source). CAFE1002 gets one only from dispatch/results history (a route
+# whose text declares `mark gameplay`, reached by a judged, reached_gameplay
+# result: "proven" source, titlestate.py's own known_path/proven_route).
+# CAFE9999 has neither -- nothing to attach, same as before this existed.
+mkdir -p "$DD/route/routes" "$DD/route/dispatch/results/1-1700000000-cp-1"
+cat > "$DD/route/targets.toml" <<'TOML'
+[titles.CAFE1001]
+route = "cafe-target"
+TOML
+cat > "$DD/route/routes/cafe-target.route" <<'ROUTE'
+# state: any
+mark gameplay
+wait 1
+ROUTE
+cat > "$DD/route/routes/cafe-proven.route" <<'ROUTE'
+# state: any
+mark gameplay
+wait 1
+ROUTE
+cat > "$DD/route/routes/survey.route" <<'ROUTE'
+# state: any
+wait 1
+ROUTE
+python3 -c '
+import json
+json.dump({"title": "CAFE1002-Proven_Game.iso", "route_name": "cafe-proven"},
+          open("'"$DD"'/route/dispatch/results/1-1700000000-cp-1/request.json", "w"))
+json.dump({"reached_gameplay": True},
+          open("'"$DD"'/route/dispatch/results/1-1700000000-cp-1/verdict.json", "w"))
+'
+
+# dd_route_run <function + args...>: dispatcher.sh sourced with TITLE_TARGETS
+# and TITLE_ROUTES pointed at the fixture above, DISPATCH_DIR at its own
+# dispatch/ (so title_routes/reached_result see the "proven" result), and
+# log() appended to route.log instead of discarded, so a leg can check what
+# ensure_route_attached said about why it did or did not attach.
+dd_route_run() {
+    : > "$DD/route.log"
+    ( export TITLE_TARGETS="$DD/route/targets.toml" TITLE_ROUTES="$DD/route/routes" \
+             DISPATCH_DIR="$DD/route/dispatch"
+      . "$DDT/dispatcher.sh" selftest-not-a-subcommand >/dev/null 2>&1
+      log() { printf '%s\n' "$*" >> "$DD/route.log"; }
+      "$@" )
+}
+req_field() { python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get(sys.argv[2]) or "")' "$1" "$2"; }
+
+# --- target: no route named, nothing proven, targets.toml has one ---
+echo '{}' > "$DD/req1b.json"
+dd_route_run ensure_route_attached CAFE1001 "Some Target Game (USA).iso" "$DD/rdir" "$DD/req1b.json"
+if [ "$(req_field "$DD/req1b.json" route_name)" = cafe-target ] \
+   && grep -q "mark gameplay" <(req_field "$DD/req1b.json" route) \
+   && grep -q "auto-attached 'cafe-target' (target)" "$DD/route.log"; then
+    ok "1b target: an unproven, targets.toml-configured route is attached and logged"
+else
+    bad "1b target: route_name=$(req_field "$DD/req1b.json" route_name), log=$(cat "$DD/route.log")"
+fi
+
+# --- proven: no route named, dispatch history proves one, outranks a target ---
+echo '{}' > "$DD/req1b.json"
+dd_route_run ensure_route_attached CAFE1002 "Some Proven Game (USA).iso" "$DD/rdir" "$DD/req1b.json"
+if [ "$(req_field "$DD/req1b.json" route_name)" = cafe-proven ] \
+   && grep -q "auto-attached 'cafe-proven' (proven)" "$DD/route.log"; then
+    ok "1b proven: a route proven by dispatch history is attached, preferred over a merely-configured one"
+else
+    bad "1b proven: route_name=$(req_field "$DD/req1b.json" route_name), log=$(cat "$DD/route.log")"
+fi
+
+# --- nothing known: no route named, nothing proven, nothing configured ---
+echo '{}' > "$DD/req1b.json"
+dd_route_run ensure_route_attached CAFE9999 "Some Unknown Game (USA).iso" "$DD/rdir" "$DD/req1b.json"
+if [ -z "$(req_field "$DD/req1b.json" route_name)" ] && grep -q "no recorded or proven route" "$DD/route.log"; then
+    ok "1b nothing known: no route is invented; the request is left exactly as queued"
+else
+    bad "1b nothing known: route_name=$(req_field "$DD/req1b.json" route_name), log=$(cat "$DD/route.log")"
+fi
+
+# --- already named: a request that already names a specific route is untouched ---
+echo '{"route_name":"some-other-route","route":"# state: any\nwait 1\n"}' > "$DD/req1b.json"
+before=$(cat "$DD/req1b.json")
+dd_route_run ensure_route_attached CAFE1001 "Some Target Game (USA).iso" "$DD/rdir" "$DD/req1b.json"
+after=$(cat "$DD/req1b.json")
+if [ "$before" = "$after" ]; then
+    ok "1b already named: a request naming its own route is never overridden by the claim-time fallback"
+else
+    bad "1b already named: request.json changed: before=[$before] after=[$after]"
 fi
