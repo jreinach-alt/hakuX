@@ -303,6 +303,25 @@ refuse_if_owner_stopped() {   # <lane> [brief argument]
     done
 }
 
+# SPARSE BY DEFAULT (#433 lane.sparsewt1017). docs/lanes/pathfind/runs/ is
+# held-run evidence tracked for history only; git already stores it, and no
+# lane needs a checkout of it. 28 hand-converted trees dropped from ~2.3 GB to
+# ~0.4 GB each by excluding it, so new trees are made that way from the start:
+# --no-checkout first, so the ~2 GB is never written to disk and then
+# deleted. lane.pathfind is exempted -- its tree IS the live harness tree and
+# reads its own runs/ -- and so is any lane whose brief carries an explicit
+# $WORK/briefs/<name>.fullcheckout opt-out marker.
+lane_worktree_add() {   # <path> <branch> <worktree-add-args after <path>...>
+    local path="$1" br="$2"; shift 2
+    if [ "$name" = pathfind ] || [ -e "$WORK/briefs/$name.fullcheckout" ]; then
+        git -C "$REPO" worktree add --quiet "$path" "$@"
+        return $?
+    fi
+    git -C "$REPO" worktree add --quiet --no-checkout "$path" "$@" || return $?
+    git -C "$path" sparse-checkout set --no-cone '/*' '!/docs/lanes/pathfind/runs/' || return $?
+    git -C "$path" checkout --quiet "$br"
+}
+
 case "$cmd" in
   start)
     brief="${3:?usage: lane.sh start <name> <brief.md> [issue]}"; issue="${4:-}"
@@ -322,10 +341,10 @@ case "$cmd" in
     if git -C "$REPO" rev-parse --verify --quiet "refs/remotes/origin/$branch" >/dev/null; then
         # A lane resuming after a wind-down or a crash continues its own branch.
         git -C "$REPO" fetch -q origin "$branch"
-        git -C "$REPO" worktree add --quiet "$wt" -B "$branch" "origin/$branch" || exit 5
+        lane_worktree_add "$wt" "$branch" -B "$branch" "origin/$branch" || exit 5
         echo "resumed $branch from origin"
     else
-        git -C "$REPO" worktree add --quiet "$wt" -b "$branch" FETCH_HEAD || exit 5
+        lane_worktree_add "$wt" "$branch" -b "$branch" FETCH_HEAD || exit 5
     fi
     next_attempt "$name" || exit 75
     cp "$brief" "$WORK/briefs/$name.md"
