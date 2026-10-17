@@ -8,8 +8,8 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `bootstatic1017` | claude-opus-5-5 | 54 min | bootstatic1017: the brief static or green flash at every title start (#1045) |
-| `haloring1017` | claude-opus-5-5 | 57 min | haloring1017: Halo CE main-menu ring: the missing surface layer and the static inside surface (#939) |
+| `bootstatic1017` | claude-opus-5-5 | 1h 8m | bootstatic1017: the brief static or green flash at every title start (#1045) |
+| `haloring1017` | claude-opus-5-5 | 1h 12m | haloring1017: Halo CE main-menu ring: the missing surface layer and the static inside surface (#939) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -117,7 +117,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/bootstatic1017` | bootstatic1017: the brief static or green flash at every title start (#1045) | `490fca116d` | 2026-10-17 15:25 |
+| `lane/bootstatic1017` | bootstatic1017: the brief static or green flash at every title start (#1045) | `9b035c6a98` | 2026-10-17 15:35 |
 | `lane/haloring1017` | haloring1017: Halo CE main-menu ring: the missing surface layer and the static inside surface (#939) | `62ec5786f5` | 2026-10-17 15:15 |
 
 ## Recently landed on master
@@ -129,4 +129,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 defaulton1017: S2T_CVT, REPORT_EARLY and FLDCW_CHAIN on by default, after one default-on screen
 - 2026-10-17 halo1016: Halo CE cutscenes on the Nova -- quiet speech under loud music (#938), cinematic at 8-19 fps (#1018)
 
-_Updated 2026-10-17 15:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-17 15:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
