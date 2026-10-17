@@ -8,12 +8,12 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `gta3drive1017` | claude-opus-5-5 | 36 min | gta3drive1017: Grand Theft Auto III drops into the teens while driving (#433) |
+| `gta3drive1017` | claude-opus-5-5 | 49 min | gta3drive1017: Grand Theft Auto III drops into the teens while driving (#433) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-offline`
-- **Device queue:** 0 waiting, 0 running.
+- **Device queue:** 2 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -116,7 +116,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/gta3drive1017` | gta3drive1017: Grand Theft Auto III drops into the teens while driving (#433) | `c6b31ab085` | 2026-10-17 16:27 |
+| `lane/gta3drive1017` | gta3drive1017: Grand Theft Auto III drops into the teens while driving (#433) | `2680600812` | 2026-10-17 16:44 |
 
 ## Recently landed on master
 
@@ -129,4 +129,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 release052: the 0.5.2 release commit (#433)
 - 2026-10-17 defaulton1017: S2T_CVT, REPORT_EARLY and FLDCW_CHAIN on by default, after one default-on screen
 
-_Updated 2026-10-17 16:32 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-17 16:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
