@@ -2955,3 +2955,9 @@ issues = ["1045"]
 standing = false
 files = ["docs/lanes/bootstatic1017/**", "docs/testing/predictions/bootstatic1017-*"]
 note = "BRIEFED by lane.xbox 2026-10-17 14:40 PDT on the owner's request: the brief static or green distortion at every title start. Desktop and code reading first; device captures queue behind the owner's sweep; emulator and app files come by the lane's own board request. Brief: briefs/bootstatic1017.md."
+
+[lane.release052b]
+issues = ["433"]
+standing = false
+files = ["android/app/build.gradle.kts", "KNOWN_ISSUES.md", "docs/gpu-driver.md", "docs/releases/v0.5.2.md", "docs/lanes/release052b/**"]
+note = "STARTED lane.local 2026-10-17 ~16:20 PDT (docs + one metadata line, no device): 0.5.2's last commit before the tag: versionCode 9 to 10 (0.5.0 and 0.5.1 both shipped as 9), the driver page link in docs/gpu-driver.md, #938/#939 no longer 'aimed at 0.5.2', and 'installs over 0.5.1' in the release note. offline_fold.py treats a versionCode-only diff of build.gradle.kts as non-code, so no device run."
