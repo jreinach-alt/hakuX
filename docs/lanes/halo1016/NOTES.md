@@ -4,12 +4,20 @@ Halo: Combat Evolved (4D530004), opening cinematic on the Nova. Found on 0.5.1-r
 (0.5.1 shipped without this lane, owner 10-16 ~22:50 PDT).
 Defects: **#938** quiet speech under loud music; **#1018** the cinematic drops to 8-19 fps for ~47 s.
 
-## Status (2026-10-17 03:40 PDT)
+## Status (2026-10-17 04:15 PDT)
 
-- #1018: **the plateau is at the bar with four switches together** ("#1018 early arms"). B 42.1, E 35.9,
-  EIF 33.8 ms/f over [mark+131, mark+191], all on `HAKUX_S2T_CVT=1`. EIF = S2T_CVT + REPORT_EARLY + FLDCW_CHAIN +
-  IBC, and every 10-s window of it is 33.4-34.7. XG misses by 0.4 ms. S (R7), EV and BV (pictures for R8's cost)
-  are pending. Earlier, 03:10:
+- #1018: **all six early arms are judged** ("#1018 early arms"). Four switches together hold the plateau at the
+  bar: EIF (S2T_CVT + REPORT_EARLY + FLDCW_CHAIN + IBC) runs 33.8 ms/f over [mark+131, mark+191], against 42.1
+  on S2T_CVT alone and 59.3 on the owner's build (census A). Every 10-s window of it is 33.4-34.7.
+  - Hit: EA, EP, XM, SQ.
+  - Miss: EM (by 0.002, E/B 0.852; the EV/BV replicate pair gives 0.838), EG, XG (by 0.4 ms), SM (S 0.912).
+- **Root causes of #1018: three in series** ("#1018 root causes and the remedy set" below). Each one hides the
+  next, and only removing all three reaches the bar.
+- All four switches are off by default. Shipping the fix in 0.5.2 means turning all four on through one
+  default-on screen. This lane does not own S2T_CVT (fps1015) or IBC (#507). The screen it needs is below, and
+  it is requested from lane.xbox in board-requests/xbox.md.
+- #938: unchanged since 00:30. No emulator fault found; a hardware listen decides it (Questions).
+- Earlier, 03:40: B, E and EIF judged. Earlier, 03:10:
 
 - #1018: **where the poll waits is found** ("#1018 reports arms: RT, RC"). Both arms are VOID on their own V:
   the prediction required the synchronous report path. The app's "Fast renderer paths" default sets
@@ -179,20 +187,35 @@ The frame period tracks p_run + sdown x ~0.5 ms. The guest idles exactly when th
      In the core, the same calls are diluted by idle spin.
    - It costs no frames at the edges (33-35 ms).
 
-## #1018 hypotheses (re-ranked on the cinesplit A/B)
+## #1018 hypotheses (final, 04:15 PDT 10-17; the three causes are F1, F8, F7)
 
-| | Hypothesis | P start | P now | Evidence |
+| | Hypothesis | P start | P final | Evidence |
 |---|---|---|---|---|
-| F1 | Synchronous GPU waits on the PFIFO thread | 0.45 | **0.95** (`cvt` downloads, one cause of two) | W hit: 61 sdown/f, 33 ms/f, equal to the unhooked blocked time; census K: all `cvt`; C: S2T_CVT takes them to 0 and the span 0.71 x |
-| F7 | The vCPU is the bound in the heavy shots once the downloads go | -- | 0.85, then **0.35** as the vCPU's own work | census B: plateau 40-61 ms/f, guest idle 0, pidle 25-32 ms/f, gpu 17-23 ms/f. The vcpu arms: removing 45 k main-loop returns (F) or 850 k helper lookups (I) a frame buys 2 ms/f each, and the spin's share of TB time rises |
-| F8 | The guest polls a visibility-test report in the heavy shots, and the poll's wait is the bound | -- | **0.85** | 0x63482/0x18111b disassembled ("#1018 the spin"). Spin share of TB time rises 0.267 (A) -> 0.441 (IF) as ms/f falls 3.4. RT: each of 544 armed reports a frame is written 16.7-33.3 ms after it is queued (77%), behind the frame's last finish and the GPU's run of the whole command buffer |
-| F6 | The heavy shots really carry more work | 0.3 | 0.6 (contributor) | draws 1000-1363/f against 650; p_run 22.6 against 13.5 ms. Alone it fits in 33 ms |
+| F1 | Synchronous GPU waits on the PFIFO thread | 0.45 | **0.95** (`cvt` downloads, the first of three) | W hit: 61 sdown/f, 33 ms/f, equal to the unhooked blocked time; census K: all `cvt`; C: S2T_CVT takes them to 0 and the span 0.71 x |
+| F8 | The guest polls a visibility-test report in the heavy shots, and the poll's wait is the bound | -- | **0.95** (the second) | 0x63482/0x18111b disassembled ("#1018 the spin"). RT: each of 544 armed reports a frame is written 16.7-33.3 ms after it is queued. Early arms: answering them at queue (E) takes the spin share 0.252 -> 0.010 and the span 42.1 -> 35.9 ms/f; EV/BV repeat it (0.838) |
+| F7 | The vCPU is the bound in the heavy shots once the downloads go | -- | 0.85, then 0.35, then **0.85** as the vCPU's own work (the third) | census B: guest idle 0, pidle 25-32 ms/f. With the poll gone (E), +126..+155 still runs 37-50 ms/f at guest idle 0; FLDCW_CHAIN + IBC on top (EIF) take the span 35.9 -> 33.8, where the same work bought only 3.4 ms/f of spin before. +127..+139 stays at 34-37 per 2 s, guest-bound |
+| F6 | The heavy shots really carry more work | 0.3 | 0.8 (why all three show only here) | draws 1000-1363/f against 650; p_run 22.6 against 13.5 ms; 544 visibility tests a frame. Each of F1, F8 and F7 scales with it. Alone it fits in 33 ms (EIF) |
 | F2 | Host GPU-bound | 0.3 | 0.02 | G: gpu/P 0.17; sysmem P 0.96 |
 | F3 | Late notifier/interrupt delivery | 0.15 | 0.05 | busy spans begin on the NV2A wake, behind the downloads; iq flat |
 | F4 | Idle-spin feedback loop | 0.1 | 0.05 | edges have eo up with no slowdown; p_rq 0% |
 | F5 | Disc waits | ~0 | 0 | ide425 w=0 |
 
 ## #1018 remedies after the census (ranked by P x win)
+
+**Final (04:15 PDT 10-17):** the measured set is R1 + R8 + R2 + R4 = 33.8 ms/f over the span (EIF), from 59.3.
+The shipping order and the default-on screen are in "#1018 root causes and the remedy set" below. These are the
+results:
+
+| # | Measured over [mark+131, +191] | Ships? |
+|---|---|---|
+| R1 `HAKUX_S2T_CVT` | 59.3 -> 41.9 ms/f (census C) | yes, fps1015's switch: blocked on its pixel leg, plus the screen |
+| R8 `HAKUX_REPORT_EARLY` | 42.1 -> 35.9 (E), 41.9 -> 35.1 (EV); spin 0.252 -> 0.010 | yes, after the screen; the cost is a count one frame staler |
+| R2 `HAKUX_FLDCW_CHAIN` + R4 `HAKUX_IBC` | 35.9 -> 33.8 on R1 + R8 (EIF); 3.4 ms/f on R1 alone (IF) | yes, both; R4 is #507's switch |
+| R7 `HAKUX_REPORT_SUBMIT=2000` | 42.1 -> 38.4 (S, 0.912 x) | no: R8 does more, and every finish breaks a render pass on the tiler |
+| R5 `HAKUX_REPORT_CATCHUP` | ~0 (RC) | no |
+| R3 `HAKUX_TIER1_THRESHOLD=0` | T: gi 0, no fps (tier-1 verdict) | no |
+
+The ranking as it stood before the early arms:
 
 The plateau needs both causes removed: the downloads (A: 59.3 ms/f over the span) and the vCPU's excess (B: 41.9
 ms/f with no downloads). Neither alone reaches 33.4.
@@ -712,6 +735,71 @@ Read:
   59.3 -> 41.9), the visibility-test poll (R8, 42.1 -> 35.9) and the vCPU's work (R2 + R4, 35.9 -> 33.8).
   Removing any one alone leaves the plateau above the bar.
 
+### S, EV, BV (04:10 PDT; the full judge output is `scratch/early-verdict.md`)
+
+| arm | ms/f | submits/f | q2w >= 16.7 ms | q2w median bin | spin share |
+|---|---|---|---|---|---|
+| S (2208998, `HAKUX_REPORT_SUBMIT=2000`) | 38.4 | 4.07 | 0.045 | 4-8 ms | 0.114 |
+| EV (2209151, E + frames) | 35.1 | -- | 0.811 | 16.7-33.3 | 0.006 |
+| BV (2209324, B + frames) | 41.9 | -- | 0.778 | 16.7-33.3 | 0.246 |
+
+- SQ HIT (S's late share 0.060 x B's), SM MISS (0.912 x B, bar 0.90).
+- **R7 does what it says, and it is not enough.** Four finishes a frame bring a report's write from ~28 ms to
+  4-8 ms after it is queued, and the spin halves (0.252 -> 0.114). The guest still polls some results before they
+  land, and the extra finishes are render-pass breaks on the tiler. R7 is the faithful order, and it buys 3.7 ms/f.
+  R8 buys 6.2.
+- **EV/BV repeat E/B**: 35.1 / 41.9 = 0.838, against E/B 0.852. Not a leg; it shows EM's 0.002 miss is inside
+  run-to-run spread.
+- **The pictures cannot judge R8's cost, and they show nothing broken.** Pairs within 0.7 s of the same t-mark
+  (`scratch/evbv/`, EV left, BV right; the three plateau pairs are committed, and `scratch/evbv_pairs.py <EV>
+  <BV> <out>` remakes all 22) show the same shots with every object present: tanks,
+  marines and the Warthog at +144 and +165, the corridor at +185. EV is further along in every one of them. The
+  cinematic's animation advances per rendered frame, so the slow arm lags, and stills at equal time are not equal
+  content. What R8 can get wrong is a visibility count one test stale: a corona or flare that stays on or off one
+  frame too long at a camera cut. A 20-s still cannot see that. What can is a frame-by-frame capture across a cut
+  in a shot with a flare, or the owner watching it.
+- **Upstream X1 BOX 1.2.9** (`git grep` at tag x1box-1.2.9): its vk/reports.c is upstream xemu's path. GET_REPORT
+  queues, and a report is written only at a finish, with no early or relaxed answer. It would wait the same way.
+  There is nothing to port. Its audio side is in scratch/audio/REPORT.md section 1.5.
+
+## #1018 root causes and the remedy set (04:15 PDT 10-17)
+
+The plateau (mark+120..200, the hangar shots under Keyes' briefing) carries 900-1400 draws a frame against
+170-650 elsewhere. Three costs scale with that work. Each is serial with the guest, and each was hidden behind
+the one before it:
+
+| # | Cause | Mechanism (code) | Remedy (switch, owner) | Measured over [mark+131, +191] |
+|---|---|---|---|---|
+| 1 | 49 surface downloads a frame | #59's guard in `check_surface_to_texture_compatiblity()` refuses a 2-byte colour surface sampled as a 5/6-bit texture (`cvt`), so `surface_download_if_dirty` reads it back with a submit and fence wait each (vk/texture.c) | R1 `HAKUX_S2T_CVT=1` (fps1015, built): decode on the GPU | 59.3 -> 41.9 ms/f (census) |
+| 2 | The guest spins on ~544 visibility-test results a frame | the async reader writes a report only after the frame's last finish and the GPU's run of the whole command buffer (~28 ms); Halo polls each a frame later, and the NV2A would have written it long before (vk/reports.c) | R8 `HAKUX_REPORT_EARLY=1` (here): answer an armed report at queue with its offset's last count | 42.1 -> 35.9 (E), 41.9 -> 35.1 (EV) |
+| 3 | The vCPU's own work: 36 k unchained FLDCW exits and ~900 k helper lookups a frame | the FP JIT ends every TB after FLDCW (translate.c); indirect jumps go through `helper_lookup_tb_ptr` | R2 `HAKUX_FLDCW_CHAIN=1` (here) + R4 `HAKUX_IBC=1` (#507, parked off) | 35.9 -> 33.8 (EIF) |
+
+- With all four on, every 10-s window from mark+100 to +210 is 33.4-34.7 ms/f. The windows still over 33.4 are
+  +127..+139 at 34-37 per 2 s, where the guest is busy (idle 0-3%) and the vCPU's remaining work is the bound.
+  More vCPU speed would take those; nothing narrower is left. That is the vCPU JIT direction (09-28), not this lane.
+- R5 (`HAKUX_REPORT_CATCHUP`) measured ~0 and R7 (`HAKUX_REPORT_SUBMIT`) 0.912 x. Both stay off and are not
+  proposed.
+- **Shared with other titles:** cause 1 is #986 MKSM's mechanism (fps1015). Cause 3's FLDCW exits come from
+  MSVC's CRT `_control87`, which is in most titles; how much it costs depends on how often a title calls it. Cause
+  2 hits any title that polls a visibility test a frame after issuing it. Which titles do is unknown: no
+  always-on counter exists on master, and `[rearly1018] w early=` will name them in the screen's ON arm.
+
+### What default-on needs: one screen for the four (by mechanism, owner 10-11)
+
+Every switch below has to be in the screen's ON arm together, with any other default-on lane.xbox has in flight.
+
+| Switch | Where it acts (its counter) | What would fail, and the instrument |
+|---|---|---|
+| `HAKUX_S2T_CVT` | `s2tc` copies, `[txdl794] why=cvt` 0: MKSM, Top Spin, Halo | pixels: its Texture_shadow_comparator regression (fps1015's blocker) |
+| `HAKUX_REPORT_EARLY` | `[rearly1018] w early=` > 0; Halo known | a visibility count one frame stale. Frames every frame across a camera cut at a flare in each title where it acts, plus each title's route end |
+| `HAKUX_FLDCW_CHAIN` | `[fldcw1018] n=` (every title), `flips=` > 0 where the chain's exit runs | wrong FP precision: a hang, crash or physics drift. The title verdict and route end in the titles with flips > 0 |
+| `HAKUX_IBC` | `[ibc507]`; hc falls | #507's record: a saving that became idle spin on GTA/Forza (no defect) |
+
+- Canaries: Halo (the cinematic, this route), MKSM (fps1015's route), and the 0.5 MEASURED titles whose ON-arm
+  counters show REPORT_EARLY or a FLDCW flip.
+- Release note for the flip, when it lands: `Release note (performance): Halo: Combat Evolved's opening cinematic
+  holds 30 fps through the hangar briefing (was 8-19 fps for ~47 s)`.
+
 ## What the next lane should not repeat
 
 - Before writing a V leg on a code path, read MainActivity.kt's FASTPATHS_VARS: "Fast renderer paths" (on by
@@ -722,6 +810,11 @@ Read:
 - Do not chase `TU_DEBUG=sysmem` or GPU-bound explanations for this cinematic: the cinesplit A/B refutes both.
 - A dispatcher soak with `--pull 'frametrace_*'` brings back old CSVs from the device; read only the run's own
   (cineread.py `run_csvs()`).
+- Do not judge a frame-rate arm's pictures with 20-s stills at equal wall time. Halo's cinematic animation
+  advances per rendered frame, so a slow arm is behind in content. Stills also cannot show REPORT_EARLY's one
+  possible cost, a flare one frame late at a cut. Capture every frame across a cut instead.
+- Do not port a report path from X1 BOX 1.2.9: it is upstream xemu's synchronous path.
+- `HAKUX_REPORT_SUBMIT` (R7) and `HAKUX_REPORT_CATCHUP` (R5) are measured and lose. Do not rerun them.
 
 ## Questions (for the owner; nothing waits on them)
 
