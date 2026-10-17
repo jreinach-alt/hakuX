@@ -69,7 +69,8 @@ note = "LENT (lane.local 2026-10-16 14:34 PDT): vk/renderer.c -> lane.x1port1012
 issues = ["433"]
 standing = false
 files = ["CHANGELOG.md", "android/app/build.gradle.kts", "docs/releases/v0.5.1.md", "docs/releases/README.md", "android/README.md", "android/MIGRATING.md", "README.md", "KNOWN_ISSUES.md", "ROADMAP.md", "CONTRIBUTING.md", "PRIVACY.md", "docs/COMPATIBILITY.md", "docs/reporting-bugs.md", "docs/es-de/README.md", "docs/lanes/release051/**"]
-note = "STARTED lane.local 2026-10-16 18:40 PDT (Sonnet, docs + one Kotlin DSL line, no device): owner 10-16 ~18:30 PDT: 0.5.1 publishes tonight on what master holds, without the Top Spin work. The release commit: CHANGELOG, docs/releases/v0.5.1.md, app_name hakuX CE, public-docs date lines and Android 13 wording. Public docs taken from the folded docsrewrite1012, visitor1016 and logo1016 rows. Brief: briefs/release051.md."
+released = ["CHANGELOG.md", "android/app/build.gradle.kts", "docs/releases/v0.5.1.md", "docs/releases/README.md", "android/README.md", "android/MIGRATING.md", "README.md", "KNOWN_ISSUES.md", "ROADMAP.md", "CONTRIBUTING.md", "PRIVACY.md", "docs/COMPATIBILITY.md", "docs/reporting-bugs.md", "docs/es-de/README.md", "docs/lanes/release051/**"]
+note = "RELEASED at ready (lane.local 2026-10-16 19:58 PDT; PR #1011 ready, head 88bb0db4d8, waiting on its fold gate). README.md and docs/COMPATIBILITY.md now free for lane.logo1016 / lane.compat1016. || STARTED lane.local 2026-10-16 18:40 PDT (Sonnet, docs + one Kotlin DSL line, no device): owner 10-16 ~18:30 PDT: 0.5.1 publishes tonight on what master holds, without the Top Spin work. The release commit: CHANGELOG, docs/releases/v0.5.1.md, app_name hakuX CE, public-docs date lines and Android 13 wording. Public docs taken from the folded docsrewrite1012, visitor1016 and logo1016 rows. Brief: briefs/release051.md."
 
 [lane.fistdefault1016]
 issues = ["939", "433"]
