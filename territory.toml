@@ -2852,6 +2852,12 @@ standing = false
 files = [".github/hakux-logo.svg", "docs/images/hakux-logo.svg", "README.md", "docs/lanes/logo1016-move/**"]
 note = "ADDED by lane.local 2026-10-16 21:49 PDT for lane.xbox branch lane/logo1016-move (board request 10-16 21:35). Files moved from [lane.logo1016]."
 
+[lane.release051b]
+issues = ["433"]
+standing = false
+files = ["KNOWN_ISSUES.md", "docs/lanes/release051b/**"]
+note = "STARTED lane.local 2026-10-16 23:0x PDT (docs, no device): owner 10-16 ~22:50 PDT, 0.5.1 publishes now and the Halo work goes to 0.5.2; three Halo known issues (#938, #1018, #939) added to KNOWN_ISSUES.md. No brief."
+
 [lane.halo1016]
 issues = ["938", "1018"]
 standing = false

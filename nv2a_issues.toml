@@ -6164,7 +6164,7 @@ disposition = "defect"
 status = "open"
 dispatch_state = "available"
 blocked_on = ""
-status_note = "Filed by lane.local 2026-10-11 22:3x PDT from the owner's hands-on test (owner: known in emulation, not ours; \"Worth logging an issue so we correct it\"). Not HAKUX_APU_PACE (timing only, never level). First step: an audio_capture of a dialogue cutscene, speech vs music level against a hardware reference."
+status_note = "TARGETS 0.5.2 (owner 2026-10-16 ~22:50 PDT): 0.5.1 publishes without it and lists it in KNOWN_ISSUES.md. || Filed by lane.local 2026-10-11 22:3x PDT from the owner's hands-on test (owner: known in emulation, not ours; \"Worth logging an issue so we correct it\"). Not HAKUX_APU_PACE (timing only, never level). First step: an audio_capture of a dialogue cutscene, speech vs music level against a hardware reference."
 
 [issue.939]
 title = "Halo: Combat Evolved (4D530004): the ring world on the main menu flickers in and out on the Nova"
@@ -6173,8 +6173,8 @@ no_suites = "A visual defect in a commercial title, not yet identified, so no pg
 disposition = "defect"
 status = "open"
 dispatch_state = "blocked"
-blocked_on = "OWNER HOLD (owner 2026-10-16 ~22:00 PDT): low priority; do not dispatch until the 0.5.1 Halo blockers #938 and #1018 are fixed. Release only on the owner's word."
-status_note = "Filed by lane.local 2026-10-11 22:3x PDT from the owner's hands-on test. Not HAKUX_VTX_HAZARD: zero vtx_hazard finishes in two menu sessions with it on (22:24, 22:26), so it predates the switch. First step: an 8 s adb screenrecord of the menu to classify the bad frames. 2026-10-16 ~22:00 PDT (owner, compared against the console, 0.5.1-rc1 on the Nova): the ring's inside surface stays static while the ring rotates; the outer gray hull rotates correctly. The FIST rounding change in 0.5.1 fixed the bursts where the ring jumped back; the missing surface layer is not fixed. Whether the static inside surface shares a cause with the missing layer is not known."
+blocked_on = "OWNER HOLD (owner 2026-10-16 ~22:00 PDT): low priority; do not dispatch until the 0.5.2 Halo defects #938 and #1018 are fixed. Release only on the owner's word."
+status_note = "TARGETS 0.5.2 (owner 2026-10-16 ~22:50 PDT): 0.5.1 publishes without it and lists it in KNOWN_ISSUES.md. || Filed by lane.local 2026-10-11 22:3x PDT from the owner's hands-on test. Not HAKUX_VTX_HAZARD: zero vtx_hazard finishes in two menu sessions with it on (22:24, 22:26), so it predates the switch. First step: an 8 s adb screenrecord of the menu to classify the bad frames. 2026-10-16 ~22:00 PDT (owner, compared against the console, 0.5.1-rc1 on the Nova): the ring's inside surface stays static while the ring rotates; the outer gray hull rotates correctly. The FIST rounding change in 0.5.1 fixed the bursts where the ring jumped back; the missing surface layer is not fixed. Whether the static inside surface shares a cause with the missing layer is not known."
 
 [issue.973]
 title = "Die Hard: Vendetta (Europe) (56560029): the game freezes about a minute into the first level on the Nova"
@@ -6324,4 +6324,4 @@ disposition = "defect"
 status = "open"
 dispatch_state = "available"
 blocked_on = ""
-status_note = "Filed by lane.local 2026-10-16 22:0x PDT from the owner's hand play on 0.5.1-rc1 (owner: 'It's not clearing the 30 FPS bar'; 0.5.1 on hold until fixed). Owned by lane.halo1016 (deep dive, with #938). Capture: captures/owner-halo-1016/logcat-nova-full.txt."
+status_note = "TARGETS 0.5.2 (owner 2026-10-16 ~22:50 PDT): 0.5.1 publishes without it and lists it in KNOWN_ISSUES.md. || Filed by lane.local 2026-10-16 22:0x PDT from the owner's hand play on 0.5.1-rc1 (owner: 'It's not clearing the 30 FPS bar'; 0.5.1 on hold until fixed). Owned by lane.halo1016 (deep dive, with #938). Capture: captures/owner-halo-1016/logcat-nova-full.txt."
