@@ -28,7 +28,8 @@ driver you installed.
 ## Installing it
 
 1. Get the driver's zip file (`Turnip Adreno Driver T30 (@Mr_Purple_666)`,
-   which contains `meta.json` and `vulkan.purple.so`) onto the device.
+   which contains `meta.json` and `vulkan.purple.so`) onto the device. It is
+   published at [MrPurple666/purple-turnip](https://github.com/MrPurple666/purple-turnip).
 2. In hakuX, open **Settings → Graphics → GPU Driver**.
 3. Tap **Install Driver from ZIP** and choose the file. A zip that is already
    in the app's driver folder shows up under **Select Driver** instead.
