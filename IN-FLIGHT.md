@@ -6,7 +6,9 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Right now
 
-No lane session is running.
+| Lane | Model | Running for | Working on |
+|---|---|---|---|
+| `defaulton1017` | claude-opus-5-5 | 13 min | defaulton1017: one default-on screen for S2T_CVT + REPORT_EARLY + FLDCW_CHAIN + IBC, then flip all four (#1018 |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -112,10 +114,13 @@ No lane session is running.
 
 ## Work in progress
 
-No branch is being worked right now.
+| Branch | Topic | Tip | Last change |
+|---|---|---|---|
+| `lane/defaulton1017` | defaulton1017: one default-on screen for S2T_CVT + REPORT_EARLY + FLDCW_CHAIN + IBC, then flip all four (#1018) | `9b96b1e0bd` | 2026-10-17 04:31 |
 
 ## Recently landed on master
 
+- 2026-10-17 halo1016: Halo CE cutscenes on the Nova -- quiet speech under loud music (#938), cinematic at 8-19 fps (#1018)
 - 2026-10-16 release051b: three Halo known issues for 0.5.1, aimed at 0.5.2 (#433)
 - 2026-10-16 logo1016-move: the README logo moves to docs/images (#433)
 - 2026-10-16 visitordocs1016: security policy, code of conduct, getting your Xbox files
@@ -126,7 +131,5 @@ No branch is being worked right now.
 - 2026-10-16 selftestclean1011: selftest.sh removes its fake host when it passes (#433)
 - 2026-10-16 icon1016: hakuX CE app icon (#433)
 - 2026-10-16 x1port1012-halo: #939 (b) root-caused and fixed behind HAKUX_FIST_ROUND=1 (verified on the Nova, run 13)
-- 2026-10-16 logo1016-banner: the new hakuX CE banner at the top of the README
-- 2026-10-16 logo1016-count: the Playable count as a running total, apart from the download
 
-_Updated 2026-10-17 04:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-17 04:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
