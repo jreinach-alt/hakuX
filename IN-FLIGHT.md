@@ -6,7 +6,9 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Right now
 
-No lane session is running.
+| Lane | Model | Running for | Working on |
+|---|---|---|---|
+| `dispatchdoctor1017` | claude-sonnet-5 | 10 min | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what  |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -112,7 +114,9 @@ No lane session is running.
 
 ## Work in progress
 
-No branch is being worked right now.
+| Branch | Topic | Tip | Last change |
+|---|---|---|---|
+| `lane/dispatchdoctor1017` | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what stops a ru | `c6a51983c5` | 2026-10-17 07:00 |
 
 ## Recently landed on master
 
@@ -121,4 +125,4 @@ No branch is being worked right now.
 - 2026-10-17 halo1016: Halo CE cutscenes on the Nova -- quiet speech under loud music (#938), cinematic at 8-19 fps (#1018)
 - 2026-10-16 release051b: three Halo known issues for 0.5.1, aimed at 0.5.2 (#433)
 
-_Updated 2026-10-17 08:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-17 09:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
