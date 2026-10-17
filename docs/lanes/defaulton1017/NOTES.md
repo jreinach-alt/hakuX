@@ -130,6 +130,28 @@ briefing (was 17 fps)`.
   acted: no `[rearly1018] w` line (no report queued), no `[fldcw1018] n=` line (< 2^20 FLDCW), and no s2t
   line. Menus at 59 fps, no crash, pace to the end. A dropped input, not a defect the switches can be blamed
   for. Rerun once (single-run flake rule): TS 2nd queued, 1792240997-defaulton1017-3446680.
+- **TS 2nd VOID the same way: not a flake** (1792240997-defaulton1017-3446680). Controller select from s13
+  to s16: the A at s13, the A at s14, the START at s15 and the A at s16 all did nothing. The d-pad (`axis
+  HATX min`) after s16 moved 1P to Team One (s17), and the A after it took (s18, player select). But the As
+  at s18 and s19 and all 54 in the hold loop left player select with no READY banner. tsread: 117 play
+  windows, 0 with a signature (no match). Route end, no crash, menus at 59 fps. Both runs: a digital input
+  (the d-pad) registers, the analog face button (an Xbox A is a pressure byte) mostly does not.
+  `scratch/tsroute.py` (every run of this route family on disk) and tsread on fps1015's three runs of
+  the route (f5a67ba52c): an A at s13 that does nothing is ordinary there too (s13 to s14 unchanged in 6 of
+  the 7 runs by other lanes, fps1015's off run included). But each of fps1015's three runs lost at most
+  that one A and reached the match (off 55 of 55 play windows with its signature, on 68 of 70, frame-dump
+  on 87 of 88). `scratch/sheet.py` s13-s19, master's two against these two: master is at player select by
+  s14/s15 and in the match by s16; these runs are still at controller select at s16.
+  **The base moved too.** fps1015 ran f5a67ba52c (10-16 ~10:45). This binary also carries master's
+  52aa206f93 (10-16 18:47, #939): `HAKUX_FIST_ROUND` on by default, so inline FIST/FISTP round per the
+  guest's RC on aarch64 instead of truncating. Top Spin logs `perfarch fist round=ON (default)` and emits
+  rounding FISTs from 4 s after launch, well before controller select. Of this lane's switches, only
+  FLDCW_CHAIN can have acted before the divergence. There is no `[s2tcvt]` line at all (S2T's check is
+  never reached), no `[rearly1018] w` line (no report queued), and IBC is 0. Read in the source, the two
+  are consistent: the call to helper_fldcw runs `gen_bb_epilogue()`, which clears `flcr_set`, and FIST goes
+  through `get_st0` -> `gen_flcr`, which reloads FPCR from the new RC. The MXCSR-to-FPCR RC swap is
+  right, and only FIST/FISTP emit `cvt*f_i*` (`ops_fpu.h:330,335`). So runs decide it (below, "Triggered,
+  TS isolation").
 - **SHR: SV HIT, VIS:SHR HIT, HDS HIT, FL HIT.** REPORT_EARLY acts in a second title: Simpsons Hit & Run
   answers 10,984 reports early over the route (~47 a second), with 1 cold and no skip0/skipn, so it re-queues
   each offset one guest frame later, as Halo does. vis 8 of 10,984 (0.07%, bar 2%), stale 1.5%, desync 0. No
@@ -302,6 +324,29 @@ Conditional rows, queued only on a trigger, each with its own line here first:
     for: the same attract sequence in both, in the same order at about the same times, and the gameplay
     clips showing the same scenes; a hang, a crash, a screen or a clip in CLF that CLC does not show (or the
     reverse) is the chain's failure. 2 x 300 s, ~13 Nova min. Queued with `scratch/queue_screen.sh CLF CLC`.
+  - **Triggered, TS isolation** (06:40): TS left its route twice where fps1015's master runs did not (above,
+    "TS 2nd"). The owner's rule gives the three one-switch rows (IBC is already 0 in every title row). Two
+    more rows separate this lane's switches from the base, which also moved (FIST_ROUND). Every row is TS
+    as queued (fps1015-topspin, 450 s, ed2b1d3333, `HAKUX_IBC=0`) plus:
+    - TSF `HAKUX_FLDCW_CHAIN=0`: the one switch here whose mechanism acts before the divergence;
+    - TSFR `HAKUX_FIST_ROUND=0`: the base change that acts in Top Spin before the divergence (#939, in 0.5.1);
+    - TSOFF the four `=0` (HOFF's env): this lane's switches all off on the same binary;
+    - TSR `HAKUX_REPORT_EARLY=0` and TSS `HAKUX_S2T_CVT=0`: the rule's other two. Neither acted before the
+      divergence, so both are expected to drop like ON.
+
+    What we are looking for in each: does the route reach the match? That means the route's As move
+    controller select on with at most one dropped (as on master), player select shows READY, the gameplay
+    shots are a court, and two thirds of tsread's play windows carry the signature for the row's S2T state.
+    "Drops" means three or more As in a row at controller or player select with no change, and no match. A
+    row counts as reaching only by the match signature, because master drops one A at times. Reading:
+    - TSF reaches while ON drops: the chain breaks Top Spin's input on this base, so it does not ship on.
+    - TSFR reaches, and TSF and TSOFF drop: FIST_ROUND, which is master's and in 0.5.1. It goes to #939 by
+      board request; this lane's switches are cleared for Top Spin.
+    - TSOFF reaches and every one-switch row drops: two switches together; the pairs next.
+    - All five drop: neither the switches nor FIST_ROUND. The next row is master's own binary on this route.
+
+    5 x (450 + 90) s = 45 Nova min, under `pilots/defaulton1017.ok` (05:25). Queued in decision order with
+    `scratch/queue_screen.sh TSF TSFR TSOFF TSR TSS`.
 
 Judge: `docs/lanes/defaulton1017/screenread.py` (written before the first verdict) with halo1016's `vcpuread`
 and `earlyread` readers for Halo, fps1015's `s2tread.py` and `tsread.py` for MKSM and Top Spin.

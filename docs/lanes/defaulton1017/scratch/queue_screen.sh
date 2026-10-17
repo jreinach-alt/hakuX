@@ -35,6 +35,17 @@ for row in "$@"; do
         MKC) title MKC 4D570029-Mortal_Kombat_Shaolin_Monks.xiso.iso docs/lanes/fps1015/routes fps1015-mksm 330 \
             --env HAKUX_FLDCW_CHAIN=0 ;;
         TS) title TS 4D530035-Top_Spin.xiso.iso docs/lanes/fps1015/routes fps1015-topspin 450 ;;
+        # conditional (NOTES, "Triggered, TS isolation"): TS dropped its A presses at controller select twice
+        TSF) title TSF 4D530035-Top_Spin.xiso.iso docs/lanes/fps1015/routes fps1015-topspin 450 \
+            --env HAKUX_FLDCW_CHAIN=0 ;;
+        TSFR) title TSFR 4D530035-Top_Spin.xiso.iso docs/lanes/fps1015/routes fps1015-topspin 450 \
+            --env HAKUX_FIST_ROUND=0 ;;
+        TSOFF) title TSOFF 4D530035-Top_Spin.xiso.iso docs/lanes/fps1015/routes fps1015-topspin 450 \
+            --env HAKUX_S2T_CVT=0 --env HAKUX_REPORT_EARLY=0 --env HAKUX_FLDCW_CHAIN=0 ;;
+        TSR) title TSR 4D530035-Top_Spin.xiso.iso docs/lanes/fps1015/routes fps1015-topspin 450 \
+            --env HAKUX_REPORT_EARLY=0 ;;
+        TSS) title TSS 4D530035-Top_Spin.xiso.iso docs/lanes/fps1015/routes fps1015-topspin 450 \
+            --env HAKUX_S2T_CVT=0 ;;
         RS) title RS 4D53000F-RalliSport_Challenge.xiso.iso docs/lanes/accuracy804 rallisport-804g 240 ;;
         SHR) title SHR 56550015-The_Simpsons_Hit_Run.xiso.iso docs/testing/titles/routes simpsons-hit-run 300 ;;
         CLR) title CLR 'Conker Live & Reloaded.iso' docs/testing/titles/routes '' 300 ;;
