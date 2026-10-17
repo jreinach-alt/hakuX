@@ -121,4 +121,4 @@ No branch is being worked right now.
 - 2026-10-16 release051b: three Halo known issues for 0.5.1, aimed at 0.5.2 (#433)
 - 2026-10-16 logo1016-move: the README logo moves to docs/images (#433)
 
-_Updated 2026-10-17 07:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-17 08:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
