@@ -20,6 +20,12 @@
   default: `accel/tcg/cpu-exec.c` and `include/accel/tcg/hakux-ibc.h` restored to master's. The rest of the
   screen runs on the same binary (ed2b1d3333) with `HAKUX_IBC=0`, which is what ships: the IBC code reads `0`
   and unset the same way once the flip is gone. `pilots/defaulton1017.ok` written.
+- 05:30: default-on re-scan of the open lanes' PR.md and NOTES.md (`scratch/defaulton_scan.py`): no new
+  candidate (memfast's F3 is still a plan; verdict433's line names kabukistall, not a switch). Queued
+  (`scratch/queue_screen.sh`): HOFF 1792239587-defaulton1017-3307802, MKSM 1792239588-defaulton1017-3307916,
+  TS 1792239589-defaulton1017-3308032, RS 1792239590-defaulton1017-3308140, SHR
+  1792239591-defaulton1017-3308261, CLR 1792239593-defaulton1017-3308455, AMP 1792239593-defaulton1017-3308736,
+  TSC1 1792239595-defaulton1017-3309294, TSC2 1792239595-defaulton1017-3309495. ~60 Nova minutes.
 
 ## Pilot verdict (HON, HNI; screenread.py, as registered)
 
