@@ -1372,6 +1372,22 @@ def _iso_name(iso):
     return s.strip() or iso
 
 
+def _run_tid(vdir, top):
+    """A pathfind held run's title_id. Its verdict.json carries only the ISO's name ("Bad Boys Miami Takedown USA"),
+    which no catalog spelling matches, so the run made a second row beside the title's own and counted it as Measured
+    twice (#433); the run's request.json or result.json carries the id. A verdict in a sub-directory (provisional/,
+    hold/) belongs to the run directory above it. "" when neither says."""
+    for d in (vdir, os.path.dirname(vdir)):
+        if os.path.normpath(d) == os.path.normpath(top or "/") or not d:
+            break
+        for f in ("request.json", "result.json"):
+            j = _jload(os.path.join(d, f))
+            t = str(j.get("title_id") or "") if isinstance(j, dict) else ""
+            if re.fullmatch(r"[0-9A-Fa-f]{8}", t):
+                return t.upper()
+    return ""
+
+
 def _steps(times):
     """Cumulative count over time: [[epoch, n], ...], one point per distinct time."""
     out = []
@@ -1566,15 +1582,16 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
         at = F.mtime(p) or 0
         if not at or at > now:
             continue
-        n = resolve(_iso_name(str(v["title"])), str(v.get("title_id") or ""))
+        tid = str(v.get("title_id") or "") or _run_tid(os.path.dirname(p), pf_dir)
+        n = resolve(_iso_name(str(v["title"])), tid)
         d = v.get("device") or "nova"
         seen(n, v.get("fps_window_median"), at)
         if (n, d) not in pf_latest or at > pf_latest[(n, d)][0]:
-            pf_latest[(n, d)] = (at, v, p)
+            pf_latest[(n, d)] = (at, v, p, tid)
     if pf_latest:
         srcs.append("pathfind held runs")
-    for (n, d), (at, v, p) in pf_latest.items():
-        add(n, "", d)
+    for (n, d), (at, v, p, tid) in pf_latest.items():
+        add(n, tid, d)
         m = meas.setdefault(n, {})
         old = m.get(d)
         if old is None or (old.get("mode") != "MAX" and at > (old.get("at") or 0)):

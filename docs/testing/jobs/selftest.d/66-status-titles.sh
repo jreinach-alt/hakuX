@@ -55,6 +55,15 @@ check "two differently-spelled sources of one title_id fold to one Playable row 
     grep -q '^PASS' "$T/spongebob-falsifier.txt"
 grep -q '^FAIL' "$T/spongebob-falsifier.txt" && sed 's/^/    /' "$T/spongebob-falsifier.txt"
 
+# The held-run falsifier (#433): a pathfind held run's verdict names the ISO
+# and carries no title_id, so the run made a second row beside its title's
+# and counted it as Measured twice; the run directory's request.json and
+# result.json carry the id. Must still split on the code before the fix.
+python3 "$REPO/docs/lanes/statusdup1016/fixture/heldrun_falsifier.py" "$REPO" > "$T/heldrun-falsifier.txt" 2>&1
+check "a held run whose verdict has no title_id joins its title's row by the run's request.json, Measured once (#433)" \
+    grep -q '^PASS' "$T/heldrun-falsifier.txt"
+grep -q '^FAIL' "$T/heldrun-falsifier.txt" && sed 's/^/    /' "$T/heldrun-falsifier.txt"
+
 # `title_registry.py check --pages` (#433 Part 4): every public/rendered
 # page's own Playable count must agree with the table's, and a page that
 # stops agreeing must fail the check by name, not just by exit code.
