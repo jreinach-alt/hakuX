@@ -6505,6 +6505,16 @@ dispatch_state = "available"
 blocked_on = ""
 status_note = "Filed 2026-10-17 from the owner's report; ROOT CAUSE FOUND 2026-10-17 ~13:00 PDT: not an emulator regression. The packages showing the bind pose (debug2, the Nova release app, the Thor's 0.5.2-rc1) had no custom Vulkan driver installed and ran the stock Qualcomm Adreno driver; every good run (the dispatcher's .debug app, a hand launch, a no-validation-layer build, the accepted 10-13 apk) loaded Turnip Adreno Driver T30 (@Mr_Purple_666, vulkan.purple.so). Same 8455537f10 apk: .debug (Turnip) animates, debug2 (no driver) holds the bind pose. Max Payne 2 (10-08) and THPS4 (10-13) were accepted on .debug and never checked on stock. Owner confirmed 10-17: bind pose gone with T30 on the Nova (.debug, and the release app once T30 was loaded) -- THPS4 checked by the owner, Max Payne 2 not re-checked; the stock driver is never tested (owner). The earlier bisect (first bad fold 3c2338eb2b, FIST_ROUND, the 0.5.1 A-commits) ran on a driverless package and is withdrawn: no commit is implicated, nothing to revert, 0.5.2 is not held by this. A fresh install, a wiped app or a new package starts with no driver (Thor wiped 10-16 19:06; debug2 first installed 10-17 11:15). STILL OPEN for the owner: bundle Turnip by default on Adreno 6xx/7xx or warn when none is loaded (docs/investigations/adreno-driver-feasibility.md:214-218), which driver (pinned Mesa 4c18636110 or PurpleVK) and when. Owned by lane.bindpose1017 (write-up only)."
 
+[issue.1049]
+title = "Grand Theft Auto III: the frame rate drops into the teens while driving"
+suites = []
+no_suites = "A frame-rate defect while driving in a title, not yet located, so no pgraph suite is known to cover it."
+disposition = "defect"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "Filed 2026-10-17 from the owner's play on the Nova (0.5.2-rc1 release app, Turnip T30, mode 3): dips into the teens while driving; on foot the title is Playable. Owned by lane.gta3drive1017 (dispatched by lane.xbox on the owner's request)."
+
 [issue.1045]
 title = "A brief flash of static or green distortion shows every time a game starts"
 suites = []

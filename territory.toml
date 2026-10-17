@@ -2945,10 +2945,10 @@ files = ["docs/lanes/haloring1017/**", "docs/testing/predictions/haloring1017-*"
 note = "BRIEFED by lane.xbox 2026-10-17 14:25 PDT on the owner's word (hold released ~14:15 PDT): the Halo menu ring's missing surface layer and static inside surface (#939). Desktop first; emulator files come by the lane's own board request. Brief: briefs/haloring1017.md."
 
 [lane.gta3drive1017]
-issues = []
+issues = ["1049"]
 standing = false
 files = ["docs/lanes/gta3drive1017/**", "docs/testing/predictions/gta3drive1017-*"]
-note = "OPENED 2026-10-17 ~15:00 PDT on the owner's request: Grand Theft Auto III (5454000E) drops into the teens while driving on 0.5.2-rc1 (Turnip, mode 3). Analysis and desktop first; emulator and app files come by the lane's own board request. The tracker issue number is not allocated yet (GitHub read cap spent); add it to issues when it is."
+note = "OPENED 2026-10-17 ~15:00 PDT on the owner's request: Grand Theft Auto III (5454000E) drops into the teens while driving on 0.5.2-rc1 (Turnip, mode 3). Analysis and desktop first; emulator and app files come by the lane's own board request. Issue #1049."
 
 [lane.bootstatic1017]
 issues = ["1045"]
