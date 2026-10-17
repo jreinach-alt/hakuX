@@ -29,13 +29,13 @@ is on the [compatibility page](https://github.com/jreinach-alt/hakuX/blob/master
   the console draws over the ring is missing, and the ring's inside surface
   does not move as the ring rotates. 0.5.1 fixes the ring jumping back in
   bursts. Tracked in
-  [#939](https://github.com/jreinach-alt/hakuX/issues/939), aimed at 0.5.2.
+  [#939](https://github.com/jreinach-alt/hakuX/issues/939).
 
 ## Audio
 
 - **Halo: Combat Evolved's cutscene speech is quiet under the music.** The
   voices are there but hard to hear. Tracked in
-  [#938](https://github.com/jreinach-alt/hakuX/issues/938), aimed at 0.5.2.
+  [#938](https://github.com/jreinach-alt/hakuX/issues/938).
 - **Audio effects processing is off by default.** Games that use the Xbox's
   audio effects may sound thin, without reverb. Turn on Settings → Audio →
   Real-time DSP processing; it can cost speed on slower devices.
