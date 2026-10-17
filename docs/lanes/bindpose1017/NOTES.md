@@ -106,6 +106,48 @@ so this is weak evidence. Still, a post-fold build animated a Remedy title when 
    package with the goldens HDD. If it animates, H-env is confirmed and the cause sits in the owner's install. That
    leaves a diff of the shared_prefs, the HDD cache partition and the GPU-driver setting.
 
+## Update 1 (~13:00 PDT): the anchor is bad, so the code is excluded
+
+lane.local reports these results from the owner's hand tests on the Nova:
+- 8455537f10 built as debug2 and installed over the same data: **bad**.
+- The dispatcher's original cached 8455537f10 apk, run by hand in the test-builds app: **bad**.
+- minusA7 (the d4d292c9ca revert), minusA9 and 3c2338eb2b: bad.
+- The owner also sees the bind pose on the Thor on 0.5.2-rc1 (release app).
+
+So the same code that animated on 10-13 in the dispatcher's run does not animate on the owner's installs today. No
+commit in 8455537f10..160728983a is the cause, and **there is no release interim to give**: every build since 10-13
+behaves the same here. What differs is the environment the 10-13 run had and the owner's installs do not.
+
+The shader caches (lane.local's lead), by reading:
+- spv_cache is keyed by `fast_hash(GLSL)` (vk/glsl.c:442-468).
+- shader_module_keys.bin and pipeline_keys/<title id>.bin hold keys, and the GLSL is generated again from them
+  (compile_worker.c:1352-1366).
+- vk_pipeline_cache.bin holds driver binaries matched by full create-info.
+- No generator changed in the window.
+
+So no build in play writes a module that another reuses wrongly. debug2's caches were created at 11:25, and the first
+debug2 test (0.5.1-rc1, ~11:30) was already bad. If that was THPS4's first launch there, it was bad with empty caches.
+lane.local is still having the owner clear the cache and retest, which is cheap.
+
+The other things the owner's installs share: the HDD image (debug2's was "pre-filled"), the settings, and the device.
+Both good runs used the dispatcher's goldens `titles.qcow2`: THPS4 on 10-13 and MP1 on 10-14. Xbox titles keep cached
+disc files on the HDD's X/Y/Z cache partitions per title, and saves in `E:\UDATA\<title id>`. Damaged per-title data
+would hit THPS4 and MP2 on every build using that HDD and spare Halo.
+
+| id | hypothesis | P | hit | miss |
+|---|---|---|---|---|
+| H-HDD | The owner's HDD image holds bad per-title data for these titles (cache partition files, or UDATA). | 0.4 | the same build animates with a fresh HDD or a copy of goldens `titles.qcow2` on the owner's device | still bad with a fresh HDD |
+| H-settings | A setting the installs share: the `env_vars` pref, a custom GPU driver (GpuDriverHelper), or a per-game setting. | 0.2 | shared_prefs show a non-default; the bind pose clears when it is reset | defaults throughout |
+| H-device | A device-level change since 10-13 (the Android GPU driver or system update) on both the Nova and the Thor. | 0.15 | a clean dispatcher run (its package, goldens HDD, caches cleared) of 8455537f10 today is **bad** too | that run animates |
+| H-B3 | The shader caches. | 0.05 | animates after Settings > Clear shader cache | still bad |
+| H-code | Any fold commit. | 0.02 | — | the 8455537f10-debug2 result above |
+
+lane.xbox's question still stands for the mechanism: does each title skin by fixed-function `SET_SKIN_MODE` (matrices
+0-3 as uniforms) or by a vertex program with a constant-register palette? A desktop gd dump of THPS4's main menu
+answers it with no input. The menu's 3D skatepark has skaters in it (good-run frame `007-main_menu`), so the dump gives
+CSV0_D skin mode and program/FFP per draw. The desktop build is at 3c2338eb2b in a scratch worktree,
+`/home/justin/hakux-work/wt/bp1017desk`.
+
 ## Builds: exactly what each one is
 
 | build | sha | package | installed how | app data | result | source |
@@ -117,7 +159,10 @@ so this is weak evidence. Still, a post-fold build animated a Remedy title when 
 | 56fdef2c85 | 56fdef2c85 | debug2 | owner | debug2 | bad | Addendum 3 / #1043 row |
 | 3c2338eb2b | 3c2338eb2b | debug2 | owner | debug2 | bad | same |
 | 3c2338eb2b - 4f0111232c | revert on 3c2338eb2b | debug2 | owner, after a reboot | debug2 | bad | same |
-| 3c2338eb2b - d4d292c9ca | revert on 3c2338eb2b | debug2 | owner, 12:15 | debug2 | pending | lane.local |
+| 3c2338eb2b - d4d292c9ca | revert on 3c2338eb2b | debug2 | owner, 12:15 | debug2 | bad | lane.local, ~13:00 |
+| 8455537f10 | 8455537f10 | debug2 | owner, over the same data | debug2 | **bad** | lane.local, ~13:00 |
+| 8455537f10 (the dispatcher's own cached apk) | 8455537f10 | test-builds app | owner | that app's | **bad** | lane.local, ~13:00 |
+| 0.5.2-rc1 on the Thor | 160728983a | release | owner | the Thor's | bad | lane.local, ~13:00 |
 
 ## Crash log (desktop)
 
