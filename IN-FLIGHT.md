@@ -116,9 +116,9 @@ No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-17 release052: the 0.5.2 release commit (#433)
 - 2026-10-17 defaulton1017: S2T_CVT, REPORT_EARLY and FLDCW_CHAIN on by default, after one default-on screen
 - 2026-10-17 halo1016: Halo CE cutscenes on the Nova -- quiet speech under loud music (#938), cinematic at 8-19 fps (#1018)
 - 2026-10-16 release051b: three Halo known issues for 0.5.1, aimed at 0.5.2 (#433)
-- 2026-10-16 logo1016-move: the README logo moves to docs/images (#433)
 
-_Updated 2026-10-17 08:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-17 08:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
