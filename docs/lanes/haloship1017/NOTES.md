@@ -10,6 +10,15 @@ Step 0 done (this file, before any code). Desktop input works (r2), the cut is l
 are identified and count 0 in the steady front shot (r2, r3). Running: r4, every frame across the cut, armed by
 the engine glow. Next: per-frame light tests and images for the first frames after the cut.
 
+**Why attempt 1 did not finish (12:08 PDT):** the 300-turn cap. It spent its turns on Step 0, the instrument,
+three desktop runs and many single-command polls, and the cap fell 40 s into r4 (route.log ends at
+`002_boot40`; systemd's SIGTERM at session end killed qemu). Everything before r4 was committed and pushed. r4 is
+rerun from the start in attempt 2, with fewer, larger steps: one detached run, one blocking wait per run.
+
+r2's shots place the behind shot by guest frame (`nv2a_frame`, luma >= 240 fraction): 4175 dark, **4188-4256
+bright (0.052-0.081)** except 4231 (0.0000, one shot: noted, read in r4), 4266 onward 0.0000. So the behind shot
+is ~80 guest frames and the cut lies between 4256 and 4266.
+
 ## Step 0: what was searched
 
 - `git log --all -S` and `--grep` for: GET_REPORT, CLEAR_REPORT_VALUE, SET_ZPASS_PIXEL_COUNT_ENABLE, zpass/ZPASS,
