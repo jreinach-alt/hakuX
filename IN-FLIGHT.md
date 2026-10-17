@@ -8,9 +8,9 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `bindpose1017` | claude-opus-5-5 | 2h 5m | bindpose1017: THPS4 and Max Payne 2 characters stuck in the bind pose (#1043) |
-| `haloshadow1017` | claude-opus-5-5 | 39 min | haloshadow1017: character shadows draw as dark squares under the feet (Halo CE and other titles) |
-| `haloship1017` | claude-opus-5-5 | 39 min | Halo CE: the ship's rear lights show through the hull after the cut to the front (opening cinematic) |
+| `bindpose1017` | claude-opus-5-5 | 2h 20m | bindpose1017: THPS4 and Max Payne 2 bind pose: the stock Adreno driver, not the code (#1043) |
+| `haloshadow1017` | claude-opus-5-5 | 54 min | haloshadow1017: character shadows draw as dark squares under the feet (Halo CE and other titles) |
+| `haloship1017` | claude-opus-5-5 | 54 min | Halo CE: the ship's rear lights show through the hull after the cut to the front (opening cinematic) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -118,7 +118,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/bindpose1017` | bindpose1017: THPS4 and Max Payne 2 characters stuck in the bind pose (#1043) | `c1f24ceb76` | 2026-10-17 12:41 |
+| `lane/bindpose1017` | bindpose1017: THPS4 and Max Payne 2 bind pose: the stock Adreno driver, not the code (#1043) | `d0a28c1260` | 2026-10-17 13:29 |
 | `lane/haloshadow1017` | haloshadow1017: character shadows draw as dark squares under the feet (Halo CE and other titles) | `1fda429ede` | 2026-10-17 12:55 |
 | `lane/haloship1017` | Halo CE: the ship's rear lights show through the hull after the cut to the front (opening cinematic) | `b4334f8cfe` | 2026-10-17 12:57 |
 
@@ -130,4 +130,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 defaulton1017: S2T_CVT, REPORT_EARLY and FLDCW_CHAIN on by default, after one default-on screen
 - 2026-10-17 halo1016: Halo CE cutscenes on the Nova -- quiet speech under loud music (#938), cinematic at 8-19 fps (#1018)
 
-_Updated 2026-10-17 13:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-17 13:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
