@@ -274,6 +274,50 @@ L4 = L3 + `HAKUX_GPL=0`: the Nova's pipeline mode, the Nova's path pattern, no s
 - Miss: the thin streak again. Mode is out; next are the other env/Android-only differences
   (a full diff of the Nova's logged switches against the desktop's).
 
+**L4's result (run 12:47): miss.** `[gpl569] requested=0 mode=0`; f003's projection draws n738-796
+take path 2 on each group's first and path 0 on the rest, as on the Nova. This run's f003 is the
+wide shot of the Nova's f004 and the owner's s2-03 (the central soldier on the lit platform). On
+the desktop the central soldier has a small soft shadow at the feet; the Nova draws the large
+mauve parallelogram there. `build-linux/run/L4/framedump_1792266358_f003.png` against
+`captures/halo-shadow-1017/framedump/f004.png`.
+
+**So: same core, same state, same switches, same pipeline mode, same draw paths. The desktop is
+right and the Nova is wrong.** An Explore pass over hw/xbox/nv2a for `__ANDROID__` branches and
+vendor checks found none that changes what a sampled texture returns or what coordinate a
+fragment uses (the list is in section 6.3). What remains is how the GPU executes the same command
+stream. Lavapipe runs every command in submission order on one CPU queue, with no tiling, so a
+missing or too-narrow barrier never shows on it. A tiler (Adreno) and the desktop GPUs in the
+upstream reports would show one.
+
+### 6.3 Android-only and device-dependent code (Explore pass, 10-17)
+
+- No `__ANDROID__` branch in hw/xbox/nv2a touches sampling, views, samplers, the psh/vsh GLSL or
+  the s2t paths. The Android branches are the AHB/EGL present path, VMA block sizes, memory budget
+  thresholds, the inline-buffer cap, early context init and a duplicate-NOP assert.
+- vendorID is used only for the pipeline-cache identity (renderer.c:45-170).
+- Device-capability-dependent: the GPL mode (instance.c:1278), the cvt pass's buffer offset
+  alignment (`minStorageBufferOffsetAlignment`, surface.c:6513), NEAREST forced on a format without
+  linear filtering (texture.c:3655), push constants for uniform attributes by
+  `maxPushConstantsSize` (shaders.c:2246), and the custom-border sampler cache, whose key omits the
+  view format (texture.c:3712-3730; `customBorderColorWithoutFormat` is not enabled).
+- MainActivity.kt sets only XEMU_RENDERER, HAKUX_GPL (0 only with the ubershader off), HAKUX_SURFGPU
+  and the eight fastpaths vars. The desktop legs set the same.
+
+### L5 prediction (before the run): sync validation
+
+H-S (new: searched `git log --all -i --grep 'barrier|hazard|sync.?val|SYNC-HAZARD'` on
+hw/xbox/nv2a, see 3.1; #4's GENERAL->GENERAL barrier check covered the direct view only): a
+missing or too-narrow barrier in the shadow chain, invisible on lavapipe.
+
+L5 = L4's env + Khronos validation 1.3.275 (Ubuntu's `vulkan-validationlayers`, extracted to
+`/home/justin/hakux-work/desktop/vvl/root`, not installed) with synchronization validation
+(the core's own `validation_layers` config switch, instance.c:293-353).
+- Hit: a SYNC-HAZARD (RAW or WAR) naming an image or buffer of the chain: the 128x128 targets,
+  the stage 0 copy the projection samples (the dump's `img`), or the cvt pass's buffer. The
+  message names the commands; that is the mechanism to fix.
+- Miss: no hazard on the chain's objects. Then a missing barrier is not the cause as far as the
+  validation layer can see, and H-S drops.
+
 ## 7. Desktop crash log
 
 (none yet)
