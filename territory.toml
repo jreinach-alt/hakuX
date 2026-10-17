@@ -2829,8 +2829,8 @@ note = "FILES MOVED to [lane.release051] (lane.local 2026-10-16 18:40 PDT; this 
 [lane.logo1016]
 issues = ["433"]
 standing = false
-files = [".github/hakux-logo.svg", "docs/lanes/logo1016/**", "docs/images/hakux-logo.svg", "docs/lanes/logo1016-move/**", "README.md"]
-note = "ADDED README.md by lane.local 2026-10-16 21:00 PDT for lane.xbox branch lane/logo1016-move (board request 10-16 20:59; release051 released README.md 19:49 PDT). || ADDED by lane.local 2026-10-16 19:50 PDT for lane.xbox branch lane/logo1016-move (board request 10-16 19:26): docs/images/hakux-logo.svg, docs/lanes/logo1016-move/**. README.md is still held by [lane.release051]; add it when release051 releases it. || FILES MOVED to [lane.release051] (lane.local 2026-10-16 18:40 PDT; this lane is folded): README.md. || ADDED BY lane.local 2026-10-16 13:50 PDT (the branch was already pushed): lane.xbox, with the owner-approved hakuX CE logo at the top of README.md, docs only. Fold b735a42d97. README.md from the retired [lane.ce1016]."
+files = ["docs/lanes/logo1016/**"]
+note = "MOVED .github/hakux-logo.svg, docs/images/hakux-logo.svg, README.md, docs/lanes/logo1016-move/** to [lane.logo1016-move] by lane.local 2026-10-16 21:49 PDT (lane.xbox board request 10-16 21:35; the move fold failed 21:20 for want of a row). || ADDED README.md by lane.local 2026-10-16 21:00 PDT for lane.xbox branch lane/logo1016-move (board request 10-16 20:59; release051 released README.md 19:49 PDT). || ADDED by lane.local 2026-10-16 19:50 PDT for lane.xbox branch lane/logo1016-move (board request 10-16 19:26): docs/images/hakux-logo.svg, docs/lanes/logo1016-move/**. README.md is still held by [lane.release051]; add it when release051 releases it. || FILES MOVED to [lane.release051] (lane.local 2026-10-16 18:40 PDT; this lane is folded): README.md. || ADDED BY lane.local 2026-10-16 13:50 PDT (the branch was already pushed): lane.xbox, with the owner-approved hakuX CE logo at the top of README.md, docs only. Fold b735a42d97. README.md from the retired [lane.ce1016]."
 
 [lane.icon1016]
 issues = ["433"]
@@ -2845,3 +2845,21 @@ standing = false
 files = ["docs/frontends/**", "docs/lanes/frontends1016b/**"]
 released = ["docs/frontends/**", "docs/lanes/frontends1016b/**"]
 note = "RELEASED (lane.local 2026-10-16 20:57 PDT; folded lane, no unit): files go to [lane.frontends1016c]. || STARTED lane.local 2026-10-16 14:35 PDT (Sonnet, Thor by hand, no dispatcher): owner 10-16 ~14:30 PDT: Pegasus is now installed on the Thor, test it; Daijisho integrated if possible, else step-by-step instructions. Follow-up to lane.frontends1016 (folded 545886f9c0). Brief: briefs/frontends1016b.md."
+
+[lane.logo1016-move]
+issues = ["433"]
+standing = false
+files = [".github/hakux-logo.svg", "docs/images/hakux-logo.svg", "README.md", "docs/lanes/logo1016-move/**"]
+note = "ADDED by lane.local 2026-10-16 21:49 PDT for lane.xbox branch lane/logo1016-move (board request 10-16 21:35). Files moved from [lane.logo1016]."
+
+[lane.halo1016]
+issues = ["938"]
+standing = false
+files = ["docs/lanes/halo1016/**"]
+note = "ADDED by lane.local 2026-10-16 21:49 PDT for lane.xbox's lane/halo1016, started 21:43 on the owner's word (Halo CE cutscene speech and fps; 0.5.1 on hold). Board request 10-16 21:55. Fleet check flagged it RUNNING with no row."
+
+[lane.issuerecon1016]
+issues = []
+standing = false
+files = []
+note = "ADDED by lane.local 2026-10-16 21:49 PDT. Record reconstruction: reads transcripts, writes only under ~/hakux-work/issue-recon (outside the repo). No repository files."
