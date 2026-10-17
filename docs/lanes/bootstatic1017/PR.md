@@ -4,7 +4,7 @@ State: draft
 
 Lane: bootstatic1017            Issue: #1045
 Base: master @ 9abd80e90c
-Files: docs/lanes/bootstatic1017/PR.md, docs/lanes/bootstatic1017/NOTES.md, docs/lanes/bootstatic1017/step0_search.out, docs/lanes/bootstatic1017/forge_search.out, docs/lanes/bootstatic1017/tools/step0_search.sh, docs/lanes/bootstatic1017/tools/tracker_search.py, docs/lanes/bootstatic1017/tools/forge_search.py, docs/lanes/bootstatic1017/tools/setup_desk.py, docs/lanes/bootstatic1017/tools/judge_boot.py, docs/lanes/bootstatic1017/tools/judge_boot_selftest.py, docs/lanes/bootstatic1017/tools/deskboot.py, docs/lanes/bootstatic1017/tools/sheet.py, docs/lanes/bootstatic1017/tools/rowlit.py, docs/lanes/bootstatic1017/d1_flash.png, ui/xemu.c
+Files: docs/lanes/bootstatic1017/PR.md, docs/lanes/bootstatic1017/NOTES.md, docs/lanes/bootstatic1017/step0_search.out, docs/lanes/bootstatic1017/forge_search.out, docs/lanes/bootstatic1017/tools/step0_search.sh, docs/lanes/bootstatic1017/tools/tracker_search.py, docs/lanes/bootstatic1017/tools/forge_search.py, docs/lanes/bootstatic1017/tools/setup_desk.py, docs/lanes/bootstatic1017/tools/judge_boot.py, docs/lanes/bootstatic1017/tools/judge_boot_selftest.py, docs/lanes/bootstatic1017/tools/deskboot.py, docs/lanes/bootstatic1017/tools/sheet.py, docs/lanes/bootstatic1017/tools/rowlit.py, docs/lanes/bootstatic1017/tools/tspan.py, docs/lanes/bootstatic1017/tools/ramsheet.py, docs/lanes/bootstatic1017/d1_flash.png, docs/lanes/bootstatic1017/d2_ram.png, ui/xemu.c
 Prediction: none: analysis-only (so far; registered if a remedy moves pixels)
 Needs device: yes    Needs NDK: no
 
@@ -21,6 +21,10 @@ screen off, in 640x480x32 at start 0, which is kernel memory. The desktop blanks
 (`ui/xui/gl-helpers.cc:923`, upstream `129c48dd6e`), and lets one stale image through on the change because its VGA
 update runs after the present. The Android present (`android_blit_frame`) has no screen-off check, so on the Nova
 the whole screen-off window should show kernel memory as static. The Nova run with the probe is next.
+
+Desktop run d2 matched it. Guest RAM at start 0, dumped one present before the edge, correlates with the leaked
+static at r = 0.976 (null 0.148). Without the blank, the texture is static for 28 presents (1.2 s), 27 of them inside
+the guest's screen-off window (`d2_ram.png`).
 
 The owner says it is whole-screen static, on every title checked (Halo CE, NFS: Most Wanted, THPS4, Max Payne 2,
 GTA III, Top Spin).

@@ -205,9 +205,88 @@ share is 0.11, not a green flash. Green P unchanged until the Nova shows it.
 - Self-test: cases D (the d1 shape, with a "next" RAM match) and E (its mutant: the leak frame unrelated to the RAM,
   so no match). FAILS=0.
 
+## Desktop run d2: the static is guest RAM at address 0, matched
+
+`tools/deskboot.py d2 120 90`, the same setup as d1, with the probe changes above. The judge's verdict
+(`judge.json`):
+- **Covered** under the download rule: C1 starts at 0 with no gaps; C2's first picture at a new start is present 1530;
+  931 presents follow it.
+- `nb` bar 20, against a clean maximum of 5.6.
+- H1 HIT, H2 MISS, H3 MISS, H5 `blanked_before_flash` true.
+- H6 HIT by the judge's rule, a mode change within 2 presents. That change is the start-address edge itself, and the
+  RAM match below decodes at the logged geometry, so it is not H6's wrong-pitch mechanism.
+
+`tools/tspan.py` (runs of presents with the same start and SR01):
+
+| presents | t (ms) | start | SR01 | VGA | texture `tlit` (median) | texture `tnb` | window |
+|---|---|---|---|---|---|---|---|
+| 0-50 | 276-1399 | 0 | 00 | 8x1 (reset) | 0 | 0 | black |
+| 51-78 | 1415-2249 | 0 | **21 (off)** | 640x480x32 | **0.52** | **46.2** | black (blanked) |
+| **79** | 2668 | 0x032a4000 | 01 | 640x480x32 | 0.53 | 46.7 | **static** (the one leak) |
+| 80-259 | to 13965 | 0x032a4000 | 01 | 640x480x32 | 0, then the logo | 0 | black, then the logo |
+| 260-1418 | to 37576 | 0x032a4000 | **21 (off)** | 640x480x32 | the logo fading, then 0 | ≤ 1.9 | black (blanked) |
+| 1419- | 38265- | 0x018e8000 | 01 | 640x480x32 | the title | ≤ 5.7 | the title |
+
+(The 420 ms gap between 78 and 79 is the probe writing its edge dumps.)
+
+**The RAM match.** The probe dumped guest RAM at start 0 at present 78, one screen at pitch 2560. The judge
+correlates it with the window at present 79, the desktop's "next" pairing: **r = 0.976, null 0.148: MATCH**. Every
+dump at start 0 paired with a blanked window is "no match", as it should be. `d2_ram.png` (`tools/ramsheet.py`)
+shows three dumps at start 0 (presents 52, 64, 78), the leak window at 79, and the logo at 213. The leak is the
+present-78 dump, band for band, under the desktop's menu bar.
+
+**What a present path with no screen-off check draws.** This is the "unblanked view", from the texture numbers. It
+is one episode: presents 52-79, **28 presents, 1.22 s, noise all through** (tnb 46.1-46.7, green share at most
+0.11). 27 of the 28 are screen-off; the last is the edge. That is the Android path: `android_blit_frame` draws the
+texture with no SR01 check. On Android, `graphic_hw_update` runs before the upload, so the edge present is already
+the new start (black), and there is no leak after the window. On the Nova this predicts static for the whole
+screen-off window and nothing after it. The window's length is the kernel's, in guest time, so it need not be 1.2 s
+there.
+
+The account of the static, end to end:
+1. The kernel sets 640x480 at 32 bpp with the scan-out start left at 0, and turns the screen off (SR01 bit 5) while
+   it does.
+2. QEMU's VGA view does not model SR01 (`vga.c` blanks only on AR index bit 5), so the console surface is RAM at
+   0x0-0x12c000: the kernel's low memory, which is whole-screen coloured static.
+3. The kernel moves the start to its zeroed framebuffer at 0x032a4000 and turns the screen on. The logo follows.
+4. **On silicon the screen is off for the whole of step 2.** The desktop blanks it (`gl-helpers.cc:923`, upstream
+   `129c48dd6e`) but draws a VGA image one refresh old, so exactly one present leaks at step 3. Android never
+   blanks, so all of step 2 shows.
+
+Re-rank, static: **H1+H5 0.92** (the pixels are guest RAM at start 0, r = 0.976; the window is the guest's
+screen-off window, 27 of 28; on Android the check is missing by code reading, and the Nova's probe confirms or
+refutes it: `src=v` with `sr01=21` through the static). H2 0.03 (on the desktop it is refuted; on Android a separate
+`src=n` noise source stays possible until the Nova's probe says otherwise). H4 0.03. H6 0.01 (it decodes at the
+logged geometry). H7 0.01.
+
+**The green look is still unseen.** The static's green share is 0.11: coloured, not green. What could still make it
+green:
+- (a) the same static, described by its colour;
+- (b) H2 on Adreno: an unwritten image, possibly compressed;
+- (c) H3, PVIDEO;
+- (d) H4: the SurfaceView's buffer before the first swap;
+- (e) the stock driver only. The owner's app ran the stock driver until 10-17 ~13:20. If the green is only there, it
+  cannot be tested: the stock driver is not used.
+
+The Nova's video, together with its probe, separates (a) to (d). Question 2 asks the owner about it.
+
+## Remedies, ranked by P x win
+
+| # | remedy | P it removes the look | win | P x win | why this P |
+|---|---|---|---|---|---|
+| **R1** | **Android honours the guest's screen-off**: while SR01 bit 5 is set, `sdl2_gl_refresh` draws nothing over the cleared (black) window, as the desktop has since `129c48dd6e` | 0.85 for the static on the Nova | the whole reported symptom, every launch, the shipped app | **high** | the unblanked view puts 27 of 28 static presents inside screen-off; Android redraws before it draws, so there is no edge leak. The 0.15 is the Nova differing (another source, or timing) until its probe shows it |
+| **R2** | **The desktop draws a current VGA image**: in the fallback branch, `graphic_hw_update` before the upload (Android's order), with the end-of-refresh update skipped on refreshes that already made one, so the count per refresh stays one | 0.90 for the desktop's one present | one frame, on a test build | low | the leak is exactly the one-refresh-old image (the "next" pairing, r = 0.976) |
+| R3 | Black until the first nv2a frame: never show the VGA view before pgraph has produced a picture | 0.85 for the static | the same as R1 | below R1 | it breaks the desktop on lavapipe, which is always `src=v`, and anything only drawn through the VGA view. It hides by policy what R1 hides by the guest's own register, the way silicon does |
+| R4 | Clear a new display binding's image before its first present | 0 for the static (it is guest RAM, not an image) | the green look only, if (b) holds | open | waits on the Nova |
+
+R1 and R2 are both chased: both are in `ui/xemu.c`, which the board request already covers. What changes for the
+player with R1: the static becomes black, and so does any other window in which the guest has turned the screen off
+(after the logo while THPS4 loads, presents 260-1418). The desktop has shown black there since 2023, for every title.
+
 ## Waiting / blocked
 
-Nothing outstanding. Next: d2 on the desktop, judged. Then queue the Nova.
+Nothing outstanding. Next: queue the Nova "before" runs (probe on, video from before the launch, Turnip checked),
+then build R1 and R2.
 
 ## Questions (for lane.xbox / the owner; work continues meanwhile)
 
