@@ -2894,3 +2894,9 @@ standing = false
 files = ["CHANGELOG.md", "docs/releases/v0.5.2.md", "docs/releases/README.md", "android/README.md", "android/MIGRATING.md", "README.md", "KNOWN_ISSUES.md", "ROADMAP.md", "CONTRIBUTING.md", "PRIVACY.md", "docs/COMPATIBILITY.md", "docs/reporting-bugs.md", "docs/es-de/README.md", "docs/lanes/release052/**"]
 released = ["CHANGELOG.md", "docs/releases/v0.5.2.md", "docs/releases/README.md", "android/README.md", "android/MIGRATING.md", "README.md", "KNOWN_ISSUES.md", "ROADMAP.md", "CONTRIBUTING.md", "PRIVACY.md", "docs/COMPATIBILITY.md", "docs/reporting-bugs.md", "docs/es-de/README.md", "docs/lanes/release052/**"]
 note = "STARTED lane.local 2026-10-17 ~07:30 PDT (Sonnet, docs only, no device): owner 10-17 via lane.xbox: 0.5.2 rc signed and deployed once #1035 (defaulton1017) folds. The release commit: CHANGELOG, docs/releases/v0.5.2.md, public-docs date lines. Halo opening cinematic line only; #938 not claimed. Brief: briefs/release052.md."
+
+[lane.relnotes1017]
+issues = ["433"]
+standing = false
+files = ["CHANGELOG.md", "docs/releases/v0.5.1.md", "docs/releases/v0.5.2.md", "docs/releases/README.md", "docs/lanes/relnotes1017/**"]
+note = "STARTED lane.local 2026-10-17 ~09:30 PDT (Sonnet, docs only): owner 10-17: release notes carry only new features and bug fixes; the signing/minSdk/frontend-confirmation/provenance/process text comes out of v0.5.1 and v0.5.2 notes. Brief: briefs/relnotes1017.md."
