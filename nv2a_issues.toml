@@ -6172,9 +6172,9 @@ suites = []
 no_suites = "A visual defect in a commercial title, not yet identified, so no pgraph suite is known to cover it."
 disposition = "defect"
 status = "open"
-dispatch_state = "available"
-blocked_on = ""
-status_note = "Filed by lane.local 2026-10-11 22:3x PDT from the owner's hands-on test. Not HAKUX_VTX_HAZARD: zero vtx_hazard finishes in two menu sessions with it on (22:24, 22:26), so it predates the switch. First step: an 8 s adb screenrecord of the menu to classify the bad frames."
+dispatch_state = "blocked"
+blocked_on = "OWNER HOLD (owner 2026-10-16 ~22:00 PDT): low priority; do not dispatch until the 0.5.1 Halo blockers #938 and #1018 are fixed. Release only on the owner's word."
+status_note = "Filed by lane.local 2026-10-11 22:3x PDT from the owner's hands-on test. Not HAKUX_VTX_HAZARD: zero vtx_hazard finishes in two menu sessions with it on (22:24, 22:26), so it predates the switch. First step: an 8 s adb screenrecord of the menu to classify the bad frames. 2026-10-16 ~22:00 PDT (owner, compared against the console, 0.5.1-rc1 on the Nova): the ring's inside surface stays static while the ring rotates; the outer gray hull rotates correctly. The FIST rounding change in 0.5.1 fixed the bursts where the ring jumped back; the missing surface layer is not fixed. Whether the static inside surface shares a cause with the missing layer is not known."
 
 [issue.973]
 title = "Die Hard: Vendetta (Europe) (56560029): the game freezes about a minute into the first level on the Nova"
