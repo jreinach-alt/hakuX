@@ -109,11 +109,13 @@ class Arm:
         self.rr = {}         # wall -> dict of rr425 counters
         self.rrw = []        # (wall, idle_us, busy_us, n)
         self.gfps = []       # (wall, gfps, G mean)
+        self.first = None    # the logcat's first timestamp
         lc = os.path.join(d, 'logcat.txt')
         if os.path.exists(lc):
             self.read_log(lc)
         self.frames = []
-        for p in sorted(glob.glob(os.path.join(d, 'pulled', 'frametrace_*.csv'))):
+        self.csvs = self.run_csvs(d)
+        for p in self.csvs:
             self.frames += read_frames(p)
         self.clock = None
         if self.frames and self.anchors:
@@ -134,8 +136,26 @@ class Arm:
         shots = os.path.join(d, 'route-frames')
         self.shots = sorted(os.listdir(shots)) if os.path.isdir(shots) else []
 
+    def run_csvs(self, d):
+        """This run's frametrace CSVs. --pull 'frametrace_*' also brings back
+        every older CSV still on the device (the files are named by their
+        device-local open time, frametrace_YYYYMMDD-HHMMSS.csv), so keep the
+        ones opened no earlier than 120 s before the logcat's first line."""
+        out = []
+        for p in sorted(glob.glob(os.path.join(d, 'pulled', 'frametrace_*.csv'))):
+            m = re.search(r'frametrace_(\d{8}-\d{6})\.csv$', p)
+            if m and self.first is not None:
+                opened = datetime.strptime(m.group(1), '%Y%m%d-%H%M%S').timestamp()
+                if opened < self.first - 120:
+                    continue
+            out.append(p)
+        return out
+
     def read_log(self, path):
+        self.first = None
         for line in open(path, errors='replace'):
+            if self.first is None:
+                self.first = ts(line)
             if 'hakuX-route' in line and 'mark ' + MARK[0] in line and self.mark is None:
                 self.mark = ts(line)
             elif 'render_mode:' in line and 'hakuX-build' in line and self.render_mode is None:
@@ -304,9 +324,10 @@ def main():
     A, B = Arm(o.a), Arm(o.b)
     for arm, tag in ((A, 'A'), (B, 'B')):
         print('## %s: %s\n' % (tag, arm.name))
-        print('request: ref %s env %s; frames %d (%s); pace lines %d; probe1010 %d; '
+        print('request: ref %s env %s; frames %d (%s; from %s); pace lines %d; probe1010 %d; '
               'ft1 anchors %d; render_mode: %s\n' % (
                   arm.req.get('ref'), arm.req.get('env'), len(arm.frames), arm.clock,
+                  ', '.join(os.path.basename(p) for p in arm.csvs) or 'no CSV',
                   len(arm.pace), len(arm.probe), len(arm.anchors), arm.render_mode))
         chk = [s for s in arm.shots if re.search(
             r'-(booted|profile|level|difficulty|loading)\.png$', s)]
