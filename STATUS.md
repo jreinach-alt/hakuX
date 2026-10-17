@@ -1,6 +1,6 @@
 # hakuX status
 
-_updated 2026-10-16 18:32 PDT_
+_updated 2026-10-16 19:05 PDT_
 
 0.6: Measured 261 / 300 · Playable 87 / 110.
 
@@ -9,7 +9,6 @@ _updated 2026-10-16 18:32 PDT_
 Measured **261** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓▓▓░`
 
 Playable **87** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓▓░░`
-
 
 ![Titles over time](chart.svg)
 
@@ -31,12 +30,7 @@ Ships when both are met. At the last 48 h rate: about 2026-10-20.
 
 Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/Nova handhelds.
 
-
 🟢 **Playable**: reaches gameplay on a handheld and holds 30 fps (within 5%) for at least 90% of a timed run, with no crash or hang. 🟡 **Below 30 fps**: runs, but not at full speed. 🔴 **Crashes or hangs**: crashes, hangs or does not start in a timed run. 🔵 **Measured, not rated yet**: has a frame rate reading; its rating is still to come. **fps**: the median frame rate during gameplay, the handheld it was measured on, and the date.
-
-
-
-
 
 | Title | Status | fps |
 |---|---|---|
@@ -670,6 +664,3 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 
 620 titles: 87 Playable, 9 below 30 fps, 14 crash or hang, 152 measured but not rated yet, 358 not tested yet.
 
----
-
-The full harness board (lanes, queue, machine health) and the original layout: [index.svg](https://github.com/jreinach-alt/hakuX/blob/status/index.svg) opens as the full page; [IN-FLIGHT.md](https://github.com/jreinach-alt/hakuX/blob/status/IN-FLIGHT.md) lists the work in progress and recent folds.
