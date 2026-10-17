@@ -4,6 +4,14 @@ Status (10-17): Step 0 done and pushed with this file. No code under hw/, androi
 edited. Next: the desktop experiment, then an instrument that reads back the 128x128 texture the
 projection actually samples.
 
+**Attempt 1 did not finish: it hit the 301-turn cap** (session log
+`haloshadow1017.20261017T174853Z.json`, `terminal_reason max_turns`) while L2 was running in the
+foreground. Sections 6.1-6.2 and the tools `projgd.py`, `rbread.py` and deskrun.py's save-state
+arguments were written but not committed; attempt 2 committed them first. L2 was killed with the
+session, its dump left unmoved in `build-linux/run/dump`. The desktop-only `hw/xbox/xid.c` edit
+(no bound controller for a `-device usb-xbox-gamepad` given on the command line, needed to load
+the Nova's two-pad state) is kept as `tools/desk-xid-unbound.patch` and is not part of the PR.
+
 Issue: **#1038** (tracker row origin/board nv2a_issues.toml:6478). The brief's #433 was a placeholder.
 
 ## 1. The chain (frame 4 of the 10-17 Nova dump, confirmed against the dump)
@@ -178,6 +186,68 @@ moment: the blur output is correct. Its S5 (border edge texels) cannot darken th
 2. I1 + I3 (built, schema 10): `rttmax16384` reads back the 128x128 sampled surface and texture copy
    at the projection, and "bv"/"pv"/"ptd"/"pvi" say which view the descriptor names.
 3. Queue the same dump for the Nova (owner holds it; queued requests run when it frees).
+
+## 6.1 L2 prediction (written before the run, 10-17)
+
+L1 (desktop, slot2 loaded, the Nova's env switches) shows no squares. The one difference found so
+far in the projection's path is pipeline construction: the Nova logs `[gpl569] ext=0 lib=0 ...
+requested=3 mode=0` (no VK_EXT_graphics_pipeline_library on Adreno, so monolithic pipelines and the
+specialised VS's uniform layout), the desktop runs mode 3 (GPL libraries, uniforms uploaded into
+the uber layout, `gd.uv` 1, `gd.gu` 0 once the specialised pipeline is swapped in).
+
+L2 = L1 + `HAKUX_GPL=0`, same state, same frame window.
+- Hit: squares on the soldiers in the ppm frames, and rbread.py shows the projection changing the
+  whole footprint (thousands of px, not ~200) while tex0==srf0 stays 16384/16384. Then the cause is
+  in the mode-0 path (monolithic pipeline or the specialised layout's uniform upload).
+- Miss: ~200 px changed per caster, no squares. Mode is ruled out; the remaining Nova/desktop
+  differences are the CPU side (the Nova's FP JIT and FP safe are ON; the desktop is x86 TCG) and
+  the driver (out by the owner's ruling).
+
+## 6.2 L1's answer was the instrument's (10-17)
+
+L1: the desktop loads slot2 and draws soldiers. Spec `8,images,rttmax16384,gd,after15,cap2400` with the
+Nova's env switches on. In f003, rbread.py gives tex0==srf0 16384/16384 at all 23 projection draws (a
+correct silhouette on black). The one draw with pre/post (n442) changes 200 px at x0.613 in r, g
+and b alike: a correct soft shadow, and no squares in the frames.
+
+**That run cannot see the defect.** `rttmax16384` makes every projection draw read back its 128x128
+stage 0 (`fdump_log_draw_readbacks`), and a readback calls `pgraph_vk_finish(SURFACE_DOWN)`
+(renderer.c:3333). The GPU is serialised at every projection draw, and the next draw finds no
+render pass, so it takes the full pre-draw path. The dump records this itself: on the desktop all 23
+projection draws have `gd.path` 2. On the Nova (spec `8 rtt gd images`, rtt at its default 64x64
+bound, so 128x128 is never read back and nothing finishes there), in f004 each group's first one or
+two draws have path 2 and **every later draw has path 0, the super-fast path**:
+
+| | draws (f004 / f003) | gd.path | ubo offsets |
+|---|---|---|---|
+| Nova, group 1 | n741 | 2 (cp 4) | 641920 / 648192 |
+| Nova, group 1 | n742 | 2 (cp 3) | 649472 / 655744 |
+| Nova, group 1 | n743-747 | **0** | same as n742 |
+| Nova, groups 2-4 | first draw 2, the rest **0** | | |
+| Desktop L1, all groups | n442-483 | 2 | 0 / 8480 |
+
+The guest's input agrees: the texgen/texture-matrix constants (c60-79) match to 3 digits between
+the two dumps, as do the vertex arrays (`vr`) and the inline attribute values (`va`). The CPU side
+(the Nova's FP JIT) hands the GPU the same projection.
+
+On a super-fast draw, begin_draw (draw.c:7486-7490) skips `bind_descriptor_sets`,
+`push_vertex_attr_values` and `push_geom_line_params`. Those are the lines the #1033 Already-tried
+row leaves open. The super-fast block itself pushes textures only when `texture_state_gen` moved,
+and vertex attribute values only when `vertex_attr_gen` moved and the descriptors match.
+
+L2 (L1 + `HAKUX_GPL=0`) was already running and carries the same masking. It still tests the mode
+under serialisation, but it cannot clear the super-fast path.
+
+### L3 prediction (before the run)
+
+L3 = L1's env with the Nova's spec (`8,images,rtt,gd,after15,cap2400`), so nothing finishes at the
+projection.
+- Hit: the squares appear on the desktop, and the projection draws after each group's first take
+  path 0. Then the defect is reproducible on the desktop, and serialisation hides it. It is not an
+  Android-only path.
+- Miss: no squares while path 0 is taken. Then the super-fast path alone does not draw the square
+  on lavapipe, and the next legs are GPL mode 0 without the finish (L4), then a tiler-only ordering
+  question that only the Nova can answer.
 
 ## 7. Desktop crash log
 
