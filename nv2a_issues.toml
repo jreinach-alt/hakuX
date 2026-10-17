@@ -6483,7 +6483,7 @@ disposition = "defect"
 status = "open"
 dispatch_state = "available"
 blocked_on = ""
-status_note = "Filed by lane.xbox 2026-10-17 from the owner's report and lane.xbox's capture on 0.5.2-rc1 (Nova). Cross-title (owner: 'prominent in several other titles'; in footage from August), owner calls it a huge win. Halo's chain: character into a 128x128 R5G6B5 target, a four-sample pass into a second 128x128 target, projected (PROJECT2D, border addressing) onto ground triangles; the whole projected square darkens, green most. Not from the 16-bit surface conversion (S2T_CVT, new in 0.5.2): the defect is in August footage. Capture: /home/justin/hakux-work/captures/halo-shadow-1017/ (screenshots s2-*, r2-*; framedump/ rtt+gd 8 frames; slot2.hxs; logcat.txt). Owned by lane.haloshadow1017."
+status_note = "Filed by lane.xbox 2026-10-17 from the owner's report and lane.xbox's capture on 0.5.2-rc1 (Nova). Cross-title (owner: 'prominent in several other titles'; in footage from August), owner calls it a huge win. Halo's chain: character into a 128x128 R5G6B5 target, a four-sample pass into a second 128x128 target, projected (PROJECT2D, border addressing) onto ground triangles; the whole projected square darkens, green most. Not from any 0.5.2 change: the owner saw it in 0.5.1-rc1, and it is in August footage. Capture: /home/justin/hakux-work/captures/halo-shadow-1017/ (screenshots s2-*, r2-*; framedump/ rtt+gd 8 frames; slot2.hxs; logcat.txt). Owned by lane.haloshadow1017."
 
 [issue.1039]
 title = "Halo: Combat Evolved: the ship's rear lighting shows through the front of the ship in the opening cinematic"
