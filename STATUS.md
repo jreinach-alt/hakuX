@@ -1,6 +1,6 @@
 # hakuX status
 
-_updated 2026-10-17 06:05 PDT_
+_updated 2026-10-17 06:36 PDT_
 
 0.6: Measured 261 / 300 · Playable 87 / 110.
 
@@ -18,7 +18,7 @@ Playable **87** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓▓░░`
 
 | release | Measured target | projected date | Playable target | projected date |
 |---|---|---|---|---|
-| 0.6 | 300 | 2026-10-19 | 110 | 2026-10-20 |
+| 0.6 | 300 | 2026-10-19 | 110 | 2026-10-21 |
 | 0.7 | 425 | 2026-10-28 | 185 | 2026-11-02 |
 | 0.8 | 575 | 2026-11-07 | 300 | 2026-11-20 |
 | 0.9 | 725 | 2026-11-17 | 480 | 2026-12-20 |
@@ -177,7 +177,7 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | **Conan Europe En Fr De Es It** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 12 |
 | **Conflict Desert Storm II Back to Baghdad USA** | 🔵 Measured, not rated yet | **41.1**<br>Nova, Oct 13 |
 | **Conflict Global Terror USA** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 13 |
-| **Conker: Live & Reloaded** | 🔵 Measured, not rated yet | **17.2**<br>Nova, Oct 17 |
+| **Conker: Live & Reloaded** | 🔵 Measured, not rated yet | **17.4**<br>Nova, Oct 17 |
 | **Conspiracy Weapons of Mass Destruction Europe En Fr De Es It** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 14 |
 | **Crash Bandicoot: The Wrath of Cortex** | 🔵 Measured, not rated yet | **46.9**<br>Nova, Oct 7 |
 | **Crazy Taxi 3 High Roller USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 13 |
