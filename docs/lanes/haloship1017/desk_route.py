@@ -2,7 +2,8 @@
 """Desktop Halo run along a kept route (#1039). One run, one output dir.
 
 usage: desk_route.py OUT --total S [--route FILE] [--gate NAME ...]
-                     [--every S --cine S] [--at-mark SPEC] [--zrep] [ENV=V ...]
+                     [--every S --cine S] [--at-mark SPEC]
+                     [--on-bright FRAC SPEC --every S --cine S] [--zrep] [ENV=V ...]
 
 Runs build-linux/qemu-system-i386 with build-linux/run/xemu.toml (keyboard on
 port 1, the Nova titles disk copy as the HDD) and follows the route file:
@@ -16,6 +17,12 @@ After `mark`: with --at-mark SPEC, a frame dump SPEC is armed at the mark and
 its files go to OUT/dump.* when it closes; otherwise the repeat block runs, or
 with --every S, a shot every S seconds for --cine S seconds. The run ends at
 --total S (timeout -s TERM) or after the post-mark work.
+
+--on-bright aims a dump by content, not the clock (r3 armed at mark+140 s and
+began after the cut, the load having run 30-40 s faster than r2's): a shot
+every S seconds until one has FRAC of its pixels at luma >= 240, then SPEC is
+armed at once. Behind the ship, the engine glow is 0.052-0.081 of the frame
+(r2 shots 075-081); every other cinematic shot in r2 is under 0.025.
 
 The fast paths are set as the app sets them by default (MainActivity
 FASTPATHS_VARS, SURFGPU=1; GPL is the C default); ENV=V arguments override.
@@ -179,8 +186,35 @@ class Run:
             elif op == "repeat":
                 self.repeat = arg
 
+    def bright(self, tag):
+        """Fraction of the shot's pixels at luma >= 240 (Halo's engine glow)."""
+        from PIL import Image
+        ppm = glob.glob(os.path.join(self.out, "shots", f"{tag}.*.ppm"))
+        if not ppm:
+            return 0.0
+        h = Image.open(ppm[0]).convert("L").histogram()
+        return sum(h[240:]) / max(1, sum(h))
+
     def after_mark(self, args):
-        if args["at_mark"]:
+        if args["on_bright"]:
+            frac, spec = args["on_bright"]
+            end = time.time() + args["cine"]
+            while time.time() < end and self.alive():
+                t = time.time()
+                self.shot("cine")
+                b = self.bright(f"{self.nshot:03d}_cine")
+                self.say(f"bright {b:.4f}")
+                if b >= frac:
+                    self.arm(spec)
+                    self.say(f"armed {spec} on bright {b:.4f} >= {frac}")
+                    done, moved = self.collect(os.path.join(self.out, "dump"),
+                                               args["total"])
+                    self.say(f"dump {'closed' if done else 'NOT closed'} "
+                             f"{len(moved)} files")
+                    return
+                self.wait(max(0, args["every"] - (time.time() - t)))
+            self.say("bright trigger never fired")
+        elif args["at_mark"]:
             self.arm(args["at_mark"])
             self.say(f"armed {args['at_mark']}")
             done, moved = self.collect(os.path.join(self.out, "dump"),
@@ -216,7 +250,7 @@ def main():
     a = sys.argv[1:]
     out = a.pop(0)
     args = {"total": 900, "route": ROUTE, "gates": [], "every": 0, "cine": 0,
-            "at_mark": None}
+            "at_mark": None, "on_bright": None}
     extra = {}
     while a:
         k = a.pop(0)
@@ -232,6 +266,8 @@ def main():
             args["cine"] = float(a.pop(0))
         elif k == "--at-mark":
             args["at_mark"] = a.pop(0)
+        elif k == "--on-bright":
+            args["on_bright"] = (float(a.pop(0)), a.pop(0))
         elif k == "--zrep":
             extra["HAKUX_ZREP"] = os.path.join(out, "zrep.txt")
         elif "=" in k:
