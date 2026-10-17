@@ -1,0 +1,141 @@
+{
+  "registered_utc": "2026-10-17T12:00:18Z",
+  "who": "lane.defaulton1017",
+  "issues": [
+    "1018"
+  ],
+  "kind": "default-on screen, title rows on one binary: ON (no switch env, the shipped default) on Halo and eight titles chosen by where the switches act, Halo with IBC off (HNI) and with all four off (HOFF)",
+  "device": "nova",
+  "a_ref": "ed2b1d3333",
+  "b_ref": "ed2b1d3333",
+  "a_env": [
+    "HAKUX_FRAMETRACE=1",
+    "HAKUX_PROBE_WAITS=1",
+    "HAKUX_REPORT_TRACE=1",
+    "HAKUX_S2T_CVT=0",
+    "HAKUX_REPORT_EARLY=0",
+    "HAKUX_FLDCW_CHAIN=0",
+    "HAKUX_IBC=0"
+  ],
+  "b_env": [
+    "HAKUX_FRAMETRACE=1",
+    "HAKUX_PROBE_WAITS=1",
+    "HAKUX_REPORT_TRACE=1"
+  ],
+  "rows": {
+    "HON": {
+      "title": "Halo Combat Evolved.iso",
+      "route": "halo-cinematic",
+      "routes_dir": "docs/lanes/halo1016/routes",
+      "seconds": 420,
+      "perflog": true,
+      "pull": "frametrace_*",
+      "env": [
+        "HAKUX_FRAMETRACE=1",
+        "HAKUX_PROBE_WAITS=1",
+        "HAKUX_REPORT_TRACE=1"
+      ]
+    },
+    "HNI": {
+      "title": "Halo Combat Evolved.iso",
+      "route": "halo-cinematic",
+      "routes_dir": "docs/lanes/halo1016/routes",
+      "seconds": 420,
+      "perflog": true,
+      "pull": "frametrace_*",
+      "env": [
+        "HAKUX_FRAMETRACE=1",
+        "HAKUX_PROBE_WAITS=1",
+        "HAKUX_REPORT_TRACE=1",
+        "HAKUX_IBC=0"
+      ]
+    },
+    "HOFF": {
+      "title": "Halo Combat Evolved.iso",
+      "route": "halo-cinematic",
+      "routes_dir": "docs/lanes/halo1016/routes",
+      "seconds": 420,
+      "perflog": true,
+      "pull": "frametrace_*",
+      "env": [
+        "HAKUX_FRAMETRACE=1",
+        "HAKUX_PROBE_WAITS=1",
+        "HAKUX_REPORT_TRACE=1",
+        "HAKUX_S2T_CVT=0",
+        "HAKUX_REPORT_EARLY=0",
+        "HAKUX_FLDCW_CHAIN=0",
+        "HAKUX_IBC=0"
+      ]
+    },
+    "MKSM": {
+      "title": "4D570029-Mortal_Kombat_Shaolin_Monks.xiso.iso",
+      "route": "fps1015-mksm",
+      "routes_dir": "docs/lanes/fps1015/routes",
+      "seconds": 330,
+      "perflog": true,
+      "env": []
+    },
+    "TS": {
+      "title": "4D530035-Top_Spin.xiso.iso",
+      "route": "fps1015-topspin",
+      "routes_dir": "docs/lanes/fps1015/routes",
+      "seconds": 450,
+      "perflog": true,
+      "env": []
+    },
+    "RS": {
+      "title": "4D53000F-RalliSport_Challenge.xiso.iso",
+      "route": "rallisport-804g",
+      "routes_dir": "docs/lanes/accuracy804",
+      "seconds": 240,
+      "perflog": true,
+      "env": []
+    },
+    "SHR": {
+      "title": "56550015-The_Simpsons_Hit_Run.xiso.iso",
+      "route": "simpsons-hit-run",
+      "routes_dir": "docs/testing/titles/routes",
+      "seconds": 300,
+      "perflog": true,
+      "env": []
+    },
+    "CLR": {
+      "title": "Conker Live & Reloaded.iso",
+      "route": "",
+      "routes_dir": "",
+      "seconds": 300,
+      "perflog": true,
+      "env": []
+    },
+    "AMP": {
+      "title": "Amped 2 (USA).xiso.iso",
+      "route": "amped2",
+      "routes_dir": "docs/testing/titles/routes",
+      "seconds": 578,
+      "perflog": true,
+      "env": []
+    }
+  },
+  "queue_order": "pilot HON, HNI (Halo jumps the Nova queue until 07:30 PDT); judged; then HOFF, MKSM, TS, RS, SHR, CLR, AMP. One run each: [TITLE_ROUTES=<routes_dir>] request.sh --who defaulton1017 --device nova --title <title> [--route <route>] --seconds <s> --ref ed2b1d3333 --perflog [--pull 'frametrace_*'] --env <each> --issue 1018 --expect docs/testing/predictions/defaulton1017-screen.json --purpose 'defaulton1017 row <ROW>'. a_env is HOFF's list, b_env HON's.",
+  "judge": "python3 docs/lanes/defaulton1017/screenread.py --row HON=<id> --row HNI=<id> ... --expect docs/testing/predictions/defaulton1017-screen.json (Halo span via halo1016's vcpuread/earlyread readers); MKSM: python3 docs/lanes/fps1015/s2tread.py <MKSM> 1792163893-fps1015-717142 (fps1015's off1); TS: python3 docs/lanes/fps1015/tsread.py <TS> 0-1792170186-fps1015-2314810 (fps1015's off1). Route shots are looked at, not scored.",
+  "baseline": "halo1016-early.json arm EIF (0-0-x-1792231796-halo1016-2209151, 08fd920b5c, the three on by env, IBC=1): 33.8 ms/f over [mark+131, mark+191], every 10 s window 33.4-34.7; E (no chain, no IBC) 35.9; all off (S2T_CVT unset) 59.3. fps1015 on runs: MKSM 54.2-54.4 fps over 1800 frames, Top Spin 59 fps in match play.",
+  "prediction": "#1018 default-on screen. The four switches now read unset as on. HG: HON holds Halo's span at EIF's level, mean <= 34.5 ms/f and every 10 s window <= 35.5, P 0.75 (the only differences from EIF are the gap-1 gate and the answer ring). HEA: HON answers >= 0.98 of the span's armed reports early (Halo re-queues each offset one guest frame later), P 0.8. HVIS: HON's vis <= 0.02 of its early answers, P 0.6. HDS: desync <= 0.001 of early in every ON row with early > 0, P 0.9. HIBC: HNI's span mean >= HON's + 0.5 ms/f (IBC is needed for the bar; additive estimate from the vCPU arms: EF ~35.1), P 0.65; if it fails, IBC goes back to off by default. HOFF: the four log off and HOFF's span mean >= 52 ms/f, P 0.85. MKF: MKSM >= 52 fps over s2tread's span and its route V, P 0.85; MKE: MKSM early = 0 (no visibility tests in the census), P 0.8. TSF: Top Spin match >= 56 fps and tsread's V, P 0.8. RV, SV, CV, AV: RS, SHR, CLR, AMP each end valid (pace lines to the end, no crash), P 0.85 each; in each with early >= 1000, vis <= 0.02 of early, P 0.6. FL: flips = 0 in every ON row that logs a [fldcw1018] n= line, P 0.5 (Halo 0; elsewhere unknown).",
+  "expect": {
+    "HG_msf_max": 34.5,
+    "HG_window_max": 35.5,
+    "HEA_share_min": 0.98,
+    "VIS_share_max": 0.02,
+    "VIS_min_early": 1000,
+    "DS_share_max": 0.001,
+    "HIBC_delta_min": 0.5,
+    "HOFF_msf_min": 52.0,
+    "MKF_fps_min": 52.0,
+    "MKE_early_max": 0,
+    "TSF_fps_min": 56.0,
+    "FL_flips_max": 0
+  },
+  "expect_note": "EMPTY of captures ON PURPOSE: a soak writes none. Named rules read by docs/lanes/defaulton1017/screenread.py --expect. V per row: ON rows log `[s2tcvt] on HAKUX_S2T_CVT=(unset)` where the check is reached, `[rearly1018] early=1 ... HAKUX_REPORT_EARLY=(unset)`, `[fldcw1018] chain=1 HAKUX_FLDCW_CHAIN=(unset)`, `[ibc507] on=1 layout=ok ... HAKUX_IBC=(unset)`; HNI the same but `[ibc507] on=0`; HOFF `[s2tcvt] off`, `early=0`, `chain=0`, `on=0`. Halo rows also `mark cinematic` and >= 20 `[rtrace] w` windows, mode=async. A V failure voids that row's legs. Early share = early / (early + cold + skip0 + skipn + full) over the row's [rearly1018] w windows (Halo: the windows inside the span). vis and desync are shares of early over the same windows.",
+  "expect_counts": {},
+  "must_not_move": [],
+  "must_not_regress": []
+}

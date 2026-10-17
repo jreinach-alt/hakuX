@@ -3,4 +3,121 @@
 ## Status
 
 - 04:31 PDT 10-17: branch opened, origin/lane/halo1016 @ 58f86b192c merged (fast-forward).
-  Reading halo1016 and fps1015 NOTES; screen plan not yet written. Nothing queued.
+- 04:55: the four defaults flipped and REPORT_EARLY's gate and instrument added (ed2b1d3333, master with
+  halo1016's fold merged in). Syntax-checked against the nightly arm64 compile database; built only by the
+  dispatcher.
+- 05:10: screen plan below written before anything is queued. Prediction:
+  `docs/testing/predictions/defaulton1017-screen.json` (title rows) and `defaulton1017-tsc.json` (the pgraph item).
+
+## Confirmed from the source files (not from the brief)
+
+| cause | switch | over [mark+131, mark+191] | where read |
+|---|---|---|---|
+| 49 `cvt` surface downloads a frame | `HAKUX_S2T_CVT` | 59.3 -> 41.9 ms/f | halo1016 NOTES, fps1015 NOTES "The default and the board row" |
+| ~544 armed visibility-test reports a frame, polled | `HAKUX_REPORT_EARLY` | 42.1 -> 35.9 | halo1016-early.json arms B, E |
+| FLDCW exits, helper lookups | `HAKUX_FLDCW_CHAIN` + `HAKUX_IBC` | 35.9 -> 33.8 (windows 33.4-34.7) | arm EIF |
+
+Without the early answer the vCPU arms were A 42.6, F 40.5, I 40.5, IF 39.2 ms/f. EF (the chain without IBC, with
+the early answer) was never run, so whether IBC is needed for Halo's bar is unmeasured. It is row HNI below.
+
+All four were off unless set to `1`. None is in MainActivity.kt's `FASTPATHS_VARS` (the shipped "Fast renderer
+paths" list, which sets `HAKUX_REPORT_ASYNC=1`). So the shipped path reads the C getenv default, and the flip is
+there, as FIST_ROUND's was (52aa206f93): unset or anything but `0` is on, `0` is off, and each logs which and why.
+A request's `--env K=0` still reaches it, after the app's defaults. REPORT_EARLY still needs the async reader:
+with "Fast renderer paths" off it logs `needs HAKUX_REPORT_ASYNC=1: off`.
+
+## What changed in REPORT_EARLY, and why (no device time)
+
+halo1016's early answer gives any armed GET_REPORT the count its offset was last written with. That is right for
+Halo, which runs one test per offset per frame and polls it the next. It is wrong for two other patterns, both
+read from existing logs (`scratch/armedscan.py`, every `[rtrace] w` window on disk):
+
+| pattern | seen in | what the early answer would be | now |
+|---|---|---|---|
+| offset re-queued in the same guest frame | none on disk (Halo's reuse is 8-66.7 ms, NFS's > 66.7 ms) | another test's count | `skip0`: written as before |
+| offset re-queued two or more frames later | NFS MW: 4-slot ring, 100% of ~35,000 reuses > 66.7 ms, ~29 reports/s at ~1 a frame, so each slot comes back 4 frames later; the guest reads the slot later and never waits on it (0 report waits in async, reportasync1010) | a count four frames old where the reader's own would arrive in ~28 ms: older, for no gain | `skipn`: written as before |
+| offset re-queued one guest frame later | Halo: 2.55M reports, every one armed | the same test's count, one frame old | answered early |
+
+The frame is `pg->frame_time` (FLIP_INCREMENT_WRITE, the PFIFO thread, the same thread that queues the report),
+so the gap is exact in command order. halo1016's trace (`rt_flip_locked`) already stamps Halo's flips by it.
+
+The instrument: each early answer goes into a ring. When the reader has the report's own count, `re_check()`
+compares: `stale` = the answer differs, `vis` = one of them is 0 and the other is not (the guest drew or hid
+something its own test would have decided the other way, for one frame), `desync` = the ring and the reader
+disagree (the instrument's own validity). All on the 2 s `[rearly1018] w` line with `early cold unarmed submit
+skip0 skipn full`. `vis` is the failure the brief names (a flare or a corona a frame late at a camera cut),
+counted where it happens instead of looked for in frames.
+
+## Where each switch acts: what is already on disk
+
+- **S2T_CVT**: fps1015's `cvtcensus.py`: Top Spin, MKSM, Halo, Fuzion Frenzy, ToeJam & Earl III, NBA Live 07;
+  PoP and Batman from dumps. Three of them are canaries already.
+- **REPORT_EARLY** can act only where the guest runs visibility tests. The perflog line `hakuX-rpbrk ... qry`
+  counts the render-pass breaks from query begin/end per 60 flips. `scratch/qrycensus.py` read it from every
+  title run on disk (55 titles). qry > 0 in the share of windows shown, median of the nonzero windows:
+
+  | title | windows qry>0 | median qry | runnable on the Nova now (profile gate) |
+  |---|---|---|---|
+  | Azurik | 95% | 5935 | Thor runs only |
+  | Halo CE | 93% | 10031 | yes, canary |
+  | Alias | 74% | 3150 | Thor runs only |
+  | Amped 2 | 68% | 70 | yes, `amped2` (qry from ~window 43 in pmucounters' 578 s runs) |
+  | Simpsons Hit & Run | 68% | 99 | yes, `simpsons-hit-run` (qry seen on gpunonrender's route; unread on this one) |
+  | Blinx 2 / Blinx 1 | 65% / 33% | 240 / 1137 | survey runs only, no route; not since 10-08 |
+  | NFS MW | 39% | 120 | no: no golden profile since the gate; the skipn argument above is from its logs |
+  | RalliSport Challenge | 33% | 1774 | yes, `rallisport-804g` (accuracy804: every race frame) |
+  | Top Spin | 32% | 94 | yes, canary (the match) |
+  | Conker | 26% | 490 | yes, no route (memfast's 300 s boot reached qry > 0 at window 64) |
+  | PGR, BF2MC, Halo 2, NGB, DOA1U | 4-25% | 32-60 | small |
+  | 39 others, Forza, GTA SA, MKSM and Fuzion Frenzy among them | 0% | - | cannot act |
+
+  Whether the guest arms the status word, and whether its offsets come back one frame later, only an ON run
+  says. The rows below are the titles where it can act and that the Nova can run.
+- **FLDCW_CHAIN**: `[fldcw1018] n= flips=` every 2^20 FLDCW calls, in every arm. Halo: 0 flips. Every ON row
+  below is a flips census for free. A title with fewer than 2^20 calls logs no line.
+- **IBC**: #507's record (docs/lanes/ibcache/NOTES.md 5c, 5d): GTA x1.02 and Forza x1.10 J/frame, fps unchanged,
+  no defect, with the idle halt off (still the default). Where the vCPU is the bound, it is frame time.
+
+## The screen (first pass)
+
+One build, ed2b1d3333, the Nova only. ON = no switch env, which is the shipped default now. Every row's
+`[s2tcvt]`, `[rearly1018] early=`, `[fldcw1018] chain=` and `[ibc507] on=` lines are its V.
+
+| row | title, route, s | env beyond the default | what are we looking for | Nova min |
+|---|---|---|---|---|
+| HON | Halo, halo-cinematic, 420 | FRAMETRACE, PROBE_WAITS, REPORT_TRACE (as EIF) | the shipped default holds Halo's span at EIF's level (<= 34.5 ms/f, every 10 s window <= 35.5), the gap-1 gate keeps the early share >= 0.98, and how often an early answer flips visibility (`vis`) | 8.5 |
+| HNI | the same | + `HAKUX_IBC=0` | IBC's share of Halo's bar: if HNI is within 0.5 ms/f of HON, IBC goes back to off (its energy cost buys nothing here) | 8.5 |
+| HOFF | the same | + the four `=0` | the escape hatch: all four log off and the span is back above 52 ms/f | 8.5 |
+| MKSM | MKSM, fps1015-mksm, 330 | none | S2T_CVT on by default reaches fps1015's on level (>= 52 fps; on was 54.2-54.4) to the route's end; early = 0 (no visibility tests) | 7.0 |
+| TS | Top Spin, fps1015-topspin, 450 | none | S2T_CVT's match play (>= 56 fps; on was 59) to the route end; REPORT_EARLY in a second title: early share and `vis` in the match | 9.0 |
+| RS | RalliSport, rallisport-804g, 240 | none | REPORT_EARLY where the race runs visibility tests every frame: does it act, `vis`; the rivals and their shadows in the d1-d20 shots, the #804 symptom | 5.5 |
+| SHR | Simpsons, simpsons-hit-run, 300 | none | does REPORT_EARLY act on this route; `vis`; a valid end | 6.5 |
+| CLR | Conker, no route, 300 | none | does REPORT_EARLY act; `vis`; a valid end | 6.5 |
+| AMP | Amped 2, amped2, 578 | none | does REPORT_EARLY act (light, 70 a window, in most windows); `vis`; a valid end | 11.1 |
+| TSC1, TSC2 | pgraph `Texture_shadow_comparator`, f5a67ba52c (fps1015's arm A) | none | fps1015's pixel item: A against A moves (run-to-run in a suite master broke) or is byte-identical (the switch moved the stale colours) | ~12-16 |
+
+Total: ~84-88 Nova minutes, about 1.5 h, under the 3 h aim. Every ON row also gives the flips census.
+
+Dropped, and why: Fuzion Frenzy (S2T acts there, but its only route is first-run and the title already has a
+kept profile: the gate refuses it; S2T has three acting titles in the canaries), NFS MW (no golden profile since
+the gate; its pattern is read from logs above), Azurik, Alias, Blinx (no Nova route).
+
+Pilot: HON and HNI first (Halo jumps the queue until 07:30), judged before the rest.
+
+Conditional rows, queued only on a trigger, each with its own line here first:
+
+- a title with `vis` > 2% of its early answers: that title with `HAKUX_REPORT_EARLY=0`, and both with
+  `--frames-every 1` over a camera cut, to look at what the flipped tests drew;
+- an ON row that crashes, hangs or leaves its route where the last master run of it did not: that row again
+  with one switch `=0` at a time (the owner's isolation rule);
+- a title with flips > 0: its `HAKUX_FLDCW_CHAIN=0` arm, route end and frames against the ON row.
+
+Judge: `docs/lanes/defaulton1017/screenread.py` (written before the first verdict) with halo1016's `vcpuread`
+and `earlyread` readers for Halo, fps1015's `s2tread.py` and `tsread.py` for MKSM and Top Spin.
+
+Re-scan for a new default-on candidate (open lanes' PR.md and NOTES.md) before the last row: at 04:45 there was
+none.
+
+## Questions
+
+None yet.
