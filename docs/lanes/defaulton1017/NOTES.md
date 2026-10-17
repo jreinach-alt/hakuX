@@ -60,6 +60,8 @@
 - 06:15: TSC1/TSC2 judged: FAIL as registered (37 moved), and a pair without TSC1 (fps1015 A vs TSC2, 68
   moved) removes the push confound. S2T_CVT's pixel item closed against the switch (below). #1033 comment
   19738.
+- 06:20: MKC judged: the same as MKSM ON screen for screen, fps and end (below). Waiting on TS rerun, CLF,
+  CLC, RS.
 
 ## Pilot verdict (HON, HNI; screenread.py, as registered)
 
@@ -139,6 +141,16 @@ briefing (was 17 fps)`.
   Conker alternates the precision bit on nearly every FLDCW, so the chain's exit (eip past the FLDCW, then
   `lookup_and_goto_ptr` under the new hflags) is the path it takes, ~3,500 times a second. No crash, valid
   end, pace 301 s. No route, so no shots to look at. Triggers the FLDCW conditional row (below, CLF/CLC).
+- **MKC (conditional, MKSM with `HAKUX_FLDCW_CHAIN=0`): no difference from MKSM ON.** 1792240507-defaulton1017-3391984:
+  `[fldcw1018] chain=0 HAKUX_FLDCW_CHAIN=0`, the same 131,073 flips in the first 2^20 calls (the counter is in
+  the helper, so it counts with the chain off too), route end, held 333 s, no crash, locked 54.4 fps (ON
+  54.3), s2tread's V the same shape (cut 78, signature 52, play 131). `scratch/shotdiff.py` ON vs MKC: s01-s09,
+  s12, s19-s28, gameplay and the first hold within 0.4 (same picture); s10, s13-s18 3.6-12.4 and holds 2-3
+  8.9-11.3 (same screen, a few frames apart); s11 31.0. s11, s18 and hold 2 looked at side by side: s11 is the
+  intro's palace pan a few frames later, s18 the same cutscene shot as its letterbox comes in, hold 2 Liu
+  Kang on the same spot in the same room with the orb a little further along. No screen, fight or end
+  differs. **MKSM's FL miss is not a defect:** the chain's exit runs 131k times at boot and the run without it
+  is the same.
 - **AMP: AV HIT, HDS HIT; VIS:AMP not judged** (early 9), FL not reached (fewer than 2^20 FLDCW in 578 s).
   Amped 2 re-queues its report offsets two or more guest frames later too: 5,551 `skipn`, 3 cold, 9 early.
   REPORT_EARLY's gate leaves it on the reader's path, as on master. Route end, held 580 s, no crash.
