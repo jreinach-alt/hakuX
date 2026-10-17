@@ -8,10 +8,10 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `halo1016` | claude-opus-5-5 | 1h 2m | halo1016: Halo CE cutscenes on the Nova -- quiet speech under loud music (#938), cinematic below 30 fps |
+| `halo1016` | claude-opus-5-5 | 1h 16m | halo1016: Halo CE cutscenes on the Nova -- quiet speech under loud music (#938), cinematic below 30 fps |
 
 - **Handhelds:** 2 connected.
-  - Nova: held by `owner`
+  - Nova: free for the queue
   - Thor: held by `lanelocal-offline`
 - **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
@@ -120,6 +120,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Recently landed on master
 
+- 2026-10-16 release051b: three Halo known issues for 0.5.1, aimed at 0.5.2 (#433)
 - 2026-10-16 logo1016-move: the README logo moves to docs/images (#433)
 - 2026-10-16 visitordocs1016: security policy, code of conduct, getting your Xbox files
 - 2026-10-16 frontends1016c: stock launcher tested on the Nova, Daijisho page rewritten for users (#433)
@@ -131,6 +132,5 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-16 x1port1012-halo: #939 (b) root-caused and fixed behind HAKUX_FIST_ROUND=1 (verified on the Nova, run 13)
 - 2026-10-16 logo1016-banner: the new hakuX CE banner at the top of the README
 - 2026-10-16 logo1016-count: the Playable count as a running total, apart from the download
-- 2026-10-16 visitor1016: fewer required fields, no placeholder text, and "hakuX CE" in the first-contact files (#433)
 
-_Updated 2026-10-16 22:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-16 22:59 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
