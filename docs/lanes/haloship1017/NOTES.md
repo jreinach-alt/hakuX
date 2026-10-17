@@ -6,6 +6,21 @@ as #939. Branched from master @ 8d260f39fc.
 
 ## Status
 
+**Closed, not a defect (10-17, ~14:00 PDT).** The owner confirmed that the rear lights no longer show through
+the hull on the Turnip driver. The defect they reported came from the stock Qualcomm driver. lane.xbox relayed
+the confirmation with a stop order: no Nova legs and no fix. Both of the owner's sightings ran in the release
+app, `com.jreinach.hakux`, which had no custom driver until the owner selected T30 at ~13:20 today (see "The
+0.5.1-rc1 sighting" below). H2 and H9 were seen on stock only, and they are struck below. #1039 is closed on
+the forge, and a board request asks for its tracker row to be closed as not a defect (stock driver).
+
+Separately, a desktop finding stays on record as measured. It is not filed, and no fix was written for it.
+With 0.5.2's defaults (ASYNC + EARLY), lavapipe draws the 12 rear flares through the hull for exactly one frame
+after the cut, at alpha 0.18-0.20. The cause is `HAKUX_REPORT_EARLY`, which answers the first front frame's
+tests with the behind shot's counts (r4b). With EARLY off (e0) or ASYNC off (a0), the cut is clean. The
+mechanism and the guard's offline design are recorded below. "Reopening the desktop finding" has the recipe.
+
+What follows is the lane's record as it stood when the order came.
+
 Step 0 done (this file, before any code). Desktop input works (r2), the cut is located (r2), the light tests
 are identified and count 0 in the steady front shot (r2, r3). **r4b (attempt 2) reproduces it on the desktop and
 locates it:** the rear lights are lens flares drawn with the depth test OFF, and the second frame after the cut
@@ -21,7 +36,8 @@ answered with the behind shot's counts (12/730) by `HAKUX_REPORT_EARLY`. See "r4
   `com.jreinach.hakux`. bindpose1017 (#1043, folded 9abd80e90c) showed that this app has never had a custom
   driver, so both ran on the **stock Qualcomm driver**, which the owner's 10-17 rule says is never used or tested.
   See "The 0.5.1-rc1 sighting" below.
-- Next: Nova legs N0 and N1 on Turnip, and the remedy for EARLY at a cut, ranked below.
+- ~~Next: Nova legs N0 and N1 on Turnip, and the remedy for EARLY at a cut, ranked below.~~ Not run and not
+  built: the owner closed the issue as stock-only (above).
 
 **Why attempt 1 did not finish (12:08 PDT):** the 300-turn cap. It spent its turns on Step 0, the instrument,
 three desktop runs and many single-command polls, and the cap fell 40 s into r4 (route.log ends at
@@ -134,8 +150,8 @@ the guest being given a count that is not its own test's. Two ways to that, one 
 | # | hypothesis | P | hit | miss |
 |---|---|---|---|---|
 | H1 | (0.5.2) EARLY answers the first front frame's tests with the behind counts | **0.95 for 0.5.2 on the desktop** (seen: f41 given 12/730, own 0/0; f42 draws the 12) | e0 leg: no rear flare in any front frame | e0 still draws them |
-| H9 | (0.5.1-rc1, no EARLY) the flare code does not wait for its result: on "not ready" (0x88760828) it keeps the last answer, and ASYNC's write (16-33 ms after queue, halo1016 RT) is not there yet when a fast guest reads it, so the behind counts carry over the cut the same way | 0.45 | disassembly: the flare caller of 0x1810f0 does not spin; e0 on the desktop clean (slow guest, results land first) | the flare caller spins until ready (then ASYNC gives it the exact 0) |
-| H2 | (Nova) Adreno counts the hidden test quad (A5's Thor record) | 0.15 | Nova per-offset counts nonzero in the front shot | Nova counts 0 there (the 21 halo1016 front frames are clean, which already leans against a whole-shot H2) |
+| ~~H9~~ | **Struck: stock only** (both sightings ran on the stock driver; refuted by the disassembly anyway). (0.5.1-rc1, no EARLY) the flare code does not wait for its result: on "not ready" (0x88760828) it keeps the last answer, and ASYNC's write (16-33 ms after queue, halo1016 RT) is not there yet when a fast guest reads it, so the behind counts carry over the cut the same way | 0.45 | disassembly: the flare caller of 0x1810f0 does not spin; e0 on the desktop clean (slow guest, results land first) | the flare caller spins until ready (then ASYNC gives it the exact 0) |
+| ~~H2~~ | **Struck: stock only** (the owner saw no defect on Turnip). (Nova) Adreno counts the hidden test quad (A5's Thor record) | 0.15 | Nova per-offset counts nonzero in the front shot | Nova counts 0 there (the 21 halo1016 front frames are clean, which already leans against a whole-shot H2) |
 | H6 | (Nova) the aarch64 JIT decides differently | 0.03 | | |
 
 ## Instrument (#1039, committed before its data)
@@ -306,15 +322,17 @@ What this decides:
   so H2 on stock is the account for 0.5.1-rc1. Its mechanism is unmeasured and stays so. N0 (Turnip, EARLY=0)
   is what checks that the code is clean on the Nova's GPU.
 - **For 0.5.2-rc1 on stock:** EARLY's one-frame flash would be there regardless of driver.
+- **The owner's confirmation (10-17, ~14:00 PDT, via lane.xbox).** On the Turnip driver, the rear-light
+  defect is gone. The defect reported was the stock driver's. That closes #1039 as not a defect.
 
 ### Hypotheses, final for the desktop (re-ranked on r5, the disassembly and the driver)
 
 | # | hypothesis | P | evidence |
 |---|---|---|---|
 | H1 | EARLY answers the first front frame's tests (and a reordered slot's) with another test's count | **0.97, the 0.5.2 defect, driver-independent** | r4b: f41 given 12/730 against its own 0/0, f42 draws 12 rear flares. e0 and a0: clean. Offline: the same class at f255 and f263 (reorders, α 0.016-0.043) |
-| H2-stock | the stock Qualcomm driver counts the hidden test quad (or gets the query wrong) | 0.6 as the 0.5.1-rc1 account; not chased (owner rule) | both sightings ran on stock; the code is clean without EARLY; A5 records a handheld counting the depth-hidden ZPass quad |
-| H2-Turnip | Turnip counts the hidden quad | 0.05 | halo1016's Turnip front frames are clean (21 frames, steady shot); N0 decides |
-| H9 | the guest keeps a stale answer on "not ready" | 0.00 | refuted: 0x63460 spins with no timeout |
+| ~~H2-stock~~ | **Struck: stock only, closed (owner, 10-17).** The stock Qualcomm driver counts the hidden test quad (or gets the query wrong) | 0.6 as the 0.5.1-rc1 account; not chased (owner rule) | both sightings ran on stock; the code is clean without EARLY; A5 records a handheld counting the depth-hidden ZPass quad |
+| ~~H2-Turnip~~ | **Struck: the owner saw no defect on Turnip (10-17, ~14:00).** Turnip counts the hidden quad | 0.05 | halo1016's Turnip front frames are clean (21 frames, steady shot); N0 was not run |
+| ~~H9~~ | **Struck: stock only, and refuted.** The guest keeps a stale answer on "not ready" | 0.00 | refuted: 0x63460 spins with no timeout |
 | H3, H4, H5, H7, H8 | zeta without the hull, span/reset, a depth-tested light, draw order, a skipped draw | <= 0.02 each | r4b: own counts right in every frame, flares are depth-test-off, no skips |
 | H6 | the aarch64 JIT decides differently | 0.02 | N0/N1 compare with the desktop |
 
@@ -326,8 +344,8 @@ one of its reports is not answered early, so the cost unit is frames that wait, 
 
 | # | remedy | P it clears the cut flash | added waiting frames / 300 (r4b, e0 sim, a0 sim) | win | status |
 |---|---|---|---|---|---|
-| R1 | **Moved-quad guard:** refuse an early answer when the offset's test quad (inline position, attribute 0) moved more than 32 guest px since the offset's last test **and** the stale answer is nonzero | 0.9. Offline: catches 12 of 12 at all three cuts, plus the reorder flashes | 2 (the cut already waits in r4b), 2, 4: about 1%, ~0.06 ms/f at 6.2 ms per waiting frame | the defect gone, and the reorder class too, for ~1% of EARLY's gain | **building** |
-| R2 | EARLY off by default | 1.0 (e0, a0 clean) | every frame: 6.2 ms/f, #1018's whole gain | the defect gone, Halo's cinematic 15% slower | measured by e0 plus halo1016's arms; the fallback if R1 fails |
+| R1 | **Moved-quad guard:** refuse an early answer when the offset's test quad (inline position, attribute 0) moved more than 32 guest px since the offset's last test **and** the stale answer is nonzero | 0.9. Offline: catches 12 of 12 at all three cuts, plus the reorder flashes | 2 (the cut already waits in r4b), 2, 4: about 1%, ~0.06 ms/f at 6.2 ms per waiting frame | the defect gone, and the reorder class too, for ~1% of EARLY's gain | **not built:** the owner closed #1039 as stock-only. The design and offline numbers stay here for a reopen |
+| R2 | EARLY off by default | 1.0 (e0, a0 clean) | every frame: 6.2 ms/f, #1018's whole gain | the defect gone, Halo's cinematic 15% slower | measured by e0 plus halo1016's arms; not taken (closed) |
 | R3 | Key the early answer by quad position instead of offset (nearest previous test within T) | 0.9 | T=8: 156; T=16: 112; T=32: 59 | low: about a fifth to half of EARLY's gain | rejected on the measurement |
 | R4 | Moved-quad guard on every answer, zero or not | 0.9 | T=8: 151; T=32: 60 | low | rejected on the measurement: within-shot quads jump, but nearly always with a stale answer of 0, which is harmless |
 | R5 | Turnip by default (bindpose1017's R2), for the stock sightings | n/a here | n/a | every release user off stock | the owner's decision, not this lane's |
@@ -349,9 +367,44 @@ The 200 missed are 1-4 sample edge counts at a quad that did not move. They are 
 place, shown one frame longer at its old spot. That is EARLY's designed latency (defaulton1017's HVIS
 0.0055), not a light seen through a hull. 32 is the knee, and 32-64 behave the same.
 
+## Reopening the desktop finding
+
+The EARLY one-frame flash is a measured fact on lavapipe, but no handheld run has confirmed it. The owner did
+not see it on Turnip. Watching for one frame at 30 fps by eye may simply miss it. If a later report brings it
+back, or someone wants EARLY to stay clean at cuts in general, it can be redone in about 25 minutes of desktop
+time. The instrument in this branch is off unless set: frame dump schema 10's visibility-test fields,
+`HAKUX_ZREP`, and `HAKUX_PAD_FILE`.
+
+1. Build the desktop target from this branch, or from master once this folds. Before each run, `df -B1G /mnt/c`
+   must show at least 40 GB free.
+2. The cut at default settings (r4b):
+   `python3 docs/lanes/haloship1017/desk_route.py OUT --total 1500 --on-bright 0.045 300,images,gd,cap3000 --every 2 --cine 900 --zrep`.
+   It follows halo1016's kept route (`docs/lanes/halo1016/routes/halo-cinematic.route`) through
+   `build-linux/run/xemu.toml`, the keyboard on port 1 and the Nova titles disk copy as the HDD. The 300-frame
+   dump is aimed by the engine glow: a luma >= 240 fraction of 0.045, which is the behind shot. Switch legs:
+   `bash docs/lanes/haloship1017/legs.sh OUTROOT e0=HAKUX_REPORT_EARLY=0 a0=HAKUX_REPORT_ASYNC=0`.
+   It runs the same recipe once per leg, checks C: before each leg, and lists `wsl-crashes/` after each.
+3. Judge with `python3 docs/lanes/haloship1017/cutflare.py DUMP.jsonl zrep.txt --from F --to F`. The defect is a
+   rear-coloured 7d6aedad quad, (0.369,0.886,1) or (0.259,0.478,1), in a front frame. Do not judge by images:
+   r4b's images lag one frame at the cut, and f43 had none.
+4. Cost a guard offline with `python3 docs/lanes/haloship1017/testquad.py DUMP.jsonl zrep.txt 0 299 --nzguard 32:1`.
+   Add `--sim` for a run with EARLY off, or `--frame -1` for each frame's refusals. R1 above is the design:
+   in `reports.c`, refuse an early answer when the offset's test quad moved more than 32 guest px **and** the
+   stale count is >= 1. That needs the quad's attribute-0 position at the report, the way `renderer.c`'s ZREP
+   hook reads it.
+
+The r4b, r5/e0 and r5/a0 dumps are about 290 MB each. They sit in this worktree's `build-linux/run/` and are
+not committed, so they go when the worktree does. The tables above are what they showed.
+
+Next lane, do not repeat:
+- Judging a handheld sighting before reading its driver line (`Loading custom Vulkan driver` / `GPU: PurpleVK`
+  against `no custom driver installed`). The release app had no Turnip until 10-17 ~13:20, and this lane spent
+  its Nova plan on a stock sighting.
+- Reading the dump's images at a cut. The draw records are the judge.
+
 ## Crash log (desktop)
 
-None yet (r1-r5: no dump in `wsl-crashes/`; C: 57 GB free after each).
+None (r1-r5: no dump in `wsl-crashes/`; C: 57 GB free after each). No desktop run after r5.
 
 ## Questions
 
