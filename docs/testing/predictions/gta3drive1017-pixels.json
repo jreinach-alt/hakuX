@@ -1,0 +1,41 @@
+{
+  "registered_utc": "2026-10-17T23:31:24Z",
+  "who": "lane.gta3drive1017",
+  "issue": "433",
+  "prediction": "#433 HAKUX_S2T_DRAIN, pixel leg. ONE build (c6ca5296fd, release), two arms differing only by env: A has HAKUX_S2T_DRAIN=1 (the #474 drain ahead of every surface-to-texture copy, master's behaviour), B has no env (the drain skipped ahead of a plain colour copy, vkCmdCopyImage, when the node was sampled by a frame still in flight). Suites: drain474's seven, every one of which binds a surface as a texture (render target, render update in place, framebuffer blit, antialiasing, shadow comparator, surface format, colour/zeta overlap). Predicted: every capture the same between arms or inside the run-to-run band. Why: the copy is recorded in the frame's own command buffer, and its barrier out of SHADER_READ_ONLY (image.c, srcStage FRAGMENT_SHADER) has every earlier submission on the one VkQueue in its first scope, so the copy cannot overwrite the node while an earlier frame's fragment shader still samples it; frames are submitted in recording order (the render thread's FIFO). Separately from the logcat: A carries '[s2tdrain] on' if any plain copy met an in-flight node; B carries '[s2tdrain] first skip' iff one did. If B has no 'first skip' line, this leg shows the switch inert where it does not act and does NOT exercise the skip; the skip's pixels are then judged on GTA III's drive frames (gta3drive1017-drive.json). Falsifier: the world where the barrier does not order the copy after an in-flight frame's reads (a missing or wrong-stage barrier, or a submission out of recording order) shows a capture here moving in B only, typically a texture holding the next render's content or a torn mix, or a validation error or device-lost in B's run1.log or logcat.",
+  "a_ref": "c6ca5296fd",
+  "b_ref": "c6ca5296fd",
+  "must_not_move": [
+    "Texture_render_target/*",
+    "Texture_render_update_in_place/*",
+    "Texture_Framebuffer_Blit/*",
+    "Antialiasing_tests/*",
+    "Texture_shadow_comparator/*",
+    "Surface_format/*",
+    "Color_zeta_overlap/*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Antialiasing tests",
+      "Color zeta overlap",
+      "Surface format",
+      "Texture Framebuffer Blit",
+      "Texture render target",
+      "Texture render update in place",
+      "Texture shadow comparator"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "/home/justin/hakux-work/dispatch/results/1-1790549937-arms-drain474-fix-2297407/request.json",
+    "source_request": "1-1790549937-arms-drain474-fix-2297407"
+  },
+  "a_env": [
+    "HAKUX_S2T_DRAIN=1"
+  ],
+  "b_env": [],
+  "device": "nova",
+  "queue_order": "Queued by the lane, not the arms job (a_ref == b_ref is an env A/B, which arms.sh skips structurally): B first (no env), then A (--env HAKUX_S2T_DRAIN=1), ahead of the drive soaks so a moved capture stops them. Both: HAKUX_RELEASE_PRIO=1 request.sh --who lane.gta3drive1017 --device nova --ref c6ca5296fd --suites <disc.suites> --expect this file. Judge: ab_compare.py --a <A> --b <B> --expect this file --allow-same-binary; and grep B logcat for [s2tdrain] first skip (the skip acted) and A logcat for [s2tdrain] on (the env arrived)."
+}

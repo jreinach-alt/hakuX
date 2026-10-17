@@ -1,0 +1,40 @@
+{
+  "registered_utc": "2026-10-17T23:33:15Z",
+  "who": "lane.gta3drive1017",
+  "issue": "433",
+  "title": "5454000E-Grand_Theft_Auto_III.xiso.iso",
+  "device": "nova",
+  "seconds": 600,
+  "route": "gta-3-drive (docs/lanes/gta3drive1017/routes, queued with TITLE_ROUTES set to that dir; request.json carries the text)",
+  "perflog": false,
+  "frames_every": 0,
+  "runs_per_arm": 2,
+  "a_ref": "c6ca5296fd",
+  "b_ref": "c6ca5296fd",
+  "a_env": [
+    "HAKUX_FRAMETRACE=1",
+    "HAKUX_FRAMETRACE_CSV=0",
+    "HAKUX_S2T_DRAIN=1"
+  ],
+  "b_env": [
+    "HAKUX_FRAMETRACE=1",
+    "HAKUX_FRAMETRACE_CSV=0"
+  ],
+  "queue_order": "One build, env A/B (arms.sh skips a_ref == b_ref; the lane queues). After gta3drive1017-pixels.json's two suite arms: B1 A1 (the pilot: the route's first proof), then, once the pilot verdict is written, B2 A2, then on foot B A. A (the drain, master's behaviour) last in each pair. Each: HAKUX_RELEASE_PRIO=1 TITLE_ROUTES=<lane routes> request.sh --who lane.gta3drive1017 --title <above> --route gta-3-drive --seconds 600 --device nova --ref c6ca5296fd --env <arm env> --issue 433 --expect this file. On foot: the same with --route gta-3 (docs/testing/titles/routes, no TITLE_ROUTES) --frames-every 30.",
+  "judge": "python3 docs/lanes/gta3drive1017/tools/drive_judge.py --a <A1> --a <A2> --b <B1> --b <B2> [--exclude <id>=HH:MM:SS-HH:MM:SS for stretches the drive shots show the car not moving], and --onfoot for the gta-3 pair. The drive shots are read by eye in both arms.",
+  "window": "hakuX-pace windows (60 flips) starting at or after the route's `mark gameplay` (written after the Y press puts Claude in the Kuruma) to the end of the soak, minus hand-excluded stretches where consecutive drive shots show the car not moving (against a wall, wasted, busted, a cutscene). The same rule in both arms.",
+  "prediction": "GTA III driving on the Nova, Turnip. Premise (pilot 1-1792275531-...-343857, perflog, docs/lanes/gta3drive1017/NOTES.md 6.2): in the windows under 26 fps the PFIFO thread sleeps 14.3 ms/frame in vkWaitForFences, 11.6 ms/flip of it in create_texture's #474 drain (pgraph_vk_flush_all_frames) ahead of 72 surface-to-texture copies a flip, while the GPU is busy 21.9 ms of a 47 ms frame; the vCPU then waits 7.5 ms/flip for pgraph.lock, which the drain holds. B skips that drain ahead of a plain colour copy (vkCmdCopyImage); the copy's own barrier orders it after earlier frames' fragment reads on the one queue. Claim: the fence wait falls to <= 3 ms/frame and driving clears 28.5 fps for >= 90% of the moving window. P(P1) 0.85; P(P2) 0.5 (the 9 ms needed in the dips is about what the drain costs, with no margin for what fills in behind it); P(F) 0.95.",
+  "legs": {
+    "V (validity, per run)": "A Turnip line; >= 60 scored windows and >= 60 [hakuX-ft1] lines after the mark; A carries '[s2tdrain] on' and no 'first skip'; B carries '[s2tdrain] first skip' and no 'on'; the drive shots, minutes apart, show the car moving through the city with the radar turning. A run failing V is VOID and goes for identification, never a blind rerun.",
+    "P0 (premise, in A)": "A's median p_fence (ft1 pw[5]) >= 4.0 ms/frame and A's best share_t <= 0.80. Otherwise the route did not reach the dips and P2/P3 are not scored.",
+    "P1 (the mover)": "B's median p_fence <= 3.0 ms/frame and <= 0.4 x A's.",
+    "P2 (the bar)": "Every B run's share_t (seconds in windows at >= 28.5 fps over the scored seconds) >= 0.90.",
+    "P3 (outside the spread)": "B's worst share_t > A's best, and B's worst window-fps median > A's best.",
+    "P4 (on foot not regressed)": "gta-3.route, one run per arm: B's window-fps median >= A's - 0.5 and B's share_t >= A's - 0.05. A FAIL is rerun twice before it is believed.",
+    "F (no corruption)": "B's drive and on-foot shots show no stale, torn, black or one-frame-behind texture (car paint, reflections, HUD, radar, sky) that A's do not, and B's logcat has no more validation, device-lost, hakuX-crash or Fatal signal lines than A's. FAILS in the world where the barrier does not order the copy after an in-flight read; then the change is wrong.",
+    "X (falsifier)": "FIRES if P1 passes and B's best share_t stays under 0.75: the wait was removed and the frame did not shorten, so it moved (vCPU lock wait, GPU, another flush). Reported as such with B's v_lock, prun and gpu50; then R2 (direct bind) and R3 are chased, no second theory stacked on this arm. If P1 fails with 'first skip' present, the fence wait is another flush_all_frames caller: ft1's site table names it."
+  },
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. The legs are read off hakuX-pace and [hakuX-ft1] lines by drive_judge.py, and the shots by eye."
+}

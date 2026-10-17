@@ -1,7 +1,8 @@
 # lane.gta3drive1017 -- GTA III drops into the teens while driving (#433)
 
-Status (attempt 2, 10-17 16:20 PDT): the wait is located (section 6). The remedy R1 is being built (section 7). The
-driving route needed a new gate (section 6.3) and is not proven yet.
+Status (attempt 2, 10-17 16:40 PDT): the wait is located (section 6). R1 is built (c6ca5296fd, section 7). Its arms
+are registered and queued behind lane.local's Nova hold (section 8). The driving route has a new gate (section 6.3);
+the first drive pair is also its proof.
 
 **Why attempt 1 did not finish.** It ended its session on purpose, waiting on two Nova pilots queued behind lane.local's
 hold:
@@ -10,7 +11,7 @@ hold:
 
 Their data was the next step, and a headless session cannot sleep through a device wait. Nothing was left half-done.
 
-## 1. What was searched## 1. What was searched (Step 0)
+## 1. What was searched (Step 0)
 
 | where | how | result |
 |---|---|---|
@@ -319,6 +320,38 @@ only), which decides between R2 and R3.
   only delays it.
 - The no-drain copy already runs today whenever the node is older than 3 submits. R1 makes that the rule for the
   plain colour path.
+
+## 8. R1's arms (registered 10-17 23:31-23:33 UTC, before any of their data)
+
+R1's build is c6ca5296fd: b7d7243392's change, master merged, plus a once-per-process `[s2tdrain] first skip` line.
+That line shows the skip acted, not only that the env was read. Every arm uses this one build, so it is an env A/B:
+
+- **A**: `HAKUX_S2T_DRAIN=1`, the drain ahead of every copy. This is master's behaviour; the condition reduces to
+  master's.
+- **B**: no env.
+- The shipped-behaviour arm, A, is queued last in each pair, so the device is left in it.
+
+| step | prediction | requests | what it decides |
+|---|---|---|---|
+| 1 | gta3drive1017-pixels.json | B, then A: drain474's seven surface-as-texture suites, ~1 min each | a capture moving in B only means the barrier does not order the copy: R1 is wrong, stop |
+| 2 | gta3drive1017-drive.json | B1, A1: gta-3-drive, 600 s, FRAMETRACE (CSV off) | the pilot: does the route drive (shots minutes apart, the car moving), and P0/P1 on one pair |
+| 3 | same | B2, A2 | the second pair: the spread, P2/P3 |
+| 4 | same | on foot B, A: gta-3.route, 600 s, frames every 30 s | P4, on foot not regressed |
+
+- Steps 1-2 are ~29 min by request.sh's estimate. That is the 30-min pilot.
+- Steps 3-4 are queued after the pilot verdict is written to `pilots/lane.gta3drive1017.ok`.
+- The judge is `tools/drive_judge.py`. It was committed with the predictions, and smoke-tested on the two old pilots:
+  pilot 2 came out VOID, with no ft1 lines and no switch, as it should.
+
+The legs are in the JSON. In short:
+- **V**: Turnip; the switch as set; >= 60 windows and >= 60 ft1 lines; the car moving in the shots.
+- **P0**: A's fence wait >= 4 ms/frame and A's best share <= 0.80.
+- **P1**: B's fence wait <= 3 ms/frame and <= 0.4 x A's.
+- **P2**: every B run >= 0.90 of its moving seconds at >= 28.5 fps.
+- **P3**: B's worst run beats A's best.
+- **P4**: on foot, B's median fps >= A's - 0.5.
+- **F**: no B-only texture defects in the shots, and no new error lines.
+- **X**: P1 passes but B stays under 0.75. The wait moved; chase R2.
 
 ## Questions
 
