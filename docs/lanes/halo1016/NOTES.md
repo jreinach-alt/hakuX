@@ -4,7 +4,12 @@ Halo: Combat Evolved (4D530004), opening cinematic on the Nova. Found on 0.5.1-r
 (0.5.1 shipped without this lane, owner 10-16 ~22:50 PDT).
 Defects: **#938** quiet speech under loud music; **#1018** the cinematic drops to 8-19 fps for ~47 s.
 
-## Status (2026-10-17 03:10 PDT)
+## Status (2026-10-17 03:40 PDT)
+
+- #1018: **the plateau is at the bar with four switches together** ("#1018 early arms"). B 42.1, E 35.9,
+  EIF 33.8 ms/f over [mark+131, mark+191], all on `HAKUX_S2T_CVT=1`. EIF = S2T_CVT + REPORT_EARLY + FLDCW_CHAIN +
+  IBC, and every 10-s window of it is 33.4-34.7. XG misses by 0.4 ms. S (R7), EV and BV (pictures for R8's cost)
+  are pending. Earlier, 03:10:
 
 - #1018: **where the poll waits is found** ("#1018 reports arms: RT, RC"). Both arms are VOID on their own V:
   the prediction required the synchronous report path. The app's "Fast renderer paths" default sets
@@ -661,6 +666,51 @@ Ranking by P x win:
 The arms are B (base), E (+EARLY), EIF (E + FLDCW_CHAIN + IBC), S (+SUBMIT=2000), and EV/BV with frames for the
 pictures. All run on S2T_CVT with the trace on. EIF is there because once the poll is gone, IF's 9 ms/f of vCPU
 work should finally show up as frame time.
+
+## #1018 early arms: B, E, EIF judged (earlyread.py as committed in a23ee0cccf; 03:40 PDT 10-17)
+
+- B = 0-0-x-1792231793-halo1016-2208576, E = ...-1792231792-halo1016-2208382, EIF = ...-1792231794-halo1016-2208719.
+  All on 08fd920b5c with `HAKUX_S2T_CVT=1 HAKUX_REPORT_TRACE=1`, perflog, frametrace. S, EV, BV pending.
+- Full output: `scratch/early-BEX.md` (the judge), `scratch/early-BE-frametrace.md` and `scratch/early-EX-frametrace.md`
+  (cineread.py's per-window timeline, B/E and E/EIF; its cinesplit legs are not read).
+
+| arm | env over B | ms/f [mark+131, +191] | early share | spin share of TB time | q2w >= 16.7 ms |
+|---|---|---|---|---|---|
+| B | -- | 42.1 | -- | 0.252 | 0.759 |
+| E | `HAKUX_REPORT_EARLY=1` | 35.9 | 1.000 | 0.010 | 0.815 |
+| EIF | E + `HAKUX_FLDCW_CHAIN=1 HAKUX_IBC=1` | **33.8** | 1.000 | 0.015 | 0.857 |
+| RT (reports pair, 7da5534b6b) | -- | 43.1 | -- | 0.290 | 0.768 |
+
+| Leg | Result | Measured | Bar |
+|---|---|---|---|
+| EA | HIT | 972289 of 972302 armed reports answered early (1.000) | >= 0.90 |
+| EP | HIT | E spin share 0.010 | <= 0.05 |
+| EM | MISS (by 0.002) | E 0.852 x B | <= 0.85 |
+| EG | MISS | E 35.9 ms/f | <= 33.4 |
+| XM | HIT | EIF 0.942 x E | <= 0.95 |
+| XG | MISS (by 0.4 ms) | EIF 33.8 ms/f | <= 33.4 |
+
+ms/f per 10-s window from mark+100 (not judged):
+
+| arm | +100 | +110 | +120 | +130 | +140 | +150 | +160 | +170 | +180 | +190 | +200 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| B | 33.4 | 33.6 | 40.3 | 55.3 | 47.9 | 35.1 | 41.4 | 48.1 | 35.1 | 37.2 | 33.4 |
+| E | 33.4 | 34.2 | 36.2 | 42.6 | 38.4 | 35.9 | 33.5 | 33.8 | 33.5 | 35.4 | 33.5 |
+| EIF | 33.4 | 33.5 | 34.7 | 34.7 | 33.9 | 33.5 | 33.9 | 33.8 | 33.4 | 33.6 | 33.4 |
+
+Read:
+- **R8 removes the poll in full.** The guest's spin goes from 25% of TB time to 1%, and the reader's own latency is
+  unchanged (q2w >= 16.7 ms for 76-86% in every arm): the result still takes a frame to come back; the guest no
+  longer waits for it.
+- **E alone leaves the shots at +126..+155 at 37-50 ms/f with the guest never idle**, and the draw thread waiting
+  for work 13-21 ms a frame: there the vCPU's own work is the bound, as the tier-1 arms predicted.
+- **EIF takes the vCPU's work off, and now it becomes frame time** (the tier-1 verdict's prediction: IF's 9 ms/f
+  went into polling while the poll was there). Every 10-s window is 33.4-34.7 ms/f. In the heaviest shots,
+  +172..+176, the guest idles 22% of the window at 33.6-34.2 ms/f. The windows still over the bar are +127..+139,
+  34-37 ms/f per 2 s, with the guest busy (idle 0-3%): the vCPU's remaining work in those shots.
+- So the plateau has **three causes in series**, each hidden by the one before it: the `cvt` downloads (R1,
+  59.3 -> 41.9), the visibility-test poll (R8, 42.1 -> 35.9) and the vCPU's work (R2 + R4, 35.9 -> 33.8).
+  Removing any one alone leaves the plateau above the bar.
 
 ## What the next lane should not repeat
 
