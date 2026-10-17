@@ -6324,7 +6324,7 @@ disposition = "defect"
 status = "open"
 dispatch_state = "available"
 blocked_on = ""
-status_note = "TARGETS 0.5.2 (owner 2026-10-16 ~22:50 PDT): 0.5.1 publishes without it and lists it in KNOWN_ISSUES.md. || Filed by lane.local 2026-10-16 22:0x PDT from the owner's hand play on 0.5.1-rc1 (owner: 'It's not clearing the 30 FPS bar'; 0.5.1 on hold until fixed). Owned by lane.halo1016 (deep dive, with #938). Capture: captures/owner-halo-1016/logcat-nova-full.txt."
+status_note = "2026-10-17 0.5.2-rc1 (owner): much better, not blocking; dips into the teens. lane.xbox measured gfps 15-19 for ~45 s after a slot-2 load (10:20:21-10:21:07 device time), then 29; post-load warm-up vs scene not separated (capture /home/justin/hakux-work/captures/halo-shadow-1017/logcat.txt). Comment posted on the forge 10-17 (GitHub copy follows with the mirror's sync after the 17:00 PDT cap reset). || TARGETS 0.5.2 (owner 2026-10-16 ~22:50 PDT): 0.5.1 publishes without it and lists it in KNOWN_ISSUES.md. || Filed by lane.local 2026-10-16 22:0x PDT from the owner's hand play on 0.5.1-rc1 (owner: 'It's not clearing the 30 FPS bar'; 0.5.1 on hold until fixed). Owned by lane.halo1016 (deep dive, with #938). Capture: captures/owner-halo-1016/logcat-nova-full.txt."
 
 [issue.1020]
 title = "Area 51 (4D570005): 73% of gameplay at 30 fps or better in a 10-minute run on the Nova, bar 90%"
