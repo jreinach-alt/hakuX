@@ -124,6 +124,31 @@ NDK/Android compile check: see PR.md for the result (background build, `GRADLE_E
 ## Done
 
 PR.md `State: ready` once the build check's exit code is in and the prediction is committed.
-`Needs device: yes (Nova)`, `Needs NDK: yes`. Nothing blocking: the brief's four steps (default
-on, log rewording, comment update, grep for other default-off claims) are all done; no other
-living doc needed a fix.
+`Needs device: yes (Nova)`, `Needs NDK: yes`. The brief's four steps (default on, log rewording,
+comment update, grep for other default-off claims) are all done; no other living doc needed a fix.
+
+### preflight.sh territory gate: stale claim on a folded lane, not this lane's to fix
+
+`bash docs/testing/preflight.sh` FAILs the `territory` gate: `docs/testing/nv2a_index.json is
+claimed by both x1port1012 and fistdefault1016`. Checked `origin/board`'s `territory.toml`
+directly (`git show origin/board:territory.toml`, not the stale, unrelated
+`docs/testing/territory.toml` sitting in-tree from wave 94/2026-09-18): `[lane.x1port1012]` still
+lists `docs/testing/nv2a_index.json` in its `files`, even though that lane folded
+(`56fdef2c85 fold: lane/x1port1012-halo (offline)`, on `master`'s ancestry). A prior board update
+(`6583bb5751`, 2026-10-16 ~19:00 PDT) moved `tcg/aarch64/tcg-target.c.inc` off x1port1012 onto
+this lane's row but did not also release `nv2a_index.json` from the folded lane -- that half of
+the move was missed, and it now collides with this lane's own (brief-granted, conditional) claim
+on the same file.
+
+Per AGENTS.md ("A lane cannot satisfy a gate it is barred from fixing", ~line 357): `territory.toml`
+is barred to lanes, so the fix is a board request, not an edit. Filed
+`$DISPATCH_DIR/board-requests/fistdefault1016.md` asking the board to release
+`docs/testing/nv2a_index.json` from the folded `[lane.x1port1012]` (or, failing that, to drop it
+from this lane's own row instead, since this lane never touches the file -- either side clears the
+gate). This is the only preflight gate failing; `psh_differ`, `aci_vmstate`, the `nv2a_index`
+freshness check (not needed here, see above), `coverage`, and the board-files check all pass.
+
+This does not block marking the PR ready: every criterion this lane controls (the code change,
+the evidence above, the committed+registered prediction, the passing NDK build) is met, and
+AGENTS.md is explicit that a lane "must never be blamed for a gate it cannot reach." Ending this
+session `waiting:` on the board resolving the stale x1port1012 claim.
