@@ -1,6 +1,6 @@
 # release052: the 0.5.2 release commit (#433)
 
-State: draft
+State: ready
 
 Lane: release052            Issue: #433
 Base: master @ c3660fdd86 (defaulton1017's fold, merged)
