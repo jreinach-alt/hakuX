@@ -163,7 +163,8 @@ ms/f with no downloads). Neither alone reaches 33.4.
 | R1 | `HAKUX_S2T_CVT` on by default (built, fps1015) | 0.9 measured | span 59.3 -> 41.9 ms/f; whole cinematic 39.3 -> 35.9 | census C HIT; MKSM and Top Spin A/Bs. Blocked on its pixel leg (Texture_shadow_comparator, a vk/draw.c regression on master) and one mechanism screen, both fps1015's |
 | R4 | #507's inline jump-cache probe on (`HAKUX_IBC=1`, built, parked off) | 0.5 | up to ~9 ms/f: 930 k helper lookups a frame, ~10 ns saved per hit | B: hc 930 k/f, miss share 3e-5; GTA: the helper's hit path was 18.4% of the vCPU. Parked because its saving became guest idle spin on GTA/Forza; Halo's plateau never idles |
 | R2 | FLDCW ends a TB only when the precision bit flips, and chains when it does (built, d70f782f45) | 0.55 | ~4.3 ms/f: 36 k main-loop returns a frame at ~118 ns of loop each | rr425: 36.2 k/f `eo` at 0x1ec3a of 49.9 k returns; loop 14% of the vCPU wall |
-| R3 | Name and remove the plateau's `gi` (CF_INVALID) exits and `x` longjmps | 0.3 | 7.9 k + 2.8 k returns a frame, ~1.3 ms/f by the same cost, plus any retranslation | rr425 split below; `gi` at 0x19f23 |
+| R3 | Tier-1 promotion off (`HAKUX_TIER1_THRESHOLD=0`, an existing switch): no hot block left CF_INVALID and unchainable | 0.45 | ~0.9 ms/f of loop for 7.9 k `gi` returns, plus their qht lookups; and it keeps R2's `_control87` block chainable | named below ("the `gi` exits are tier-1's"); `promote` lines name 0x19f23 and 0x1ec3d |
+| R3b | Name and remove the plateau's `x` longjmps | 0.3 | 2.8 k a frame, ~0.3 ms/f | unnamed |
 | - | `TU_DEBUG=sysmem` | refuted | -- | cinesplit P 0.96 |
 
 P x win: R1 (0.9 x 17 ms) first, then R4 (0.5 x 9) and R2 (0.55 x 4.3), then R3 (0.3 x 1.3). B needs 8.5 ms/f off
@@ -432,6 +433,28 @@ A (base), F (+`HAKUX_FLDCW_CHAIN=1`), I (+`HAKUX_IBC=1`), IF (+both), A2 (base a
 Legs and P: FL flips/n <= 0.05 (0.7); FM F's eo at 0x1ec3a <= 0.1 x A's (0.6); FE F <= 0.93 x base (0.55);
 IM I's helper lookups <= 0.3 x A's (0.85); IE I <= 0.93 x base (0.5); BE IF <= 0.87 x base (0.4); G IF <= 33.4
 ms/f (0.15); N spread <= 0.08 (0.7).
+
+### The `gi` exits are tier-1's (read from census B, `scratch/vcpuhot.py <B>`)
+
+- In census B's span, `[rr425pc]` puts 380 k of 459 k unpatched goto_tb exits per 2 s at resume pc 0x19f23
+  (`test bl,0x20`). `gi` counts the exits left unpatched because the block that started the chain carried
+  CF_INVALID.
+- The `hakuX-tier1` lines in the same log name 0x19f23 and 0x1ec3d (the block after the FLDCW) in `promote #N`,
+  then `dedup ... already pending`, every 10 000 calls.
+- Mechanism: `tb_request_tier1_promotion()` (cpu-exec.c:393) marks a block that reached 64 executions
+  CF_INVALID and leaves it in the qht. The qht compare masks CF_INVALID (`tb_lookup_cmp`, the #73 pair), so
+  the block is found and run on every lookup. `tb_gen_code` never runs, and the request is never consumed:
+  the known gap the comment at cpu-exec.c:710 records. What that comment does not count is the cost:
+  - `tb_add_jump` refuses a CF_INVALID destination, so nothing chains into the block;
+  - the jump cache misses on it every time (stale, then a qht lookup);
+  - the main loop drops `last_tb` after running it, so the chains it starts end in exits that stay unpatched.
+  Up to 64 hot blocks are pinned like this for a whole run, in every title.
+- `HAKUX_TIER1_THRESHOLD=0` (xemu_android.cpp:1201, read after the request env is applied) stops promotion.
+  It is measured in `halo1016-tier1.json`: T (tier-1 off) and FIT (tier-1 off + R2 + #507), judged by
+  `tier1read.py` against the vcpu arms' A, A2 and IF.
+- Where the plateau's TB time goes (`[tpc787]`, sampled): 30% in runs entered at 0x1ec3d (the code after each
+  FLDCW, ~0.3 us a run), 17% at 0x18111b and 8% at 0x63482 (long chained loops, ~0.7 ms an entry: the title's
+  own work). In the 30-fps window before it, 70% is the idle loop at 0xbb0d4..0xbb0ee.
 
 ## What the next lane should not repeat
 
