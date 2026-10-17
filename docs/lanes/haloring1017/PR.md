@@ -4,12 +4,12 @@ State: draft
 
 Lane: haloring1017            Issue: #939
 Base: master @ 9abd80e90c
-Files: docs/lanes/haloring1017/PR.md, docs/lanes/haloring1017/NOTES.md
-Prediction: none: analysis-only (so far; Step 0 in progress)
+Files: docs/lanes/haloring1017/PR.md, docs/lanes/haloring1017/NOTES.md, docs/lanes/haloring1017/tools/constmove.py, docs/lanes/haloring1017/tools/otwrites.py
+Prediction: none: analysis-only (so far)
 Needs device: no    Needs NDK: no
 
-Step 0 in progress: the Already-tried table and the hypothesis table go into `docs/lanes/haloring1017/NOTES.md`
-before any instrument or emulator code. The first measurement is whether the static inside surface (c) reproduces
-off the stock Qualcomm driver (desktop lavapipe, and run 13's Turnip video).
+Step 0 is committed: the Already-tried table and the hypothesis table are in `docs/lanes/haloring1017/NOTES.md`.
+The first measurement is in progress: does the static inside surface (c) reproduce off the stock Qualcomm driver
+(desktop lavapipe, and run 13's Turnip video)?
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
