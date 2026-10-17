@@ -1,0 +1,64 @@
+# state: any   (golden 9153c63300da, the same as gta-3.route)
+# Grand Theft Auto III (5454000E): a DRIVING route (lane.gta3drive1017, #433).
+# NOT PROVEN until a run's frames show the car moving: frames minutes apart at
+# different places, radar turning. gta-3.route is the on-foot measurement and
+# stays as it is.
+#
+# Boot: copied verbatim from gta-3.route through its `waitfor fist-hud` (see
+# that file's header for why there is no START and why the mark is gated on
+# the weapon icon). The crop is the same file, refs/gta-3-drive/fist-hud.png =
+# refs/gta-3/fist-hud.png.
+#
+# Entry: the spawn frame of 1-1791792686-lane.local-32437
+# (route-frames/012712-gameplay.png) shows the Kuruma about 3 m to Claude's
+# right, with the mission's blue marker over it. GTA III's enter/exit is Y on
+# the Xbox pad. The game takes the nearest upright car within 10 units of the
+# player (re3 CPlayerInfo::FindClosestCarSectorList, `dist <= 10.0f`), so one
+# Y press walks Claude to its door and in. The 7 s after it lets 8-Ball take
+# the passenger seat (the first mission's objective) before the throttle.
+# `mark gameplay` is after the entry, so the scored window is driving.
+#
+# Driving: RT accelerates (pad.sh: the triggers are not swapped; max is full
+# throttle), LT brakes and reverses, LX steers. Equal left and right pulses
+# hold the heading on average. Every third lap backs up with the wheel turned
+# (RT released, LT held) so a wall or a lamp post cannot hold the car. Never
+# Y after the entry (it would exit), never START or BACK.
+#
+wait 55
+repeat 4 {
+    press A 300
+    wait 5
+}
+shot introskip
+repeat 12 {
+    press A 300
+    wait 5
+}
+shot pregameplay
+waitfor fist-hud 60 1020,88,140,130 20
+shot onfoot
+press Y 300
+wait 7
+shot incar
+mark gameplay
+repeat forever {
+    repeat 3 {
+        axis RT max
+        wait 4
+        axis LX min
+        wait 0.6
+        axis LX mid
+        wait 3
+        axis LX max
+        wait 0.6
+        axis LX mid
+        wait 2
+    }
+    shot drive
+    axis RT min
+    axis LT max
+    axis LX max
+    wait 2
+    axis LT min
+    axis LX mid
+}

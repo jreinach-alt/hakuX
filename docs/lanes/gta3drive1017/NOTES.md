@@ -92,6 +92,27 @@ Readings:
 5. DVD reads rise (3 -> 12 DMAs per 2 s) in the dips: streaming happens, at ~140 KB/s; small as a cost in itself.
 6. The worst stretch (14:40:47-14:41:16, ~17-21 fps) has Tq 1500-1900, PFIFO cpu ~20 ms/flip and blocked ~30 ms/flip.
 
+Further readings of the snapshot (every other tag pid 21488 printed: `fifoskew`, `[shd413]`, `[gpl569]`/`[uber569]`,
+`[rr425pc]`, `[tlb68]`, `[mf0]`, `[jc425]`; a release build prints no finish, download or hazard count):
+
+7. **14:37:40 is the load into the city.** That window lasts 6.3 s, with 1810 ms of pipeline compile, and fifoskew kicks
+   rise from ~186 per 2 s (menus, backlog ~1.3 KB, drain ~1.1 ms) to 800-2500. This is the Tq jump the brief asked to
+   place.
+8. **In gameplay the guest stays about one frame of pushbuffer ahead of the PFIFO thread, at 30 fps too.**
+   - Backlog mean ~85-110 KB (max ~500 KB) in both bands. At 14:37:51 (30 fps) the drain count is 0: the FIFO never
+     emptied in the window.
+   - In the dips (14:38:15-23, 14:40:48-52) the drain p50 sits at the 51.25 ms overflow bin.
+   - So the backlog does not tell the bands apart. It says the PFIFO thread is the pace-setter all through gameplay, and
+     the dips are that thread getting slower.
+9. **Pipeline creation is not the wait.**
+   - `[shd413]` dpc_ms (pipeline compile per ~2 s window) during gameplay is 0-87 ms.
+   - In the worst stretch (14:40:47-14:41:16) it is 0.1-12 ms per 3 s.
+   - Against ~28 ms per flip of blocked time, that is at most ~2 ms per flip, in two windows.
+10. **The guest polls one spot harder in the dips.** `[rr425pc]` samples at `g:00265ffe` (`cmp edx, imm32`) rise from
+    ~3-5k per 2 s at 30 fps to 26-49k in the 14:38:20-58 dip. The kernel idle loop (`e:8001b02e/f`) falls from 20-27M
+    to 7-19M samples. What the loop polls was not read in the guest code. It fits reading 3: the guest waits on
+    GPU-side progress.
+
 ## 4. Hypotheses
 
 P is lane.xbox's start, then mine after section 3. Each names its section-2 row.
@@ -105,18 +126,52 @@ P is lane.xbox's start, then mine after section 3. Each names its section-2 row.
 | D7 | lock contention: PFIFO waits for pgraph.lock held across a render-thread GPU wait | #474 tracker 4304-4318 | new | 0.10 | blocked shape; indistinguishable from D3/D6 without a wait split |
 | D4 | guest-side cost (JIT invalidation, slow stores) | 72541aa1b3, #864 | 0.15 | 0.05 | the renderer is saturated (Ri ~1), the guest's growth is after the GPU interrupt |
 | D5 | real Xbox drops too | targets.toml (no sourced figure) | 0.05 | 0.05 | no console figure |
+| D8 | pipeline creation stalls as the city streams new shaders in | #569, #413 | new | 0.02 | reading 9: at most ~2 ms per flip, in two windows |
 
-D6 and D3 are the next measurement's job to separate: one wait split of the PFIFO thread's blocked time (finish waits
-by cause, fence waits, lock waits, queue-full waits), on a driving window.
+The next measurement separates D6, D3 and D7. It is one split of the PFIFO thread's blocked time on a driving window:
+finish waits by cause, fence waits, lock waits and queue-full waits. **It needs no code.** A `--perflog` build
+(`-Pperflog=true`) with `HAKUX_FRAMETRACE=1 HAKUX_GPUXFR=1` prints:
+
+- `hakuX-stall Finish:N(vtx sc sd buf fb pres flip flu stl)`: finishes per window by cause, plus the `txdl[...]`
+  download reasons;
+- `hakuX-phase ... Fin:(Sub Fen) ... GPU:(R X)`: ms per frame;
+- `hakuX-cpu Lw`: lock wait;
+- `[hakuX-ft1] prun pblk pidle gpu50 lw fw=<site>`: the PFIFO thread's run/blocked/idle per frame and its top wait
+  site.
+
+fps1015 located MKSM's wait (#986) with the same lines.
+
+What each outcome means, decided before the data:
+
+| the split shows, in the <26 band | reads as | next |
+|---|---|---|
+| fin_vtx carries the extra finishes (>= 2 per frame over the >=28.5 band) | D6, the vertex hazard | arm `HAKUX_VTX_HAZARD=0` (discriminator), then a hazard that does not wait |
+| fin_sd / txdl downloads carry them | D6, a render-to-texture read back | the download's reason (cvt, swz, pitch); a remedy like #1018's |
+| few finishes; ph_fen or fw1 is a fence and gpu50 >= 30 ms | D3, the GPU is the limit | arm `TU_DEBUG=sysmem` (discriminator); GPU pass split |
+| lw (Lw / ft1 lw) carries it | D7, the lock | the lock's holder |
+| pblk small and prun large | D1/D2, CPU on the PFIFO thread | the perflog's txr/vtx split by cost |
 
 ## 5. Plan
 
-1. Read every hakuX tag in the snapshot for pid 21488 for finish/download/hazard counts already logged (no device time).
-2. A GTA III driving route (board request): enter the car, throttle, minutes of road. Prove it moves (frames minutes
-   apart, minimap moving) before measuring on it.
-3. One Nova run with the wait split (the instrument is code: board request for its file first), interleaved
-   `HAKUX_VTX_HAZARD=0` and `TU_DEBUG=sysmem` discriminator arms, registered before any device time.
-4. Rank remedies by P x win from the located wait; chase the top two.
+1. Done: every hakuX tag in the snapshot for pid 21488 read (readings 7-10). A release build logs no finish, download
+   or hazard counts.
+2. The driving route draft is `routes/gta-3-drive.route`, crop `routes/refs/gta-3-drive/fist-hud.png` (a copy of
+   gta-3's).
+   - Boot as gta-3.route, then one Y press (enters the Kuruma 3 m away), then a throttle loop with equal left/right
+     steering and a reverse every third lap.
+   - `mark gameplay` comes after the entry.
+   - It is queued from untracked copies in `docs/testing/titles/routes/`, moved aside after.
+   - It lands there by board request once a run's frames prove the car moves.
+3. Pilot, two Nova requests (2 x (540 + 90) s = 21 min, under the 30-min pilot gate):
+   - a. `--perflog --env HAKUX_FRAMETRACE=1 --env HAKUX_GPUXFR=1`: route proof plus the wait split.
+   - b. the plain shipped build: route proof plus timing without perflog's cost. Queued last, so the device's env pref
+     ends clean.
+
+   The reader `tools/drive_split.py` was committed before the data. It checks Turnip first, then gives per-window rows
+   after the mark and band medians.
+4. From the located wait (the outcome table in section 4): register the discriminator arms in
+   `docs/testing/predictions/gta3drive1017-*`, run them paired and interleaved, rank remedies by P x win, and chase the
+   top two.
 
 ## Questions
 
