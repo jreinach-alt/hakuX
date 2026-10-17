@@ -8,7 +8,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `fistdefault1016` | claude-sonnet-5 | 1 min |  |
+| `fistdefault1016` | claude-sonnet-5 | 16 min | HAKUX_FIST_ROUND on by default for 0.5.1 (#939 (b)) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -114,7 +114,9 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Work in progress
 
-No branch is being worked right now.
+| Branch | Topic | Tip | Last change |
+|---|---|---|---|
+| `lane/fistdefault1016` | HAKUX_FIST_ROUND on by default for 0.5.1 (#939 (b)) | `a3b6e32ae6` | 2026-10-16 18:50 |
 
 ## Recently landed on master
 
@@ -131,4 +133,4 @@ No branch is being worked right now.
 - 2026-10-16 sign1016: rotate release key (lineage), minSdk 33 (#433)
 - 2026-10-16 GitHub Sponsors on the landing page and the Sponsor button (#433)
 
-_Updated 2026-10-16 18:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-16 19:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
