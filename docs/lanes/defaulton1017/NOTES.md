@@ -62,6 +62,13 @@
   19738.
 - 06:20: MKC judged: the same as MKSM ON screen for screen, fps and end (below). Waiting on TS rerun, CLF,
   CLC, RS.
+- 06:44: TS 2nd void the same way, so the A drop is not a flake. The base also moved: FIST_ROUND has been on
+  since 10-16 18:47 (below). Isolation rows queued, after their lines under "Triggered, TS isolation":
+  TSF 1792243851-defaulton1017-3688312, TSFR 1792243854-defaulton1017-3689026, TSOFF
+  1792243856-defaulton1017-3689586, TSR 1792243858-defaulton1017-3690150, TSS 1792243860-defaulton1017-3690596.
+  CLF done; CLC on the Nova; RS queued.
+- 06:50: CLF/CLC judged: the same attract sequence, in sync for the first ~95 s; no hang or crash (below).
+  The FLDCW chain's exit path, taken on 99.5% of Conker's FLDCWs, shows nothing these frames can see.
 
 ## Pilot verdict (HON, HNI; screenread.py, as registered)
 
@@ -176,6 +183,28 @@ briefing (was 17 fps)`.
 - **AMP: AV HIT, HDS HIT; VIS:AMP not judged** (early 9), FL not reached (fewer than 2^20 FLDCW in 578 s).
   Amped 2 re-queues its report offsets two or more guest frames later too: 5,551 `skipn`, 3 cold, 9 early.
   REPORT_EARLY's gate leaves it on the reader's path, as on master. Route end, held 580 s, no crash.
+- **CLF/CLC (conditional, Conker ON against `HAKUX_FLDCW_CHAIN=0`, frames every 5 s): no difference the
+  chain causes that these frames can show.** CLF 1792241775-defaulton1017-3512155 and CLC
+  1792241776-defaulton1017-3512282: chain=1 (unset) and chain=0 (`=0`), as asked. Both valid ends (pace 300
+  and 302 s), no crash, held 304 and 305 s, and the same report pattern as CLR (skipn 21,598 and 24,854;
+  early 60 and 62; desync 0). The flip share is the same: 1,043,395 and 1,041,923 of the first 2^20, so
+  CLR's 99.5% repeats and CLC's helper counts flips with the chain off too. I paired the frames on each
+  run's launch clock (`scratch/clcompare.py`; sheet at
+  /tmp/claude-1000/-home-justin-hakuX/clf_clc.png). The sequence and its order are the same in both: the
+  Conker logo, Microsoft Game Studios, the attract montage, the logo, the montage, Rare, the intro, the
+  "Xbox Live & Co" menu idling from about +105 s, a second montage with the logo in it, and back to the
+  menu by +298/+287 s. For the first ~95 s, the same clip is on screen at the same second: the HUD clip
+  at +20 (difference 17, the same frame a moment apart), the logo at +43, the cave at +54 (7), space at
+  +60, Rare at +77 (4). The menu idle is 9-17 apart throughout, the same screen. The second montage
+  starts ~17 s earlier in CLC (+222 against +239). Its 1-2 s cuts are sampled every 5 s, and there is no
+  recording (`video/` holds only meta.json), so the frames can compare that montage only by structure,
+  not clip for clip. That is the limit of this verdict. A hang, a freeze, an error screen or a
+  wrong-world frame would have shown, and none did.
+  Reported, not judged: CLC drew 4.6% more frames by +290 s (10,800 against 10,320 pace frames) and
+  reached 2^20 FLDCW 12 s sooner (+174 against +186), which fits CLC reaching the second montage first.
+  That is about twice the spread halo1016 measured between two runs of one binary (2.4%), from a single
+  pair of frame-dumping runs, so it is not a reading of the chain's cost. By mechanism the chain's flip exit (one `lookup_and_goto_ptr`) is no more
+  work than master's `exit_tb` to the main loop and a lookup there.
 
 ## S2T_CVT's pixel item: TSC1, TSC2 (defaulton1017-tsc.json, as registered)
 
