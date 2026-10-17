@@ -8,13 +8,13 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `bindpose1017` | claude-opus-5-5 | 35 min | bindpose1017: THPS4 and Max Payne 2 characters stuck in the bind pose on 0.5.2-rc1 (#433) |
-| `dispatchdoctor1017` | claude-sonnet-5 | 2h 55m | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what  |
-| `haloshadow1017` | claude-opus-5-5 | 56 min | haloshadow1017: character shadows draw as dark squares under the feet (Halo CE and other titles) |
-| `haloship1017` | claude-opus-5-5 | 56 min | Halo CE: the ship's rear lights show through the hull after the cut to the front (opening cinematic) |
+| `bindpose1017` | claude-opus-5-5 | 50 min | bindpose1017: THPS4 and Max Payne 2 characters stuck in the bind pose on 0.5.2-rc1 (#433) |
+| `dispatchdoctor1017` | claude-sonnet-5 | 3h 10m | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what  |
+| `haloshadow1017` | claude-opus-5-5 | 1h 11m | haloshadow1017: character shadows draw as dark squares under the feet (Halo CE and other titles) |
+| `haloship1017` | claude-opus-5-5 | 1h 11m | Halo CE: the ship's rear lights show through the hull after the cut to the front (opening cinematic) |
 
 - **Handhelds:** 2 connected.
-  - Nova: free for the queue
+  - Nova: held by `lane.local`
   - Thor: held by `lanelocal-offline`
 - **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
@@ -120,15 +120,16 @@ The harness dashboard, with each release's targets and the progress charts, is [
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
 | `lane/bindpose1017` | bindpose1017: THPS4 and Max Payne 2 characters stuck in the bind pose on 0.5.2-rc1 (#433) | `52e6a7b698` | 2026-10-17 11:09 |
-| `lane/dispatchdoctor1017` | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what stops a ru | `5d587f0985` | 2026-10-17 11:37 |
+| `lane/dispatchdoctor1017` | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what stops a ru | `5f6e1b01ad` | 2026-10-17 11:52 |
 | `lane/haloshadow1017` | haloshadow1017: character shadows draw as dark squares under the feet (Halo CE and other titles) | `a8059d8d50` | 2026-10-17 11:35 |
-| `lane/haloship1017` | Halo CE: the ship's rear lights show through the hull after the cut to the front (opening cinematic) | `084e5e266b` | 2026-10-17 11:39 |
+| `lane/haloship1017` | Halo CE: the ship's rear lights show through the hull after the cut to the front (opening cinematic) | `a557f5d2d0` | 2026-10-17 12:00 |
 
 ## Recently landed on master
 
+- 2026-10-17 lane worktrees are created sparse, without docs/lanes/pathfind/runs (#433)
 - 2026-10-17 relnotes1017: release notes carry only features and bug fixes (#433)
 - 2026-10-17 release052: the 0.5.2 release commit (#433)
 - 2026-10-17 defaulton1017: S2T_CVT, REPORT_EARLY and FLDCW_CHAIN on by default, after one default-on screen
 - 2026-10-17 halo1016: Halo CE cutscenes on the Nova -- quiet speech under loud music (#938), cinematic at 8-19 fps (#1018)
 
-_Updated 2026-10-17 11:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-17 12:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
