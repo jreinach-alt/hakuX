@@ -6,7 +6,9 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Right now
 
-No lane session is running.
+| Lane | Model | Running for | Working on |
+|---|---|---|---|
+| `halo1016` | claude-opus-5-5 | 2 min | halo1016: Halo CE cutscenes on the Nova -- quiet speech under loud music (#938), cinematic below 30 fps |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `owner`
@@ -112,7 +114,9 @@ No lane session is running.
 
 ## Work in progress
 
-No branch is being worked right now.
+| Branch | Topic | Tip | Last change |
+|---|---|---|---|
+| `lane/halo1016` | halo1016: Halo CE cutscenes on the Nova -- quiet speech under loud music (#938), cinematic below 30 fps | `4f3bf6d91d` | 2026-10-16 21:43 |
 
 ## Recently landed on master
 
@@ -129,4 +133,4 @@ No branch is being worked right now.
 - 2026-10-16 visitor1016: fewer required fields, no placeholder text, and "hakuX CE" in the first-contact files (#433)
 - 2026-10-16 logo1016: hakuX CE logo at the top of the README
 
-_Updated 2026-10-16 21:31 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-16 21:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
