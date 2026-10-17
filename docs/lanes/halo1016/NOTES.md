@@ -4,7 +4,12 @@ Halo: Combat Evolved (4D530004), opening cinematic on the Nova. Found on 0.5.1-r
 (0.5.1 shipped without this lane, owner 10-16 ~22:50 PDT).
 Defects: **#938** quiet speech under loud music; **#1018** the cinematic drops to 8-19 fps for ~47 s.
 
-## Status (2026-10-17 01:45 PDT)
+## Status (2026-10-17 02:10 PDT)
+
+- #1018 vCPU half: R2 is built (d70f782f45, `HAKUX_FLDCW_CHAIN=1`, off by default) and #507's inline probe
+  (`HAKUX_IBC=1`) is the second remedy. Both are measured on the S2T_CVT base in five arms (A, F, I, IF, A2),
+  registered in `halo1016-vcpu.json` and judged by `vcpuread.py`, written before any arm ran ("#1018 vCPU arms").
+- Earlier, 01:45:
 
 - #1018: the census is judged (below, "#1018 census verdict"). **Every plateau download is the texture path's
   `cvt` refusal**: a 16-bit 5/6-bit texture over a 2-byte render target, the #986 MKSM mechanism. K and C HIT,
@@ -156,12 +161,26 @@ ms/f with no downloads). Neither alone reaches 33.4.
 | # | Remedy | P it works | Win at full scale | Evidence |
 |---|---|---|---|---|
 | R1 | `HAKUX_S2T_CVT` on by default (built, fps1015) | 0.9 measured | span 59.3 -> 41.9 ms/f; whole cinematic 39.3 -> 35.9 | census C HIT; MKSM and Top Spin A/Bs. Blocked on its pixel leg (Texture_shadow_comparator, a vk/draw.c regression on master) and one mechanism screen, both fps1015's |
-| R2 | FLDCW ends a TB only when the precision bit flips, and chains when it does | 0.6 | up to the plateau's 11-16% loop time, ~5-8 ms/f of B's 42-61 | rr425: 1-2 M `eo` per 2 s at 0x1ec3a; gapus 11-16% against 2-6% |
-| R3 | Name and remove the plateau's `x` longjmps | 0.3 | unknown until named; 96-197 k per 2 s | rr425 `x` triples in the plateau |
+| R4 | #507's inline jump-cache probe on (`HAKUX_IBC=1`, built, parked off) | 0.5 | up to ~9 ms/f: 930 k helper lookups a frame, ~10 ns saved per hit | B: hc 930 k/f, miss share 3e-5; GTA: the helper's hit path was 18.4% of the vCPU. Parked because its saving became guest idle spin on GTA/Forza; Halo's plateau never idles |
+| R2 | FLDCW ends a TB only when the precision bit flips, and chains when it does (built, d70f782f45) | 0.55 | ~4.3 ms/f: 36 k main-loop returns a frame at ~118 ns of loop each | rr425: 36.2 k/f `eo` at 0x1ec3a of 49.9 k returns; loop 14% of the vCPU wall |
+| R3 | Name and remove the plateau's `gi` (CF_INVALID) exits and `x` longjmps | 0.3 | 7.9 k + 2.8 k returns a frame, ~1.3 ms/f by the same cost, plus any retranslation | rr425 split below; `gi` at 0x19f23 |
 | - | `TU_DEBUG=sysmem` | refuted | -- | cinesplit P 0.96 |
 
-R1 is another lane's switch, and its blockers are another lane's files. R2 is this lane's to build: it is the
-vCPU half, and it needs only target/i386/tcg/translate.c.
+P x win: R1 (0.9 x 17 ms) first, then R4 (0.5 x 9) and R2 (0.55 x 4.3), then R3 (0.3 x 1.3). B needs 8.5 ms/f off
+to reach 33.4, so only R4 + R2 together can reach the bar; that is the IF arm, P 0.15 for the bar. R1 is another
+lane's switch, and its blockers are another lane's files. R2 and R4 are measured together on R1's base.
+
+The main-loop returns over B's span, per guest frame (`vcpuread.py`'s table on the census pair):
+
+| | per frame | share of returns |
+|---|---|---|
+| TBs dispatched from the main loop | 49.9 k | 100% |
+| `eo` (EOB_ONLY), all | 37.0 k | 74% |
+| `eo` at 0x1ec3a (`fldcw`) | 36.2 k | 73% |
+| `g` unpatched goto_tb exits | 9.6 k | 19% |
+| `gi` (a CF_INVALID block) | 7.9 k | 16% |
+| `x` longjmps | 2.8 k | 6% |
+| helper_lookup_tb_ptr calls (not main-loop returns) | 930 k | -- |
 
 ### Earlier ranking (before the census named the refusal)
 
@@ -393,6 +412,26 @@ Nothing in the emulator plays this mix wrong on present evidence, so this lane d
 - What would decide it is a hardware reference: the Questions below, with the times above.
 - A7 can be decided offline: the dsp_harness at two input levels. That is the next instrument if one is wanted.
 - A per-title dialogue boost would be a change to the title's mix, not emulation, and is not proposed.
+
+## #1018 vCPU arms (halo1016-vcpu.json, registered 02:05 PDT 10-17)
+
+R2 as built (target/i386/tcg/translate.c, `gen_fldcw_chain`):
+- A TB depends on the control word only through `HF_FPU_PC_MASK`: `fpu_using_double_precision()` picks f32 or
+  f64 ops at translation. The rounding mode is not baked in. `gen_bb_epilogue()` runs before every helper call,
+  so the call to `helper_fldcw` flushes the FP cache and clears `flcr_set`, and the next FP op reloads the host
+  rounding mode from the new `fpuc`.
+- So with `HAKUX_FLDCW_CHAIN=1` translation goes on past an FLDCW. A runtime test after the helper compares
+  `hflags & HF_FPU_PC_MASK` with the TB's own. Equal: carry on in the TB. Flipped: eip past the FLDCW
+  (pc-relative), then `lookup_and_goto_ptr`, which finds the TB for the new flags, through #507's probe when that
+  is on. Not under RF/TF/interrupt shadow/CF_NO_GOTO_TB (`jmp_opt`), and not in 64-bit code.
+- `helper_fldcw` counts calls and flips and logs `[fldcw1018] n= flips= cw=` every 2^20 calls, in every arm.
+  The translator logs `[fldcw1018] chain=` once.
+
+Arms, all on d70f782f45 with `HAKUX_S2T_CVT=1` (census B's configuration), perflog, 420 s, in this order:
+A (base), F (+`HAKUX_FLDCW_CHAIN=1`), I (+`HAKUX_IBC=1`), IF (+both), A2 (base again, for drift).
+Legs and P: FL flips/n <= 0.05 (0.7); FM F's eo at 0x1ec3a <= 0.1 x A's (0.6); FE F <= 0.93 x base (0.55);
+IM I's helper lookups <= 0.3 x A's (0.85); IE I <= 0.93 x base (0.5); BE IF <= 0.87 x base (0.4); G IF <= 33.4
+ms/f (0.15); N spread <= 0.08 (0.7).
 
 ## What the next lane should not repeat
 

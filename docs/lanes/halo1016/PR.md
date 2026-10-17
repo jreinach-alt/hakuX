@@ -4,11 +4,11 @@ State: draft
 
 Lane: halo1016            Issue: #938, #1018
 Base: master @ 61ae61dd91
-Files: docs/lanes/halo1016/**, docs/testing/predictions/halo1016-*.json, hw/xbox/mcpx/apu/vp/hrtf.h, hw/xbox/mcpx/apu/vp/vp.c, hw/xbox/nv2a/pgraph/vk/surface.c
-Prediction: docs/testing/predictions/halo1016-cinesplit.json @ 88edbbdfa3e0c12241ab27e0191bd39169bc5f22821408686c6415fdc40d92b8 (judged), docs/testing/predictions/halo1016-speech.json @ 397046c508a1ef966ecbbf8a9f7cd1742d5e156d6af31b3e196a9624ba56d04e (judged), docs/testing/predictions/halo1016-census.json @ 1cb4052f9a4ef54af2a29497ca18fb5144a7f7119a26f556014e9737b40fe179 (queued)
+Files: docs/lanes/halo1016/**, docs/testing/predictions/halo1016-*.json, hw/xbox/mcpx/apu/vp/hrtf.h, hw/xbox/mcpx/apu/vp/vp.c, hw/xbox/nv2a/pgraph/vk/surface.c, target/i386/tcg/translate.c, target/i386/tcg/fpu_helper.c
+Prediction: docs/testing/predictions/halo1016-cinesplit.json @ 88edbbdfa3e0c12241ab27e0191bd39169bc5f22821408686c6415fdc40d92b8 (judged), docs/testing/predictions/halo1016-speech.json @ 397046c508a1ef966ecbbf8a9f7cd1742d5e156d6af31b3e196a9624ba56d04e (judged), docs/testing/predictions/halo1016-census.json @ 1cb4052f9a4ef54af2a29497ca18fb5144a7f7119a26f556014e9737b40fe179 (judged), docs/testing/predictions/halo1016-vcpu.json @ 607a0b0b8b389b5769c6132a0d54c8e9328ffeec350c9022bf31b934256c3727 (queued)
 Needs device: yes    Needs NDK: yes
 
-Release note (none): instrumentation only. An off-by-default APU per-voice mix meter (HAKUX_APU_METER) and HRIR scale switch (HAKUX_APU_HRTF_NORM), and an overlap-eviction census line ([ovl1018]) in the Vulkan surface cache; nothing a player sees or hears changes.
+Release note (none): instrumentation and off-by-default switches. An APU per-voice mix meter (HAKUX_APU_METER) and HRIR scale switch (HAKUX_APU_HRTF_NORM), an overlap-eviction census line ([ovl1018]) in the Vulkan surface cache, an FLDCW call counter, and HAKUX_FLDCW_CHAIN (FLDCW keeps its translation block unless the precision bit flips); nothing a player sees or hears changes by default.
 
 This is a deep dive into two defects in Halo: Combat Evolved's opening cinematic on the Nova,
 targeting 0.5.2. The owner hit both while playing 0.5.1-rc1 by hand: the dialogue is quiet under
@@ -28,11 +28,27 @@ On the plateau, the draw thread spends ~33 ms a frame blocked in `pgraph_vk_fini
 at 61 to 129 calls a frame. The guest sits in its idle loop while it waits, and the GPU's own time
 is small.
 
-Same-address incompatible evictions (`[evict372]`) are flat over the plateau. The only earlier
-perflog soak of the title puts all of its downloads on overlap eviction, at 1/30 of the plateau's
-rate. The census pair (`halo1016-census.json`) measures the plateau itself with a new
-`[ovl1018]` counter. It splits the downloads between overlap eviction, the texture path and CPU
-reads, and tests `HAKUX_S2T_CVT` against them.
+## #1018: whose downloads (census, judged by censusread.py, committed before either arm ran)
+
+| leg | claim | result |
+|---|---|---|
+| O | overlap eviction fills the plateau | MISS: `[ovl1018]` 0.00/f |
+| K | the texture path fills it | HIT: 49.28 txr dl/f, every one reason `cvt` |
+| R | CPU range reads | MISS: 0.00/f |
+| C | `HAKUX_S2T_CVT` removes them | HIT: 0 downloads, 59.3 -> 41.9 ms/f |
+
+Every download is the #986 MKSM mechanism: a 2-byte colour surface sampled as a 5/6-bit texture.
+With them gone, the shots are still 40-61 ms a frame and the guest never idles: the vCPU is the
+second bound. 73% of its main-loop returns are one guest instruction, `fldcw` in the CRT's
+`_control87`, because the FP JIT ends every translation block after FLDCW.
+
+## #1018: the vCPU half (`halo1016-vcpu.json`, queued)
+
+Two remedies, alone and together, on the `HAKUX_S2T_CVT` base:
+- `HAKUX_FLDCW_CHAIN=1` (this PR, off by default): FLDCW stays in its translation block unless it
+  flips the precision bit, the only part of the control word a block is specialised on;
+- `HAKUX_IBC=1` (#507, parked off): the inline jump-cache probe, against 930 k helper lookups a
+  frame in those shots.
 
 ## #938: what the speech legs found (judged by speechread.py, committed before either leg ran)
 
