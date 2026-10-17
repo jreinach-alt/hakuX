@@ -8,7 +8,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `dispatchdoctor1017` | claude-sonnet-5 | 14 min | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what  |
+| `dispatchdoctor1017` | claude-sonnet-5 | 29 min | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what  |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -132,4 +132,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-16 icon1016: hakuX CE app icon (#433)
 - 2026-10-16 x1port1012-halo: #939 (b) root-caused and fixed behind HAKUX_FIST_ROUND=1 (verified on the Nova, run 13)
 
-_Updated 2026-10-17 07:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-17 07:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
