@@ -73,6 +73,15 @@ posted both verdicts, built `[ovl1018]`, and queued the census pair, which lande
 turns on a dispatcher table (`scratch/rrtable.py`) before the verdict was in this file, so the verdict and six
 scratch files were left uncommitted. Attempt 3 committed the verdict first, before any further analysis.
 
+## Why attempt 3 did not finish
+
+Attempt 3 ended on its turn cap (301 turns) at 03:26:49 PDT, with its work committed and pushed (a23ee0cccf):
+the reports arms judged and posted on #1018 (03:10), R7/R8 built (08fd920b5c), the six early arms queued with
+earlyread.py committed first. Two of the six had landed. Its turns went into the four vCPU and tier-1 arms
+(T, FIT, A..A2) and the reports pair, each judged and posted, before the trace located the poll's wait. The
+only loose file was scratch/comment-reports.md, whose text was already on #1018. Attempt 4 waits on all six
+with one call and judges them with earlyread.py as committed.
+
 ## #1018 cinesplit verdict (judged with cineread.py as committed before either arm landed)
 
 - A = 0-0-x-1792217277-halo1016-932684: master's emulator (d205bbe2fd), `HAKUX_FRAMETRACE=1 HAKUX_PROBE_WAITS=1`.
