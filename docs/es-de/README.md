@@ -1,6 +1,6 @@
 # Launching from ES-DE
 
-_Last updated 2026-10-16, for version 0.5.1._
+_Last updated 2026-10-17, for version 0.5.2._
 
 > Verified on real hardware (Thor, Android 13, hakuX 0.4.1): see
 > [`docs/frontends/es-de.md`](../frontends/es-de.md) for the tested writeup,

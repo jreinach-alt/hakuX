@@ -1,6 +1,6 @@
 # Privacy
 
-_Last updated 2026-10-16, for version 0.5.1._
+_Last updated 2026-10-17, for version 0.5.2._
 
 hakuX CE runs on your device. It has no account, and it collects and sends
 no analytics, crash reports or usage data. There is no code in it that does.
