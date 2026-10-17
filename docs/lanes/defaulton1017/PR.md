@@ -8,7 +8,7 @@ Files: hw/xbox/nv2a/pgraph/vk/reports.c, hw/xbox/nv2a/pgraph/vk/surface.c, targe
 Prediction: docs/testing/predictions/defaulton1017-screen.json @ d1ef1f1f548fe8220b722fd29ad675d2775b53ca54ccba996dd220fb956557e9, docs/testing/predictions/defaulton1017-tsc.json @ feacd0253e4cb6fde8a3945199fe2b1ab71766e1670244882e403283571d8e3c
 Needs device: yes    Needs NDK: yes
 
-Release note (performance): Halo: Combat Evolved's opening cinematic holds 30 fps through the hangar briefing (was 8-19 fps for ~47 s)
+Release note (performance): Halo: Combat Evolved's opening cinematic runs at about 29 fps through the hangar briefing (was 17 fps)
 
 Three of the four switches that remove Halo CE's opening-cinematic plateau (#1018) read unset as on, and `=0`
 as off, each with a log line saying which. None was in the app's "Fast renderer paths" list, so the C getenv

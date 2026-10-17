@@ -31,6 +31,10 @@
   it. lane.xbox corrected the brief's release note: "holds 30 fps" overclaims (HNI 35.0 ms/f is 28.6 fps, its
   windows reach 38.2). The PR's line becomes "runs at about <N> fps through the hangar briefing (was <M> fps)",
   N from HNI (what ships: IBC off) and M from HOFF, over the same span.
+- 05:28: HOFF judged: HIT, 58.9 ms/f (below, after "Pilot verdict"). Release note set from HNI and HOFF: "about 29
+  fps (was 17 fps)". nv2a index: `nv2a_index.py check` against fold-pins (6743b6ab, 104 suites) passes, with line
+  drift only (9 symbols, anchors unchanged). Its own output says not to commit a rebuild for drift; fold.sh
+  refreshes line numbers. So the index stays out of the diff (unlike halo1016, which added two sites).
 
 ## Pilot verdict (HON, HNI; screenread.py, as registered)
 
@@ -61,6 +65,16 @@ Both: every switch logged as the default with its variable unset (HNI: `[ibc507]
   and like HG, +0.43 is inside the run-to-run spread, so this does not say IBC does nothing for Halo, only that
   one run does not show the 0.5 ms/f that would pay for #507's energy cost (Forza x1.10 J/frame).
 - **FL HIT**: 0 flips in 120M FLDCW calls.
+
+HOFF (1792239587-defaulton1017-3307802, 05:21-05:28): all four log off with `=0`, route end, held 423 s, no
+crash. Span 58.9 ms/f; the +130..+180 windows are 62.4, 78.7, 52.5, 41.2, 95.2 and 73.1. **HOFF HIT** (>= 52): the
+escape hatch restores the pre-fix behaviour (census A was 59.3). `[fldcw1018] n=` 93.3M and no `w` lines, as
+expected with REPORT_EARLY off.
+
+Release note, from these rows over the same span (lane.xbox's correction, 05:2x): HNI, what ships, 35.0 ms/f =
+28.6 fps; HOFF 58.9 ms/f = 17.0 fps, and its worst window, 95.2 ms/f, is 10.5 fps.
+`Release note (performance): Halo: Combat Evolved's opening cinematic runs at about 29 fps through the hangar
+briefing (was 17 fps)`.
 
 What changes for the rest: the title rows (MKSM, TS, RS, SHR, CLR, AMP) are queued with `HAKUX_IBC=0`, the
 shipped configuration; screenread's V reads the IBC state each row's request asks for. HOFF is unchanged.
