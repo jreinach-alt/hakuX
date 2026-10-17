@@ -77,6 +77,36 @@
   alone is not the cause (below, "TS isolation"). Waiting on TSFR, TSOFF, TSR, TSS.
 - ~06:58: TSFR (FIST_ROUND off) DROPS the same way. The TS base pair (master 15f8524be1, fps1015's
   f5a67ba52c) is written and is queued if TSOFF drops.
+- 07:04: the screen is stopped by the owner (07:00, relayed by lane.xbox). The owner will screen 5-10 titles
+  themselves once the Halo work lands. Top Spin is not a Playable and has open defects (#992, #796), so it
+  never belonged in a regression screen; lane.xbox says the brief's canary choice was theirs. lane.xbox
+  withdrew TSR and TSS, so they will not run. The TS base pair was not queued, and nothing else will be.
+  TSOFF, already on the Nova, finished and DROPS like the rest (below). Top Spin is written up as out of
+  scope ("TS isolation", end). The flip PR is opened with HNI's configuration (IBC off).
+
+## Verdict per switch (what ships)
+
+| switch | default now | verdict | rows that decide it |
+|---|---|---|---|
+| `HAKUX_S2T_CVT` | **on** | ships on | Halo: HON/HNI (removes the plateau's first cause; HOFF, with all four off, is back at 58.9 ms/f). MKSM: MKF HIT, locked 54.3 fps, fps1015's on level. CLR logs it on with a valid end. Pixel item (TSC): closed against the switch by the clean pair. |
+| `HAKUX_REPORT_EARLY` | **on** | ships on | Halo: HEA 0.9963 early, HVIS 0.0055, HDS desync 0. It acts in SHR (10,984 early, vis 0.07%) and RS (7,640, vis 0.16%). The gap-1 gate declines CLR's and AMP's late re-queues (skipn 22k, 5.5k), as designed. desync 0 in every row. HG missed its bar by 0.1 ms/f (34.6 against 34.5), inside run-to-run spread. |
+| `HAKUX_FLDCW_CHAIN` | **on** | ships on | 0 flips in Halo, RS and SHR. MKSM flips 1 call in 8 at boot, and MKC with the chain off is the same run. Conker flips on 99.5%, and CLF/CLC show the same attract sequence. Top Spin's dropped As happen with it off too (TSF, TSOFF). |
+| `HAKUX_IBC` | off (as on master) | stays off | HIBC MISS: +0.43 ms/f on Halo's span, under the 0.5 registered as what would pay for #507's energy cost. Its code is master's. |
+
+What ships, over Halo's span [mark+131, mark+191]: HNI 35.0 ms/f (28.6 fps) against HOFF's 58.9 (17.0 fps).
+`Release note (performance): Halo: Combat Evolved's opening cinematic runs at about 29 fps through the hangar
+briefing (was 17 fps)`.
+
+Not checked (the owner's own screen covers titles; nothing is run to close these):
+- REPORT_EARLY's one-frame visibility flips were counted (`vis`, at most 0.55% of early answers in Halo, 0.16%
+  in RS), but never looked at in frames. No `--frames-every 1` row over a camera cut ran, because no title
+  crossed the 2% trigger.
+- Texture_shadow_comparator (S2T_CVT's pixel item): closed against the switch only to the extent the suite
+  allows. Since #1033 the suite moves 68-78 of 288 captures between runs of one binary. So whether S2T_CVT
+  moves any of those pixels at all is unreadable until #1033 is fixed; its 64 moved are inside that spread.
+- Top Spin: out of scope (below), so S2T_CVT's match play and REPORT_EARLY in Top Spin's match were not read
+  on this binary. fps1015's master-era rows are the record for S2T there.
+- #804's rival blink (RS): no shot on the route, master's included, catches the pass where it lives.
 
 ## Pilot verdict (HON, HNI; screenread.py, as registered)
 
@@ -233,6 +263,8 @@ briefing (was 17 fps)`.
 |---|---|---|---|---|---|---|---|
 | TSF | 1792243851-defaulton1017-3688312 | `HAKUX_FLDCW_CHAIN=0` | s2t on, early 1, chain 0 (`=0`), fist round ON | every A and the START dropped; the d-pad moved 1P to Team One (s17) and nothing took after it | player select by hold 2 (+40 s into the hold loop), match intro (PRESS START) by hold 3 | 33 of 105 on | **DROPS** |
 | TSFR | 1792243854-defaulton1017-3689026 | `HAKUX_FIST_ROUND=0` | s2t on, early 1, chain 1 (unset), `fist round=OFF (env HAKUX_FIST_ROUND=0)` | the same: shot distances to master's s15-s19 are TSF's to the unit (24, 47, 53, 47, 56) | match intro only, in the hold loop | 24 of 110 on | **DROPS** |
+| TSOFF | 1792243856-defaulton1017-3689586 | the three `=0` | s2t off, early 0, chain 0 (each `=0`), fist round ON | the same (24, 47, 53, 47, 56) | the hold loop | 31 of 81 off | **DROPS** |
+| TSR, TSS | 1792243858-...-3690150, 1792243860-...-3690596 | | | | | | withdrawn by lane.xbox (owner's stop, 07:00); not run |
 
 - **TSF drops, so the chain alone is not what breaks Top Spin's input.** Shots s13-s25 against master's
   off run (sheets at /tmp/claude-1000/-home-justin-hakuX/tsf_s13_s19.png and tsf_s20_s25.png): master is
@@ -244,6 +276,15 @@ briefing (was 17 fps)`.
   line), and the route failed at the same place in the same way. No Top Spin run on disk is newer than
   fps1015's three (`scratch/tsroute.py`: 13 runs of the route family, 10-03 to today), so nothing on
   disk separates the base from the device. That is the next pair (above, "Triggered next, TS base").
+- **TSOFF drops too: with all three of this lane's switches off, the same binary fails at the same place.**
+  The isolation therefore stops short of a cause: this lane's switches (TSOFF) are not it, and neither is
+  FIST_ROUND alone (TSFR).
+- **Top Spin is out of scope for this screen** (owner, 07:00 PDT 10-17, via lane.xbox). It is not a
+  Playable and has open defects, #992 and #796. The As were dropped at controller select on ON (twice),
+  TSF, TSFR and TSOFF. This is **not judged as a regression of the flip**, and no more isolation is run. The
+  TS base pair (above) was written but never queued. If anyone takes Top Spin's input up, the open question
+  is the one that pair would have answered: is it master (15f8524be1) or the device (fps1015's
+  f5a67ba52c re-run today)? Do not repeat the one-switch rows: TSF, TSFR and TSOFF have answered them.
 
 ## S2T_CVT's pixel item: TSC1, TSC2 (defaulton1017-tsc.json, as registered)
 
@@ -439,7 +480,8 @@ Conditional rows, queued only on a trigger, each with its own line here first:
     - TSM reaches: something in this lane's diff that is not behind the three switches (reports.c's ring
       and gate, surface.c). Read the diff, then bisect it on the device.
 
-    2 x (450 + 90) s = 18 Nova min. Queued with `scratch/queue_screen.sh TSM TSB`.
+    2 x (450 + 90) s = 18 Nova min, to be queued with `scratch/queue_screen.sh TSM TSB`. **Not queued**:
+    the owner stopped the screen at 07:00 and put Top Spin out of scope (below, "TS isolation").
 
 Judge: `docs/lanes/defaulton1017/screenread.py` (written before the first verdict) with halo1016's `vcpuread`
 and `earlyread` readers for Halo, fps1015's `s2tread.py` and `tsread.py` for MKSM and Top Spin.
