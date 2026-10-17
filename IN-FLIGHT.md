@@ -8,7 +8,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `gta3drive1017` | claude-opus-5-5 | 19 min | gta3drive1017: Grand Theft Auto III drops into the teens while driving (#433) |
+| `gta3drive1017` | claude-opus-5-5 | 34 min | gta3drive1017: Grand Theft Auto III drops into the teens while driving (#433) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -116,16 +116,17 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/gta3drive1017` | gta3drive1017: Grand Theft Auto III drops into the teens while driving (#433) | `ee677157bf` | 2026-10-17 15:21 |
+| `lane/gta3drive1017` | gta3drive1017: Grand Theft Auto III drops into the teens while driving (#433) | `c6b31ab085` | 2026-10-17 16:27 |
 
 ## Recently landed on master
 
+- 2026-10-17 haloshadow1017: Halo CE's dark squares under soldiers' feet: the stock Adreno driver, not the code (#1038)
+- 2026-10-17 release052b: versionCode 10, the driver link, and two known-issue lines for 0.5.2 (#433)
 - 2026-10-17 drivernotice1017: every release note names the one tested GPU driver (#433)
 - 2026-10-17 bindpose1017: THPS4 and Max Payne 2 bind pose: the stock Adreno driver, not the code (#1043)
 - 2026-10-17 lane worktrees are created sparse, without docs/lanes/pathfind/runs (#433)
 - 2026-10-17 relnotes1017: release notes carry only features and bug fixes (#433)
 - 2026-10-17 release052: the 0.5.2 release commit (#433)
 - 2026-10-17 defaulton1017: S2T_CVT, REPORT_EARLY and FLDCW_CHAIN on by default, after one default-on screen
-- 2026-10-17 halo1016: Halo CE cutscenes on the Nova -- quiet speech under loud music (#938), cinematic at 8-19 fps (#1018)
 
-_Updated 2026-10-17 16:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-17 16:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
