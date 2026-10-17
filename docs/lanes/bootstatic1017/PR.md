@@ -4,7 +4,7 @@ State: draft
 
 Lane: bootstatic1017            Issue: #1045
 Base: master @ 9abd80e90c
-Files: docs/lanes/bootstatic1017/PR.md, docs/lanes/bootstatic1017/NOTES.md, docs/lanes/bootstatic1017/step0_search.out, docs/lanes/bootstatic1017/forge_search.out, docs/lanes/bootstatic1017/tools/step0_search.sh, docs/lanes/bootstatic1017/tools/tracker_search.py, docs/lanes/bootstatic1017/tools/forge_search.py, docs/lanes/bootstatic1017/tools/setup_desk.py, docs/lanes/bootstatic1017/tools/judge_boot.py, docs/lanes/bootstatic1017/tools/judge_boot_selftest.py, ui/xemu.c
+Files: docs/lanes/bootstatic1017/PR.md, docs/lanes/bootstatic1017/NOTES.md, docs/lanes/bootstatic1017/step0_search.out, docs/lanes/bootstatic1017/forge_search.out, docs/lanes/bootstatic1017/tools/step0_search.sh, docs/lanes/bootstatic1017/tools/tracker_search.py, docs/lanes/bootstatic1017/tools/forge_search.py, docs/lanes/bootstatic1017/tools/setup_desk.py, docs/lanes/bootstatic1017/tools/judge_boot.py, docs/lanes/bootstatic1017/tools/judge_boot_selftest.py, docs/lanes/bootstatic1017/tools/deskboot.py, ui/xemu.c
 Prediction: none: analysis-only (so far; registered if a remedy moves pixels)
 Needs device: yes    Needs NDK: no
 
