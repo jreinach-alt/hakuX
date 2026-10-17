@@ -6,12 +6,16 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Right now
 
-No lane session is running.
+| Lane | Model | Running for | Working on |
+|---|---|---|---|
+| `bootstatic1017` | claude-opus-5-5 | 24 min | bootstatic1017: the brief static or green flash at every title start (#1045) |
+| `gta3drive1017` | claude-opus-5-5 | 13 min | gta3drive1017: Grand Theft Auto III drops into the teens while driving (#433) |
+| `haloring1017` | claude-opus-5-5 | 27 min | haloring1017: Halo CE main-menu ring: the missing surface layer and the static inside surface (#939) |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `lane.local`
   - Thor: held by `lanelocal-offline`
-- **Device queue:** 0 waiting, 0 running.
+- **Device queue:** 2 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -112,7 +116,11 @@ No lane session is running.
 
 ## Work in progress
 
-No branch is being worked right now.
+| Branch | Topic | Tip | Last change |
+|---|---|---|---|
+| `lane/bootstatic1017` | bootstatic1017: the brief static or green flash at every title start (#1045) | `670708a01f` | 2026-10-17 14:46 |
+| `lane/gta3drive1017` | gta3drive1017: Grand Theft Auto III drops into the teens while driving (#433) | `cbdb4c7e48` | 2026-10-17 14:47 |
+| `lane/haloring1017` | haloring1017: Halo CE main-menu ring: the missing surface layer and the static inside surface (#939) | `f97d4071fd` | 2026-10-17 14:51 |
 
 ## Recently landed on master
 
@@ -123,4 +131,4 @@ No branch is being worked right now.
 - 2026-10-17 defaulton1017: S2T_CVT, REPORT_EARLY and FLDCW_CHAIN on by default, after one default-on screen
 - 2026-10-17 halo1016: Halo CE cutscenes on the Nova -- quiet speech under loud music (#938), cinematic at 8-19 fps (#1018)
 
-_Updated 2026-10-17 14:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-17 15:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
