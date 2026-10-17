@@ -6474,3 +6474,23 @@ status = "open"
 dispatch_state = "blocked"
 blocked_on = "The first step needs no owner input: a perflog-tier capture of this title's route on the Nova to see where the time goes. Halo work (0.5.2) has the Nova's attention overnight, so it queues behind that."
 status_note = "Reconstructed 2026-10-16 from the 10-15/16 record (filed late: no issue was logged for about 15 hours). The verdict and run are named in the issue."
+
+[issue.1038]
+title = "Character shadows draw as dark squares under the feet: Halo: Combat Evolved (4D530004) and other titles, on the Nova"
+suites = []
+no_suites = "A render-to-texture shadow defect in commercial titles, not yet identified, so no pgraph suite is known to cover it."
+disposition = "defect"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "Filed by lane.xbox 2026-10-17 from the owner's report and lane.xbox's capture on 0.5.2-rc1 (Nova). Cross-title (owner: 'prominent in several other titles'; in footage from August), owner calls it a huge win. Halo's chain: character into a 128x128 R5G6B5 target, a four-sample pass into a second 128x128 target, projected (PROJECT2D, border addressing) onto ground triangles; the whole projected square darkens, green most. Not from the 16-bit surface conversion (S2T_CVT, new in 0.5.2): the defect is in August footage. Capture: /home/justin/hakux-work/captures/halo-shadow-1017/ (screenshots s2-*, r2-*; framedump/ rtt+gd 8 frames; slot2.hxs; logcat.txt). Owned by lane.haloshadow1017."
+
+[issue.1039]
+title = "Halo: Combat Evolved: the ship's rear lighting shows through the front of the ship in the opening cinematic"
+suites = []
+no_suites = "A visual defect in a commercial title, not yet identified, so no pgraph suite is known to cover it."
+disposition = "defect"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "lighting/draw order (owner's read): the ship's rear directional light is drawn through the hull after the camera cuts from behind to the front; confirmed against the console 10-17. Low priority, not game-blocking, same class as #939. Hold released by the owner 2026-10-17 ~10:15 PDT ('lets get the lighting in flight as well'); owned by lane.haloship1017."
