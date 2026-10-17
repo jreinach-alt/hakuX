@@ -116,6 +116,8 @@ No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-16 visitordocs1016: security policy, code of conduct, getting your Xbox files
+- 2026-10-16 frontends1016c: stock launcher tested on the Nova, Daijisho page rewritten for users (#433)
 - 2026-10-16 0.5.1 release commit
 - 2026-10-16 HAKUX_FIST_ROUND on by default for 0.5.1 (#939 (b))
 - 2026-10-16 frontends1016b: Pegasus tested, Daijisho integrated via its Apps tab (#433)
@@ -126,7 +128,5 @@ No branch is being worked right now.
 - 2026-10-16 logo1016-count: the Playable count as a running total, apart from the download
 - 2026-10-16 visitor1016: fewer required fields, no placeholder text, and "hakuX CE" in the first-contact files (#433)
 - 2026-10-16 logo1016: hakuX CE logo at the top of the README
-- 2026-10-16 ce1016: display name becomes hakuX CE (Community Edition) -- docs pass
-- 2026-10-16 audio1016: quiet speech and movie audio on the Nova (#984, #938)
 
-_Updated 2026-10-16 21:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-16 21:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
