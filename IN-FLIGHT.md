@@ -8,8 +8,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `bindpose1017` | claude-opus-5-5 | 1h 5m | bindpose1017: THPS4 and Max Payne 2 characters stuck in the bind pose on 0.5.2-rc1 (#433) |
-| `haloshadow1017` | claude-opus-5-5 | 1h 26m | haloshadow1017: character shadows draw as dark squares under the feet (Halo CE and other titles) |
+| `bindpose1017` | claude-opus-5-5 | 1h 20m | bindpose1017: THPS4 and Max Payne 2 characters stuck in the bind pose on 0.5.2-rc1 (#433) |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `lane.local`
@@ -118,7 +117,6 @@ The harness dashboard, with each release's targets and the progress charts, is [
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
 | `lane/bindpose1017` | bindpose1017: THPS4 and Max Payne 2 characters stuck in the bind pose on 0.5.2-rc1 (#433) | `52e6a7b698` | 2026-10-17 11:09 |
-| `lane/haloshadow1017` | haloshadow1017: character shadows draw as dark squares under the feet (Halo CE and other titles) | `a8059d8d50` | 2026-10-17 11:35 |
 
 ## Recently landed on master
 
@@ -128,4 +126,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 defaulton1017: S2T_CVT, REPORT_EARLY and FLDCW_CHAIN on by default, after one default-on screen
 - 2026-10-17 halo1016: Halo CE cutscenes on the Nova -- quiet speech under loud music (#938), cinematic at 8-19 fps (#1018)
 
-_Updated 2026-10-17 12:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-17 12:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
