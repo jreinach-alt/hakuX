@@ -67,6 +67,7 @@
 
 #include <stb_image.h>
 #include <locale.h>
+#include <dirent.h>
 
 #ifdef __ANDROID__
 #include <android/log.h>
@@ -2018,6 +2019,304 @@ static void android_limiter_wait(int64_t deadline, int64_t now)
 }
 #endif
 
+/*
+ * [boot1045] The present probe (#1045, lane.bootstatic1017): what the window
+ * shows from the first present, and where it came from. The frame dumper
+ * (XEMU_FRAME_DUMP) runs on guest flips, so it sees neither the VGA fallback
+ * in sdl2_gl_refresh nor the window.
+ *
+ * HAKUX_BOOTPROBE=1 (or =<absolute dir>) arms it. For the first
+ * HAKUX_BOOTPROBE_SECS (default 20) seconds of presents it writes one line per
+ * present to <dir>/boot1045_log.txt: the source drawn (n: the nv2a display
+ * image, v: the VGA fallback, c: the CPU readback), the scan-out registers,
+ * numbers for guest RAM at the scan-out address, and numbers for the frame
+ * read back from the window. Each new frame (by hash) goes to
+ * boot1045_f<n>.ppm, at most 320 pixels wide, up to HAKUX_BOOTPROBE_MAXDUMP
+ * (default 600); after 30 presents of the nv2a source in a row only every
+ * 10th is written. While the VGA fallback is drawn, each new image of guest RAM
+ * at the scan-out address (by hash, up to 20) goes to boot1045_r<n>.bin, one
+ * screen of it at the logged line offset, so the frame can be decoded from
+ * the RAM it shows. The dir defaults to the app's external files dir on
+ * Android and XEMU_FRAME_DUMP_DIR (or .) on the desktop. Unset, it is one
+ * getenv.
+ */
+static struct {
+    int armed; /* -1 not read yet, 0 off, 1 recording, 2 done */
+    char dir[512];
+    FILE *log;
+    int64_t t0_ns;
+    int64_t secs;
+    unsigned n;
+    unsigned dumps;
+    unsigned max_dumps;
+    uint32_t last_hash;
+    uint32_t last_ram_h;
+    unsigned ram_dumps;
+    char last_src;
+    unsigned src_run;
+    uint8_t *px;
+    size_t px_size;
+    uint8_t *ds;
+    size_t ds_size;
+} boot1045 = { .armed = -1 };
+
+static void G_GNUC_PRINTF(1, 2) boot1045_say(const char *fmt, ...)
+{
+    char buf[1024];
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+#ifdef __ANDROID__
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-boot1045", "%s", buf);
+#endif
+    fprintf(stderr, "[boot1045] %s\n", buf);
+}
+
+static uint32_t boot1045_fnv(const uint8_t *p, size_t n, uint32_t h)
+{
+    for (size_t i = 0; i < n; i++) {
+        h = (h ^ p[i]) * 16777619u;
+    }
+    return h;
+}
+
+static void boot1045_arm(void)
+{
+    const char *v = getenv("HAKUX_BOOTPROBE");
+    boot1045.armed = 0;
+    if (!v || !v[0] || !strcmp(v, "0")) {
+        return;
+    }
+    if (v[0] == '/') {
+        snprintf(boot1045.dir, sizeof(boot1045.dir), "%s", v);
+    } else {
+#ifdef __ANDROID__
+        const char *ext = SDL_AndroidGetExternalStoragePath();
+        snprintf(boot1045.dir, sizeof(boot1045.dir), "%s", ext ? ext : ".");
+#else
+        const char *fd = getenv("XEMU_FRAME_DUMP_DIR");
+        snprintf(boot1045.dir, sizeof(boot1045.dir), "%s",
+                 fd && fd[0] ? fd : ".");
+#endif
+    }
+    /* A previous run's files would otherwise be pulled with this run's. */
+    DIR *dh = opendir(boot1045.dir);
+    if (dh) {
+        struct dirent *de;
+        while ((de = readdir(dh)) != NULL) {
+            if (!strncmp(de->d_name, "boot1045_", 9)) {
+                char p[800];
+                snprintf(p, sizeof(p), "%s/%s", boot1045.dir, de->d_name);
+                unlink(p);
+            }
+        }
+        closedir(dh);
+    }
+    char path[800];
+    snprintf(path, sizeof(path), "%s/boot1045_log.txt", boot1045.dir);
+    boot1045.log = fopen(path, "w");
+    if (!boot1045.log) {
+        boot1045_say("off: cannot open %s: %s", path, strerror(errno));
+        return;
+    }
+    const char *s = getenv("HAKUX_BOOTPROBE_SECS");
+    boot1045.secs = (s && atoi(s) > 0) ? atoi(s) : 20;
+    s = getenv("HAKUX_BOOTPROBE_MAXDUMP");
+    boot1045.max_dumps = (s && s[0]) ? (unsigned)atoi(s) : 600;
+    boot1045.t0_ns = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
+    boot1045.armed = 1;
+    boot1045_say("armed: dir=%s secs=%" PRId64 " maxdump=%u wall_us=%" PRId64
+                 " gl=%s", boot1045.dir, boot1045.secs, boot1045.max_dumps,
+                 g_get_real_time(), (const char *)glGetString(GL_RENDERER));
+}
+
+/*
+ * Called after the frame is drawn into the window's back buffer and before the
+ * swap, with the GL context current. `src` is which texture was drawn.
+ */
+static void boot1045_present(struct sdl2_console *scon, char src, GLuint tex,
+                             bool flip)
+{
+    if (boot1045.armed < 0) {
+        boot1045_arm();
+    }
+    if (boot1045.armed != 1) {
+        return;
+    }
+    int64_t now = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
+    if (now - boot1045.t0_ns > boot1045.secs * NANOSECONDS_PER_SECOND) {
+        boot1045_say("done: %u presents, %u frames written", boot1045.n,
+                     boot1045.dumps);
+        fclose(boot1045.log);
+        boot1045.log = NULL;
+        g_free(boot1045.px);
+        g_free(boot1045.ds);
+        boot1045.px = boot1045.ds = NULL;
+        boot1045.armed = 2;
+        return;
+    }
+    unsigned n = boot1045.n++;
+    boot1045.src_run = (src == boot1045.last_src) ? boot1045.src_run + 1 : 0;
+    boot1045.last_src = src;
+
+    /* The scan-out state, read without the BQL: a probe's snapshot. */
+    NV2AState *d = g_nv2a;
+    uint32_t start = 0, lo = 0, gc = 0, pv = 0;
+    int vw = 0, vh = 0, bpp = -1;
+    uint8_t cr28 = 0, gr06 = 0, ari = 0, sr01 = 0, cr17 = 0;
+    uint32_t ram_nz = 0, ram_len = 0, ram_h = 2166136261u;
+    double ram_nb = 0;
+    if (d) {
+        VGACommonState *s = &d->vga;
+        VGADisplayParams vp;
+        s->get_params(s, &vp);
+        start = (uint32_t)d->pcrtc.start;
+        lo = vp.line_offset;
+        s->get_resolution(s, &vw, &vh);
+        bpp = s->get_bpp(s);
+        cr28 = s->cr[0x28];
+        gr06 = s->gr[0x06]; /* graphics misc: bit 0 = graphics mode */
+        ari = s->ar_index;  /* bit 5 = palette address source (0 blanks) */
+        sr01 = s->sr[0x01]; /* clocking mode: bit 5 = screen off */
+        cr17 = s->cr[0x17]; /* CRTC mode: bit 7 = sync enable */
+        gc = d->pramdac.general_control;
+        pv = d->pvideo.regs[NV_PVIDEO_BUFFER];
+        if (s->vram_ptr && start < s->vram_size) {
+            ram_len = MIN(65536u, s->vram_size - start);
+            const uint8_t *p = s->vram_ptr + start;
+            uint64_t nb = 0;
+            for (uint32_t i = 0; i < ram_len; i++) {
+                ram_nz += p[i] != 0;
+                if (i >= 4) {
+                    nb += abs((int)p[i] - (int)p[i - 4]);
+                }
+            }
+            ram_nb = ram_len > 4 ? (double)nb / (ram_len - 4) : 0;
+            ram_h = boot1045_fnv(p, ram_len, ram_h);
+        }
+    }
+    int ram_dumped = 0;
+    if (d && src == 'v' && ram_h != boot1045.last_ram_h &&
+        boot1045.ram_dumps < 20 && d->vga.vram_ptr &&
+        start < d->vga.vram_size) {
+        size_t len = (lo && vh > 0) ? (size_t)lo * vh : 640 * 480 * 4;
+        len = MIN(len, (size_t)(d->vga.vram_size - start));
+        char path[800];
+        snprintf(path, sizeof(path), "%s/boot1045_r%05u.bin", boot1045.dir, n);
+        FILE *f = fopen(path, "wb");
+        if (f) {
+            fwrite(d->vga.vram_ptr + start, 1, len, f);
+            fclose(f);
+            boot1045.ram_dumps++;
+            boot1045.last_ram_h = ram_h;
+            ram_dumped = 1;
+        }
+    }
+
+    /* The window as it will be shown. */
+    int w = 0, h = 0;
+    SDL_GL_GetDrawableSize(scon->real_window, &w, &h);
+    if (w <= 0 || h <= 0) {
+        return;
+    }
+    size_t need = (size_t)w * h * 4;
+    if (boot1045.px_size < need) {
+        boot1045.px = g_realloc(boot1045.px, need);
+        boot1045.px_size = need;
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glPixelStorei(GL_PACK_ALIGNMENT, 4);
+    glReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, boot1045.px);
+
+    /*
+     * Numbers over the centre half in each axis, which stays inside the
+     * picture whatever the letterboxing: the mean colour, the mean absolute
+     * difference between horizontal neighbours (noise is high, a picture or a
+     * flat fill is low), and the fractions of lit and of green pixels.
+     */
+    uint64_t sr = 0, sg = 0, sb = 0, snb = 0, cnt = 0, lit = 0, grn = 0;
+    for (int y = h / 4; y < h * 3 / 4; y++) {
+        const uint8_t *row = boot1045.px + (size_t)y * w * 4;
+        for (int x = w / 4; x < w * 3 / 4; x++) {
+            const uint8_t *p = row + (size_t)x * 4;
+            int r = p[0], g = p[1], b = p[2];
+            sr += r;
+            sg += g;
+            sb += b;
+            snb += abs(r - p[4]) + abs(g - p[5]) + abs(b - p[6]);
+            lit += MAX(r, MAX(g, b)) > 24;
+            grn += g >= 48 && g > r + 32 && g > b + 32;
+            cnt++;
+        }
+    }
+    if (!cnt) {
+        cnt = 1;
+    }
+
+    int step = MAX(1, (w + 319) / 320);
+    int dw = w / step, dh = h / step;
+    size_t dneed = (size_t)dw * dh * 3;
+    if (boot1045.ds_size < dneed) {
+        boot1045.ds = g_realloc(boot1045.ds, dneed);
+        boot1045.ds_size = dneed;
+    }
+    /* Top row first, as a PPM wants; GL rows are bottom-up. */
+    for (int y = 0; y < dh; y++) {
+        const uint8_t *row =
+            boot1045.px + (size_t)(h - 1 - y * step) * w * 4;
+        uint8_t *o = boot1045.ds + (size_t)y * dw * 3;
+        for (int x = 0; x < dw; x++) {
+            const uint8_t *p = row + (size_t)x * step * 4;
+            o[x * 3 + 0] = p[0];
+            o[x * 3 + 1] = p[1];
+            o[x * 3 + 2] = p[2];
+        }
+    }
+    uint32_t hash = boot1045_fnv(boot1045.ds, dneed, 2166136261u);
+
+    int dumped = 0;
+    if (hash != boot1045.last_hash && boot1045.dumps < boot1045.max_dumps &&
+        (src != 'n' || boot1045.src_run < 30 || n % 10 == 0)) {
+        char path[800];
+        snprintf(path, sizeof(path), "%s/boot1045_f%05u.ppm", boot1045.dir, n);
+        FILE *f = fopen(path, "wb");
+        if (f) {
+            fprintf(f, "P6\n%d %d\n255\n", dw, dh);
+            fwrite(boot1045.ds, 1, dneed, f);
+            fclose(f);
+            boot1045.dumps++;
+            boot1045.last_hash = hash;
+            dumped = 1;
+        }
+    }
+
+    char line[640];
+    snprintf(line, sizeof(line),
+             "n=%u t_ms=%.1f wall_us=%" PRId64 " vt_ms=%" PRId64
+             " src=%c tex=%u flip=%d start=0x%08x lo=%u vga=%dx%d bpp=%d"
+             " cr28=%02x gr06=%02x ari=%02x sr01=%02x cr17=%02x gc=%08x"
+             " pv=%08x surf=%dx%d ram_nz=%u/%u ram_nb=%.1f ram_h=%08x"
+             " win=%dx%d mean=%u,%u,%u nb=%.1f lit=%.3f grn=%.3f h=%08x"
+             " dump=%d ramdump=%d",
+             n, (now - boot1045.t0_ns) / 1e6, g_get_real_time(),
+             qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) / 1000000, src,
+             (unsigned)tex, flip ? 1 : 0, start, lo, vw, vh, bpp, cr28, gr06,
+             ari, sr01, cr17, gc, pv,
+             scon->surface ? surface_width(scon->surface) : 0,
+             scon->surface ? surface_height(scon->surface) : 0, ram_nz,
+             ram_len, ram_nb, ram_h, w, h, (unsigned)(sr / cnt),
+             (unsigned)(sg / cnt), (unsigned)(sb / cnt),
+             (double)snb / (3.0 * cnt), (double)lit / cnt,
+             (double)grn / cnt, hash, dumped, ram_dumped);
+    fprintf(boot1045.log, "%s\n", line);
+    fflush(boot1045.log);
+    /* logcat gets the first presents, every source change and 1 in 60. */
+    if (n < 10 || boot1045.src_run == 0 || n % 60 == 0) {
+        boot1045_say("%s", line);
+    }
+}
+
 void sdl2_gl_refresh(DisplayChangeListener *dcl)
 {
     struct sdl2_console *scon = container_of(dcl, struct sdl2_console, dcl);
@@ -2149,6 +2448,7 @@ void sdl2_gl_refresh(DisplayChangeListener *dcl)
      * to the framebuffer, fall back to the VGA path.
      */
     GLuint tex = 0;
+    char boot1045_src = 'n';
 #ifdef __ANDROID__
     if (force_cpu_blit) {
         /* Trigger a render/sync so the readback buffer gets updated. */
@@ -2203,6 +2503,7 @@ void sdl2_gl_refresh(DisplayChangeListener *dcl)
             }
             tex = g_android_cpu_tex;
             flip_required = true;
+            boot1045_src = 'c';
         } else if ((g_android_frame_counter % 120) == 0) {
             __android_log_print(ANDROID_LOG_WARN, "hakuX",
                                 "refresh: no readback available yet");
@@ -2312,6 +2613,7 @@ void sdl2_gl_refresh(DisplayChangeListener *dcl)
         scon->updates++;
         tex = scon->surface->texture;
         flip_required = true;
+        boot1045_src = 'v';
 #ifdef __ANDROID__
         if ((g_android_frame_counter % 120) == 0) {
             __android_log_print(ANDROID_LOG_INFO, "hakuX",
@@ -2363,6 +2665,7 @@ void sdl2_gl_refresh(DisplayChangeListener *dcl)
 #else
     glFinish();
 #endif
+    boot1045_present(scon, boot1045_src, tex, flip_required);
     nv2a_release_framebuffer_surface();
 #ifdef __ANDROID__
     android_log_gl_error("refresh-finish");

@@ -12,8 +12,22 @@ number. The forge search below found #1045, word for word the owner's report, so
   So it shows **before the boot animation's first picture**, before any title code runs. That rules out everything a
   title does (its mode set, its PVIDEO use, its first draws) and points at app start, the first presents, and the
   BIOS/kernel's first video-mode and PCRTC setup.
-- Still unknown: whether it covers the whole screen; how many frames it lasts; whether one launch shows static and
-  another green, or both in one launch.
+- Owner via lane.xbox, 10-17 ~15:00 PDT (answering Question 1): "Whole screen static, displays on most, almost all,
+  games. NSFW is one example, Top Spin is another." NSFW is NFS: Most Wanted (4541007B, render_mode sysmem in the
+  per-title table); Top Spin is 4D530035 (render_mode auto). Both ran on Turnip today. So:
+  - **whole screen**, which fits a view that scales one guest image to the window (H1's VGA view does), and does not
+    fit a band, a tile, or an overlay window;
+  - **static**; green is not mentioned this time, so the green look is unconfirmed, not dropped;
+  - **most, not all, titles**: a title that skips it is a discriminator. Before the logo no title code has run, so
+    whatever differs is in the launch: the app's per-title settings (render_mode differs between the two examples, so
+    it is not that), whether a save state is auto-loaded instead of booting (`savestate_auto_load`, default off,
+    `xemu_android.cpp:1127`), or the timing between the first refreshes and the kernel's first GPU frame. Asked below.
+- Owner via lane.xbox, 10-17 ~15:05 PDT (answering Question 3): "I thought I saw a title today that did not. But I
+  can't find one. Halo 1, NFS:MW, THPS4, MP2, GTA3, all have it." With Top Spin, every title checked shows it: Halo CE,
+  NFS: Most Wanted, THPS4, Max Payne 2, GTA III, Top Spin, all on the 0.5.2-rc1 release app on Turnip. **No
+  discriminating title: treated as universal.** So the save-state and timing discriminators above have nothing to
+  explain, and H7's bump is taken back (0.05 -> 0.03).
+- Still unknown: how many frames it lasts.
 
 ## Step 0: Already tried
 
@@ -57,6 +71,12 @@ Code read for the account (no edits):
 P is per look, re-ranked on the owner's "before the Xbox logo". Each names its Already-tried row, or the search that
 found nothing.
 
+Re-rank on "whole screen static, almost all games" (10-17 ~15:00): H1 static 0.55 -> **0.65**, since a whole-screen
+image of raw RAM is what the VGA view draws; H2 static 0.20 -> 0.15 (a SurfaceBinding at the scan-out address is the
+kernel's full framebuffer, so it is whole-screen too, which keeps it second); H4 0.10 -> 0.08; H6 0.10 -> 0.07; H7
+0.03 -> 0.05 (a launch-path difference is now needed to explain the titles that skip it). Green P are unchanged and
+unconfirmed. The table's figures below are the earlier ones.
+
 | # | hypothesis | static P | green P | Already tried | instrument | hit | miss |
 |---|---|---|---|---|---|---|---|
 | H1 | **The VGA fallback shows raw guest RAM.** Between the first refreshes and the first SurfaceBinding at the kernel's PCRTC address, the tex is 0 and `ui/xemu.c:2302` shows QEMU's VGA view of whatever is in RAM at `pcrtc.start`, in whatever mode the VGA registers say (reset state, 4-bit planar, text, or the kernel's mode before its first clear). (lane.xbox's B1) | **0.55** (was 0.35) | 0.30 | new for the fallback: searched `-S vga_framebuffer`, `nv2a_get_framebuffer_surface`, `--grep display texture`, nothing. Frame-dumper row: blind to it | present probe (below): per refresh, `src=fallback|nv2a`, `pcrtc.start`, CR28 depth, GR06/AR-index mode, plus a dump of the presented image | the flash frames are `src=fallback`, and their pixels match guest RAM at `pcrtc.start` decoded at the logged mode | the flash frames are `src=nv2a`, or the fallback frames are black |
@@ -84,12 +104,46 @@ first, with H2 alongside because the same probe separates them.
    (not the VGA view) until the first valid nv2a frame, with the VGA view kept for guests that never use the GPU;
    model the guest's blank; clear a new display binding's image.
 
+## The instrument: a present probe in `ui/xemu.c` (off by default)
+
+`HAKUX_BOOTPROBE=1` (or `=<absolute dir>`) arms it at the first present; unset, it costs one `getenv`. In
+`sdl2_gl_refresh`, after the frame is drawn into the window's back buffer and before `SDL_GL_SwapWindow`, it records
+every present for `HAKUX_BOOTPROBE_SECS` (default 20) to `boot1045_log.txt`:
+- `src`: which texture was drawn: `n` the nv2a display image, `v` the VGA fallback, `c` the CPU readback;
+- the scan-out registers: `pcrtc.start`, line offset, the VGA view's size and bpp, CR28, GR06, AR index, SR01, CR17,
+  PRAMDAC general control, `NV_PVIDEO_BUFFER`;
+- guest RAM at the scan-out address (64 KB): non-zero share, a neighbour-difference figure, and a hash;
+- the window, read back with `glReadPixels` from the default framebuffer: mean colour, and over the centre half the
+  mean neighbour difference `nb` (noise is high, a picture or a flat fill is low), the lit share and the green share.
+Each new window image (by hash) is written as `boot1045_f<n>.ppm` (≤320 wide), up to 600; after 30 nv2a presents in
+a row, only every 10th is written. While the fallback is drawn, each new image of guest RAM at the scan-out (by hash, up
+to 20) is written as `boot1045_r<n>.bin`, one screen at the logged line offset.
+
+The readback stalls the GL pipeline once per present, so frame times measured with the probe on are not frame times.
+It runs only while measuring a launch.
+
+The judge, `tools/judge_boot.py`, was committed before any data, and its rules are in its docstring:
+- **coverage**: n starts at 0 with no gaps, a GPU picture is reached, and at least 120 presents follow it;
+- **classes**: black, green, noise or picture. The noise bar is set from the run's own clean spread: 2x the largest
+  `nb` among lit presents in the last quarter of the log, floor 20;
+- **episodes**, and each hypothesis's hit and miss;
+- **RAM match**: the fallback frame's luma is Pearson-correlated with the RAM dump decoded at the logged bpp. The null
+  is the same decode shifted by (37, 23); a match needs r ≥ 0.3 and ≥ 3x |null|.
+
+`tools/judge_boot_selftest.py` passes on synthetic data (H1 shape: MATCH r = 1.00, null -0.01; the mutant, a frame
+unrelated to the RAM: no match; noise from `src=n`: H1 MISS, H2 HIT), FAILS=0.
+
+The desktop build is `tools/setup_desk.py`, then `build-linux/cfg.py` (bindpose1017's recipe).
+
 ## Waiting / blocked
 
-Nothing outstanding. The next step is the desktop probe; the files it needs (`ui/xemu.c`, `hw/xbox/nv2a/pgraph/vk/
-renderer.c` or `display.c`) are asked for by board request before they are edited.
+Nothing outstanding. Next: the desktop boot run with the probe. The board request for `ui/xemu.c` is filed with this
+commit.
 
 ## Questions (for lane.xbox / the owner; work continues meanwhile)
 
-1. Does the static or green cover the whole screen, or a band or a box?
-2. Is it static on some launches and green on others, or both in one launch?
+1. Does the static or green cover the whole screen, or a band or a box? **Answered** 10-17 ~15:00: whole screen,
+   static, almost all games (NFS: Most Wanted, Top Spin).
+2. Is it static on some launches and green on others, or both in one launch? (Green was not mentioned in the answer.)
+3. Which titles do not show it? One name is enough: it is the discriminator. **Answered** 10-17 ~15:05: none found
+   (Halo CE, NFS:MW, THPS4, MP2, GTA III all have it).
