@@ -83,6 +83,11 @@
   withdrew TSR and TSS, so they will not run. The TS base pair was not queued, and nothing else will be.
   TSOFF, already on the Nova, finished and DROPS like the rest (below). Top Spin is written up as out of
   scope ("TS isolation", end). The flip PR is opened with HNI's configuration (IBC off).
+- 07:10: PR.md ready. `preflight.sh --allow-tracker`: every gate ok but territory, and that one fails on
+  origin/board's own rows. dispatchdoctor1017 claims dispatcher.sh (also pathclass's) and request.sh (also
+  profilegate1011's), plus devices.sh and models.toml, which are listed FREE. None of those is in this diff.
+  `[lane.defaulton1017]` on the board holds every file the diff touches. That is the board's to fix, not this
+  branch's.
 
 ## Verdict per switch (what ships)
 
