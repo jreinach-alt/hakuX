@@ -3,7 +3,9 @@
 Status (10-17, attempt 3): **root cause found: the stock Qualcomm Adreno driver** (section 9).
 Every square sighting ran stock. On Turnip T30 (PurpleVK) the same chain draws a small soft foot
 shadow. Lavapipe also draws it correctly in every pipeline mode and draw path tried (L1-L4). The
-emulator's own path is the same on both drivers (same shader hash, same draw paths).
+emulator's own path is the same on both drivers (same shader hash, same draw paths). Its command
+stream is valid: sync validation (L5) and core validation (L6) report nothing, and each run's
+positive control does report (sections 6.4, 6.5).
 Under the owner's 10-17 rule the stock driver is never used or tested, so there is no emulator fix to
 build. Remedies are bindpose1017's R1-R4, cited in section 9.
 
@@ -380,10 +382,45 @@ object-in-use checks, stateless and object lifetime) and sync off. Settings:
   verdict. Then the stream is valid as far as the layer sees, and "the stock driver mis-executes
   it" stands.
 
+### 6.5 L6's result (14:42-14:54): miss
+
+- **The run reached the scene.** It dumped 8 frames holding 218 projection draws, 179 on path 0
+  and 39 on path 2 (`tools/projgd.py L6/framedump_1792273389.jsonl`), with `[gpl569] requested=0
+  mode=0` (qemu.log:57). That is the Nova's mode and path pattern.
+- **No validation message at all.** vvl.log, created by the layer from the settings file at
+  14:42:50, is 0 bytes after 685 s. qemu.log has no `[vk]` line but the loader's four `Copying old
+  device` lines. xemu disables no validation feature: instance.c:293-301 only adds sync, and its
+  messenger (394-396) takes warnings and errors.
+- **Positive control:** `syncctl core` (tools/syncctl.c, new mode) is one vkCmdFillBuffer at
+  dstOffset 2. It ran under L6's settings, with only the log file changed
+  (`build-linux/run/vvl/corectl.sh`, `core_ctl_settings.txt`). It logs
+  `VUID-vkCmdFillBuffer-dstOffset-00025` to the file and to the messenger. The layer as configured
+  reports a core error.
+- **Limits.** The layer checks the layouts and usages it tracks. It does not model UBWC.
+  GPU-assisted validation was off, so out-of-bounds descriptor access in a shader is not covered.
+  The run was on lavapipe, so it covers only lavapipe's capability-dependent paths (section 6.3:
+  NEAREST forced on a format without linear filtering, the cvt pass's buffer alignment, push
+  constants by `maxPushConstantsSize`). A path the emulator takes only on stock's capabilities is
+  not covered. Turnip runs on the same Adreno 740 and draws correctly.
+
+H-invalid drops to 0.03. The emulator's command stream for the chain is valid as far as the layer
+can see, in the Nova's mode and path pattern. The square is the stock driver's.
+
+The run's qemu segfaulted while exiting on the timeout's SIGTERM (section 7). The frames and log
+were already written.
+
 ## 7. Desktop crash log
 
-`/mnt/c/Users/Justin/AppData/Local/Temp/wsl-crashes/` was empty after every run (L1-L5; deskrun.py
-lists it). C: stayed at 56.7 GB free. No desktop run crashed.
+`/mnt/c/Users/Justin/AppData/Local/Temp/wsl-crashes/` was empty after every run from L1 to L5
+(deskrun.py lists it). C: stayed at 56.7 GB free, and none of those runs crashed.
+
+L6 (14:54) crashed on exit. The timeout's SIGTERM ended qemu pid 3901600, and it segfaulted on the
+way out, after the dump and the log were written. That left one dump,
+`wsl-crash-1792273918-3901600-_home_justin_hakux-work_wt_haloshadow1017_build-linux_qemu-system-i386-11.dmp`
+(8,754,155,520 bytes). The pid matches the run, and the dump was deleted by that exact name, as the
+brief authorises. No other file was in the directory. L5's run with the same layer did not crash;
+the difference is core validation's teardown, not investigated. C: was at 56.7 GB free before the
+run.
 
 ## 8. Questions (non-blocking)
 
@@ -470,7 +507,7 @@ same floor to 0.73-0.82.
 | id | hypothesis | final P | what moved it |
 |---|---|---|---|
 | H-driver | The stock Qualcomm driver mis-executes the projection's stage-0 sample of the blurred target | **0.95** | 9.1 and 9.2: one variable (the driver) splits square from no square, with the same package, state, switches, shader and path pattern. Two conformant drivers agree within 0.2% |
-| H-invalid | The emulator issues an invalid stream (image layout, usage, view) that conformant drivers tolerate and stock does not | open until L6 (section 6.4, "L6 prediction") | L5 covered sync only. If L6 hits, the square is ours and H-driver becomes "stock exposes our bug" |
+| H-invalid | The emulator issues an invalid stream (image layout, usage, view) that conformant drivers tolerate and stock does not | 0.03 | L6 miss (6.5): no core-validation message over 218 projection draws in the Nova's mode and path pattern, with a positive control that reports. Residual: paths taken only on stock's capabilities, and what the layer does not model |
 | H-A | Stale binding, the dummy texture, or a foreign view under stage 0 | 0.01 | The emulator's binding is the same on every driver. Turnip and lavapipe sample the right image in the same state |
 | H-C | The view or sampler returns constant rgb | 0.01 | Same argument. The border sampler is valid (texture.c:3610 passes the view format) |
 | H-E | The pixel shader is mistranslated | 0.005 | The same shader key (4ab25e73) draws correctly on Turnip. The Nova's and the desktop's projection GLSL are byte-identical, vertex and pixel (`diff build-linux/run/{psh,vsh}_{desk_8c870089,nova_4ab25e73}.glsl`, empty). Only the desktop's key hash differs |
@@ -490,7 +527,7 @@ retest at 13:34. It still stands for UC2's box.
 | R2 | Turnip by default on Adreno 6xx/7xx: a bundled driver, the menu as the override (bindpose1017 NOTES:241) | 0.9 | every release user, who today runs stock | the owner's decision (licence of the PurpleVK build; 09-26's parking of Turnip work). lane.local has put it to them |
 | R3 | A launch guard on kgsl with no custom driver, and docs naming Turnip as required | 0 by itself | no player runs stock silently | proposed in bindpose1017; moot if R2 lands |
 | R4 | A stock-driver workaround | unknown | stock users only | **not chased: the owner's 10-17 rule** |
-| R0 | Fix an invalid usage, if L6 finds one on the chain | depends on L6 | every driver, not only stock | conditional on L6 |
+| R0 | Fix an invalid usage on the chain | -- | -- | **none to fix**: L6 found no validation error (6.5) |
 
 ### 9.6 Verification: what was measured, and what was not
 
@@ -524,4 +561,7 @@ retest at 13:34. It still stands for UC2's box.
   guest state and path), `rbread.py` (readback compare), `chain.py`/`texids.py` (the chain's guest
   and host identity), `hxsram.py` (surfaces out of a save state's RAM), `deskrun.py` (desktop
   runs that refuse under 40 GB on C: and list new crash dumps), `syncctl.c` (a validation-layer
-  positive control).
+  positive control: a sync hazard by default, a core error with `core`). A validation run that
+  reports nothing means nothing without its control, run under the same settings file.
+- A desktop run under the validation layer can segfault on exit (L6). Check the crash directory
+  after every one, as the brief says, even when the run's output is complete.

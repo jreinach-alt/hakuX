@@ -4,6 +4,9 @@
  * report a synchronization hazard at all? Two vkCmdFillBuffer on one range with no barrier
  * between them is a WRITE_AFTER_WRITE hazard; the layer must print SYNC-HAZARD-WRITE-AFTER-WRITE.
  *
+ * `syncctl core` is L6's control (core validation): one fill at dstOffset 2, which is not a
+ * multiple of 4. The layer must print VUID-vkCmdFillBuffer-dstOffset-00025.
+ *
  *   cc -I$NX/root/usr/include syncctl.c -o syncctl -L$NX/root/usr/lib/x86_64-linux-gnu -l:libvulkan.so.1
  */
 #include <stdio.h>
@@ -20,8 +23,9 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL cb(VkDebugUtilsMessageSeverityFlagBitsEXT 
 
 #define CK(x) do { VkResult r_ = (x); if (r_ != VK_SUCCESS) { printf("FAIL %s = %d\n", #x, r_); return 1; } } while (0)
 
-int main(void)
+int main(int argc, char **argv)
 {
+    int core = argc > 1 && !strcmp(argv[1], "core");
     const char *layers[] = { "VK_LAYER_KHRONOS_validation" };
     const char *exts[] = { VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
     VkValidationFeatureEnableEXT en[] = { VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT };
@@ -83,10 +87,16 @@ int main(void)
     CK(vkAllocateCommandBuffers(dev, &cai, &cmd));
     VkCommandBufferBeginInfo cbi = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
     CK(vkBeginCommandBuffer(cmd, &cbi));
-    printf("recording two fills with no barrier\n");
-    fflush(stdout);
-    vkCmdFillBuffer(cmd, buf, 0, 256, 1);
-    vkCmdFillBuffer(cmd, buf, 0, 256, 2);
+    if (core) {
+        printf("recording one fill at dstOffset 2\n");
+        fflush(stdout);
+        vkCmdFillBuffer(cmd, buf, 2, 256, 1);
+    } else {
+        printf("recording two fills with no barrier\n");
+        fflush(stdout);
+        vkCmdFillBuffer(cmd, buf, 0, 256, 1);
+        vkCmdFillBuffer(cmd, buf, 0, 256, 2);
+    }
     CK(vkEndCommandBuffer(cmd));
     printf("done\n");
     return 0;
