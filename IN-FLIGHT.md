@@ -8,13 +8,12 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `bootstatic1017` | claude-opus-5-5 | 1h 8m | bootstatic1017: the brief static or green flash at every title start (#1045) |
-| `haloring1017` | claude-opus-5-5 | 1h 12m | haloring1017: Halo CE main-menu ring: the missing surface layer and the static inside surface (#939) |
+| `gta3drive1017` | claude-opus-5-5 | 19 min | gta3drive1017: Grand Theft Auto III drops into the teens while driving (#433) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-offline`
-- **Device queue:** 3 waiting, 1 running.
+- **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -117,11 +116,11 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/bootstatic1017` | bootstatic1017: the brief static or green flash at every title start (#1045) | `9b035c6a98` | 2026-10-17 15:35 |
-| `lane/haloring1017` | haloring1017: Halo CE main-menu ring: the missing surface layer and the static inside surface (#939) | `62ec5786f5` | 2026-10-17 15:15 |
+| `lane/gta3drive1017` | gta3drive1017: Grand Theft Auto III drops into the teens while driving (#433) | `ee677157bf` | 2026-10-17 15:21 |
 
 ## Recently landed on master
 
+- 2026-10-17 drivernotice1017: every release note names the one tested GPU driver (#433)
 - 2026-10-17 bindpose1017: THPS4 and Max Payne 2 bind pose: the stock Adreno driver, not the code (#1043)
 - 2026-10-17 lane worktrees are created sparse, without docs/lanes/pathfind/runs (#433)
 - 2026-10-17 relnotes1017: release notes carry only features and bug fixes (#433)
@@ -129,4 +128,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 defaulton1017: S2T_CVT, REPORT_EARLY and FLDCW_CHAIN on by default, after one default-on screen
 - 2026-10-17 halo1016: Halo CE cutscenes on the Nova -- quiet speech under loud music (#938), cinematic at 8-19 fps (#1018)
 
-_Updated 2026-10-17 15:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-17 16:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
