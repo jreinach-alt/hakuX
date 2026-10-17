@@ -11,7 +11,7 @@ No lane session is running.
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-offline`
-- **Device queue:** 0 waiting, 0 running.
+- **Device queue:** 1 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -116,6 +116,7 @@ No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-16 HAKUX_FIST_ROUND on by default for 0.5.1 (#939 (b))
 - 2026-10-16 frontends1016b: Pegasus tested, Daijisho integrated via its Apps tab (#433)
 - 2026-10-16 selftestclean1011: selftest.sh removes its fake host when it passes (#433)
 - 2026-10-16 icon1016: hakuX CE app icon (#433)
@@ -127,6 +128,5 @@ No branch is being worked right now.
 - 2026-10-16 ce1016: display name becomes hakuX CE (Community Edition) -- docs pass
 - 2026-10-16 audio1016: quiet speech and movie audio on the Nova (#984, #938)
 - 2026-10-16 sign1016: rotate release key (lineage), minSdk 33 (#433)
-- 2026-10-16 GitHub Sponsors on the landing page and the Sponsor button (#433)
 
-_Updated 2026-10-16 19:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-16 19:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
