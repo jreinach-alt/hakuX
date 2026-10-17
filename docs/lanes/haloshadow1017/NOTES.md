@@ -1,8 +1,26 @@
 # lane.haloshadow1017 -- NOTES (#1038)
 
-Status (10-17): Step 0 done and pushed with this file. No code under hw/, android/ or ui/ has been
-edited. Next: the desktop experiment, then an instrument that reads back the 128x128 texture the
-projection actually samples.
+Status (10-17, attempt 3): **root cause found: the stock Qualcomm Adreno driver** (section 9).
+Every square sighting ran stock. On Turnip T30 (PurpleVK) the same chain draws a small soft foot
+shadow. Lavapipe also draws it correctly in every pipeline mode and draw path tried (L1-L4). The
+emulator's own path is the same on both drivers (same shader hash, same draw paths).
+Under the owner's 10-17 rule the stock driver is never used or tested, so there is no emulator fix to
+build. Remedies are bindpose1017's R1-R4, cited in section 9.
+
+**Attempt 2 did not finish: it hit the 300-turn cap** (hostops addendum, 14:3x PDT). Its last
+commit is the merge b91112d8 (13:13 PDT). After that it ran L5 (12:59-13:08; the dump and logs are in
+`build-linux/run/L5/`) and built the L5 positive control (`tools/syncctl.c`, 13:07). It also diffed
+the projection's GLSL between the Nova and desktop dumps (identical) and made contact sheets of
+older frames. None of that was written up or committed. Attempt 3 read those artifacts. L5's result
+is in section 6.4. Process lesson, the same as halo1016's and defaulton1017's: each run's
+reading must be committed before the next tool is built.
+
+Attempt 2 did not see the 13:34 Turnip retest (lane.local/lane.xbox, owner-requested), which
+answered the lane's question while it was still building instruments. **The process lesson is
+bindpose1017's**: before treating a device result as a code result, read the package's driver line.
+The morning capture's logcat line 471 says `Driver: Qualcomm Technologies Inc. Adreno Vulkan
+Driver`, and line 518 says `[gpl569] ext=0`. Either line decides the split that L1-L4 spent the
+afternoon on.
 
 **Attempt 1 did not finish: it hit the 301-turn cap** (session log
 `haloshadow1017.20261017T174853Z.json`, `terminal_reason max_turns`) while L2 was running in the
@@ -318,9 +336,31 @@ L5 = L4's env + Khronos validation 1.3.275 (Ubuntu's `vulkan-validationlayers`, 
 - Miss: no hazard on the chain's objects. Then a missing barrier is not the cause as far as the
   validation layer can see, and H-S drops.
 
+### 6.4 L5's result (run by attempt 2, 12:59-13:08; read by attempt 3): miss
+
+- **The run reached the scene.** The 7 dumped frames hold 239 projection draws (`tools/projgd.py
+  L5/framedump_1792267166.jsonl`). The draws follow L4's path pattern, `[gpl569] requested=0 mode=0`.
+- **The layer was loaded and validating.** qemu.log:25 says "Validation layers enabled". The loader's
+  `[vk] Copying old device 0 into new device 0` lines reach xemu's messenger, so the message path
+  works. The layer created `L5/vvl.log`, the log file named in the settings file, so it read
+  those settings (`validate_sync = true`; instance.c:293 also chains
+  VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT).
+- **The layer reported nothing.** There is no `[vk]` validation message in qemu.log, and vvl.log
+  is 0 bytes after 540 s.
+- **Positive control** (`tools/syncctl.c`, built 13:07): the same layer, loaded the same way
+  (VK_LAYER_PATH, VK_LAYER_SETTINGS_PATH, VkValidationFeaturesEXT, lavapipe), records two
+  vkCmdFillBuffer calls with no barrier. It logs `SYNC-HAZARD-WRITE-AFTER-WRITE`
+  (`build-linux/run/vvl/ctl.log`). The layer as configured does report a hazard. The control ran
+  standalone, not inside xemu.
+- **Limits.** Core validation was off (`validate_core = false`), so an invalid-usage error is not
+  covered. Sync validation does not model memory aliasing. The run was on lavapipe.
+
+H-S drops to 0.03. Section 9 makes it moot: the same command stream draws correctly on Turnip.
+
 ## 7. Desktop crash log
 
-(none yet)
+`/mnt/c/Users/Justin/AppData/Local/Temp/wsl-crashes/` was empty after every run (L1-L5; deskrun.py
+lists it). C: stayed at 56.7 GB free. No desktop run crashed.
 
 ## 8. Questions
 
