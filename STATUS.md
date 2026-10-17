@@ -1,6 +1,6 @@
 # hakuX status
 
-_updated 2026-10-17 00:27 PDT_
+_updated 2026-10-17 00:59 PDT_
 
 0.6: Measured 261 / 300 · Playable 87 / 110.
 
@@ -66,7 +66,7 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | **FILA World Tour Tennis** | 🟢 Playable |  |
 | **Future Tactics: The Uprising** | 🟢 Playable | **59.9**<br>Nova, Oct 7 |
 | **Genma Onimusha** | 🟢 Playable | **59.9**<br>Nova, Oct 13 |
-| **Grabbed by the Ghoulies** | 🟢 Playable | **30.0**<br>Nova, Oct 12 |
+| **Grabbed by the Ghoulies** | 🟢 Playable | **30.0**<br>Nova, Oct 17 |
 | **Grand Theft Auto III** | 🟢 Playable | **30.0**<br>Nova, Oct 16 |
 | **Grand Theft Auto: Vice City** | 🟢 Playable | **30.0**<br>Nova, Oct 16 |
 | **Guilty Gear XX #Reload** | 🟢 Playable | **59.9**<br>Nova, Oct 6 |
@@ -79,7 +79,7 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | **Jet Set Radio Future** | 🟢 Playable | **24.2**<br>Thor, Sep 27 |
 | **Kabuki Warriors** | 🟢 Playable | **59.9**<br>Nova, Oct 3 |
 | **Knockout Kings 2002** | 🟢 Playable |  |
-| **KOF: Maximum Impact – Maniax** | 🟢 Playable | **59.9**<br>Nova, Oct 12 |
+| **KOF: Maximum Impact – Maniax** | 🟢 Playable | **59.9**<br>Nova, Oct 17 |
 | **Legacy of Kain: Defiance** | 🟢 Playable | **29.0**<br>Nova, Oct 11 |
 | **Manhunt** | 🟢 Playable |  |
 | **Mat Hoffman's Pro BMX 2** | 🟢 Playable |  |
