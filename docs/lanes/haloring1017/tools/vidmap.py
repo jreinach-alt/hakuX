@@ -1,6 +1,11 @@
 """Which frame of a run's video shows each dump frame? (#939, M2b)
 
-usage: vidmap.py DUMP.jsonl RAM.bin VIDEO.mp4 OUTDIR [every=N] [line=T0,K] [vstep=S] [vw=1280] [vh=960]
+usage: vidmap.py DUMP.jsonl RAM.bin VIDEO.mp4 OUTDIR [every=N] [line=T0,K] [frames=LO:HI] [vstep=S] [vw=1280] [vh=960]
+
+line=T,0 frames=LO:HI maps every dump frame LO..HI to the one video frame at T:
+an anchor. bandfit.py's r_at_c13w over those frames then peaks at the dump
+frame the video frame shows, pose and scroll both right (clockfit.py's
+first map had neither: the wall clocks are 1-2 s apart).
 
 Run 13 (Turnip) dumped `gd` with noimages, so bandfit.py has no pixels of its
 own for it; its 60 s video does. This writes, for every Nth dump frame
@@ -175,8 +180,9 @@ else:
 
 nvid = int(round(59.94 * 60))
 need = {}
+flo, fhi = (int(x) for x in opt.get("frames", f"{mf[0]}:{mf[-1]}").split(":"))
 for f in mf:
-    if f % EVERY:
+    if f % EVERY or not flo <= f <= fhi:
         continue
     t = t0 + k * f
     n = int(round(t * 60000 / 1001))
