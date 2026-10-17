@@ -4,7 +4,21 @@ Halo: Combat Evolved (4D530004), opening cinematic on the Nova. Found on 0.5.1-r
 (0.5.1 shipped without this lane, owner 10-16 ~22:50 PDT).
 Defects: **#938** quiet speech under loud music; **#1018** the cinematic drops to 8-19 fps for ~47 s.
 
-## Status (2026-10-17 02:40 PDT)
+## Status (2026-10-17 03:10 PDT)
+
+- #1018: **where the poll waits is found** ("#1018 reports arms: RT, RC"). Both arms are VOID on their own V:
+  the prediction required the synchronous report path. The app's "Fast renderer paths" default sets
+  `HAKUX_REPORT_ASYNC=1`, so every arm here, and the owner's play, runs the async reader. That mistake is mine.
+  Their traces still read cleanly, descriptively:
+  - Each of the ~544 armed GET_REPORTs a frame waits for the frame's last finish (q2e median 8-16.7 ms).
+  - It then waits for the GPU to run that whole command buffer (q2w 16.7-33.3 ms for 77%).
+  - The guest polls each one about a frame after issuing it, and spins until it lands.
+  - The catch-up finish (RC) never fired: 0 a frame.
+- Two remedies are built (08fd920b5c, both off by default) and measured in `halo1016-early.json`'s six arms:
+  - R8, `HAKUX_REPORT_EARLY=1`: answer each armed report at once, with its offset's last count.
+  - R7, `HAKUX_REPORT_SUBMIT=2000`: finish at a report, so the GPU starts earlier.
+  - The judge is `earlyread.py`, written before any arm ran.
+- Earlier, 02:40:
 
 - #1018: **the heavy shots' "vCPU bound" is the guest polling an occlusion report.** The two hottest TB entries
   are one loop: 0x63482 calls D3D's 0x1810f0 while it returns 0x88760828, which it does at 0x18111b when the
@@ -157,7 +171,7 @@ The frame period tracks p_run + sdown x ~0.5 ms. The guest idles exactly when th
 |---|---|---|---|---|
 | F1 | Synchronous GPU waits on the PFIFO thread | 0.45 | **0.95** (`cvt` downloads, one cause of two) | W hit: 61 sdown/f, 33 ms/f, equal to the unhooked blocked time; census K: all `cvt`; C: S2T_CVT takes them to 0 and the span 0.71 x |
 | F7 | The vCPU is the bound in the heavy shots once the downloads go | -- | 0.85, then **0.35** as the vCPU's own work | census B: plateau 40-61 ms/f, guest idle 0, pidle 25-32 ms/f, gpu 17-23 ms/f. The vcpu arms: removing 45 k main-loop returns (F) or 850 k helper lookups (I) a frame buys 2 ms/f each, and the spin's share of TB time rises |
-| F8 | The guest polls a visibility-test report in the heavy shots, and the poll's wait is the bound | -- | **0.8** | 0x63482/0x18111b disassembled ("#1018 the spin"); spin share 0.267 (A) -> 0.441 (IF) of TB time as ms/f falls 3.4 |
+| F8 | The guest polls a visibility-test report in the heavy shots, and the poll's wait is the bound | -- | **0.85** | 0x63482/0x18111b disassembled ("#1018 the spin"). Spin share of TB time rises 0.267 (A) -> 0.441 (IF) as ms/f falls 3.4. RT: each of 544 armed reports a frame is written 16.7-33.3 ms after it is queued (77%), behind the frame's last finish and the GPU's run of the whole command buffer |
 | F6 | The heavy shots really carry more work | 0.3 | 0.6 (contributor) | draws 1000-1363/f against 650; p_run 22.6 against 13.5 ms. Alone it fits in 33 ms |
 | F2 | Host GPU-bound | 0.3 | 0.02 | G: gpu/P 0.17; sysmem P 0.96 |
 | F3 | Late notifier/interrupt delivery | 0.15 | 0.05 | busy spans begin on the NV2A wake, behind the downloads; iq flat |
@@ -177,8 +191,10 @@ ms/f with no downloads). Neither alone reaches 33.4.
 | R3 | Tier-1 promotion off (`HAKUX_TIER1_THRESHOLD=0`, an existing switch): no hot block left CF_INVALID and unchainable | 0.45 | ~0.9 ms/f of loop for 7.9 k `gi` returns, plus their qht lookups; and it keeps R2's `_control87` block chainable | named below ("the `gi` exits are tier-1's"); `promote` lines name 0x19f23 and 0x1ec3d |
 | R3b | Name and remove the plateau's `x` longjmps | 0.3 | 2.8 k a frame, ~0.3 ms/f | unnamed |
 | R2, R4 measured (10-17 02:20) | F and I alone: 0.951 x A each; IF 0.921 | -- | 2.1 / 2.1 / 3.4 ms/f | the work is gone (eo 0, helper lookups 0.016 x) and the poll absorbs it (F8) |
-| R5 | `HAKUX_REPORT_CATCHUP=1` (built, off): write a queued GET_REPORT at the catch-up finish | 0.25 (= P(HS)) | up to the spin's share, ~11 ms/f of A's 42.6 (0.267) | "#1018 the spin": the one place in the code where a report waits with no work ahead of it |
-| R6 | The poll's answer without the PFIFO's backlog: record draws faster, or write the report's previous count at the guest's kick | 0.5 (= P(HB)) x mechanism unproven | the same ~11-17 ms/f | the 5-7 ms kick-to-dispatch latency in the heavy windows; ranked on the RT trace |
+| R5 measured (10-17 03:00) | `HAKUX_REPORT_CATCHUP=1`: write a queued GET_REPORT at the catch-up finish | **~0** | RC 42.0 ms/f vs RT 43.1 (inside A/A2's 0.023 spread) | 0 catch-up finishes a frame: the FIFO is never caught up with a value report queued. The guest is a frame ahead of the PFIFO |
+| **R8** | `HAKUX_REPORT_EARLY=1` (built, 08fd920b5c, off): answer an armed GET_REPORT when it is queued, with the count its offset was last written with; the reader's count goes to the table, not the guest | **0.6** for EM (mechanism 0.8, a frame-stale flare is the cost) | the whole spin: 12-17 ms/f of 39-43, so the span to ~27-31 ms/f, under the bar with IF | RT: every offset reused once a frame (33-66 ms apart), all armed. Precedent: RPCS3 "relaxed ZCULL sync", Dolphin's approximate perf queries |
+| **R7** | `HAKUX_REPORT_SUBMIT=<us>` (built, off): finish at an armed GET_REPORT `us` after the last finish, so the GPU starts on the draws before it, as the NV2A writes a report when it reaches it | 0.2-0.35 | the GPU half of q2w, ~15 ms/f at most | fits the hardware. But each finish on the Nova's tiler is a render-pass break (GMEM store and reload) plus a slot rotation wait |
+| R6 | Record draws faster so the PFIFO is nearer the guest | 0.15 | partial: the report still waits for the frame's finish and the GPU | RT: the wait is after the PFIFO reaches the report, not before it (q2e >= 2 ms for all of them) |
 | - | `TU_DEBUG=sysmem` | refuted | -- | cinesplit P 0.96 |
 
 P x win: R1 (0.9 x 17 ms) first, then R4 (0.5 x 9) and R2 (0.55 x 4.3), then R3 (0.3 x 1.3). B needs 8.5 ms/f off
@@ -570,8 +586,78 @@ The value is the one the later finish would write (the running count, after the 
 `[rcatch1018] on|off` once and `[rcatch1018] w open= closed=` per 2 s while it acts. Syntax-checked with the
 nightly tree's arm64 Release compile command (scratch/synck.py, which fails a planted error); not built locally.
 
+## #1018 reports arms: RT, RC (reportread.py as committed in 281ee4685e; judged 03:00 PDT 10-17)
+
+**Both VOID on V.** V required every `[rtrace] w` window to say mode=sync. They say mode=async. MainActivity.kt's
+FASTPATHS_VARS turns on `HAKUX_REPORT_ASYNC`, `HAKUX_TEXSCAN`, `HAKUX_DRAWREC`, `HAKUX_UNI_*`, `HAKUX_POSTED_PUT` and
+`HAKUX_LOCKFREE_WAKE` with "Fast renderer paths" (on by default). So every arm in this lane, and the owner's play,
+used the reportasync1010 reader. I wrote the prediction against the synchronous path without checking the app's
+defaults. HS, HG and HB were built for that path, and the judge is not edited after the fact. What follows is
+read descriptively (`reportread.py` as committed, `scratch/rtspan.py <RT> 131 191` for the samples):
+
+| arm | ms/f | reports/f | armed | q2e >= 2 ms | q2w >= 2 ms | q2w >= 16.7 ms | spin share | catch-up finishes/f |
+|---|---|---|---|---|---|---|---|---|
+| RT | 43.1 | 544 | 1.00 | 1.000 | 1.000 | 0.768 | 0.290 | -- |
+| RC | 42.0 | 542 | 1.00 | 1.000 | 1.000 | 0.783 | 0.313 | 0.00 |
+
+Histograms over the span (counts; edges 0.25 0.5 1 2 4 8 16.7 33.3 66.7 ms), RT:
+- q2e (queued -> handed to the reader): 0,0,73,4762,61431,266806,407227,49144,1014,0
+- q2w (queued -> written to the guest): 0,0,0,0,0,1695,181351,457266,150124,21
+
+What the trace says:
+- **Every report is armed** (status word -1 when the PFIFO queues it). Each offset comes back 33-66 ms later:
+  the guest reuses the same records each frame.
+- **A report waits for the frame's last finish, then for the GPU.** In the r-samples, the hand-off comes at the
+  next flip's finish (fe - fq = 1 for most). The q2e p25/p50/p75 are 9.1 / 12.6 / 15.6 ms, and q2w's are 19.4 /
+  28.4 / 36.4 ms. The ~15 ms between them is the reader's fence wait: the GPU running the frame's whole command
+  buffer, since every draw before the report is in it.
+- **The guest reads the result about a frame later** (fw - fq = 1; a flip comes before the write for 78%). It
+  spins in 0x63482 until the write lands. On the NV2A the report is written when the GPU reaches GET_REPORT,
+  long before the next frame asks.
+- **The catch-up never fires** (RC: 0 a frame). The FIFO is never empty with a value report queued: the guest is
+  a frame ahead.
+- HS/HG/HB as named: HS's signature holds (q2e >= 2 ms for all). HG's, defined as a difference of shares, is 0
+  only because both shares are 1.0; the gap itself is ~15 ms a report. HB's does not hold (q2w < 1 ms for none).
+  The wait is after the PFIFO, not before it.
+
+### The two remedies the trace points at (built in 08fd920b5c; `halo1016-early.json`)
+
+`HAKUX_REPORT_EARLY=1` (R8) and `HAKUX_REPORT_SUBMIT=<us>` (R7) are in hw/xbox/nv2a/pgraph/vk/reports.c. Both are
+off unless set, act only on the async reader, and log `[rearly1018] early= submit_us=` once plus a
+`[rearly1018] w early= cold= unarmed= submit=` line every 2 s.
+
+R8 works like this:
+- When the PFIFO queues an armed GET_REPORT whose offset is in a 4096-entry table, R8 writes the guest's record at
+  once, with that offset's last count.
+- It marks the queued report with bit 31 of its parameter (the TYPE byte, already asserted).
+- The reader still reads the queries. For a marked report it stores the count in the table and does not write it
+  to the guest.
+- An unmarked report keeps today's path, including the run-now path for an unarmed one. A marked report is skipped
+  there, since its status word 0 is ours.
+- An offset not yet seen is cold and takes today's path.
+
+R7: after an armed report is queued, R7 finishes (STALLED) if `us` or more have passed since the last finish.
+
+Ranking by P x win:
+1. **R8: P 0.6 x 12-17 ms/f.**
+   - It removes the wait at its root, which is a result the guest has to wait for. That fits what the hardware
+     gives: on the NV2A the result is long ready by the time the guest polls.
+   - The cost is a count one test stale: a lens flare or a culled object can lag one frame at a camera cut.
+   - RPCS3 ships this trade as "relaxed ZCULL sync", and Dolphin's perf queries are approximate the same way.
+2. **R7: P 0.25 x up to ~15 ms/f.**
+   - It is the hardware's own order: the result comes when the GPU reaches it.
+   - On the Nova's tiler, each finish breaks the render pass (a GMEM store and reload) and rotates a frame slot. At
+     2 ms that is up to ~20 a frame.
+
+The arms are B (base), E (+EARLY), EIF (E + FLDCW_CHAIN + IBC), S (+SUBMIT=2000), and EV/BV with frames for the
+pictures. All run on S2T_CVT with the trace on. EIF is there because once the poll is gone, IF's 9 ms/f of vCPU
+work should finally show up as frame time.
+
 ## What the next lane should not repeat
 
+- Before writing a V leg on a code path, read MainActivity.kt's FASTPATHS_VARS: "Fast renderer paths" (on by
+  default) turns on eight `HAKUX_*` switches, among them `HAKUX_REPORT_ASYNC`. halo1016-reports.json assumed the
+  sync report path and voided both arms on it.
 - "Guest idle 0" is not "vCPU-bound": look at the hot entry pcs for a poll loop first (here, a visibility-test
   spin), before building vCPU remedies.
 - Do not chase `TU_DEBUG=sysmem` or GPU-bound explanations for this cinematic: the cinesplit A/B refutes both.

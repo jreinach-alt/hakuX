@@ -1,0 +1,56 @@
+{
+  "registered_utc": "2026-10-17T10:10:00Z",
+  "who": "lane.halo1016",
+  "issues": ["1018"],
+  "kind": "soak env arms (one binary), six runs: base (B), the early answer (E), E with the vCPU remedies (EIF), submit on report (S), and E and B with frames for the pictures (EV, BV)",
+  "title": "Halo Combat Evolved.iso",
+  "device": "nova",
+  "seconds": 420,
+  "route": "halo-cinematic (docs/lanes/halo1016/routes/halo-cinematic.route, queued with TITLE_ROUTES=docs/lanes/halo1016/routes)",
+  "perflog": true,
+  "frames_every": 0,
+  "frames_every_note": "EV and BV only: --frames-every 20 (frames cost frame rate, so the timed arms take none)",
+  "runs_per_arm": 1,
+  "a_ref": "08fd920b5c",
+  "b_ref": "08fd920b5c",
+  "a_env": [
+    "HAKUX_FRAMETRACE=1",
+    "HAKUX_PROBE_WAITS=1",
+    "HAKUX_S2T_CVT=1",
+    "HAKUX_REPORT_TRACE=1"
+  ],
+  "b_env": [
+    "HAKUX_FRAMETRACE=1",
+    "HAKUX_PROBE_WAITS=1",
+    "HAKUX_S2T_CVT=1",
+    "HAKUX_REPORT_TRACE=1",
+    "HAKUX_REPORT_EARLY=1"
+  ],
+  "arms": {
+    "B": ["HAKUX_FRAMETRACE=1", "HAKUX_PROBE_WAITS=1", "HAKUX_S2T_CVT=1", "HAKUX_REPORT_TRACE=1"],
+    "E": ["HAKUX_FRAMETRACE=1", "HAKUX_PROBE_WAITS=1", "HAKUX_S2T_CVT=1", "HAKUX_REPORT_TRACE=1", "HAKUX_REPORT_EARLY=1"],
+    "EIF": ["HAKUX_FRAMETRACE=1", "HAKUX_PROBE_WAITS=1", "HAKUX_S2T_CVT=1", "HAKUX_REPORT_TRACE=1", "HAKUX_REPORT_EARLY=1", "HAKUX_FLDCW_CHAIN=1", "HAKUX_IBC=1"],
+    "S": ["HAKUX_FRAMETRACE=1", "HAKUX_PROBE_WAITS=1", "HAKUX_S2T_CVT=1", "HAKUX_REPORT_TRACE=1", "HAKUX_REPORT_SUBMIT=2000"],
+    "EV": ["HAKUX_FRAMETRACE=1", "HAKUX_PROBE_WAITS=1", "HAKUX_S2T_CVT=1", "HAKUX_REPORT_TRACE=1", "HAKUX_REPORT_EARLY=1"],
+    "BV": ["HAKUX_FRAMETRACE=1", "HAKUX_PROBE_WAITS=1", "HAKUX_S2T_CVT=1", "HAKUX_REPORT_TRACE=1"]
+  },
+  "queue_order": "E, B, EIF, S, EV, BV, as six requests of one run each: TITLE_ROUTES=docs/lanes/halo1016/routes request.sh --who halo1016 --device nova --title 'Halo Combat Evolved.iso' --route halo-cinematic --seconds 420 --ref 08fd920b5c --perflog --pull 'frametrace_*' --env <the arm's list> [--frames-every 20 for EV, BV] --issue 1018 --expect this file (scratch/queue_early.sh). a_env is B's list and b_env E's.",
+  "judge": "python3 docs/lanes/halo1016/earlyread.py --arm B=<B> --arm E=<E> --arm EIF=<EIF> --arm S=<S> --arm EV=<EV> --arm BV=<BV> --arm RT=<reports RT> --expect docs/testing/predictions/halo1016-early.json (written before any arm ran; reuses reportread.py's trace reader and vcpuread.py's accounting; exercised on the reports arms RT and RC, which it voids on V as it should, having no [rearly1018] line). The pictures (EV against BV over the span) are looked at, not scored: lens flares and objects present in the same shots.",
+  "baseline": "halo1016-reports.json's RT (0-0-x-1792230024-halo1016-2028398, 7da5534b6b, the same env as B), over [mark+131, mark+191], per guest frame: 43.1 ms; 544 GET_REPORTs a frame, all armed (status word -1 at queue); q2e >= 2 ms for 1.000 of them (median bucket 8-16.7 ms), q2w >= 16.7 ms for 0.768; [tpc787] spin share 0.290. RC (+ HAKUX_REPORT_CATCHUP=1): 42.0 ms/f, 0 catch-up finishes. Both VOID on their own V (mode async, not the sync it named).",
+  "prediction": "#1018: in the async report path (Fast renderer paths' default), each of Halo's ~544 armed visibility tests a frame is written ~28 ms after the PFIFO queues it: handed to the reader at the frame's last finish, then read once the GPU has run that whole command buffer. The guest polls them about a frame later and spins until they land (0x63482 -> D3D 0x1810f0). EA: E answers >= 0.9 of armed reports early (offsets are reused each frame), P 0.8. EP: E's spin share <= 0.05, P 0.65. EM: E ms/f <= 0.85 x B, P 0.6. EG: E <= 33.4 ms/f over the span, P 0.3. XM: EIF ms/f <= 0.95 x E (the vCPU savings become frame time once the poll is gone), P 0.5. XG: EIF <= 33.4 ms/f, P 0.4. SQ: S's share of reports with q2w >= 16.7 ms <= 0.5 x B's, P 0.35. SM: S ms/f <= 0.9 x B, P 0.2 (each submit on the Nova's tiler stores and reloads the render targets).",
+  "expect": {
+    "V_min_windows": 20,
+    "V_min_rtrace": 20,
+    "EA_share_min": 0.9,
+    "EP_spin_max": 0.05,
+    "EM_ratio_max": 0.85,
+    "G_msf_max": 33.4,
+    "XM_ratio_max": 0.95,
+    "SQ_ratio_max": 0.5,
+    "SM_ratio_max": 0.9
+  },
+  "expect_note": "EMPTY of captures ON PURPOSE: a soak writes none. Named rules read by docs/lanes/halo1016/earlyread.py --expect (legs V, EA, EP, EM, EG, XM, XG, SQ, SM). V: `mark cinematic`, `[s2tcvt] on`, >= 20 [rr425] windows, >= 20 `[rtrace] w` windows all mode=async, `[rearly1018] early=1` in E, EIF, EV and 0 elsewhere, `submit_us=2000` in S and 0 elsewhere; EIF also `[fldcw1018] chain=1` and `[ibc507] on=1 layout=ok`. A V failure voids the legs that read that arm.",
+  "expect_counts": {},
+  "must_not_move": [],
+  "must_not_regress": []
+}
