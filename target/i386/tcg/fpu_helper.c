@@ -1553,9 +1553,36 @@ void update_fp_status(CPUX86State *env)
 }
 #endif
 
+#if defined(XBOX) && defined(__ANDROID__)
+#include <android/log.h>
+#endif
+
 void helper_fldcw(CPUX86State *env, uint32_t val)
 {
+#ifdef XBOX
+    /*
+     * #1018: FLDCW calls, and those that flip HF_FPU_PC_MASK, the one TB flag
+     * the control word sets; a flip is the only FLDCW that must leave its TB
+     * (translate.c, HAKUX_FLDCW_CHAIN). One line per 2^20 calls. Statics:
+     * this file is built twice (__soft, __hard) and one copy runs.
+     */
+    static uint64_t n, flips;
+    uint32_t before = env->hflags & HF_FPU_PC_MASK;
+#endif
     cpu_set_fpuc(env, val);
+#ifdef XBOX
+    flips += (env->hflags & HF_FPU_PC_MASK) != before;
+    if (!(++n & 0xfffff)) {
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_WARN, "hakuX",
+                            "[fldcw1018] n=%" PRIu64 " flips=%" PRIu64
+                            " cw=%04x", n, flips, val & 0xffff);
+#else
+        fprintf(stderr, "[fldcw1018] n=%" PRIu64 " flips=%" PRIu64
+                " cw=%04x\n", n, flips, val & 0xffff);
+#endif
+    }
+#endif
 }
 
 void helper_fclex(CPUX86State *env)
