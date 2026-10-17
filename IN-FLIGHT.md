@@ -8,10 +8,10 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `dispatchdoctor1017` | claude-sonnet-5 | 25 min | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what  |
+| `dispatchdoctor1017` | claude-sonnet-5 | 40 min | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what  |
 
 - **Handhelds:** 2 connected.
-  - Nova: held by `owner`
+  - Nova: held by `lane.xbox`
   - Thor: held by `lanelocal-offline`
 - **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
@@ -125,4 +125,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 halo1016: Halo CE cutscenes on the Nova -- quiet speech under loud music (#938), cinematic at 8-19 fps (#1018)
 - 2026-10-16 release051b: three Halo known issues for 0.5.1, aimed at 0.5.2 (#433)
 
-_Updated 2026-10-17 09:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-17 09:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
