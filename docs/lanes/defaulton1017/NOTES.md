@@ -57,6 +57,9 @@
   and the 88 s push overlapped about the first minute of TSC1. So if TSC1 and TSC2 differ, the push is one
   possible cause and the difference does not decide the pixel item; if they match byte for byte, the
   overlap does not matter. Live listing confirms the ISO; RS requeued: 1792242364-defaulton1017-3562768.
+- 06:15: TSC1/TSC2 judged: FAIL as registered (37 moved), and a pair without TSC1 (fps1015 A vs TSC2, 68
+  moved) removes the push confound. S2T_CVT's pixel item closed against the switch (below). #1033 comment
+  19738.
 
 ## Pilot verdict (HON, HNI; screenread.py, as registered)
 
@@ -139,6 +142,32 @@ briefing (was 17 fps)`.
 - **AMP: AV HIT, HDS HIT; VIS:AMP not judged** (early 9), FL not reached (fewer than 2^20 FLDCW in 578 s).
   Amped 2 re-queues its report offsets two or more guest frames later too: 5,551 `skipn`, 3 cold, 9 early.
   REPORT_EARLY's gate leaves it on the reader's path, as on master. Route end, held 580 s, no crash.
+
+## S2T_CVT's pixel item: TSC1, TSC2 (defaulton1017-tsc.json, as registered)
+
+`ab_compare.py --a TSC1 --b TSC2 --expect defaulton1017-tsc.json --allow-same-binary`: **FAIL, 37 of 288
+must-not-move captures moved** (23 better, 14 worse, each by 80-86 px, about one marker; 3P24_..._NE by 86 on
+1,142). The registered prior was P 0.6 that it fails. FAIL means run-to-run movement in a suite master broke,
+nothing against the switch.
+
+lane.xbox's confound (the RalliSport push overlapped TSC1's first minute) is removed by a pair that does not
+include TSC1: `scratch/tscpairs.py` hashes the suite's captures in every result dir on disk that has them (60).
+
+| pair, one APK (2336324475f6, f5a67ba52c), Nova | env | captures moved of 288 |
+|---|---|---|
+| fps1015 A (0-1792163881-fps1015-716411, 10-16) vs TSC2 (1792239595-defaulton1017-3309495) | none, none | **68** |
+| fps1015 A vs TSC1 (1792239595-defaulton1017-3309294) | none, none | 78 |
+| TSC1 vs TSC2 | none, none | 74 |
+| fps1015 B (0-1792163875-fps1015-716177) vs fps1015 A | `HAKUX_S2T_CVT=1`, none | 64 (fps1015's A/B) |
+| fps1015 B vs TSC1, TSC2 | `HAKUX_S2T_CVT=1`, none | 75, 73 |
+
+Before the regression the suite is bit-reproducible: every one of the 12 binaries on disk with two or more runs
+(Nova and Thor, 09-13 to 10-10, e654516849 included) gives 0 of 288 moved in every pair. After it, three no-env
+runs of one binary move 68-78 between each other, and the switch's 64 is inside that. **Verdict: S2T_CVT's
+pixel item is closed against the switch.** Its 10 worse captures are this suite's run-to-run movement, which the
+regression introduced (#1033). No third copy needed: the clean pair (fps1015 A vs TSC2) decides it alone.
+Added to #1033 (forge comment 19738, body `scratch/c1033.md`): the regression also made the suite
+non-deterministic, so one run per bisect step cannot be read as an exact check.
 
 ## Confirmed from the source files (not from the brief)
 

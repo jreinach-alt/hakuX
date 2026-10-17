@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Read-only forge issue search with the lanes token.
+"""Forge issue search with the lanes token, and one write: a comment on an issue.
 
 usage: forgeq.py search <words...>      issues (open and closed) whose title/body match
        forgeq.py issue <n>              one issue's title, state and body
        forgeq.py comments <n> [last]    its comments (the last N, default 5)
        forgeq.py prs <words...>         open PRs whose title/body mention all the words
+       forgeq.py post <n> <body-file>   post the file as a comment on issue <n>; prints the comment id
 """
 import json
 import os
@@ -51,6 +52,14 @@ def main():
                     for ln in hits[:4]:
                         print(f"    {ln[:200]}")
             page += 1
+    elif cmd == "post":
+        body = json.dumps({"body": open(sys.argv[3]).read()}).encode()
+        req = urllib.request.Request(FORGE + f"/issues/{sys.argv[2]}/comments", data=body, method="POST",
+                                     headers={"Authorization": "token " + TOK,
+                                              "Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=30) as r:
+            c = json.load(r)
+        print(f"posted comment {c['id']} on #{sys.argv[2]}")
     elif cmd == "comments":
         n = int(sys.argv[3]) if len(sys.argv) > 3 else 5
         cs = get(f"/issues/{sys.argv[2]}/comments", limit=50)
