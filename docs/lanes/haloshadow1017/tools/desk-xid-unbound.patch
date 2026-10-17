@@ -1,0 +1,26 @@
+diff --git a/hw/xbox/xid.c b/hw/xbox/xid.c
+index c37142bc0d..818627840a 100644
+--- a/hw/xbox/xid.c
++++ b/hw/xbox/xid.c
+@@ -46,7 +46,9 @@ void update_output(USBXIDGamepadState *s)
+     }
+ 
+     ControllerState *state = xemu_input_get_bound(s->device_index);
+-    assert(state);
++    if (!state) {
++        return;
++    }
+     state->rumble_l = s->out_state.left_actuator_strength;
+     state->rumble_r = s->out_state.right_actuator_strength;
+     xemu_input_update_rumble(state);
+@@ -60,7 +62,9 @@ void update_input(USBXIDGamepadState *s)
+     }
+ 
+     ControllerState *state = xemu_input_get_bound(s->device_index);
+-    assert(state);
++    if (!state) {
++        return;
++    }
+     xemu_input_update_controller(state);
+ 
+     const int button_map_analog[6][2] = {
