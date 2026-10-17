@@ -238,6 +238,11 @@ and vertex attribute values only when `vertex_attr_gen` moved and the descriptor
 L2 (L1 + `HAKUX_GPL=0`) was already running and carries the same masking. It still tests the mode
 under serialisation, but it cannot clear the super-fast path.
 
+**L2's result (read in attempt 2 from the dump the cap left behind, 7 of 8 frames):** miss, as
+the masking predicted. f003's 30 projection draws: tex0==srf0 16384/16384 at every one; the one
+draw with pre/post changes 101 px at x0.670 r=g=b. Mode 0 under serialisation draws a correct
+shadow.
+
 ### L3 prediction (before the run)
 
 L3 = L1's env with the Nova's spec (`8,images,rtt,gd,after15,cap2400`), so nothing finishes at the
