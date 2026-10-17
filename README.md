@@ -1,4 +1,4 @@
-<p align="center"><img src=".github/hakux-logo.svg" alt="hakuX Community Edition: Original Xbox on Android" width="640"></p>
+<p align="center"><img src="docs/images/hakux-logo.svg" alt="hakuX Community Edition: Original Xbox on Android" width="640"></p>
 
 # hakuX CE
 
@@ -58,6 +58,9 @@ discs you provide:
 - a flash BIOS
 - an Xbox hard disk image
 - your games, as `.iso`, `.xiso`, `.cso` or `.cci` images
+
+[Getting your Xbox files](docs/xbox-files.md) says what each one is and what
+the app accepts.
 
 ## Get started
 
