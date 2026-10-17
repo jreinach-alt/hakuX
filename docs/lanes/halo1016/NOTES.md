@@ -470,7 +470,18 @@ ms/f (0.15); N spread <= 0.08 (0.7).
   FLDCW, ~0.3 us a run), 17% at 0x18111b and 8% at 0x63482 (long chained loops, ~0.7 ms an entry: the title's
   own work). In the 30-fps window before it, 70% is the idle loop at 0xbb0d4..0xbb0ee.
 
-### vCPU arms judged: A, F, I, IF (vcpuread.py as committed in d70f782f45; A2 pending)
+### vCPU arms judged: all five (vcpuread.py as committed in d70f782f45)
+
+A2 landed at 02:4x: 41.6 ms/f, so N HIT (A/A2 spread 0.023) and the base is 42.1. Against it: FE MISS (F 0.963),
+IE MISS (I 0.962), BE MISS (IF 0.932), G MISS. A2's `gi` is 174 a frame against A's 8,005, with the same env and
+binary. Which blocks tier-1 promotion pins varies from run to run, and A2's 1.0 ms/f lead over A is about the size
+R3 predicted for 7.9 k `gi` returns (~0.9 ms/f). The tier-1 arms T and FIT test that directly.
+
+| arm | ms/f | it | gi | hc | gap |
+|---|---|---|---|---|---|
+| A2 (1763228) | 41.6 | 42,213 | 174 | 905 k | 12.0% |
+
+The table and bullets below were written on A alone, before A2 landed:
 
 Over [mark+131, mark+191], per guest frame:
 
