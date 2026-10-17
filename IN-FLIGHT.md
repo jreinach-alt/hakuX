@@ -6,9 +6,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Right now
 
-| Lane | Model | Running for | Working on |
-|---|---|---|---|
-| `haloship1017` | claude-opus-5-5 | 1h 9m | Halo CE: the ship's rear lights show through the hull after the cut to the front (opening cinematic) |
+No lane session is running.
 
 - **Handhelds:** 2 connected.
   - Nova: held by `lane.local`
@@ -114,9 +112,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Work in progress
 
-| Branch | Topic | Tip | Last change |
-|---|---|---|---|
-| `lane/haloship1017` | Halo CE: the ship's rear lights show through the hull after the cut to the front (opening cinematic) | `b4334f8cfe` | 2026-10-17 12:57 |
+No branch is being worked right now.
 
 ## Recently landed on master
 
@@ -127,4 +123,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 defaulton1017: S2T_CVT, REPORT_EARLY and FLDCW_CHAIN on by default, after one default-on screen
 - 2026-10-17 halo1016: Halo CE cutscenes on the Nova -- quiet speech under loud music (#938), cinematic at 8-19 fps (#1018)
 
-_Updated 2026-10-17 13:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-17 14:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
