@@ -10,9 +10,18 @@ Step 0 done (this file, before any code). Desktop input works (r2), the cut is l
 are identified and count 0 in the steady front shot (r2, r3). **r4b (attempt 2) reproduces it on the desktop and
 locates it:** the rear lights are lens flares drawn with the depth test OFF, and the second frame after the cut
 (f42) draws all 12 of them at alpha 0.18-0.20, because the first front frame's tests (f41, own count 0) were
-answered with the behind shot's counts (12/730) by `HAKUX_REPORT_EARLY`. See "r4b" below. Running: legs e0
-(`HAKUX_REPORT_EARLY=0`, 0.5.1-rc1's report config) and a0 (`HAKUX_REPORT_ASYNC=0`), and the disassembly of
-Halo's flare read (does it wait for a result? It decides whether 0.5.1-rc1 can flash with no EARLY).
+answered with the behind shot's counts (12/730) by `HAKUX_REPORT_EARLY`. See "r4b" below.
+
+**r5 and the disassembly (attempt 2, 13:40 PDT):**
+- Legs e0 (`HAKUX_REPORT_EARLY=0`, 0.5.1-rc1's report config) and a0 (`HAKUX_REPORT_ASYNC=0`) are both clean
+  across the cut, with no rear flare in any front frame.
+- Halo's flare read waits for every result, with no timeout, so a late count can never carry over.
+- On Turnip-class drivers, the 0.5.2 defect is EARLY's, and only EARLY's.
+- The owner's two sightings (0.5.1-rc1 on 10-16, 0.5.2-rc1 on 10-17) were in the release app,
+  `com.jreinach.hakux`. bindpose1017 (#1043, folded 9abd80e90c) showed that this app has never had a custom
+  driver, so both ran on the **stock Qualcomm driver**, which the owner's 10-17 rule says is never used or tested.
+  See "The 0.5.1-rc1 sighting" below.
+- Next: Nova legs N0 and N1 on Turnip, and the remedy for EARLY at a cut, ranked below.
 
 **Why attempt 1 did not finish (12:08 PDT):** the 300-turn cap. It spent its turns on Step 0, the instrument,
 three desktop runs and many single-command polls, and the cap fell 40 s into r4 (route.log ends at
@@ -72,13 +81,20 @@ frame late at a cut), which nobody captured.
    samples each from behind).
 2. After the cut to the front, the lights show through the hull; hardware does not. **Account (desktop, 0.5.2
    defaults):** the first front frame's tests are answered with the behind shot's counts (EARLY), so the next
-   frame draws all 12 flares, depth test off, through the hull. For 0.5.1-rc1 (no EARLY): pending the e0 leg
-   and the flare read's disassembly.
+   frame draws all 12 flares, depth test off, through the hull.
+   **0.5.1-rc1 (no EARLY):** the code gives the guest its own counts. e0 shows 0 from the front, and the guest
+   waits for each count (the disassembly). So the flares through the hull need a host count that is nonzero from
+   the front. Neither desktop nor Turnip-class code produces one. The owner's sighting ran on the stock Qualcomm
+   driver (below), the one GPU-side difference left. The stock mechanism itself is not measured, and under the
+   owner's rule it will not be. N0 checks the code on Turnip.
 3. How many frames it lasts. **Desktop, 0.5.2 defaults: one frame** (f42, the second after the cut), alpha
-   0.18-0.20 against 0.53-0.79 behind. On a device it can be longer if answers lag more than a frame there.
+   0.18-0.20 against 0.53-0.79 behind. The length is fixed by the guest, not by timing. An early answer is always
+   exactly one frame old, and the next frame's answer (0) turns the flare off at once. So on a device it is one
+   frame per cut too.
 4. Desktop: **yes**, as that one frame, in the draw records. Not in the dumped images (the frame that would show
    it has none), which is why r2-r4b's pictures looked clean.
-5. Fast paths off: leg a0 (`HAKUX_REPORT_ASYNC=0`), running.
+5. Fast paths off: **clean on the desktop** (a0, `HAKUX_REPORT_ASYNC=0`, which also turns EARLY off). The 12
+   rear tests count 0 from the first front frame on, and no rear flare is drawn after the cut.
 
 ## Hypotheses
 
@@ -230,10 +246,115 @@ f41 on, against the hull's zeta, after 85-109 depth-writing draws): H2 (host cou
 without the hull), H4 (span/reset) and H5 (depth test on the light) have no hit. H8: no skips. What is left is
 which answer the guest gets, and when.
 
+### r5: the same cut with EARLY off (e0) and with the async reader off (a0)
+
+`legs.sh build-linux/run/r5 e0=HAKUX_REPORT_EARLY=0 a0=HAKUX_REPORT_ASYNC=0` (r4b's recipe: aim by the glow,
+300 frames, gd, zrep). Same build. `cutflare.py` over each cut:
+
+| leg | f | nv2a | view | rear tests: own nz/sum | answered early | guest given nz/sum | flare quads drawn |
+|---|---|---|---|---|---|---|---|
+| e0 | 53-56 | 2069-2072 | behind | 12/726-743 | 0 | = own | 12 rear, a 0.74-0.79 |
+| e0 | **57** | 2073 | front | 0/0 | 0 | **0/0** | none |
+| e0 | 58-62 | 2074-2078 | front | 0/0 | 0 | 0/0 | 1 other light (0.42,0.45,0.29), a 0.012-0.031 |
+| a0 | 62 / **63** / 64+ | 2093 / 2094 / 2095+ | behind / front / front | 12 / 0 / 0 | 0 | = own | rear / none / the one other light |
+
+Both are clean: the first front frame's answers are its own zeros, and no rear flare is drawn in any front frame.
+So on the desktop the defect is EARLY and nothing else. ASYNC by itself (e0) hands over the exact count, late,
+and the guest waits for it. No crash in either leg; C: 57 GB free after each.
+
+### Halo's flare code (disassembly, offline)
+
+Read from `default.xbe` (`.text` at 0x11000, the D3D section at 0x180e40). A subagent did the reading; I checked
+the deciding listings myself.
+- **Frame order.** The frame function 0x5dbc0 first calls 0x62690 -> 0x801e0 -> **0x60460, which reads every
+  flare test queued in the previous frame**. Then it queues this frame's flares (0x5fe80, 40-byte records,
+  count at `[0x2e34e0]`), issues the tests (0x60560 -> 0x63c00) and draws the flares (0x606b0).
+- **The issue step.** A test is BeginVisibilityTest, a 4-vertex quad, and EndVisibilityTest(i), where i is
+  the queue position. So report slot i (0x60000 + 16 i) is reused every frame, by whichever light is i-th in
+  the queue. The test is skipped when the projected area is <= 0, and the area is stored as the expected total.
+- **The read step waits.** For each record with area > 0, it calls 0x63460. That function calls
+  GetVisibilityTestResult (0x1810f0) and **spins while it returns 0x88760828 (not ready), with no timeout,
+  kick or yield**. Then t = (count*255 + area/2)/area, clamped to 255. t == 0 sets the brightness byte to 0 at
+  once. Otherwise the byte moves up as (3 old + t)/4 or down as (old + t)/2. Last, the queue count is zeroed.
+- **What is stored.** One brightness byte per flare, not per test. For map lights it is at 0x27ffb0 + slot*4 +
+  view; for objects at 0x2bffd0 + obj*0x22, cleared when the slot's owner tag changes at queue time. That
+  clearing is f41's reset in r4b. No reset is tied to a camera cut.
+
+What this decides:
+- **H9 (no wait, keeps the last answer) is refuted.** Since the guest waits for every count, a late count
+  cannot carry over a cut. A count arrives exactly or not at all.
+- **A race on slot reuse is impossible.** Every test issued in frame N is waited on before frame N+1 issues
+  its own.
+- **Only a wrong count can draw a hidden flare.** That means EARLY, a host GPU that counts the hidden quad, or
+  a different quad.
+
+### The 0.5.1-rc1 sighting: the stock Qualcomm driver
+
+- **The package.** The owner's 10-16 logs (`captures/owner-halo-1016/logcat-nova-full.txt`, `-2154.txt`) are
+  package `com.jreinach.hakux`, the release app. The slot0 state's `hdd` path is
+  `/storage/emulated/0/Android/data/com.jreinach.hakux/...`.
+- **The driver.** bindpose1017 (#1043, folded 9abd80e90c, update 2) shows that this app had no custom driver
+  from its install on 09-06. At 10-17 09:06 and 09:23 it logged `GPU driver: no custom driver installed, using
+  system default` and `[gpl569] ext=0 ... mode=0`, after 0.5.2-rc1 was installed over 0.5.1 with data kept.
+  lane.xbox (13:50, from lane.local) adds that it first got T30 when the owner selected it at ~13:20 today. So
+  both of the owner's sightings (0.5.1-rc1 on 10-16, 0.5.2-rc1 on 10-17) ran on the stock driver. The 10-16
+  logs carry no driver line either way; the install history is what settles it.
+- **The owner's rule (10-17).** The stock driver is never used or tested, and a stock-only result is a
+  wrong-setup arm. lane.xbox reports the same trap on #1038 (squares only on stock, gone on T30 at 13:34).
+- **What it means for 0.5.1-rc1.** With no EARLY, a hidden flare needs a host count that is nonzero from the
+  front (above). The code produces none on the desktop. The stock driver is the one GPU-side difference left,
+  so H2 on stock is the account for 0.5.1-rc1. Its mechanism is unmeasured and stays so. N0 (Turnip, EARLY=0)
+  is what checks that the code is clean on the Nova's GPU.
+- **For 0.5.2-rc1 on stock:** EARLY's one-frame flash would be there regardless of driver.
+
+### Hypotheses, final for the desktop (re-ranked on r5, the disassembly and the driver)
+
+| # | hypothesis | P | evidence |
+|---|---|---|---|
+| H1 | EARLY answers the first front frame's tests (and a reordered slot's) with another test's count | **0.97, the 0.5.2 defect, driver-independent** | r4b: f41 given 12/730 against its own 0/0, f42 draws 12 rear flares. e0 and a0: clean. Offline: the same class at f255 and f263 (reorders, α 0.016-0.043) |
+| H2-stock | the stock Qualcomm driver counts the hidden test quad (or gets the query wrong) | 0.6 as the 0.5.1-rc1 account; not chased (owner rule) | both sightings ran on stock; the code is clean without EARLY; A5 records a handheld counting the depth-hidden ZPass quad |
+| H2-Turnip | Turnip counts the hidden quad | 0.05 | halo1016's Turnip front frames are clean (21 frames, steady shot); N0 decides |
+| H9 | the guest keeps a stale answer on "not ready" | 0.00 | refuted: 0x63460 spins with no timeout |
+| H3, H4, H5, H7, H8 | zeta without the hull, span/reset, a depth-tested light, draw order, a skipped draw | <= 0.02 each | r4b: own counts right in every frame, flares are depth-test-off, no skips |
+| H6 | the aarch64 JIT decides differently | 0.02 | N0/N1 compare with the desktop |
+
+### Remedies, ranked by P x win (offline cost from the dumps, `testquad.py`)
+
+The cost of refusing an early answer is a frame in which the guest waits for the GPU. That wait is what EARLY
+removed: 42.1 -> 35.9 ms/f in Halo's cinematic (halo1016's arms B, E; defaulton1017 :325). A frame waits if any
+one of its reports is not answered early, so the cost unit is frames that wait, per 300.
+
+| # | remedy | P it clears the cut flash | added waiting frames / 300 (r4b, e0 sim, a0 sim) | win | status |
+|---|---|---|---|---|---|
+| R1 | **Moved-quad guard:** refuse an early answer when the offset's test quad (inline position, attribute 0) moved more than 32 guest px since the offset's last test **and** the stale answer is nonzero | 0.9. Offline: catches 12 of 12 at all three cuts, plus the reorder flashes | 2 (the cut already waits in r4b), 2, 4: about 1%, ~0.06 ms/f at 6.2 ms per waiting frame | the defect gone, and the reorder class too, for ~1% of EARLY's gain | **building** |
+| R2 | EARLY off by default | 1.0 (e0, a0 clean) | every frame: 6.2 ms/f, #1018's whole gain | the defect gone, Halo's cinematic 15% slower | measured by e0 plus halo1016's arms; the fallback if R1 fails |
+| R3 | Key the early answer by quad position instead of offset (nearest previous test within T) | 0.9 | T=8: 156; T=16: 112; T=32: 59 | low: about a fifth to half of EARLY's gain | rejected on the measurement |
+| R4 | Moved-quad guard on every answer, zero or not | 0.9 | T=8: 151; T=32: 60 | low | rejected on the measurement: within-shot quads jump, but nearly always with a stale answer of 0, which is harmless |
+| R5 | Turnip by default (bindpose1017's R2), for the stock sightings | n/a here | n/a | every release user off stock | the owner's decision, not this lane's |
+
+Why "nonzero" is the right half. A stale 0 for a light that is now in view only delays its fade-in by one
+frame, and at a cut the guest's own reset starts it from 0 anyway. A stale nonzero answer for a light now
+hidden is the defect. N must be 1 rather than a sample threshold: the four small rear lights' stale answers
+are 4-6 samples, and f42 drew them at α 0.184. Guard knees from `testquad.py --nzguard` (r4b, N=1):
+
+| T (guest px) | added waits | refused | hidden caught | hidden missed (max stale) |
+|---|---|---|---|---|
+| 16 | 20 | 51 | 24 | 191 (4) |
+| 24 | 6 | 30 | 18 | 197 (4) |
+| **32** | **3** (f0 is the dump's start; 2 real) | 27 | 15 | 200 (4) |
+| 64 | 3 | 27 | 15 | 200 (4) |
+| 96 | 3 | 23 | 11 | 204 (9) |
+
+The 200 missed are 1-4 sample edge counts at a quad that did not move. They are a light becoming occluded in
+place, shown one frame longer at its old spot. That is EARLY's designed latency (defaulton1017's HVIS
+0.0055), not a light seen through a hull. 32 is the knee, and 32-64 behave the same.
+
 ## Crash log (desktop)
 
-None yet (r1-r4b: no dump in `wsl-crashes/`; C: 57 GB free after each).
+None yet (r1-r5: no dump in `wsl-crashes/`; C: 57 GB free after each).
 
 ## Questions
 
 1. ~~Which build did the owner see it on?~~ Answered from slot0's meta: 2636e89f4a, no EARLY (above).
+2. ~~Which driver?~~ The release app, stock until ~13:20 today (bindpose1017, lane.xbox). Not a question for
+   the owner.
