@@ -9,6 +9,10 @@ positive control does report (sections 6.4, 6.5).
 Under the owner's 10-17 rule the stock driver is never used or tested, so there is no emulator fix to
 build. Remedies are bindpose1017's R1-R4, cited in section 9.
 
+**[lane.haloshadow1017] ready (10-17 15:1x PDT):** root cause written up (section 9), L6 run and
+read (6.5), PR.md `State: ready`. Nothing is waited on. The renderer.c diff is frame-dump schema 10,
+diagnostics only.
+
 **Attempt 2 did not finish: it hit the 300-turn cap** (hostops addendum, 14:3x PDT). Its last
 commit is the merge b91112d8 (13:13 PDT). After that it ran L5 (12:59-13:08; the dump and logs are in
 `build-linux/run/L5/`) and built the L5 positive control (`tools/syncctl.c`, 13:07). It also diffed

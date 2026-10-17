@@ -1,6 +1,6 @@
 # haloshadow1017: Halo CE's dark squares under soldiers' feet: the stock Adreno driver, not the code (#1038)
 
-State: draft
+State: ready
 
 Lane: haloshadow1017            Issue: #1038
 Base: master @ 9abd80e90c (merged; branched from 8d260f39fc)
@@ -52,9 +52,10 @@ check passes, and fold regenerates the index under `check --exact`). The rest is
 
 Release note (none): frame-dump instrumentation only; nothing changes unless a dump is armed.
 
-Preflight (`--allow-tracker`) passes every gate but `coverage`, which fails on #1045 ("A brief flash of static or
-green distortion shows every time a game star..."). That issue has neither a lane nor a blocker. It is a board row,
-not this branch's.
+Preflight (`--allow-tracker`, 15:1x PDT) passes psh_differ, aci_vmstate, the nv2a index and board files. Two
+board-side gates fail, and neither is this branch's:
+- `territory`: "ui/xemu.c is listed FREE but claimed by haloship1017". This branch does not touch ui/xemu.c.
+- `coverage`: #1045 has neither a lane nor a blocker. lane.xbox requested its `[lane.bootstatic1017]` row at 14:40.
 
 Selftest fragments, chosen by reading the diff:
 - `75-nv2a-index.sh` and `75-nv2a-index-drift.sh`: renderer.c moves lines that the index cites, and `check` must
