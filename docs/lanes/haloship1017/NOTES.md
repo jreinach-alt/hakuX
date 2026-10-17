@@ -120,6 +120,22 @@ titles disk copy (`titles-nova-e0446ac3006f`) as the HDD, the 0.5.2 fast-path de
 | run | head | what | result |
 |---|---|---|---|
 | r1 | 084e5e266b + route runner | route to the profile screen, gated | boot reached the main menu (CAMPAIGN lit) in ~60-120 s. **START never reached the guest**: no `[pad1039]` line, pad file never read. Cause: with `-display none`, `sdl2_display_init` never runs, so the main thread waits on `display_init_sem` for good and `xemu_input_init` never binds a controller. Fix: `ui/xemu.c` binds input from a machine-ready notifier when `HAKUX_PAD_FILE` is set. Also the runner globbed `*.json` for `*.jsonl`, so every shot timed out (files were still moved). No crash |
+| r2 | 1d1f39671b (input fix) | route to the cinematic (gates at menu and profile: existing profile New001 selected, none created), then one frame every 2 s for 200 s, `--zrep` | input works. Loading ~90 s, cinematic from mark+~98 s. **The cut is between shot 081 (mark+166 s, nv2a_frame 4256, behind: engines lit) and 082 (mark+170 s, frame 4266, front).** ~6 guest frames/s on llvmpipe. Front-view shots 082-098 (one frame per 2 s, 30 s) show no rear light through the hull. No crash |
+
+**The light tests (r2, `vistests.py`, shots 081 and 082).** Halo tests each light with its own report:
+CLEAR_REPORT_VALUE, one 4-vertex quad (`inline_buffer`, prim 7) with depth test LEQUAL, colour writes off
+(`cm0`), against the main zeta 0x2198000 (the hull's), then GET_REPORT, at offsets 0x60000 + 16 k. 44-45 tests a
+frame, all after the scene (draws 92-135 behind, 114-158 front). One query per test (`nq 1`), so the count is
+the quad's own passing samples: no span or carry (H4's "count = hull + test" is not what happens here).
+
+| shot | view | tests | nonzero | values |
+|---|---|---|---|---|
+| 081 | behind | 44 | 12 | pairs: 182,182 and 169,169 (the engines), 9,9 / 6,6 / 9,9 / 6,6 (the four small lights) |
+| 082 | front | 45 | 2 | 2 and 4 samples (0x600f0, 0x601f0); the other 43 are 0 |
+
+So on the desktop, in the steady front shot, the hidden lights count 0 (or a few edge samples), which is right.
+Symptom 4 is "no" for the steady shot; the frames right after the cut were not in r2 (one frame per 2 s).
+r3 dumps every frame from mark+140 s.
 
 ## Crash log (desktop)
 
