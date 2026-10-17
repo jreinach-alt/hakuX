@@ -8,7 +8,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `halo1016` | claude-opus-5-5 | 1h 2m | halo1016: Halo CE cutscenes on the Nova -- quiet speech under loud music (#938), cinematic at 8-19 fps (#1018) |
+| `halo1016` | claude-opus-5-5 | 1h 17m | halo1016: Halo CE cutscenes on the Nova -- quiet speech under loud music (#938), cinematic at 8-19 fps (#1018) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -116,7 +116,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/halo1016` | halo1016: Halo CE cutscenes on the Nova -- quiet speech under loud music (#938), cinematic at 8-19 fps (#1018) | `82a151b922` | 2026-10-17 01:52 |
+| `lane/halo1016` | halo1016: Halo CE cutscenes on the Nova -- quiet speech under loud music (#938), cinematic at 8-19 fps (#1018) | `bc9db33828` | 2026-10-17 02:41 |
 
 ## Recently landed on master
 
@@ -133,4 +133,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-16 logo1016-banner: the new hakuX CE banner at the top of the README
 - 2026-10-16 logo1016-count: the Playable count as a running total, apart from the download
 
-_Updated 2026-10-17 02:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-17 02:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
