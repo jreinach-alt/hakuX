@@ -23,10 +23,10 @@ static uint64_t hakux_tso_ld, hakux_tso_st, hakux_tso_pair, hakux_tso_slow;
 static void hakux_tso_count(uint64_t *c);
 
 /*
- * HAKUX_FIST_ROUND=1, off by default (#939): the cvt*f_i* ops (inline
- * FIST/FISTP only) round per FPCR.RMode, which flcr loads from the guest's
- * x87 RC, as x87 FIST does and as the x86_64 backend's CVTSD2SI does. Off,
- * they lower to a bare FCVTZS, which always truncates.
+ * On by default (#939): the cvt*f_i* ops (inline FIST/FISTP only) round
+ * per FPCR.RMode, which flcr loads from the guest's x87 RC, as x87 FIST
+ * does and as the x86_64 backend's CVTSD2SI does. HAKUX_FIST_ROUND=0 is
+ * the escape hatch back to a bare FCVTZS, which always truncates.
  */
 static bool hakux_fist_round;
 
@@ -4320,9 +4320,15 @@ static void tcg_target_init(TCGContext *s)
         /* HWCAP_LRCPC is bit 15 of AT_HWCAP on Linux/arm64. */
         const char *fr = getenv("HAKUX_FIST_ROUND");
         const char *tso = getenv("HAKUX_TCG_TSO");
-        hakux_fist_round = fr && strcmp(fr, "1") == 0;
-        if (hakux_fist_round) {
-            hb_log("fist round=ON (FRINTI before FCVTZS)");
+        if (!fr) {
+            hakux_fist_round = true;
+            hb_log("fist round=ON (default)");
+        } else if (strcmp(fr, "0") == 0) {
+            hakux_fist_round = false;
+            hb_log("fist round=OFF (env HAKUX_FIST_ROUND=0)");
+        } else {
+            hakux_fist_round = true;
+            hb_log("fist round=ON (env)");
         }
         if (tso && strcmp(tso, "rcpc") == 0) {
 #if defined(__linux__)
