@@ -4,13 +4,18 @@ Halo: Combat Evolved (4D530004), opening cinematic on the Nova. Found on 0.5.1-r
 (0.5.1 shipped without this lane, owner 10-16 ~22:50 PDT).
 Defects: **#938** quiet speech under loud music; **#1018** the cinematic drops to 8-19 fps for ~47 s.
 
-## Status (2026-10-17 00:20 PDT)
+## Status (2026-10-17 00:45 PDT)
 
 - #1018: the cinesplit A/B is judged (below). The PFIFO thread's off-CPU half is synchronous surface downloads
   (`VK_FINISH_REASON_SURFACE_DOWN`, 61 a frame, 33 ms a frame over the plateau). The GPU is not on the path, and
-  `TU_DEBUG=sysmem` is no remedy. Next: name which refusal makes them, with a perflog census run. Then the remedy legs.
-- #938: the speech legs (docs/testing/predictions/halo1016-speech.json) are on the Nova:
-  A = 0-0-x-1792220370-halo1016-1204164, R = 0-0-x-1792220376-halo1016-1205473.
+  `TU_DEBUG=sysmem` is no remedy. Same-address incompatible evictions (`[evict372]`) are flat over the plateau, so
+  they are not the source either. The census pair (halo1016-census.json, on 214445e90e with the new `[ovl1018]`
+  overlap-eviction counter) is queued on the Nova: A = 1792222165-halo1016-1341449, B (+`HAKUX_S2T_CVT=1`) =
+  1792222171-halo1016-1341994. It names whose downloads they are. Then the remedy.
+- #938: the speech legs are judged (below): B, L, N and S all MISS. The HRTF scale is not the lever: raw taps sum
+  to l1 ~13, so today's division already cuts the bed, and raw plays it 20 dB louder and clips. Speech does not
+  starve. What is over the speech is the 2D music, at the title's own registers through the same ADPCM decoder.
+  It sits 1-3 dB under speech while the early lines play, and 4-8 dB over it in the score's swell at mark+133..163.
 
 ## Why attempt 1 did not finish
 
@@ -148,6 +153,63 @@ at the 30-fps pair.
    the downloaded bytes on the CPU in between; the texture path does read them (its upload follows).
 3. **TU_DEBUG=sysmem.** Refuted: P leg 0.96.
 
+## #1018 census: whose downloads (halo1016-census.json, queued 00:27 PDT 10-17)
+
+Where a `SURFACE_DOWN` finish can come from (OPT_SURF_TO_TEX_INLINE = 1):
+- a deferred download completed at its consumer (surface.c:2142);
+- an inline `download_surface_to_buffer` (2700);
+- the pending/dirty fallbacks (3002, 3086).
+
+The consumers that force them:
+- the texture path (`txr dl` / `scdl`);
+- the CPU range watch (`[sdcall] range`);
+- an eviction completed before a new binding uploads (`surfupd`);
+- reuse, expire, and the record and flip paths.
+
+What is already known, before the census:
+- **Same-address incompatible evictions are not it.** cinesplit A's `[evict372]` line is flat across the plateau:
+  - 60 Z<->C role swaps of one 640x480 surface (f130 <-> f44, pitch 2560);
+  - every one of them handed off on the GPU;
+  - 0 fallbacks.
+- **The only perflog soak of this title** (10-03, 1-1791064684-lanelocal-4097992, effb0d001b, the cinematic skipped,
+  its slow stretch pre-gameplay at 49 ms/f) puts all of its 2 downloads a frame on evictions:
+  - Finish sd 2.0/f (cDef 1.5, sd[dl] 0.5);
+  - `dif` ovl 2.0/f, ovlSh 1.0/f;
+  - `txr` dl 0, scdl 0;
+  - `[sdcall]` surfupd 0.99 fin/f (18.6 ms/f), tobuf 0.49/f.
+
+  That is overlap eviction: a new binding at another address over a draw-dirty one, `invalidate_overlapping_surfaces`.
+  Its rate is 1/30 of the plateau's.
+
+The instrument, `[ovl1018]` (214445e90e, surface.c, counters only):
+- It counts evictions by overlap and shelf, draw-dirty and clean, by relation:
+  - the evicted surface inside the new one, or covering it;
+  - a role, format or pitch change;
+  - from the shelf, downloaded inline.
+- It keeps an 8-pair table of draw-dirty (evicted, new) shapes and the address offset between them.
+- It logs every 5 s beside `[evict372]`.
+
+The arms:
+- A = 1792222165-halo1016-1341449: perflog, frametrace and probe1010 on 214445e90e.
+- B = 1792222171-halo1016-1341994: A plus `HAKUX_S2T_CVT=1`.
+
+Judge: `censusread.py`, exercised on the 10-03 log by `scratch/censusread_mock.py` before either arm ran.
+
+| Leg | Hypothesis | P | Hit |
+|---|---|---|---|
+| O | overlap eviction | 0.55 | `[ovl1018]` draw-dirty >= 0.6 x Finish sd per frame, and txr dl + scdl + range <= 0.3 x |
+| K | the texture path refuses the surface | 0.25 | txr dl + scdl >= 0.6 x Finish sd |
+| R | the guest reads the frame back on the CPU | 0.10 | `[sdcall]` range fin >= 0.6 x Finish sd |
+| - | expire, fallbacks, reuse | 0.10 | none of O, K, R |
+| C | `HAKUX_S2T_CVT` removes them (the #986 MKSM switch) | 0.10 | B's sd/f <= 0.5 x A's, and ms/f <= 0.8 x A's |
+
+What each verdict sends to the remedy:
+- **O with a fixed pair shape:** copy the evicted image's overlapping texels into the new binding on the GPU, instead of
+  download, VRAM, upload. An alternative is to widen SURFSPLICE (on by default, `spl` in `[sdcall]`) to cover the pair.
+- **K:** its `txdl` reason names the GPU route to build. `cvt` is the one `HAKUX_S2T_CVT` already covers, and
+  Texture_shadow_comparator is the blocker on making that default-on.
+- **R:** the access watch, not the surface cache.
+
 ## #938 (speech)
 
 Offline (scratch/audio/REPORT.md):
@@ -157,17 +219,86 @@ Offline (scratch/audio/REPORT.md):
 - Halo's own DSP program would play the bed +4.65 dB louder still.
 - So A2 (`use_dsp`) is refuted in the direction that matters, and A1 (max-over-bins) is not this bug.
 
-| | Hypothesis | P start | P now | Evidence / leg |
-|---|---|---|---|---|
-| H2 | The mix is the title's own; speech over music matches the registers | -- | 0.30 | REPORT 1.2; leg B |
-| H1 (A3) | The L1-normalised HRIR plays the 3D bed louder than the guest's taps | 0.2 | 0.20 | leg L, N (HRTF_NORM=raw) |
-| H3 | The dialogue stream starves in the slow shots (#1018) | -- | 0.12 | leg S (sslempty) |
-| A2 | Halo's DSP mix restores the balance | 0.3 | 0.03 | the dsp_harness ran Halo's GP/EP: bed +4.65 dB further over |
-| A1 | Max-over-bins | 0.5 | 0.03 | v65 is 2D mono in bins 0/1 |
-| A4 | Volume conversion | low | 0.05 | the register ratio is reproduced exactly |
-
 Speech legs: A = meter on (l1, the default); R = `HAKUX_APU_HRTF_NORM=raw`. Judge: `speechread.py` as committed in
 a93db78057.
+
+### Speech verdict (halo1016-speech.json; judged 00:30 PDT 10-17)
+
+- A = 0-0-x-1792220370-halo1016-1204164 (l1); R = 0-0-x-1792220376-halo1016-1205473 (raw); both on 8f70b1e9e0.
+- V valid on both: mark, 27 and 29 cine shots, the meter on, the norm logged, 25 and 16 speech windows.
+
+| Leg | Result | Measured | Threshold |
+|---|---|---|---|
+| B | MISS | A median S-M -4.3 dB over 25 speech windows | >= 0.0 |
+| L | MISS | median l1 over A's 795 3D HRIR binds 13.09 (l2 ~3.0, dc ~-4) | < 1.0 |
+| N (R) | MISS | R's bed 20.0 dB **over** A's (3d -14.5 against -34.5); S-R 13.9 dB worse; clipped 959161 against 2 | bed >= 3 dB under, S-R >= 3 dB over, no more clipping |
+| S | MISS | 0 `sslempty v=65` after mark; 0 v65 pauses in windows under 25 fps | >= 1 |
+
+Read, by the prediction's own text:
+- **H1 is refuted.** The guest's taps sum to l1 ~13, so hrtf.h's division cuts the bed by ~22 dB rather than raising it.
+  The only other scale on offer, raw, plays the bed 20 dB louder and clips a million samples, which no Xbox does. `cap`
+  is the quieter of l1 and raw per voice, so it equals l1 here: the lever is spent in both directions.
+- **H3 is refuted.** The dialogue stream never runs dry, in the slow shots or anywhere else.
+- **B missed, but not for the reason its text assumed.** "Speech under music against the registers" was the premise.
+  The register log (`apumix`, scratch/mixregs.py) shows hakuX holds every register the title writes, and the miss
+  comes from the music's content, below. So B refutes REPORT 1.2's whole-cinematic reading (+4.1 / +1.0 dB held at
+  two state moments). It does not refute H2.
+- R's own S-M is not a reading: `top=` keeps 8 voices, and at raw the 3D voices push the music out of it in two windows
+  (M = -200). No leg used it.
+
+### What is over the speech (A's registers and meter, window by window: `scratch/mixregs.py <A>`)
+
+- **Both voice classes take the same path.**
+  - Speech v65: 2D mono ADPCM at 22 kHz, bins 0/1 at -13.4 dB, unchanged for the whole cinematic. Its source peaks at
+    0 dBFS (RMS -16.4).
+  - Music v85/v86/v87/v88: 2D stereo ADPCM at 44 kHz, bins 0/1.
+  - In the owner's slot0 and slot2 states, every one has fmode 0 (bypass) and its envelope off (hxs_voices.py). So no
+    unemulated filter (ParaEQ, vp.c:2306) or envelope sits on either.
+  - One decoder and scale serve both (`adpcm_decode_block`, `int16_to_float`, vp.c:1849-1858), and the bins are the
+    same, so Halo's DSP program treats them alike too.
+- **The title moves the music itself.** v85/v86 step between -15.1/-9.1 and -12.0/-6.0 dB in step (a 3.1 dB duck).
+  v88 enters at mark+118 at -6.0/-9.1.
+- **Speech while it runs** (its window level scaled to its active frames n/7500), against the summed music:
+
+| span | windows | median speech - music | range |
+|---|---|---|---|
+| before mark+130 | 13 | +1.9 dB | -5.1 .. +4.2 |
+| from mark+130 | 12 | -1.7 dB | -12.3 .. +4.9 |
+
+  - From mark+133 the score swells: v86's content climbs from about -30 to -7 dBFS by mark+138, and v88's from -31 at
+    mark+118 to -16 by mark+208. Speech's content stays at -12 to -20.
+  - Speech is never clearly over the music. Its median margin is +2 dB early and -2 dB late. The 3D bed sits at about
+    speech level beside both (A's S-B median +1.8 dB, by window).
+
+**Account of the symptom ("voiceovers quiet, music loud"):** hakuX plays Halo's mix as the title sets it: its own
+registers, its own content, one decoder, no filter on either path. In that mix the dialogue has no more than ~2 dB
+over the music, and loses it in the swell at mark+133..163 and mark+198..243. That is about 2:00-2:35 and 3:05-3:50
+into the cinematic: the route marks at LOADING, about 10 s before the first shot. Nothing found between the
+registers and the meter separates speech from music. One stage cannot be read here: hardware's own output stage,
+and whether Halo's GP program compresses the bus dynamically (the dsp_harness measured static gains at one level).
+
+| | Hypothesis | P start | P now | Evidence |
+|---|---|---|---|---|
+| H2 | The mix is the title's own | 0.30 | **0.65** | registers held as written; same codec, bins, filter (bypass) and envelope (off) for speech and music; the late swell is in the music's content |
+| A7 | Halo's GP program compresses the bus on hardware (level-dependent; static harness gains miss it) | -- | 0.08 | untested: the dsp_harness at two input levels would decide it offline |
+| A8 | The register scale (1/64 dB per step, vp.c:450) is wrong | -- | 0.05 | speech's register sits inside the music's range (-6.0 .. -15.1), so an error moves the ratio either way by <= 2 dB |
+| A9 | The Nova's own output (small speaker, Android DRC) | -- | 0.10 | perception, not the emulator; untested |
+| H1 (A3) | The L1-normalised HRIR plays the 3D bed louder than the guest's taps | 0.20 | 0.01 | L, N: l1 ~13; raw is 20 dB louder and clips |
+| H3 | The dialogue stream starves in the slow shots (#1018) | 0.12 | 0.01 | S: 0 sslempty |
+| A2 | Halo's DSP mix restores the balance | 0.3 | 0.02 | dsp_harness: bed +4.65 dB further over; speech and music share bins |
+| A6 | An unemulated filter on the 2D voices | -- | 0.01 | fmode 0 on v65 and v85-v88 |
+| A1 | Max-over-bins | 0.5 | 0.01 | v65 is 2D mono in bins 0/1 |
+| A4 | Volume conversion | low | 0.02 | registers held as written; the meter reads gain x content |
+| - | other | | 0.04 | |
+
+**#938 remedies.** Two have been chased, and both are null:
+- the HRIR scale (raw, refuted; cap, which equals l1 here);
+- the #1018 fps fix (H3 refuted: speech does not starve, so a faster cinematic leaves the balance where it is).
+
+Nothing in the emulator plays this mix wrong on present evidence, so this lane does not propose a #938 fix.
+- What would decide it is a hardware reference: the Questions below, with the times above.
+- A7 can be decided offline: the dsp_harness at two input levels. That is the next instrument if one is wanted.
+- A per-title dialogue boost would be a change to the title's mix, not emulation, and is not proposed.
 
 ## What the next lane should not repeat
 
@@ -177,5 +308,8 @@ a93db78057.
 
 ## Questions (for the owner; nothing waits on them)
 
-1. On a real Xbox, does the dialogue in the opening cinematic sit clearly over the low hum/engine bed, or is it close
-   to it? The offline account says hakuX reproduces the title's own register ratios; your ear on hardware decides H2.
+1. On a real Xbox, does the dialogue in the opening cinematic sit clearly over the music? Listen especially from about
+   2:00 to 2:35 into the cinematic (the score swells under Keyes and Cortana) and from 3:05 to 3:50. hakuX plays the
+   title's own registers and content there with speech level with the music (+2 dB early, -2 dB in the swells). If
+   hardware has the voices plainly on top, there is a stage after the voices that hakuX lacks (A7), and the
+   dsp_harness is the next instrument. If it sounds the same, #938 is the title's mix.
