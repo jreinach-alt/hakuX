@@ -8,7 +8,9 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `dispatchdoctor1017` | claude-sonnet-5 | 1h 55m | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what  |
+| `dispatchdoctor1017` | claude-sonnet-5 | 2h 10m | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what  |
+| `haloshadow1017` | claude-opus-5-5 | 11 min | haloshadow1017: character shadows draw as dark squares under the feet (Halo CE and other titles) |
+| `haloship1017` | claude-opus-5-5 | 11 min | Halo CE: the ship's rear lights show through the hull after the cut to the front (opening cinematic) |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `owner`
@@ -117,6 +119,8 @@ The harness dashboard, with each release's targets and the progress charts, is [
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
 | `lane/dispatchdoctor1017` | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what stops a ru | `78cf2c37ac` | 2026-10-17 09:42 |
+| `lane/haloshadow1017` | haloshadow1017: character shadows draw as dark squares under the feet (Halo CE and other titles) | `d28bc576ee` | 2026-10-17 10:49 |
+| `lane/haloship1017` | Halo CE: the ship's rear lights show through the hull after the cut to the front (opening cinematic) | `5ef99f4fd8` | 2026-10-17 10:49 |
 
 ## Recently landed on master
 
@@ -125,4 +129,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 defaulton1017: S2T_CVT, REPORT_EARLY and FLDCW_CHAIN on by default, after one default-on screen
 - 2026-10-17 halo1016: Halo CE cutscenes on the Nova -- quiet speech under loud music (#938), cinematic at 8-19 fps (#1018)
 
-_Updated 2026-10-17 10:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-17 11:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
