@@ -143,7 +143,7 @@ code exists under hw/xbox/nv2a (`4D530004` only under docs/ and .github).
   and compatibility page for Halo CE, square/black shadows in other titles, X1 BOX changelogs,
   Cxbx-Reloaded reports, DXVK, c20.reclaimers.net (Halo renders 128x128 shadow maps per object).
 
-## 4. Symptoms and their accounts (current)
+## 4. Symptoms and their accounts (superseded by section 9.3)
 
 | # | Symptom | Account so far |
 |---|---|---|
@@ -154,7 +154,7 @@ code exists under hw/xbox/nv2a (`4D530004` only under docs/ and .github).
 | 5 | Since August, across builds and titles | The defect survived three surface-to-texture regimes (direct bind, CPU decode, GPU cvt). The cause must be in what all three share: the binding cache, the view or sampler, the shader, or the vertex/coordinate path. Not in any one regime's decode |
 | 6 | Desktop shows it? | Unknown. Next experiment |
 
-## 5. Hypotheses (ranked by P; re-ranked on F1-F6, then on the code reads in 5.1)
+## 5. Hypotheses (ranked by P; re-ranked on F1-F6, then on the code reads in 5.1; superseded by section 9.4)
 
 | id | Hypothesis | P | Already-tried row | Hit / miss, and the instrument |
 |---|---|---|---|---|
@@ -385,6 +385,143 @@ object-in-use checks, stateless and object lifetime) and sync off. Settings:
 `/mnt/c/Users/Justin/AppData/Local/Temp/wsl-crashes/` was empty after every run (L1-L5; deskrun.py
 lists it). C: stayed at 56.7 GB free. No desktop run crashed.
 
-## 8. Questions
+## 8. Questions (non-blocking)
 
-(none yet)
+1. UC2's red box, from RetroTechDad's August video (StevenMXZ Turnip v26.3.0-R3, per lane.xbox's
+   addendum 1), is not this cause: it is a different title, a different colour and a Turnip build.
+   Nothing of it is on hand: no capture, no state and no build. Should lane.xbox file it as its own
+   issue, so it is not folded into #1038?
+2. #1038's closing is the board's. The 13:34 retest ran in the owner's release app with T30, so R1 is
+   in place on that install. R2 (Turnip by default) is the owner's decision, already put to them by
+   lane.local for #1043.
+
+## 9. Root cause: the stock Qualcomm Adreno driver (10-17, attempt 3)
+
+### 9.1 The split
+
+| run | package | driver (logcat line) | `[gpl569]` | projection draws | result |
+|---|---|---|---|---|---|
+| Nova, 10:18 (the morning capture, slot 2) | release app, com.jreinach.hakux u0a144 | `GPU driver: no custom driver installed` (:124); `Driver: Qualcomm Technologies Inc. Adreno Vulkan Driver` (:471) | `ext=0 ... mode=0` (:518) | psh 4ab25e73 (201 dump lines); each group's first draw path 2, the rest 0 | **squares** (f004; the owner's s2-02, s2-03) |
+| Nova, 13:32 (owner-requested retest, slot 2) | the same package and uid | `Loading custom Vulkan driver: vulkan.purple.so` (:497); `GPU: PurpleVK-public Adreno (TM) 740` (:838) | `ext=1 ... mode=3` (:879) | psh 4ab25e73 (213 dump lines); each group's first draw path 2, the rest 0 (`projgd.py`, f004 n738-787) | small soft foot shadows, no squares (t2-01..12, the 8 dump frames) |
+| Desktop L1-L5 (lavapipe) | 0.5.2-rc1 core, the Nova's switches | llvmpipe | mode 3 (L1, L3) and mode 0 (L2, L4, L5) | paths 2 only (L1, L2) and the Nova's 2-then-0 pattern (L3-L5) | small soft foot shadows, no squares |
+
+Between the two Nova runs the following are the same:
+- the package and uid;
+- slot 2's state;
+- the switch lines (ubershader, surfgpu and fastpaths ON; stock :129-131, Turnip :503-505);
+- the projection's shader hash;
+- the draw-path pattern.
+
+The logcats carry no build sha. The installed build is 0.5.2-rc1 by bindpose1017 NOTES:193 and
+section 1. What differs is the driver, and with it the pipeline mode the driver allows (stock has no
+VK_EXT_graphics_pipeline_library). Mode is not the cause: L4 ran mode 0 with the 2-then-0 path
+pattern on lavapipe and drew the soft shadow.
+
+### 9.2 By region, frame-matched (`tools/footsq.py`)
+
+footsq.py aligns B onto A by the integer shift that minimises the mean absolute difference over a
+static background box. REF is 340,240,470,300 and the map box is 40,270,420,380 in both runs.
+
+**Stock (A, `captures/halo-shadow-1017/framedump/f004.png`) vs Turnip (B,
+`captures/halo-shadow-1017-turnip/framedump/framedump_1792269263_f004.ppm`)**: shift (6,0), REF
+MAD 2.84.
+
+| box | A rgb | B rgb | A/B r, g, b | px with lum ratio < 0.85 |
+|---|---|---|---|---|
+| SQ1 60,306,148,322 (floor inside the left square) | 54.6, 59.2, 60.5 | 72.8, 80.9, 77.3 | **0.751, 0.732, 0.782** | 1243 / 1408 |
+| SQ2 240,322,300,346 (floor inside the central square) | 72.4, 73.8, 77.0 | 89.9, 100.5, 94.4 | **0.805, 0.734, 0.816** | 1140 / 1440 |
+| CTL1 150,270,300,290 (floor, no shadow) | 85.1, 93.0, 86.4 | 85.1, 93.0, 86.5 | 0.999, 1.000, 0.999 | 55 / 3000 |
+| CTL2 340,280,410,300 (floor, no shadow) | 100.5, 111.6, 106.2 | 100.3, 111.3, 105.9 | 1.002, 1.003, 1.003 | 0 / 1400 |
+
+The ratio map draws the squares as filled parallelograms of '#' (A/B < 0.80). Inside them, where
+Turnip draws the soldier's soft foot shadow, it shows 'o' (A/B > 1.10): stock is brighter there
+than Turnip. **Stock draws no silhouette.** It darkens the whole projected footprint by a
+near-uniform amount instead. This is F4, now measured against a correct frame.
+
+**Turnip (A, the same f004) vs desktop L4 (B, `build-linux/run/L4/framedump_1792266358_f003.ppm`,
+lavapipe, mode 0)**: shift (0,0), REF MAD 0.31. The camera is the same to the pixel, the boxes
+shifted +6 in x.
+
+| box | A rgb | B rgb | A/B r, g, b | px with lum ratio < 0.85 |
+|---|---|---|---|---|
+| SQ1 66,306,154,322 | 72.8, 80.9, 77.3 | 72.8, 81.0, 77.4 | 1.000, 0.999, 0.999 | 0 / 1408 |
+| SQ2 246,322,306,346 | 89.9, 100.5, 94.4 | 90.1, 100.6, 94.5 | 0.998, 0.998, 0.999 | 20 / 1440 |
+| CTL1 156,270,306,290 | 85.1, 93.0, 86.5 | 85.2, 93.1, 86.7 | 1.000, 0.999, 0.999 | 0 / 3000 |
+| CTL2 346,280,416,300 | 100.3, 111.3, 105.9 | 100.4, 111.5, 106.0 | 0.999, 0.998, 0.998 | 0 / 1400 |
+
+Two conformant drivers, a tiler (Turnip on the Adreno 740) and a CPU rasteriser (lavapipe), agree
+within 0.2% inside the stock squares. They ran different pipeline modes (3 and 0). Stock darkens the
+same floor to 0.73-0.82.
+
+### 9.3 Every symptom, accounted for
+
+| # | symptom | account | evidence |
+|---|---|---|---|
+| 1 | The whole projected square darkens, not only the silhouette | Stock's stage-0 fetch of the blurred silhouette returns a near-uniform non-zero value across [0,1], with no silhouette. The host target holds the silhouette on black (F2). Turnip and lavapipe sample it and draw the soft shadow. Where inside the stock driver this happens is not chased (owner's 10-17 rule) | 9.2: '#' fill and 'o' at the silhouette on stock/Turnip; SQ 0.998-1.000 on Turnip/desktop |
+| 2 | Mauve tint (lane.xbox's reading: about x0.83 R/B, x0.71 G) | Real. Green darkens most on stock: g 0.732 and 0.734, against r 0.751/0.805 and b 0.782/0.816. c0 is grey (0x080808), so only t0 can tint S. Stock's t0 is green-heavy | 9.2 SQ1, SQ2 |
+| 3 | The floor outside the square is unchanged | The in-shader border (caae5e7906) substitutes borderColor 0 outside [0,1], so S = 0. It is correct on every driver | F1; CTL1/CTL2 at 0.999-1.003 on both pairs |
+| 4 | blend 0x112 (group 1) vs 0x302 (groups 2-4) | No effect: EN = 0 in both | F6 |
+| 5 | "Since August, across builds"; "present in the 0.5.1 rc" | The Nova's release app was installed 09-06 and had no custom driver until the owner's tap on 10-17 (bindpose1017 NOTES:197-201). Every release-app sighting therefore ran stock. That is why the square survived three surface-to-texture regimes (section 3): none of them was the cause. The August video is **not** accounted for by this. lane.xbox reports it shows UC2's red box on StevenMXZ Turnip v26.3.0-R3: a different title, colour and driver. Open, nothing on hand (question 1) | 9.1; bindpose1017 |
+| 6 | The desktop never showed it | Lavapipe is a conformant driver. L1-L5 drew the soft shadow in both pipeline modes and both path patterns | sections 6.2, 6.4; 9.2 second table |
+| 7 | "Several other titles" | Same cause on two more stock sightings: #1043 (bind pose; bindpose1017) and #1039 (Halo's rear lights; the owner confirmed it is gone on Turnip, about 14:00). Prince of Persia renders 256x256 R5G6B5 projected shadows (fps1015 NOTES 568-588), the same chain shape. It is a candidate, not measured, and per the owner's rule it is not to be tested on stock | memory of the owner's 14:00 word; fps1015 |
+
+### 9.4 Hypotheses, closed
+
+| id | hypothesis | final P | what moved it |
+|---|---|---|---|
+| H-driver | The stock Qualcomm driver mis-executes the projection's stage-0 sample of the blurred target | **0.95** | 9.1 and 9.2: one variable (the driver) splits square from no square, with the same package, state, switches, shader and path pattern. Two conformant drivers agree within 0.2% |
+| H-invalid | The emulator issues an invalid stream (image layout, usage, view) that conformant drivers tolerate and stock does not | open until L6 (section 6.4, "L6 prediction") | L5 covered sync only. If L6 hits, the square is ours and H-driver becomes "stock exposes our bug" |
+| H-A | Stale binding, the dummy texture, or a foreign view under stage 0 | 0.01 | The emulator's binding is the same on every driver. Turnip and lavapipe sample the right image in the same state |
+| H-C | The view or sampler returns constant rgb | 0.01 | Same argument. The border sampler is valid (texture.c:3610 passes the view format) |
+| H-E | The pixel shader is mistranslated | 0.005 | The same shader key (4ab25e73) draws correctly on Turnip. The Nova's and the desktop's projection GLSL are byte-identical, vertex and pixel (`diff build-linux/run/{psh,vsh}_{desk_8c870089,nova_4ab25e73}.glsl`, empty). Only the desktop's key hash differs |
+| H-S | A missing barrier shows only on a tiler | 0.02 | L5 miss (6.4); and Turnip, a tiler, draws it correctly |
+| H-mode | Mode 0's monolithic pipelines or uniform layout | 0.02 | L4 (mode 0, lavapipe) correct. Mode 0 on a conformant tiler is untested, and the field only runs mode 0 on stock |
+| H-B, H-G, H-D | Coordinates collapse; blend off; t1/v0.a wrong | 0 for the square | Unchanged from section 5. None can make a square from a correct t0 |
+
+The owner's earlier ruling that "the drivers are NOT at fault" (addendum 1, about 12:00) was made
+for the class of boxes in the August video. The owner lifted it for Halo by asking for the Turnip
+retest at 13:34. It still stands for UC2's box.
+
+### 9.5 Remedies, ranked by P × win (bindpose1017's R1-R4 apply unchanged)
+
+| # | remedy | P it clears Halo's squares | win | status |
+|---|---|---|---|---|
+| R1 | Turnip T30 in the package (Settings > GPU Driver) | 0.95 (measured: 9.2) | the owner's installs, today | **Done on the owner's release app**: the 13:32 retest ran it. Also clears #1043 and #1039 |
+| R2 | Turnip by default on Adreno 6xx/7xx: a bundled driver, the menu as the override (bindpose1017 NOTES:241) | 0.9 | every release user, who today runs stock | the owner's decision (licence of the PurpleVK build; 09-26's parking of Turnip work). lane.local has put it to them |
+| R3 | A launch guard on kgsl with no custom driver, and docs naming Turnip as required | 0 by itself | no player runs stock silently | proposed in bindpose1017; moot if R2 lands |
+| R4 | A stock-driver workaround | unknown | stock users only | **not chased: the owner's 10-17 rule** |
+| R0 | Fix an invalid usage, if L6 finds one on the chain | depends on L6 | every driver, not only stock | conditional on L6 |
+
+### 9.6 Verification: what was measured, and what was not
+
+- Measured on the Nova, frame-matched and by region: stock f004 against Turnip f004 (9.2). These are
+  the owner's two slot-2 sessions in the same package.
+- Measured on the desktop, frame-matched: Turnip f004 against lavapipe L4 f003, same camera (REF MAD
+  0.31), 0.998-1.000 in the square boxes.
+- The owner saw the Turnip run's screenshots (t2-01..12, `stock-vs-turnip-*.png`), and lane.local
+  and lane.xbox reported them. No further owner acceptance was asked for: the owner's 10-17 rule
+  makes Turnip the only driver, and the run was theirs.
+- **Not measured:** mode 0 on Turnip (HAKUX_GPL=0 in a Turnip package). It would close H-mode on a
+  tiler. Its win is small, because no field configuration runs mode 0 except stock. It needs the Nova,
+  which the owner holds. Not queued.
+- **Not measured:** any other title's squares on Turnip. PoP is the candidate (9.3 row 7).
+
+## 10. What the next lane should not repeat
+
+- **Read the driver line before reading a device result as a code result.** Look for
+  `Loading custom Vulkan driver` / `GPU: PurpleVK` against `Qualcomm Technologies Inc. Adreno
+  Vulkan Driver`, or `[gpl569] ext=1` against `ext=0`. The morning capture said `ext=0` at line 518.
+  Three attempts of this lane, L1-L5 and two schema-10 instruments ran on a split that line decides.
+  bindpose1017 learned the same lesson on the same day.
+- Do not test the stock driver, and do not move a package's `files/gpu_driver` aside to "check stock"
+  (owner, 10-17).
+- A desktop that never reproduces a device defect is evidence about the device's driver, not only
+  about the desktop's coverage. When L1 missed, the next step was the driver line, not three more
+  legs of env and mode parity.
+- A frame-dump readback serialises the GPU at the draw it reads (6.2). Leave `rttmax` at its
+  default when the question is a hazard or a fast path.
+- Tools: `footsq.py` (region judge with a static-box alignment), `projgd.py` (projection draws'
+  guest state and path), `rbread.py` (readback compare), `chain.py`/`texids.py` (the chain's guest
+  and host identity), `hxsram.py` (surfaces out of a save state's RAM), `deskrun.py` (desktop
+  runs that refuse under 40 GB on C: and list new crash dumps), `syncctl.c` (a validation-layer
+  positive control).
