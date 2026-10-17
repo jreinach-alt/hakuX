@@ -1,8 +1,9 @@
 # lane.gta3drive1017 -- GTA III drops into the teens while driving (#433)
 
-Status (attempt 2, 10-17 16:40 PDT): the wait is located (section 6). R1 is built (c6ca5296fd, section 7). Its arms
-are registered and queued behind lane.local's Nova hold (section 8). The driving route has a new gate (section 6.3);
-the first drive pair is also its proof.
+Status (attempt 2, 10-17 16:55 PDT): the wait is located (section 6). R1 is built (c6ca5296fd, section 7). Its
+arms are registered and running on the Nova (section 8).
+- Step 1, the pixel suites, is judged (8.1): the same code ran in both arms, and every mover is run-to-run variance.
+- The first drive pair is running. It is also the proof of the route's new gate (section 6.3).
 
 **Why attempt 1 did not finish.** It ended its session on purpose, waiting on two Nova pilots queued behind lane.local's
 hold:
@@ -352,6 +353,36 @@ The legs are in the JSON. In short:
 - **P4**: on foot, B's median fps >= A's - 0.5.
 - **F**: no B-only texture defects in the shots, and no new error lines.
 - **X**: P1 passes but B stays under 0.75. The wait moved; chase R2.
+
+### 8.1 Step 1, the pixel suites: inert where R1 does not act, and they never reach it
+
+B `1-1792280141-lane.gta3drive1017-1361822`, A `1-1792280164-lane.gta3drive1017-1362137`. Both ran on Turnip
+(`Loading custom Vulkan driver: vulkan.purple.so`, `[gpl569] ... mode=3`). A logs `env: HAKUX_S2T_DRAIN=1`; B has no
+env line.
+
+**Neither arm reached R1's branch.** B has no `[s2tdrain] first skip` and A has no `[s2tdrain] on`. The switch's only
+reader (`s2t_drain_on`, texture.c:1934) runs only for a plain copy into an in-flight node, and B logs the skip at that
+same point. So both arms took the same branch at every copy, and neither logcat shows a dropped line ("chatty" or
+"identical"). These seven suites never copy into a node a frame still holds, which leaves the skip's pixels to the
+GTA III drive frames (leg F).
+
+ab_compare against gta3drive1017-pixels.json says **FAIL, 33 of 363**. Since both arms ran the same code, every
+mover is run-to-run variance. Each was checked against history (`tools/pixel_noise.py`, `tools/capture_history.py`):
+
+| mover | A -> B | the same capture elsewhere |
+|---|---|---|
+| Texture_shadow_comparator, 31 captures | +-80/86 px, 18 worse and 13 better | same-ref pairs at f5a67ba52c move 20 (fps1015 716177/716411) and 37 (defaulton1017 3309294/3309495); pairs before f5a67ba52c move 0 |
+| Antialiasing_tests/CPUWriteIgnoresSurfaceConfig | 0 -> 45,056 px | exact in 107 runs. The same stripe, smaller, in `1789379497-sweep-repeat-3206893` and `1790359589-xbox-full6743-dry2-2802408`, both from before R1. B shows the whole texture striped: the CPU-written checkerboard read through the wrong layout, the full extent of that old race |
+| Antialiasing_tests/FramebufferNotModifiedBySurfaceState | 1 -> 0 px | (one pixel) |
+
+Suite totals are the same in both arms: shadow_comparator 0/288, Antialiasing 8/11, render_target 1/41,
+Surface_format 7/10, Color_zeta_overlap 7/9, Framebuffer_Blit 0/3, render_update_in_place 1/1. Against drain474
+(09-27), shadow_comparator's 264 -> 0 and Antialiasing's 9 -> 8 are master's baseline since f5a67ba52c (fps1015,
+defaulton1017), not this lane's. The step-1 stop condition ("a capture moving in B only means the barrier does not
+order the copy") assumed B would take the skip. It never did, so these moves say nothing about the barrier, and the
+drive arms go ahead.
+
+Not repeated: a rerun of pixel B. It would run the same code path again and decide nothing about R1.
 
 ## Questions
 

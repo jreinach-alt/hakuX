@@ -4,7 +4,7 @@ State: draft
 
 Lane: gta3drive1017            Issue: #433
 Base: master @ afde9a4677
-Files: hw/xbox/nv2a/pgraph/vk/texture.c, docs/lanes/gta3drive1017/PR.md, docs/lanes/gta3drive1017/NOTES.md, docs/lanes/gta3drive1017/owner_play.tsv, docs/lanes/gta3drive1017/pilot343857_waits.tsv, docs/lanes/gta3drive1017/pilot343857_waits.bands, docs/lanes/gta3drive1017/pilot346093_waits.tsv, docs/lanes/gta3drive1017/pilot346093_waits.bands, docs/lanes/gta3drive1017/tools/owner_play.py, docs/lanes/gta3drive1017/tools/drive_split.py, docs/lanes/gta3drive1017/tools/ft_waits.py, docs/lanes/gta3drive1017/tools/route_gate.py, docs/lanes/gta3drive1017/tools/drive_judge.py, docs/lanes/gta3drive1017/routes/gta-3-drive.route, docs/lanes/gta3drive1017/routes/refs/gta-3-drive/enter-help.png, docs/lanes/gta3drive1017/routes/refs/gta-3-drive/fist-hud.png, docs/testing/predictions/gta3drive1017-drive.json, docs/testing/predictions/gta3drive1017-pixels.json
+Files: hw/xbox/nv2a/pgraph/vk/texture.c, docs/lanes/gta3drive1017/PR.md, docs/lanes/gta3drive1017/NOTES.md, docs/lanes/gta3drive1017/owner_play.tsv, docs/lanes/gta3drive1017/pilot343857_waits.tsv, docs/lanes/gta3drive1017/pilot343857_waits.bands, docs/lanes/gta3drive1017/pilot346093_waits.tsv, docs/lanes/gta3drive1017/pilot346093_waits.bands, docs/lanes/gta3drive1017/tools/owner_play.py, docs/lanes/gta3drive1017/tools/drive_split.py, docs/lanes/gta3drive1017/tools/ft_waits.py, docs/lanes/gta3drive1017/tools/route_gate.py, docs/lanes/gta3drive1017/tools/drive_judge.py, docs/lanes/gta3drive1017/tools/pixel_noise.py, docs/lanes/gta3drive1017/tools/capture_history.py, docs/lanes/gta3drive1017/routes/gta-3-drive.route, docs/lanes/gta3drive1017/routes/refs/gta-3-drive/enter-help.png, docs/lanes/gta3drive1017/routes/refs/gta-3-drive/fist-hud.png, docs/testing/predictions/gta3drive1017-drive.json, docs/testing/predictions/gta3drive1017-pixels.json
 Prediction: docs/testing/predictions/gta3drive1017-drive.json @ 678376d73ae12a502e32b2079d10ac680cd01658309ee58d817c08adc077104f, docs/testing/predictions/gta3drive1017-pixels.json @ 01b0fd3bb866e23cf7692e74d6f355715f8806ec6e9abe5109b519460bc1bda6
 Needs device: yes    Needs NDK: yes
 Selftest: none -- the emulator change (texture.c) is built by CI and pixel-judged by the pgraph suite arms; the lane files and the two prediction files are read by no fragment (the fragments that parse predictions, 40-arms-refusal, 92/94/99-arms-*, 98-lane-shape, build their own fixtures).
@@ -42,6 +42,15 @@ drain it would have had.
     help box; NOTES.md 6.3);
   - then one per arm on the on-foot gta-3 route.
 - The bar: B's driving at >= 28.5 fps for >= 90% of the moving window, with on foot not regressed.
+
+**Pixel suites** (B 1-1792280141-...-1361822, A 1-1792280164-...-1362137; NOTES.md 8.1). Neither arm reached the
+changed branch: no `[s2tdrain]` line in either run, and the switch's only reader sits on that branch. So the same code
+ran in both. ab_compare's 33 movers are run-to-run variance:
+- 31 shadow_comparator captures at +-80/86 px. Same-ref pairs at the base move 20 and 37.
+- CPUWriteIgnoresSurfaceConfig: a stripe race already seen in two runs from before this change.
+- FramebufferNotModifiedBySurfaceState: one pixel.
+
+Suite totals match between arms. The skip's pixels are judged on GTA III's drive frames.
 
 Release note (performance): Grand Theft Auto III no longer stalls its renderer on every render-to-texture copy, the
 cause of the drops into the low 20s and teens while driving.
