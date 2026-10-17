@@ -26,6 +26,11 @@
   TS 1792239589-defaulton1017-3308032, RS 1792239590-defaulton1017-3308140, SHR
   1792239591-defaulton1017-3308261, CLR 1792239593-defaulton1017-3308455, AMP 1792239593-defaulton1017-3308736,
   TSC1 1792239595-defaulton1017-3309294, TSC2 1792239595-defaulton1017-3309495. ~60 Nova minutes.
+- 05:21 (host `date`; the two "05:30" lines above were estimates and came earlier): territory board request
+  filed (board-requests/xbox.md, 05:21 entry) for reports.c, surface.c and translate.c; IBC's files are not in
+  it. lane.xbox corrected the brief's release note: "holds 30 fps" overclaims (HNI 35.0 ms/f is 28.6 fps, its
+  windows reach 38.2). The PR's line becomes "runs at about <N> fps through the hangar briefing (was <M> fps)",
+  N from HNI (what ships: IBC off) and M from HOFF, over the same span.
 
 ## Pilot verdict (HON, HNI; screenread.py, as registered)
 
