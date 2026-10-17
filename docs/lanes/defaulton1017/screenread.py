@@ -32,8 +32,9 @@ Per row, read from logcat.txt and run.log:
 V (a failure voids that row's legs):
   ON rows   `[rearly1018] early=1`, `[fldcw1018] chain=1`, `[ibc507] on=1 layout=ok`, each naming its
             variable `(unset)`; `[s2tcvt] on HAKUX_S2T_CVT=(unset)` if an `[s2tcvt]` line is logged
-            (required in Halo, MKSM and TS, which reach it). HNI: the same with `[ibc507] on=0` and
-            `HAKUX_IBC=0`. HOFF: `[s2tcvt] off`, `early=0`, `chain=0`, `on=0`.
+            (required in Halo, MKSM and TS, which reach it). A row whose request sets HAKUX_IBC=0 (HNI, and
+            every title row queued after the pilot: NOTES, 05:25) wants `[ibc507] on=0` and `HAKUX_IBC=0`.
+            HOFF: `[s2tcvt] off`, `early=0`, `chain=0`, `on=0`.
   Halo      `mark cinematic` and >= 20 `[rtrace] w` windows, all mode=async.
   every row a valid end, as above.
 
@@ -180,13 +181,14 @@ class Row:
         return why
 
 
-def want(role):
-    """(s2t, early, chain, ibc, env value each must name)."""
+def want(role, env):
+    """(state, env value) each switch line must show. IBC follows the request: rows queued after the pilot
+    carry HAKUX_IBC=0, because HIBC missed and the registered rule sends IBC back to off (NOTES, 05:25)."""
     if role == 'HOFF':
         return {'s2t': ('off', '0'), 'early': ('0', '0'), 'chain': ('0', '0'), 'ibc': ('0 ok', '0')}
     w = {'s2t': ('on', '(unset)'), 'early': ('1', '(unset)'), 'chain': ('1', '(unset)'),
          'ibc': ('1 ok', '(unset)')}
-    if role == 'HNI':
+    if 'HAKUX_IBC=0' in env:
         w['ibc'] = ('0 ok', '0')
     return w
 
@@ -209,7 +211,7 @@ def main():
     for r, x in rows.items():
         why = []
         if r != 'EIF':
-            for k, (st, ev) in want(r).items():
+            for k, (st, ev) in want(r, x.req.get('env') or []).items():
                 got = x.sw.get(k)
                 if got is None:
                     if k != 's2t' or r in S2T_REACHED:

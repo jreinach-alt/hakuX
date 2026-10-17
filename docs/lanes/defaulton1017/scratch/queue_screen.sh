@@ -17,9 +17,11 @@ title() {
     local row=$1 iso=$2 dir=$3 route=$4 secs=$5
     local r=()
     [ -n "$route" ] && r=(--route "$route")
+    # HAKUX_IBC=0: HIBC missed in the pilot, so IBC stays off by default (NOTES, 05:25); this is the
+    # shipped configuration on ed2b1d3333's binary.
     TITLE_ROUTES="$dir" "$W/docs/testing/request.sh" --who defaulton1017 --device nova \
-        --title "$iso" "${r[@]}" --seconds "$secs" --ref "$REF" --perflog --issue 1018 --expect "$EXP" \
-        --purpose "defaulton1017 row $row (#1018 default-on screen)"
+        --title "$iso" "${r[@]}" --seconds "$secs" --ref "$REF" --perflog --env HAKUX_IBC=0 --issue 1018 \
+        --expect "$EXP" --purpose "defaulton1017 row $row (#1018 default-on screen)"
 }
 for row in "$@"; do
     echo "== $row"

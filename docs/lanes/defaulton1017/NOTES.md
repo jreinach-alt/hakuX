@@ -16,6 +16,44 @@
   screenread calls their `read_run` and sets the arm to `on` itself. Correction to the prediction's `baseline`
   prose: the EIF id written there (0-0-x-1792231796-halo1016-2209151) is arm EV's; EIF is
   0-0-x-1792231794-halo1016-2208719. The figures quoted (33.8, 33.4-34.7) are EIF's and are what the legs use.
+- 05:25: pilot judged (below, "Pilot verdict"). HIBC MISS, so by the registered rule IBC goes back to off by
+  default: `accel/tcg/cpu-exec.c` and `include/accel/tcg/hakux-ibc.h` restored to master's. The rest of the
+  screen runs on the same binary (ed2b1d3333) with `HAKUX_IBC=0`, which is what ships: the IBC code reads `0`
+  and unset the same way once the flip is gone. `pilots/defaulton1017.ok` written.
+
+## Pilot verdict (HON, HNI; screenread.py, as registered)
+
+| row | result | span ms/f | 10-s windows +100..+210 | early share | stale / vis / desync per early | flips |
+|---|---|---|---|---|---|---|
+| HON | 1792238475-defaulton1017-3197170 | 34.6 | 33.4-35.6 | 0.9963 | 0.0109 / 0.0055 / 0 | 0 of 120.6M |
+| HNI | 0-0-x-1792238476-defaulton1017-3197283 | 35.0 | 33.4-38.2 | 0.9961 | 0.0093 / 0.0045 / 0 | 0 of 119.5M |
+| EIF (halo1016, reference) | 0-0-x-1792231794-halo1016-2208719 | 33.8 | 33.4-34.7 | 1.0000 | (no instrument) | 0 |
+
+Both: every switch logged as the default with its variable unset (HNI: `[ibc507] on=0 ... HAKUX_IBC=0`),
+`mark cinematic`, 30 `[rtrace] w` async windows in the span, route end, no crash.
+
+- **HG MISS**: 34.6 ms/f (<= 34.5) and the +130 window 35.6 (<= 35.5). The plateau is gone (59.3 with all
+  off); HON is 0.8 ms/f over EIF. That is inside halo1016's own run-to-run spread (A 42.6, A2 41.6 on one
+  binary and env: 1.0 ms/f), so one run cannot tell whether the gap-1 gate costs anything. The gate's
+  `skipn` (3,837 in the span, ~2 a frame) does not follow the excess window by window
+  (`scratch/skipn_windows.py`): +130 is +0.9 over EIF with 31 skipn, +160 and +180 are -0.2 and +0.2 with
+  622 and 906. The bar was set inside the noise; it is a miss as written.
+- **HEA HIT** (0.9963): Halo re-queues almost every offset one guest frame later, as assumed. The 0.4% that
+  are not (`skipn`) are written the old way.
+- **HVIS HIT** (0.0055): one early answer in 180 shows an object visible where its own test hid it, or the
+  reverse, for one frame. They cluster in +130..+150 (5,618 of the span's 5,723, 1.2% of those windows'
+  answers), the two heaviest windows; the rest of the span is under 0.1%. Outside the span, small windows
+  reach 0.4-0.7% (+70, +100, +220: 15-44k answers each). `stale` (any difference in the count) is 1.1%.
+- **HDS HIT**: desync 0 in both, so the ring and the reader agree on every answer: the instrument is valid.
+- **HIBC MISS**: HNI - HON = +0.43 ms/f (>= +0.5). By the rule written before the run, IBC goes back to off.
+  Not judged, for the record: IBC's share is largest in the heaviest window (+130: 38.2 without, 35.6 with),
+  and like HG, +0.43 is inside the run-to-run spread, so this does not say IBC does nothing for Halo, only that
+  one run does not show the 0.5 ms/f that would pay for #507's energy cost (Forza x1.10 J/frame).
+- **FL HIT**: 0 flips in 120M FLDCW calls.
+
+What changes for the rest: the title rows (MKSM, TS, RS, SHR, CLR, AMP) are queued with `HAKUX_IBC=0`, the
+shipped configuration; screenread's V reads the IBC state each row's request asks for. HOFF is unchanged.
+Nothing else in the plan moves.
 
 ## Confirmed from the source files (not from the brief)
 
