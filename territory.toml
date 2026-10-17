@@ -2900,3 +2900,9 @@ issues = ["433"]
 standing = false
 files = ["CHANGELOG.md", "docs/releases/v0.5.1.md", "docs/releases/v0.5.2.md", "docs/releases/README.md", "docs/lanes/relnotes1017/**"]
 note = "STARTED lane.local 2026-10-17 ~09:30 PDT (Sonnet, docs only): owner 10-17: release notes carry only new features and bug fixes; the signing/minSdk/frontend-confirmation/provenance/process text comes out of v0.5.1 and v0.5.2 notes. Brief: briefs/relnotes1017.md."
+
+[lane.sparsewt1017]
+issues = ["433"]
+standing = false
+files = ["docs/testing/lane.sh", "docs/testing/jobs/selftest.d/99-lane-sparse-worktree.sh", "docs/lanes/sparsewt1017/**"]
+note = "STARTED lane.local 2026-10-17 ~10:30 PDT (Sonnet): C: nearly full (owner 10-17: 'if C fills up you take down the whole WSL environment'). Every lane worktree carried ~1.9 GB of tracked docs/lanes/pathfind/runs; lane.sh now creates trees sparse (that subtree excluded) so a lane tree is ~0.4 GB. Brief: briefs/sparsewt1017.md."
