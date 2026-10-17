@@ -269,6 +269,28 @@ def case_exit_codes():
     with_repo(fn3)
 
 
+def case_release_note_driver_link():
+    def fn(root):
+        make_repo(root, version="0.5.0", docs={"doc.md": doc("2026-10-01", "0.5.0")})
+        os.makedirs(os.path.join(root, "docs", "releases"))
+        with open(os.path.join(root, "docs", "releases", "v0.5.0.md"), "w") as fh:
+            fh.write("# v0.5.0\n\nSee [GPU driver](../gpu-driver.md) and docs/gpu-driver.md.\n")
+        check("release note linking the driver page: OK", root,
+              ["--today", "2026-10-10"], "OK", want_doc="v0.5.0.md", want_exit=0)
+    with_repo(fn)
+
+    def fn2(root):
+        make_repo(root, version="0.5.0", docs={"doc.md": doc("2026-10-01", "0.5.0")})
+        os.makedirs(os.path.join(root, "docs", "releases"))
+        with open(os.path.join(root, "docs", "releases", "v0.5.0.md"), "w") as fh:
+            fh.write("# v0.5.0\n\nA fix, and nothing about drivers.\n")
+        check("release note without the driver link: NO-DRIVER-LINK, exit 1", root,
+              ["--today", "2026-10-10"], "NO-DRIVER-LINK", want_doc="v0.5.0.md", want_exit=1)
+        check("release note without the link does not mark the public doc", root,
+              ["--today", "2026-10-10"], "OK", want_doc="doc.md", want_exit=1)
+    with_repo(fn2)
+
+
 def main():
     if not os.path.isfile(SCRIPT):
         print("docs_freshness_selftest.py: no script at %s" % SCRIPT, file=sys.stderr)
@@ -285,6 +307,7 @@ def main():
     case_bad_date_unparseable()
     case_bad_date_future()
     case_exit_codes()
+    case_release_note_driver_link()
 
     if FAIL:
         print("\n%d case(s) failed" % FAIL)

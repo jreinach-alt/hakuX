@@ -39,8 +39,8 @@ Both handhelds have a Snapdragon 8 Gen 2 with an Adreno 740 GPU and run
 Android 13. Every title on this page was tested with the same GPU driver:
 **Turnip Adreno Driver T30 (@Mr_Purple_666)**, a Mesa Vulkan driver
 (26.3.0-devel, build git-62ac221a33), installed in hakuX under Settings →
-Graphics → GPU Driver. Results with the phone's own Qualcomm driver, or
-with another Turnip build, may differ.
+Graphics → GPU Driver ([how to install it](gpu-driver.md)). Results with the
+phone's own Qualcomm driver, or with another Turnip build, may differ.
 
 ## 🟢 Playable
 
