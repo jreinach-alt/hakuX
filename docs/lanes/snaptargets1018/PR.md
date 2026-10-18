@@ -77,4 +77,4 @@ in NOTES.md.
   confirmed pre-existing on master, not a regression from this change. Not
   fixed: outside this brief's files list.
 
-Selftest: 97-dispatch-snapshot-drive.sh (new `targets` leg)
+Selftest: 97-dispatch-snapshot-drive
