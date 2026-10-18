@@ -8,8 +8,8 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `holdcap1018` | claude-sonnet-5 | 2h 45m | holdcap1018: an owner-play hold starts a host logcat capture |
-| `perflog1016` | claude-opus-5-5 | 2 min | perflog1016: a pause-menu switch for the perflog telemetry tier, and a "Mark this moment" button (#433) |
+| `holdcap1018` | claude-sonnet-5 | 3h 0m | holdcap1018: an owner-play hold starts a host logcat capture |
+| `perflog1016` | claude-opus-5-5 | 17 min | perflog1016: a pause-menu switch for the perflog telemetry tier, and a "Mark this moment" button (#433) |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `lane.local`
@@ -125,7 +125,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
 | `lane/holdcap1018` | holdcap1018: an owner-play hold starts a host logcat capture | `6a009e01b6` | 2026-10-18 07:38 |
-| `lane/perflog1016` | perflog1016: a pause-menu switch for the perflog telemetry tier, and a "Mark this moment" button (#433) | `a082156b89` | 2026-10-16 10:08 |
+| `lane/perflog1016` | perflog1016: a pause-menu switch for the perflog telemetry tier, and a "Mark this moment" button (#433) | `ce91b11b74` | 2026-10-18 10:17 |
 
 ## Recently landed on master
 
@@ -142,4 +142,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-18 Top Spin: a state:any route that gets past Controller Select
 - 2026-10-18 high-speed driving fps (GTA III + GTA: San Andreas)
 
-_Updated 2026-10-18 10:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 10:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
