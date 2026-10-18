@@ -8,9 +8,8 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `dispatchdoctor1017` | claude-opus-5-5 | 2h 10m | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what  |
-| `snaptargets1018` | claude-sonnet-5 | 1h 19m | snaptargets1018: the dispatcher snapshot ships titlestate.py but not targets.toml (#433) |
-| `topspinroute1018` | claude-sonnet-5 | 10 min | Top Spin: a state:any route that gets past Controller Select |
+| `dispatchdoctor1017` | claude-opus-5-5 | 2h 25m | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what  |
+| `snaptargets1018` | claude-sonnet-5 | 1h 33m | snaptargets1018: the dispatcher snapshot ships titlestate.py but not targets.toml (#433) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -124,10 +123,11 @@ The harness dashboard, with each release's targets and the progress charts, is [
 |---|---|---|---|
 | `lane/dispatchdoctor1017` | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what stops a ru | `ac2c73c9d3` | 2026-10-18 02:51 |
 | `lane/snaptargets1018` | snaptargets1018: the dispatcher snapshot ships titlestate.py but not targets.toml (#433) | `6aa30dabdc` | 2026-10-18 01:47 |
-| `lane/topspinroute1018` | Top Spin: a state:any route that gets past Controller Select | `1336f9d1f3` | 2026-10-18 03:00 |
 
 ## Recently landed on master
 
+- 2026-10-18 Top Spin: a state:any route that gets past Controller Select
+- 2026-10-18 high-speed driving fps (GTA III + GTA: San Andreas)
 - 2026-10-18 gta3fps1017: GTA III fps -- the census on foot (neither R2 nor R3), and R1: no #474 drain ahead of a plain colour copy (#1049)
 - 2026-10-17 The compatibility page adds NBA Live 07 (454100A1) as Playable: 90 -> 91
 - 2026-10-17 compat1017b: the compatibility page catches up from 88 to 90 Playable
@@ -137,7 +137,5 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 nearbar1017b: three more near-cap titles on the 0.5.2 build -- two clear, one inconclusive
 - 2026-10-17 bootstatic1017: black while the guest has the screen off, no static or green at title start (#1045)
 - 2026-10-17 nearbar1017: three near-bar titles on the 0.5.2 build -- two clear Playable now
-- 2026-10-17 release052c: the 0.5.2 release page tells the story since v0.3.1, and the driver notice says handheld (#433)
-- 2026-10-17 Halo CE: the ship's rear lights show through the hull after the cut to the front (opening cinematic)
 
-_Updated 2026-10-18 03:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 03:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
