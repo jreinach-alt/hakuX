@@ -83,8 +83,17 @@ row).
    ~34%, SA ~36-38%, Blinx 2 ~29-31%, dip and good alike) -- if the GPU were saturated, busy% would read near 100%
    and would rise sharply in dip windows; it does neither. Separately, pilot 343857's single dip frame on GTA III
    measured GPU busy 21.9 ms of a 47 ms frame (idle more than half the frame). Source: `gta3fps1017b/NOTES.md`
-   5.1-5.2; `gta3drive1017/NOTES.md` 6.2 D3. **Scope: GTA III, SA, Blinx 2's driving/island windows only. Fable is
-   not in this table and has no `busy%` figure in any capture read so far -- untested, not ruled out, for Fable.**
+   5.1-5.2; `gta3drive1017/NOTES.md` 6.2 D3. **Scope: GTA III, SA, Blinx 2's driving/island windows only.** Now also
+   tested for Fable, via `fpsdiag.py analyze owner-play-1018c` (section 4): busy 34% dip vs 3% good (n=56/57) --
+   neither saturated, ruled out for Fable too, in this capture. **Open tension, not resolved by this lane:**
+   `fpsdiag.py analyze` against `gta3car1018/runs/c1-A1` (a different, perflog-tier, in-car GTA III capture) finds
+   busy 90% dip vs 43% good (n=19/43) -- not flat, and far closer to saturated than the ~34% flat reading this item
+   is built on. `c1-A1`'s window set spans a parked segment and a driving segment (RT held) in one file
+   (`gta3car1018/NOTES.md` section 4's per-arm timestamps); the swing may track park-vs-drive content instead of
+   saturation as a cause, but this lane did not split the windows by that boundary to check (`fpsdiag.py` has no
+   `--since`/`--until`; see section 4). **Do not read this item as closed for GTA III's in-car/driving condition** --
+   the next pass should split `c1-A1`'s windows at the RT-down timestamp and re-run `analyze` on each half before
+   either extending or narrowing this item's scope.
 2. **The TLB/texture-dirty-walk's own CPU time is not the dominant render-thread cost, for Fable and Blinx 2.**
    Falsifying measurement: `[rdc]`'s `vtx`+`tex` microsecond fields sum to 0.03%-2% of the render thread's own
    `tcpu` in every sampled window of both titles (Fable: 131 us of 19.45 ms/frame tcpu, 0.7%; Blinx 2: at most 22.5
@@ -92,8 +101,10 @@ row).
    dominated tcpu would show up as most of it, and in every window it is a small fraction. Source:
    `fabledip1018/FINDINGS.md` 1a, 1c, 1d. Separately ruled out for GTA III's driving pilot (343857): "texture dirty
    walks in microseconds" (`gta3drive1017/NOTES.md` 6.2). **Scope: Fable, Blinx 2, and GTA III's pilot-343857
-   driving burst specifically. Not separately re-measured for GTA III's owner-capture sustained dip or for any
-   parked window -- those use the same `[rdc]` tag but this lane did not re-check the ratio there.**
+   driving burst specifically.** Now also re-measured, via `fpsdiag.py analyze` (section 4): GTA III's owner-play
+   sustained dip (`owner-play-1018`, pid 5782, n=23) reads 1.1%; `gta3car1018/runs/c1-A1`'s in-car dip windows
+   (n=19) read 0.5%; Blinx 2's owner-play dip (n=79) reads 0.9%. All three stay in the same small-fraction range as
+   Fable's figure above -- ruled out there too, closing the gap this item previously left open.
 3. **Cold shader/pipeline-library compile is not the cause of GTA III's sustained dip, nor of Fable's opening ~34 s
    stutter -- but it IS the cause of four other, separate, single-frame/short events.** Falsifying measurement for
    the sustained claims: in GTA III's owner capture, `[uber569]`'s `cold`/cumulative `lib_ms` counters climb then go
@@ -132,7 +143,8 @@ row).
    counter cannot be cited quantitatively in exactly the park/dip regime this lane studies.** It is reliable only
    in the steady 30 fps state, where it is not needed. Source: `gta3dip1018/FINDINGS.md` 1.3, `NOTES.md` stop-rule
    entry. `fpsdiag.py analyze` must not report a confirm/refute verdict keyed on this counter inside a dip window;
-   section 4 below treats it as "not measured," never "refuted," for exactly this reason.
+   section 4 below confirms `c1_rpbrk_nondraw_breaks` reads "not measured" in every capture checked, never
+   "refuted," for exactly this reason.
 7. **`Df` ("deferred flushes") is not an independent workload symptom -- it is downstream of the frame already
    running long.** Reading `hw/xbox/nv2a/pgraph/profile.c`'s `nv2a_profile_get_pacing_str()` and `nv2a.c`'s VBLANK
    pacing governor (`g_nv2a_stats.pacing.defers_total++`) shows `Df` counts VBLANK-IRQ-delivery deferral *retries*
@@ -140,6 +152,13 @@ row).
    not as a second, separately-caused cost. This corrects `gta3fps1017b` section 5's framing (carried into the
    brief) of Df as part of an independently-acting "shared dip signature." Source: `gta3dip1018/FINDINGS.md` 1.2.
    Not a cause to rule in or out; a metric this lane's tool must not double-count as a separate confirming signal.
+8. **Android ART/Dalvik GC pause is not the cause of any dip window measured by this lane.** Falsifying measurement:
+   `fpsdiag.py analyze` (section 4) found zero ART GC log lines in all four captures checked -- GTA III's owner-play
+   dip (n=23), Blinx 2's owner-play dip (n=79), Fable's owner-play dip (n=56), and GTA III's in-car perflog dip
+   (n=19) -- a GC pause landing inside any of those 167 combined dip windows would print a line this check would
+   have caught. This closes candidate 7 (section 3) as the cheap, no-new-code, no-device-time check it was flagged
+   to be. **Scope: these four captures' dip windows only** -- not a claim that no GC pause has ever happened in any
+   run of any of these three titles, only that none coincided with a measured dip in the capture this lane read.
 
 ## 3. Could be: ranked candidate causes
 
@@ -157,12 +176,12 @@ already exists in the capture formats this lane has read.
 | 4 | **(new)** Competing process CPU: another app/service/service thread stealing a core from the render or PGRAPH thread during a dip window, uncorrelated with the title's own code | GTA III, Blinx 2, Fable (any) | `dumpsys cpuinfo` or a full `/proc/*/stat` process snapshot taken per window shows a non-hakuX process's CPU share rising specifically during dip windows, on the same cluster as the render/PGRAPH thread | the same snapshot shows no other process above idle-level CPU on that cluster during any dip window measured so far | no: no capture read by this lane includes a whole-system process list, only hakuX's own threads. The brief's own capture spec asks for "foreground package list + top CPU consumers" -- not yet built |
 | 5 | **(new)** Memory/page-cache pressure: a dip coincides with free-memory dropping low enough to trigger reclaim, or a minor-fault storm on the render/PGRAPH thread (`/proc/<pid>/stat` `minflt`/`majflt` deltas) | GTA III, Blinx 2, Fable (any) | `minflt` or `majflt` rate on the hot thread spikes in dip windows vs good windows, coincident with free/cached memory (`/proc/meminfo`) dropping | fault rate and free memory stay flat across dip and good windows | no: no capture read by this lane logs `/proc/meminfo` or per-thread fault counts over time. The brief's capture spec asks for a "page-cache/free-memory line" -- not yet built |
 | 6 | **(new)** Thread/core migration: the scheduler moves the render or PGRAPH thread between CPU clusters (e.g. Adreno's companion "big" cores to "LITTLE") mid-dip, paying a cache-cold penalty each migration | GTA III, Blinx 2, Fable (any) | `/proc/<pid>/task/<tid>/stat` field 39 (`processor`, last-run CPU) sampled at a stated period shows the hot thread's assigned CPU changing often during dip windows, rarely during good windows | the hot thread's assigned CPU stays constant (or changes at the same rate) in both dip and good windows | partial: `/proc/<pid>/task/*/stat` is already readable and already asked for by the brief's capture spec (per-thread CPU), but no capture read by this lane has sampled the `processor` field specifically |
-| 7 | **(new)** Android ART/Dalvik GC pause on a hot JNI-callback path (even a native-heavy app makes some JNI calls per frame for input/audio/surface events; a stop-the-world or even a concurrent GC pause on that thread would show as a frame stall with no NV2A-side cause at all) | GTA III, Blinx 2, Fable (any) | a GC log line (`art` tag, "Background concurrent copying GC" or similar, or `dumpsys meminfo`'s GC-pause counters) lands inside a dip window's timestamp range | no GC log line appears within several seconds of any dip window's start in the captures checked | no: none of the tags this lane's tool reads (`hakuX-*`, `xemu-*`) are ART's own; no capture has been grepped for `art`/GC tags yet. Easy to check with an existing capture before building anything new -- see `gaps` note below |
+| 7 | **(new)** Android ART/Dalvik GC pause on a hot JNI-callback path (even a native-heavy app makes some JNI calls per frame for input/audio/surface events; a stop-the-world or even a concurrent GC pause on that thread would show as a frame stall with no NV2A-side cause at all) | GTA III, Blinx 2, Fable (any) | a GC log line (`art` tag, "Background concurrent copying GC" or similar, or `dumpsys meminfo`'s GC-pause counters) lands inside a dip window's timestamp range | no GC log line appears within several seconds of any dip window's start in the captures checked | yes, checked: `fpsdiag.py`'s `gc` stream reads the `art` tag directly from logcat. Run against all four captures this lane has (section 4) -- zero matches in any -- refuted there, now ruled out as section 2 item 8 |
 | 8 | **(new)** SurfaceFlinger/compositor backpressure: the dip is not inside hakuX's own render pipeline at all, but a wait for the Android compositor to accept the next buffer (`dequeueBuffer`/`queueBuffer` stall), which would show up as `Fin`/`Fen` rising for a reason outside this lane's own code | GTA III, Blinx 2, Fable (any) | `dumpsys SurfaceFlinger --latency <layer>` (or its frame-latency histogram) shows a queueing delay coincident with a dip window, on a layer matching hakuX's own surface | the same dump shows flat queue depth/latency through the dip window | no: no capture includes a `dumpsys SurfaceFlinger` snapshot; would need to be added to the capture spec as a periodic external read, not a logcat tag |
 
 Candidates 4 and 7 are the cheapest to check **because an existing capture can answer them today, with no new
 code and no device time** (`dumpsys`/GC log lines are not present in any logcat so far, but their simple absence or
-presence across an already-captured dip window is a one-grep check) -- that is why `fpsdiag.py gaps` (section 5)
+presence across an already-captured dip window is a one-grep check) -- that is why `fpsdiag.py gaps` (section 4)
 flags them first, not because they are more likely to be the cause. Per the ranking rule, the ordering above is by
 probability-weighted size of the win, not cheapness: candidates 1-2 rank above 4-8 because they are grounded in a
 measured, title-specific correlation already narrowed by three prior lanes' direct data (Fin/Fen's clean swing,
@@ -170,7 +189,65 @@ the flat RP/frame floor), where 4-8 are plausible but currently **unmeasured aga
 captures** -- they could turn out to explain nothing. A low-probability new candidate is not promoted over a
 higher-probability known correlate just for being novel or cheap to check.
 
-## 4. What this file does not do
+## 4. Tool validation against real captures (`fpsdiag.py analyze`/`gaps`)
+
+`docs/testing/perf/fpsdiag/fpsdiag.py` (step 2, committed separately) was run read-only against four real,
+unmodified capture files already on disk -- no device touched, no capture altered. `MIN_WINDOWS = 3` is the floor
+below which the tool refuses any candidate a verdict; every run below cleared it by a wide margin (19-134 scored
+windows per run). Bar = 28.5 fps (30 x 0.95 tolerance) in every case; none of the three titles' own `targets.toml`
+overrides change that figure except Blinx 2's explicit `target_fps=30`, which resolves to the same bar.
+
+| capture | title (scope) | windows scored/refused | dip/good split | notable verdicts |
+|---|---|---|---|---|
+| `owner-play-1018/logcat-nova-owner-play.txt` | GTA III (`--pid 5782`) | 48 scored, 1 refused (boot/warmup marker) | 23 dip / 25 good | `tlb_walk_cost` refuted (1.1%); `c7_art_gc_pause` refuted (0 GC lines); `gpu_saturation`/`c1`/`c2`/`c4`-`c6`/`c8` not measured (perflog tags absent from this release build, or need `capture`'s periodic samples) |
+| `owner-play-1018/logcat-nova-owner-play.txt` | Blinx 2 (`--pid 1876`) | 134 scored, 0 refused | 79 dip / 55 good | same pattern: `tlb_walk_cost` refuted (0.9%), `c7` refuted (0 GC lines), perflog/capture-only candidates not measured |
+| `owner-play-1018c/logcat-nova-fable-owner-play.txt` | Fable | 113 scored, 1 refused (boot/warmup marker) | 56 dip / 57 good | `gpu_saturation` refuted (34% dip vs 3% good -- not saturated); `tlb_walk_cost` refuted (0.4%); `c2_fin_fen_queue_depth` refuted (1.4ms dip vs 0.1ms good -- flat, no swing); `c7` refuted (0 GC lines) |
+| `gta3car1018/runs/c1-A1/` (2 files: `logcat.txt`, `arm.log`) | GTA III, perflog-tier | 62 scored, 2 refused (boot/warmup marker; save-state load) | 19 dip / 43 good | `gpu_saturation` **supported** (90% dip vs 43% good -- see tension below); `c2_fin_fen_queue_depth` **supported** (Fen 13.6ms dip vs 2.5ms good); `tlb_walk_cost` refuted (0.5%); `c7` refuted (0 GC lines) |
+
+Three results independently corroborate, or newly extend, findings already in sections 1-2:
+
+- **`c2_fin_fen_queue_depth` supported in a fresh capture.** `gta3dip1018/FINDINGS.md` 1.5 established Fin/Fen as
+  GTA III's best-correlated-with-G quantity from its own arms. `gta3car1018/runs/c1-A1` is a different capture,
+  from a different lane, taken for a different purpose (the in-car A/B) -- `fpsdiag.py analyze` finding the same
+  swing there (13.6ms vs 2.5ms) independently reproduces the earlier result rather than re-reading the same data.
+- **`tlb_walk_cost` now closes the scope gap section 2 item 2 left open.** That item was explicitly scoped away
+  from "GTA III's owner-capture sustained dip or for any parked window." This lane's own tool reading that exact
+  condition (1.1% of render-thread CPU) closes it; section 2 item 2 above has been edited to say so.
+- **`gpu_saturation` closes the scope gap section 2 item 1 left open for Fable** (34% dip vs 3% good, not
+  saturated) -- but **opens a new, unresolved tension for GTA III itself**: item 1's own GTA III figure is ~34%,
+  flat between dip and good; `c1-A1`'s GTA III figure swings from 43% to 90%. `c1-A1`'s window set spans a parked
+  segment and a driving segment (RT held) within one file, per `gta3car1018/NOTES.md` section 4's per-arm
+  timestamps -- the swing may be real saturation, or it may be the driving segment's own, legitimately heavier
+  scene pushing both busy% and fps at once, with the dip/good split just tracking which segment a window fell in
+  rather than a saturation effect independent of content. `fpsdiag.py` has no `--since`/`--until` time-range
+  filter to split `c1-A1` at the RT-down boundary and check which explanation holds; **this is named here as an
+  open question for the next analysis pass, not resolved by this lane.** Section 2 item 1 above states this
+  explicitly rather than either extending or quietly ignoring the contradiction.
+- **`c7_art_gc_pause` refuted in all four captures**, closing it at the cost of one grep per capture, exactly as
+  predicted in section 3's note that candidates 4 and 7 are the cheapest to check. Section 2 item 8 (above) records
+  this as a new ruled-out item, scoped to these four captures' dip windows only.
+
+`fpsdiag.py gaps`, run against the same `owner-play-1018` GTA III scope, correctly omits `tlb_walk_cost` and
+`c7_art_gc_pause` from its output (both got a real verdict, not a gap) while listing every candidate that is
+either perflog-tag-absent or needs `capture`'s periodic system samples -- confirming `gaps` is reading the same
+verdicts `analyze` produces rather than a separate, divergent list. Run with no path argument, `gaps` prints the
+full candidate list with a pointer to section 3's instrument column, for a user who has no capture in hand yet.
+
+`gaps` was also run against the perflog-tier `gta3car1018/runs/c1-A1` capture specifically, to check whether
+anything is a genuine gap even at the richest tier this lane has on disk. It names six: `c1_rpbrk_nondraw_breaks`
+(the racy-emitter problem, section 2 item 6 -- no logcat tag fixes this, the emitter itself needs rebuilding
+first), `c3_redo_shc_copy_bind_cost` (correlates but nothing times the copy/bind path), and
+`c4_competing_process_cpu`/`c5_memory_page_cache_pressure`/`c6_thread_core_migration`/
+`c8_surfaceflinger_backpressure` (all four need `fpsdiag.py capture`'s periodic `dumpsys`/`/proc` sampling, which
+no capture on disk -- perflog or otherwise -- carries; a logcat alone, however detailed its perflog tags, cannot
+answer them). None of the six is a free logcat-tag addition behind the perflog build tier: the first two need a
+code fix (the racy emitter, a new timer) and the other four need the `capture` subcommand's own sampling, not a
+new tag. **This is the step-5 trigger's answer**: there is nothing to add behind the perflog tier and queue a
+build/run request for; the real next steps are (a) a fix lane for the racy `hakuX-rpbrk` emitter, named already as
+the next lane's brief in section 5 below, and (b) an owner-play capture taken with `fpsdiag.py capture` itself
+(`CAPTURE.md`, step 6), which exists precisely to produce the periodic samples c4/c5/c6/c8 need.
+
+## 5. What this file does not do
 
 Per the brief: this lane does not propose starting a fix. Candidates 1 and 2 (GTA III) are the closest to
 "ready for a fix lane" -- candidate 1 already has a concrete file/function and a stated confirming measurement
