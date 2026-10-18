@@ -6,12 +6,14 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Right now
 
-No lane session is running.
+| Lane | Model | Running for | Working on |
+|---|---|---|---|
+| `haloring1017` | claude-opus-5-5 | 1 min | haloring1017: Halo CE main-menu ring: the missing surface layer and the static inside surface (#939) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-offline`
-- **Device queue:** 8 waiting, 1 running.
+- **Device queue:** 7 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -116,7 +118,9 @@ No lane session is running.
 
 ## Work in progress
 
-No branch is being worked right now.
+| Branch | Topic | Tip | Last change |
+|---|---|---|---|
+| `lane/haloring1017` | haloring1017: Halo CE main-menu ring: the missing surface layer and the static inside surface (#939) | `0eef3e0548` | 2026-10-17 19:02 |
 
 ## Recently landed on master
 
@@ -132,4 +136,4 @@ No branch is being worked right now.
 - 2026-10-17 nearbar1017b: three more near-cap titles on the 0.5.2 build -- two clear, one inconclusive
 - 2026-10-17 bootstatic1017: black while the guest has the screen off, no static or green at title start (#1045)
 
-_Updated 2026-10-18 05:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 05:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
