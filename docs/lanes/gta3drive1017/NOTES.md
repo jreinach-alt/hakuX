@@ -1,13 +1,15 @@
 # lane.gta3drive1017 -- GTA III drops into the teens while driving (#433)
 
-Status (attempt 3, 10-17 17:25 PDT): the wait is located (section 6). R1 is built (c6ca5296fd, section 7). Its
+Status (attempt 3, 10-17 17:40 PDT): the wait is located (section 6). R1 is built (c6ca5296fd, section 7). Its
 arms are registered (section 8).
 - Step 1, the pixel suites, is judged (8.1): the same code ran in both arms, and every mover is run-to-run variance.
 - Drive pair 1 is VOID (8.2): the help-box gate never matched, so neither run entered the car. The gate is now the
   scene beside the Kuruma.
 - Its second try is VOID too (8.3). The new gate worked and Claude got in, but the mission restarted ~30 s into the
-  drive and he stayed on foot. The route now has a warm-up drive, with dense frames, ahead of the mark. B goes alone
-  first.
+  drive and he stayed on foot. The route now has a warm-up drive, with dense frames, ahead of the mark.
+- The third try is VOID (8.4), but its warm-up frames show the cause. On the first full-lock steering pulse at full
+  throttle, the Kuruma rode the ramp's barrier onto its roof, and the mission failed ("You flipped your wheels!").
+  The route now drives at about two-thirds throttle and a third of lock. B goes alone first again.
 - R2/R3's census (the copy refusal reasons, dups per flip) is in texture.c, perflog only, for a later run if R1
   falls short.
 
@@ -473,6 +475,38 @@ ran (`queue/withdrawn/`, with a `.why`): it carried the same route, so it would 
   - If its warm-up frames show the car moving at the mark, A is queued behind it at once.
   - If they show the restart again, the route changes to avoid its cause before any A runs.
   - The pilot verdict waits for drive shots minutes apart with the car moving.
+
+### 8.4 Third try: the warm-up shows the cause, a flip on the first steering pulse
+
+B `1-1792283158-lane.gta3drive1017-1853100` ran alone, 17:26-17:36. Turnip (`vulkan.purple.so`), `[s2tdrain] first
+skip` once.
+
+- **The gate and the entry worked again.** `waitfor at-kuruma` matched at 0 s (1.896), and one Y got Claude in
+  (26.278 after the press). The `incar` frame (172934, clock 05:42) shows the Kuruma with its name.
+- **The warm-up frames show the flip.**
+
+  | frame | clock | what it shows |
+  |---|---|---|
+  | 172937 | 05:45 | full throttle up the bridge ramp toward the city; "This is the radar..." help |
+  | 172940 | 05:48 | still on the ramp, near the right-hand barrier (overlay FPS 26) |
+  | 172943 | 05:51 | the Kuruma on its roof against that barrier, 0.6 s after the first full-lock left pulse |
+  | 172945 | -- | "MISSION FAILED!", "You flipped your wheels!" |
+  | 172949-172958 | -- | title art, then the "Give Me Liberty" cutscene: the mission restarts |
+  | 173000-173048 | 04:10-04:57 | Claude on foot beside the Kuruma for every later warm-up frame |
+
+- **So 8.3's restart was this too, most likely.** It had the same steering, and it failed about as early. Of 8.3's
+  candidates, water and a script cause are not needed to explain it.
+- **The run is VOID as a drive.** It was on foot at the mark, as in 8.3. This is not a verdict on R1.
+- **The fix is route only: drive gently.**
+  - RT 22000, about two-thirds of the trigger (`mid` is half throttle).
+  - LX +-12000, about a third of lock, for 0.8 s. The range is -32767..32767, the same on the Nova and the Thor
+    (`pad-dev.*`).
+  - The back-up brakes with the wheel straight for 1 s before turning full lock in reverse.
+  - The warm-up and the scored loop drive the same way. `route.sh --check` passes.
+  - A route has no conditionals, so a car lost mid-run cannot be re-entered. The only defence is not to lose it.
+- **Next: B alone again**, the same request.
+  - If its warm-up frames show the car moving at the mark, A is queued behind it at once.
+  - The pilot verdict still waits for drive shots, minutes apart, that show the car moving.
 
 ## Questions
 

@@ -48,11 +48,21 @@
 # so their screencaps cost the measurement nothing. `mark gameplay` comes
 # after them, so the scored window starts in a car that has been moving.
 #
-# Driving: RT accelerates (pad.sh: the triggers are not swapped; max is full
-# throttle), LT brakes and reverses, LX steers. Equal left and right pulses
-# hold the heading on average. Every third lap backs up with the wheel turned
-# (RT released, LT held) so a wall or a lamp post cannot hold the car. Never
-# Y after the entry (it would exit), never START or BACK.
+# Driving: RT accelerates (pad.sh: the triggers are not swapped; 0..32767),
+# LT brakes and reverses, LX steers (-32767..32767; both Nova and Thor cache
+# the same ranges). Equal left and right pulses hold the heading on average.
+# Every third lap brakes straight, then backs up with the wheel turned, so a
+# wall or a lamp post cannot hold the car. Never Y after the entry (it would
+# exit), never START or BACK.
+#
+# Gentle on purpose. 1-1792283158-...-1853100 drove full throttle with 0.6 s
+# full-lock pulses: up the ramp, then on the first left pulse the Kuruma rode
+# the right-hand barrier onto its roof (172943-warm.png, clock 05:51), and
+# the mission failed, "You flipped your wheels!" (172945). The mission
+# restarts with Claude on foot beside the car, and a route has no
+# conditionals to get him back in. So: RT 22000 (about two thirds), LX
+# +-12000 (about a third of lock) for 0.8 s, and the back-up brakes with the
+# wheel straight for 1 s before it turns (full lock in reverse is slow).
 #
 wait 55
 repeat 4 {
@@ -71,20 +81,20 @@ press-until Y at-kuruma 3 5 830,440,450,220 10
 wait 6
 shot incar
 repeat 5 {
-    axis RT max
+    axis RT 22000
     wait 2
     shot warm
     wait 2
     shot warm
-    axis LX min
-    wait 0.6
+    axis LX -12000
+    wait 0.8
     axis LX mid
     wait 1.5
     shot warm
     wait 1.5
     shot warm
-    axis LX max
-    wait 0.6
+    axis LX 12000
+    wait 0.8
     axis LX mid
     wait 2
     shot warm
@@ -92,20 +102,21 @@ repeat 5 {
 mark gameplay
 repeat forever {
     repeat 3 {
-        axis RT max
+        axis RT 22000
         wait 4
-        axis LX min
-        wait 0.6
+        axis LX -12000
+        wait 0.8
         axis LX mid
         wait 3
-        axis LX max
-        wait 0.6
+        axis LX 12000
+        wait 0.8
         axis LX mid
         wait 2
     }
     shot drive
     axis RT min
     axis LT max
+    wait 1
     axis LX max
     wait 2
     axis LT min

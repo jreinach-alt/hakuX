@@ -45,8 +45,9 @@ if this change falls short of the bar (NOTES.md 7).
 - gta3drive1017-pixels.json: drain474's seven surface-as-texture pgraph suites.
 - gta3drive1017-drive.json:
   - two runs per arm on the driving route (`routes/gta-3-drive.route`, gated on the scene beside the Kuruma, with a
-    warm-up drive ahead of the scored window. The help-box gate voided the first pair, and a mission restart under
-    the throttle voided its second try: NOTES.md 8.2, 8.3);
+    warm-up drive ahead of the scored window, at two-thirds throttle and a third of lock. The help-box gate voided
+    the first pair. A flip on a full-lock steering pulse failed the mission in the second and third tries: NOTES.md
+    8.2-8.4);
   - then one per arm on the on-foot gta-3 route.
 - The bar: B's driving at >= 28.5 fps for >= 90% of the moving window, with on foot not regressed.
 
