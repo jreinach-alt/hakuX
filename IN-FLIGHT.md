@@ -8,12 +8,12 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `haloring1017` | claude-opus-5-5 | 16 min | haloring1017: Halo CE main-menu ring: the missing surface layer and the static inside surface (#939) |
+| `haloring1017` | claude-opus-5-5 | 31 min | haloring1017: Halo CE main-menu ring: the missing surface layer and the static inside surface (#939) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-offline`
-- **Device queue:** 6 waiting, 1 running.
+- **Device queue:** 5 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -124,6 +124,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Recently landed on master
 
+- 2026-10-18 snaptargets1018: the dispatcher snapshot ships titlestate.py but not targets.toml (#433)
 - 2026-10-18 dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what stops a run
 - 2026-10-18 Top Spin: a state:any route that gets past Controller Select
 - 2026-10-18 high-speed driving fps (GTA III + GTA: San Andreas)
@@ -133,7 +134,5 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 compat1017: catch up the compatibility page to the 88-row Playable ledger
 - 2026-10-17 A title with one measured stall reaches the owner the same day
 - 2026-10-17 storydoc1017: a project history page, linked from the README's More table
-- 2026-10-17 nearbar1017b: three more near-cap titles on the 0.5.2 build -- two clear, one inconclusive
-- 2026-10-17 bootstatic1017: black while the guest has the screen off, no static or green at title start (#1045)
 
-_Updated 2026-10-18 05:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 06:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
