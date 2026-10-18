@@ -466,6 +466,28 @@ Two known, deliberate limitations, not blockers:
   selftest's fake-adb/fake-claude fixtures already cover end to end.
   `Prediction: none` still stands.
 
+## Attempt 4 (resumed, 2026-10-18) -- why attempt 3 did not finish
+
+Attempt 3 committed Section 2 (75b1d3475d), merged origin/master
+(0c33d7db0c), then started Section 3 and ended its turn with that work
+uncommitted: `dispatcher.sh` +8 (`maybe_run_doctor` appends a `doctor: ...`
+line to ERROR), `98-dispatch-doctor.sh` +61 (three `mr_env` legs), an
+untracked OUTBOX.md (the hourly-report request), and a mode change making
+`dispatch_doctor.sh` executable. Same failure shape as attempts 1 and 2:
+the turn ended with work in the tree and no commit, so the hand-off note
+(written from `git log`) could only see the last commit. No reason in the
+tree says it was blocked; it simply stopped. This attempt reviews that diff,
+finishes Section 3, runs the full selftest in the foreground and commits
+after each step.
+
+The mode change matters more than it looks: Section 2 was committed with
+`dispatch_doctor.sh` at mode 644, and `maybe_run_doctor` opens with
+`[ -x "$ddt" ] || return 0`. So as committed in 75b1d3475d the doctor never
+ran at all from the dispatcher; the full selftest stayed green because
+nothing reached it. Attempt 4 changes the guard to `[ -f ]` (the script is
+run as `bash "$ddt"`, so the exec bit is irrelevant and a snapshot copy that
+drops it must not silently turn the doctor off) and keeps the 755 mode.
+
 ## Still to come
 
 Section 3 (richer ERROR text naming what the dispatcher/doctor tried and

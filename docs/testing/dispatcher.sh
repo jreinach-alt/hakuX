@@ -250,12 +250,30 @@ adb_error() {   # <what failed> -> the ERROR line, naming a hung call if any
 # already has a logs/dispatch-doctor.tsv row and never runs a second
 # session on it) goes back into $D/queue/$id.req for the main loop's next
 # claim to pick up.
+#
+# `[ -f ]`, not `[ -x ]`: the doctor is run as `bash "$ddt"`, so its exec bit
+# means nothing -- and as Section 2 was first committed (mode 644) an `-x`
+# guard silently turned the doctor off everywhere. A request.json with no
+# body is skipped with no ERROR line: every lever the doctor has (push-iso,
+# attach-route, restore-profile) and the brief it reads start from the
+# request's own title/title_id, so an empty one leaves it nothing to act on.
+# (In practice that is only 99-iso-roots.sh's extracted-block fixture, whose
+# ERROR must end exactly with device_title_miss's text.)
 maybe_run_doctor() {   # <id> <rdir>
     local id="$1" rdir="$2" ddt="$HERE/dispatch_doctor.sh" out verdict aside
-    [ -x "$ddt" ] || return 0
+    [ -f "$ddt" ] || return 0
+    [ -s "$rdir/request.json" ] || return 0
     out=$(bash "$ddt" diagnose "$id" "$rdir" 2>>"$D/logs/dispatcher.log")
     verdict=$(printf '%s\n' "$out" | sed -n 's/^VERDICT //p' | tail -1)
     log "  DOCTOR: ${verdict:-no verdict}"
+    # Section 3 (owner 10-17, "no longer silent"): the ERROR a human reads
+    # says whether the doctor ran and what it decided, not just the original
+    # failure. Appended here, before a retry moves the dir aside, so the
+    # line travels with the result wherever it ends up.
+    if [ -f "$rdir/ERROR" ]; then
+        printf 'doctor: %s%s\n' "${verdict:-no verdict}" \
+            "$([ -f "$rdir/doctor.md" ] && echo ' (see doctor.md)')" >> "$rdir/ERROR"
+    fi
     [ "$verdict" = retry ] || return 0
     python3 -c 'import json, sys, time
 r = json.load(open(sys.argv[1]))
@@ -1099,15 +1117,61 @@ make_room_for_push() {
 # one; 1 and nothing otherwise (console unreachable, PAUSE/STOP set, the
 # title is not on the console, or the mirror exceeded the timeout) -- never
 # itself a claim failure, only "this did not help".
+#
+# Section 3: why it did not help goes to <rdir>/console-stage.result (one
+# line), which ensure_title_staged folds into the ERROR -- this runs in a
+# command substitution, so a variable would not reach the caller.
 STAGE_XISO="${STAGE_XISO:-/home/justin/hakux-work/titles/bin/stage_xiso.py}"
 console_stage_tid() {
-    local tid="$1" rdir="$2" xdir="${HAKUX_XISO_DIR:-/mnt/d/hakux-staging/xiso}"
-    [ -f "$xdir/PAUSE" ] && { log "  console stage: $xdir/PAUSE is set, not touching the console"; return 1; }
-    [ -f "$xdir/STOP" ] && { log "  console stage: $xdir/STOP is set, not touching the console"; return 1; }
-    [ -f "$STAGE_XISO" ] || { log "  console stage: $STAGE_XISO not found"; return 1; }
+    local tid="$1" rdir="$2" xdir="${HAKUX_XISO_DIR:-/mnt/d/hakux-staging/xiso}" why="" rc=0
+    if [ -f "$xdir/PAUSE" ]; then why="not tried, $xdir/PAUSE is set"
+    elif [ -f "$xdir/STOP" ]; then why="not tried, $xdir/STOP is set"
+    elif [ ! -f "$STAGE_XISO" ]; then why="not tried, $STAGE_XISO not found"
+    fi
+    if [ -n "$why" ]; then
+        log "  console stage: $why"; echo "$why" > "$rdir/console-stage.result"; return 1
+    fi
     log "  console stage: mirroring $tid from the console (can take 5-8 minutes)"
     timeout -k 10 900 python3 "$STAGE_XISO" --only "$tid" --max 1 >> "$rdir/console-stage.log" 2>&1
-    staging_find_tid "$tid"
+    rc=$?
+    if staging_find_tid "$tid"; then
+        echo "staged $tid from the console (console-stage.log)" > "$rdir/console-stage.result"
+        return 0
+    fi
+    case "$rc" in
+        0)   why="the console answered but $tid did not come back (not on the console?); console-stage.log" ;;
+        124) why="the console mirror timed out after 900 s; console-stage.log" ;;
+        *)   why="the console did not answer (stage_xiso.py exit $rc); console-stage.log" ;;
+    esac
+    log "  console stage: $why"; echo "$why" > "$rdir/console-stage.result"
+    return 1
+}
+
+# _bytes_h <bytes>: a size a reader can take in at a glance (GiB/MiB/bytes).
+_bytes_h() {
+    awk -v b="$1" 'BEGIN { if (b >= 1073741824) printf "%.1f GiB", b / 1073741824;
+                           else if (b >= 1048576) printf "%.1f MiB", b / 1048576;
+                           else printf "%d bytes", b }'
+}
+
+# inputs_note <rdir> <disc|route|profile> <text>: dispatchdoctor1017 Section
+# 3, and the brief's Section 1 ("the dispatcher must see to all three, and
+# say in the result dir which it did"). One line per input the claim saw to
+# -- the disc image, the recorded route, the profile -- appended to
+# <rdir>/inputs.txt, so a reader of the result sees what was found and done
+# for each without reading dispatcher.log.
+inputs_note() {
+    printf '%s: %s\n' "$2" "$3" >> "$1/inputs.txt" 2>/dev/null || true
+}
+
+# stage_summary <rdir>: what the staging fast path found, for the front of a
+# title-miss ERROR -- ensure_title_staged's own disc line when it wrote one,
+# else the roots it would have searched.
+stage_summary() {
+    local l
+    l=$(sed -n 's/^disc: //p' "$1/inputs.txt" 2>/dev/null | tail -1)
+    if [ -n "$l" ]; then printf 'staging: %s' "${l#NOT STAGED: }"; return; fi
+    printf 'staging searched %s, none had it' "$(staging_roots | paste -sd, - | sed 's/,/, /g')"
 }
 
 # ensure_title_staged <title> <rdir> <req>: the deterministic fast path
@@ -1125,35 +1189,50 @@ console_stage_tid() {
 #
 # 0 when the title is on the device by the time this returns (pushed now, or
 # a console mirror just produced it); 1, with the reason logged, when it is
-# not -- the caller's existing ERROR path is unchanged either way.
+# not -- the caller's existing ERROR path is unchanged either way. Section 3:
+# every outcome also leaves one `disc:` line in <rdir>/inputs.txt ("pushed
+# ..." or "NOT STAGED: <where it looked and what it found>"), which
+# stage_summary puts at the front of the title-miss ERROR.
 ensure_title_staged() {
-    local title="$1" rdir="$2" req="$3" tid src need free
+    local title="$1" rdir="$2" req="$3" tid src need free why roots
+    roots=$(staging_roots | paste -sd, - | sed 's/,/, /g')
     tid=$(jq_get "$req" title_id "" 2>/dev/null)
     [ -n "$tid" ] || tid=$(python3 "$TITLESTATE" tid-for-iso "$title" 2>/dev/null)
     if [ -z "$tid" ]; then
-        log "  stage: $title has no title_id (no targets.toml \`iso\` entry, no 8-hex prefix); cannot look it up on staging"
+        why="not looked up, '$title' has no TitleID (no targets.toml \`iso\` entry, no 8-hex prefix)"
+        log "  stage: $why"; inputs_note "$rdir" disc "NOT STAGED: $why"
         return 1
     fi
     if ! src=$(staging_find_tid "$tid"); then
         if ! src=$(console_stage_tid "$tid" "$rdir"); then
-            log "  stage: $tid not under any staging root ($(staging_roots | paste -sd, - | sed 's/,/, /g')), and console retrieval did not produce it"
+            why="no $tid-* image under $roots; console: $(cat "$rdir/console-stage.result" 2>/dev/null || echo 'not tried')"
+            log "  stage: $why"; inputs_note "$rdir" disc "NOT STAGED: $why"
             return 1
         fi
     fi
     need=$(stat -c %s "$src" 2>/dev/null || echo -1)
-    [ "$need" -ge 0 ] || { log "  stage: could not stat $src"; return 1; }
+    if [ "$need" -lt 0 ]; then
+        why="found $src but could not stat it"
+        log "  stage: $why"; inputs_note "$rdir" disc "NOT STAGED: $why"
+        return 1
+    fi
     free=$(dev_free_bytes "$DEVICE_ISO_ROOT")
     if [ "$free" -lt 0 ] || [ $((free - need)) -lt "$FREE_FLOOR_BYTES" ]; then
-        make_room_for_push "$DEVICE_ISO_ROOT" "$need" "$rdir" || {
-            log "  stage: not enough free space on $DEVICE_ISO_ROOT for $tid, even after clearing what could be verified"
+        if ! make_room_for_push "$DEVICE_ISO_ROOT" "$need" "$rdir"; then
+            free=$(dev_free_bytes "$DEVICE_ISO_ROOT")
+            why="found $src ($(_bytes_h "$need")) but did not push it: $DEVICE_ISO_ROOT has $(_bytes_h "$free") free and must keep $(_bytes_h "$FREE_FLOOR_BYTES") after the push; no on-device ISO was both unclaimed and verifiable against D: to delete (room.log, dispatcher.log)"
+            [ "$free" -lt 0 ] && why="found $src but could not read the free space on $DEVICE_ISO_ROOT, so did not push it"
+            log "  stage: $why"; inputs_note "$rdir" disc "NOT STAGED: $why"
             return 1
-        }
+        fi
     fi
     if dev_push "$src" "$DEVICE_ISO_ROOT/$title"; then
         log "  stage: pushed $src -> $DEVICE_ISO_ROOT/$title"
+        inputs_note "$rdir" disc "pushed $src -> $DEVICE_ISO_ROOT/$title ($(_bytes_h "$need"), sha checked)"
         return 0
     fi
-    log "  stage: push of $src to $DEVICE_ISO_ROOT/$title failed"
+    why="found $src but the push to $DEVICE_ISO_ROOT/$title failed (dispatcher.log)"
+    log "  stage: $why"; inputs_note "$rdir" disc "NOT STAGED: $why"
     return 1
 }
 
@@ -1199,46 +1278,67 @@ profile_gate_check() {
 # Never overrides a route the request already names; never invents one --
 # titlestate.py suggest_route only returns a PROVEN route or targets.toml's
 # own configured one, the same two sources route_path()/single_route() already
-# trust. A route that fails to resolve or fails its own --check is logged and
-# left unattached: the soak still runs, on survey, same as before this
-# existed.
+# trust.
+#
+# Section 3 / brief 1b: a recorded route that is found but cannot travel --
+# resolve-route refuses it, it fails its own route.sh --check (a missing
+# reference crop is the common case, and --check names the crop), or its
+# crops cannot be embedded -- ends the claim: the reason goes to
+# <rdir>/route.refused and this returns 3, which the soak block turns into a
+# "refused before the soak" ERROR. The brief: "the refusal text is the
+# answer, not a fallback to mashing". (request.sh's queue-time attach already
+# fails the same way, through its own resolve/--check.) Every outcome, attach
+# or not, leaves one `route:` line in <rdir>/inputs.txt saying which route
+# and why.
 ensure_route_attached() {
     local ttid="$1" title="$2" rdir="$3" req="$4"
-    local cur sug name src res refuse path rname state refsout refsrefuse
+    local cur sug name src res refuse path rname state refsout refsrefuse note chk why="" ncrops
     cur=$(jq_get "$req" route_name "")
-    [ -z "$cur" ] || [ "$cur" = survey ] || return 0
-    [ -n "$ttid" ] || return 0
+    if [ -n "$cur" ] && [ "$cur" != survey ]; then
+        inputs_note "$rdir" route "'$cur', named by the request (left as is)"
+        return 0
+    fi
+    if [ -z "$ttid" ]; then
+        inputs_note "$rdir" route "none: '$title' has no TitleID, so no recorded route can be looked up${cur:+ (running the survey the request asked for)}"
+        return 0
+    fi
     # Never on a request that already names a deliberate profile-gate
     # override: see request.sh's matching guard, same reasoning.
     if [ -n "$(jq_get "$req" find_route "")" ] || [ -n "$(jq_get "$req" remake_profile "")" ] \
        || [ -n "$(jq_get "$req" path_broken "")" ]; then
+        inputs_note "$rdir" route "none attached: the request carries --find-route/--remake-profile/--path-broken, which the profile gate decides"
         return 0
     fi
     sug=$(python3 "$TITLESTATE" suggest-route --title-id "$ttid" 2>&1)
     name=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("name") or "")' "$sug" 2>/dev/null)
     if [ -z "$name" ]; then
-        log "  route: $(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("note") or "no recorded or proven route")' "$sug" 2>/dev/null) for $ttid; leaving on survey"
+        note=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("note") or "no recorded or proven route")' "$sug" 2>/dev/null)
+        log "  route: ${note:-no recorded or proven route} for $ttid; leaving the request as queued"
+        inputs_note "$rdir" route "none: no proven or recorded route for $ttid (${note:-no recorded or proven route}); the generic survey does not reach gameplay for most titles; $([ -n "$cur" ] && echo 'running the survey the request asked for' || echo 'running with no scripted input, as queued')"
         return 0
     fi
     src=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("source") or "")' "$sug" 2>/dev/null)
     res=$(python3 "$TITLESTATE" resolve-route --route "$name" --title-id "$ttid" ${DEVICE_LABEL:+--device "$DEVICE_LABEL"} 2>&1)
     refuse=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("refuse") or "")' "$res" 2>/dev/null) || refuse="titlestate.py resolve-route failed: $res"
     if [ -n "$refuse" ]; then
-        log "  route: recorded route '$name' ($src) for $ttid does not resolve: $refuse; leaving on survey"
-        return 0
+        why="recorded route '$name' ($src) for $ttid does not resolve: $refuse"
+    else
+        path=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["path"])' "$res")
+        rname=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["route_name"])' "$res")
+        state=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["state"])' "$res")
+        if ! chk=$(bash "$HERE/titles/route.sh" --check "$path" 2>&1); then
+            why="recorded route '$rname' ($src) for $ttid fails its own check: $(printf '%s' "$chk" | grep -v '^[[:space:]]*$' | head -3 | paste -sd';' - | sed 's/;/; /g')"
+        else
+            refsout=$(python3 "$TITLESTATE" route-refs --route-path "$path" 2>&1)
+            refsrefuse=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("refuse") or "")' "$refsout" 2>/dev/null) || refsrefuse="titlestate.py route-refs failed: $refsout"
+            [ -n "$refsrefuse" ] && why="recorded route '$rname' ($src) for $ttid: $refsrefuse"
+        fi
     fi
-    path=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["path"])' "$res")
-    rname=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["route_name"])' "$res")
-    state=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["state"])' "$res")
-    if ! bash "$HERE/titles/route.sh" --check "$path" >/dev/null 2>&1; then
-        log "  route: recorded route '$rname' ($src) for $ttid failed its own --check; leaving on survey"
-        return 0
-    fi
-    refsout=$(python3 "$TITLESTATE" route-refs --route-path "$path" 2>&1)
-    refsrefuse=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("refuse") or "")' "$refsout" 2>/dev/null) || refsrefuse="titlestate.py route-refs failed: $refsout"
-    if [ -n "$refsrefuse" ]; then
-        log "  route: recorded route '$rname' ($src) for $ttid: $refsrefuse; leaving on survey"
-        return 0
+    if [ -n "$why" ]; then
+        log "  route: $why; refusing the claim rather than running without it"
+        printf '%s\n' "$why" > "$rdir/route.refused"
+        inputs_note "$rdir" route "REFUSED: $why"
+        return 3
     fi
     python3 -c '
 import json, sys
@@ -1253,6 +1353,11 @@ if refs:
 json.dump(d, open(req, "w"))
 ' "$req" "$path" "$rname" "$state" "$refsout"
     log "  route: auto-attached '$rname' ($src) for $ttid, state=$state"
+    ncrops=$(python3 -c 'import json,sys; print(len(json.loads(sys.argv[1]).get("refs") or {}))' "$refsout" 2>/dev/null)
+    inputs_note "$rdir" route "attached '$rname' for $ttid, state=$state, ${ncrops:-0} reference crop(s); why: $(
+        [ "$src" = proven ] && echo 'proven, a judged run on it reached gameplay' \
+                            || echo "the title's configured route in targets.toml (recorded, not yet proven)")$(
+        [ -n "$cur" ] && echo "; replaces the generic survey the request named")"
 }
 
 # archive_backup_dir <tid>: dispatchdoctor1017 Section 1c. The first
@@ -1318,16 +1423,23 @@ device_bak_auto_dir() {
 ensure_profile_restored() {
     local ttid="$1" tstate="$2" rdir="$3" req="$4"
     local g has searched="" kind="" detail="" rj="" refuse
-    [ -n "$ttid" ] || return 0
-    [ "$tstate" = first-run ] && return 0
+    if [ -z "$ttid" ]; then
+        inputs_note "$rdir" profile "none looked for: the title has no TitleID"; return 0
+    fi
+    if [ "$tstate" = first-run ]; then
+        inputs_note "$rdir" profile "none loaded: a first-run route starts this title with no profile by design"; return 0
+    fi
     g=$(python3 "$TITLESTATE" golden --title-id "$ttid" --json 2>/dev/null)
     has=$(python3 -c '
 import json, sys
 d = json.loads(sys.argv[1] or "{}")
 rec = next(iter(d.values()), {})
-print("1" if rec.get("golden") else "")
+g = rec.get("golden") or {}
+print((g.get("save") or "?") if g else "")
 ' "$g" 2>/dev/null)
-    [ -n "$has" ] && return 0
+    if [ -n "$has" ]; then
+        inputs_note "$rdir" profile "$ttid's golden (save $has) is in the store; the titles disk is composed with it"; return 0
+    fi
 
     local cand sid path
     cand=$(python3 "$TITLESTATE" backup-candidates --title-id "$ttid" --json 2>/dev/null)
@@ -1365,6 +1477,7 @@ for c in json.loads(sys.argv[1] or "[]"):
         python3 -c 'import json,sys; json.dump({"title_id": sys.argv[1], "searched": sys.argv[2].split(","), "found": None}, open(sys.argv[3], "w"))' \
             "$ttid" "$searched" "$rdir/profile-backup.json"
         log "  profile backup: none found for $ttid (looked: $searched)"
+        inputs_note "$rdir" profile "$ttid has no golden and no backup was found (looked: ${searched//,/, }); nothing restored, no profile created"
         return 0
     fi
 
@@ -1378,11 +1491,13 @@ for c in json.loads(sys.argv[1] or "[]"):
         python3 -c 'import json,sys; json.dump({"title_id": sys.argv[1], "searched": sys.argv[2].split(","), "found": sys.argv[3], "detail": sys.argv[4], "restored": False, "refuse": sys.argv[5]}, open(sys.argv[6], "w"))' \
             "$ttid" "$searched" "$kind" "$detail" "$refuse" "$rdir/profile-backup.json"
         log "  profile backup: found a candidate ($kind: $detail) for $ttid but restore-backup refused: $refuse"
+        inputs_note "$rdir" profile "$ttid has no golden; found a backup ($kind: $detail) but restore-backup refused it: $refuse"
         return 0
     fi
     python3 -c 'import json,sys; json.dump({"title_id": sys.argv[1], "searched": sys.argv[2].split(","), "found": sys.argv[3], "detail": sys.argv[4], "restored": True}, open(sys.argv[5], "w"))' \
         "$ttid" "$searched" "$kind" "$detail" "$rdir/profile-backup.json"
     log "  profile backup: restored $ttid's golden from $kind ($detail)"
+    inputs_note "$rdir" profile "restored $ttid's first golden from a backup ($kind: $detail; copied, the backup is untouched)"
 }
 
 # verify_profile_on_device <title id> <state> <rdir>: dispatchdoctor1017
@@ -1416,6 +1531,7 @@ verify_profile_on_device() {
     if [ -z "$save" ]; then
         python3 -c 'import json,sys; json.dump({"title_id": sys.argv[1], "save": None, "verified": None}, open(sys.argv[2], "w"))' \
             "$ttid" "$rdir/hdd.verify.json"
+        inputs_note "$rdir" profile "device check: the composed titles disk loads no save for $ttid, nothing to verify"
         return 0
     fi
     savedir=$(python3 "$TITLESTATE" store-dir --title-id "$ttid" --save "$save" 2>/dev/null)
@@ -1428,6 +1544,7 @@ verify_profile_on_device() {
         log "  PROFILE VERIFY: pull of $path failed"
         python3 -c 'import json,sys; json.dump({"title_id": sys.argv[1], "save": sys.argv[2], "verified": False, "reason": "pull failed"}, open(sys.argv[3], "w"))' \
             "$ttid" "$save" "$rdir/hdd.verify.json"
+        inputs_note "$rdir" profile "device check FAILED: could not pull $path back to verify save $save"
         return 3
     fi
     bad=$(python3 "$SAVES_PY" verify "$pulled" "$savedir" 2>&1)
@@ -1438,9 +1555,11 @@ verify_profile_on_device() {
         log "  PROFILE VERIFY: $save does not verify on device for $ttid ($bad)"
         python3 -c 'import json,sys; json.dump({"title_id": sys.argv[1], "save": sys.argv[2], "verified": False, "detail": sys.argv[3]}, open(sys.argv[4], "w"))' \
             "$ttid" "$save" "$bad" "$rdir/hdd.verify.json"
+        inputs_note "$rdir" profile "device check FAILED: save $save is not on the pushed titles disk ($bad)"
         return 3
     fi
     log "  PROFILE VERIFY: $ttid save $save confirmed on device"
+    inputs_note "$rdir" profile "device check: save $save pulled back off $path and verified (hdd.verify.json)"
     python3 -c 'import json,sys; json.dump({"title_id": sys.argv[1], "save": sys.argv[2], "verified": True}, open(sys.argv[3], "w"))' \
         "$ttid" "$save" "$rdir/hdd.verify.json"
 }
@@ -2187,8 +2306,9 @@ PYEOF
                 # device_title_miss's own text goes LAST and unchanged: a
                 # Nova (single-root) miss's ERROR is matched to end exactly
                 # with "searched <root>" by jobs/selftest.d/99-iso-roots.sh,
-                # which is not this lane's to edit.
-                adb_error "staging searched $(staging_roots | paste -sd, - | sed 's/,/, /g'), none had it; $(device_title_miss "$title")" > "$rdir/ERROR"
+                # which is not this lane's to edit. What staging found and
+                # did (stage_summary, Section 3) goes first.
+                adb_error "$(stage_summary "$rdir"); $(device_title_miss "$title")" > "$rdir/ERROR"
                 log "  TITLE NOT FOUND"; mv "$req" "$rdir/request.json"
                 # $(basename "$rdir"), not a bare $id: this line is inside the
                 # soak block jobs/selftest.d/99-iso-roots.sh sed-extracts
@@ -2197,6 +2317,8 @@ PYEOF
                 maybe_run_doctor "$(basename "$rdir")" "$rdir"; return 0
             fi
         fi
+        grep -q '^disc: ' "$rdir/inputs.txt" 2>/dev/null \
+            || inputs_note "$rdir" disc "already on the device at $tpath"
         # Before the titles disk, which edits the same file: a build from
         # before libfolders needs the old games folder key to boot anything.
         if ! ensure_legacy_folder_pref; then
@@ -2214,7 +2336,12 @@ PYEOF
         # the generic survey) gets one attached here, before tstate/tsave
         # are read, so a route this call attaches is seen by everything
         # below exactly as a user's own --route would be.
-        ensure_route_attached "$ttid" "$title" "$rdir" "$req"
+        if ! ensure_route_attached "$ttid" "$title" "$rdir" "$req"; then
+            echo "refused before the soak: $(cat "$rdir/route.refused" 2>/dev/null)" > "$rdir/ERROR"
+            log "  ROUTE ATTACH REFUSED: $(cat "$rdir/route.refused" 2>/dev/null)"
+            restore_hdd_pref
+            mv "$req" "$rdir/request.json"; return 0
+        fi
 
         tstate=$(jq_get "$req" title_state any)
         tsave=$(jq_get "$req" save "")

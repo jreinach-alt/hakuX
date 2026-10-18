@@ -62,7 +62,10 @@ dd_classify() {
     case "$err" in
         *"this was the one requeue, so it is final"*)
             echo zero-captures-interop-exhausted; return 0 ;;
-        "staging searched"*)
+        # Anywhere in the line, not a prefix: Section 3 puts what staging
+        # found ahead of device_title_miss's own text, and history before
+        # this lane carries that text bare ("title not on device: ...").
+        *"title not on device"*)
             echo title-not-on-device; return 0 ;;
         "install failed"*)
             echo install-failed; return 0 ;;
@@ -183,7 +186,7 @@ dd_fix_push_iso() {
         echo "fix push-iso: pushed $title"
         return 0
     fi
-    echo "fix push-iso: $title is not on any staging root and console retrieval did not produce it"
+    echo "fix push-iso: $title not pushed -- $(sed -n 's/^disc: NOT STAGED: //p' "$rdir/inputs.txt" 2>/dev/null | tail -1)"
     return 1
 }
 
@@ -197,7 +200,10 @@ dd_fix_attach_route() {
     ttid=$(dd_req_field "$rdir" title_id "")
     [ -n "$ttid" ] || ttid=$(python3 "$TITLESTATE" tid-for-iso "$title" 2>/dev/null)
     [ -n "$ttid" ] || { echo "fix attach-route: no title_id for $title"; return 1; }
-    ensure_route_attached "$ttid" "$title" "$rdir" "$rdir/request.json"
+    if ! ensure_route_attached "$ttid" "$title" "$rdir" "$rdir/request.json"; then
+        echo "fix attach-route: refused, $(cat "$rdir/route.refused" 2>/dev/null) -- a route lane's to repair, not a retry"
+        return 1
+    fi
     local now; now=$(dd_req_field "$rdir" route_name "")
     if [ -n "$now" ] && [ "$now" != survey ]; then
         echo "fix attach-route: attached '$now' for $ttid"
@@ -277,6 +283,12 @@ $(cat "$rdir/request.json" 2>/dev/null)
 ### ERROR
 \`\`\`
 $(cat "$rdir/ERROR" 2>/dev/null)
+\`\`\`
+
+### inputs.txt (what the claim found and did for the disc, the route, the profile)
+\`\`\`
+$(cat "$rdir/inputs.txt" 2>/dev/null || echo "(none written: the claim ended before its title steps)")
+$(for f in console-stage.result room.log route.refused; do [ -f "$rdir/$f" ] && echo "-- $f --" && cat "$rdir/$f"; done)
 \`\`\`
 
 ### run.log (tail)
