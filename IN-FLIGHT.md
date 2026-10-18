@@ -8,9 +8,9 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `dispatchdoctor1017` | claude-opus-5-5 | 1h 25m | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what  |
-| `gta3fps1017b` | claude-opus-5-5 | 5 min | gta3fps1017b: GTA III fps -- R2 (bind the forced-alpha surface view) and R3 (share one copy between nodes), bo |
-| `snaptargets1018` | claude-sonnet-5 | 33 min | snaptargets1018: the dispatcher snapshot ships titlestate.py but not targets.toml (#433) |
+| `dispatchdoctor1017` | claude-opus-5-5 | 1h 40m | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what  |
+| `gta3fps1017b` | claude-opus-5-5 | 20 min | gta3fps1017b: GTA III fps -- R2 (bind the forced-alpha surface view) and R3 (share one copy between nodes), bo |
+| `snaptargets1018` | claude-sonnet-5 | 48 min | snaptargets1018: the dispatcher snapshot ships titlestate.py but not targets.toml (#433) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -140,4 +140,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 release052c: the 0.5.2 release page tells the story since v0.3.1, and the driver notice says handheld (#433)
 - 2026-10-17 Halo CE: the ship's rear lights show through the hull after the cut to the front (opening cinematic)
 
-_Updated 2026-10-18 02:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 02:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
