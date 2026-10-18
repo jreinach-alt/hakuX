@@ -11,7 +11,7 @@ No lane session is running.
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-offline`
-- **Device queue:** 0 waiting, 0 running.
+- **Device queue:** 9 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -132,4 +132,4 @@ No branch is being worked right now.
 - 2026-10-17 nearbar1017b: three more near-cap titles on the 0.5.2 build -- two clear, one inconclusive
 - 2026-10-17 bootstatic1017: black while the guest has the screen off, no static or green at title start (#1045)
 
-_Updated 2026-10-18 04:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 05:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
