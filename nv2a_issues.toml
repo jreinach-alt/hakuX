@@ -6524,3 +6524,14 @@ status = "open"
 dispatch_state = "available"
 blocked_on = ""
 status_note = "Filed 2026-10-17 from the owner's report on the Nova (0.5.2-rc1 release app, on Turnip T30 that day): every title, every build ('it's always been present'), so on the stock driver before 10-17 and on Turnip now. First report. Owned by lane.bootstatic1017 (dispatched by lane.xbox on the owner's request)."
+
+[issue.1058]
+title = "Mortal Kombat: Deadly Alliance: arena floors and walls draw as flat white"
+component = "renderer"
+suites = []
+no_suites = "A title-specific rendering defect seen in game frames; no pgraph suite is known to cover it until the cause is identified."
+disposition = "defect"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "Filed 2026-10-17 from the 10-06 pathfind run's frames (deadly-alliance-1006), noticed while building the title's preliminary Wall card. First step: one desktop or Nova run on the current build to see if it still shows."
