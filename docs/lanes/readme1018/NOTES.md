@@ -40,3 +40,38 @@ fragment reads README.md's Highlights bullets (home_page.py's own checks
 are run by hand below, not via selftest.d), and compat_page_selftest.py
 (compat1018c's generator test) is unaffected since this lane does not touch
 COMPATIBILITY.md, compat_notes.tsv or targets.toml.`
+
+## The edit
+
+In the "Rated by play." bullet, removed "Grand Theft Auto III and Vice
+City" and added "TimeSplitters 2", "Mortal Kombat: Shaolin Monks" and
+"Burnout Revenge" to the named Playable games, keeping the other names and
+re-wrapping at the file's existing ~80-column width. Added two fix bullets
+after "Faster." and before "Graphics checked against a real Xbox.", in the
+same bold-lead style as the surrounding bullets:
+
+- "**Crimson Skies no longer crashes when skipping the intro video.** We
+  know, you've already seen it." -- fix confirmed in
+  `docs/releases/v0.4.0-j1.md` lines 97-100.
+- "**RalliSport Challenge no longer flickers.** Rival cars stay on screen
+  through the countdown and close passes." -- fix confirmed in
+  `docs/releases/v0.5.2.md` line 72 and `compat1018c/NOTES.md`'s owner-play
+  verdict.
+
+Neither bullet names a date, version or issue number, per the brief.
+
+## Verification
+
+- `python3 docs/testing/title_registry.py check --root /home/justin/hakux-work --pages`:
+  exit 3 (pre-existing, unrelated to this lane: registry staleness and the
+  external status-page/registry gaps `compat1018c` already documented).
+  `PAGE README.md: numberless Playable line, as home_page.py expects (home
+  sets the count)` -- the count line is untouched, matched once as before.
+- `home_page.py`'s `readme(text, 94)` run directly against this README.md
+  in a one-off Python snippet (scratch, not written to disk): both of its
+  regex substitutions (the Playable-count sentence, the Compatibility table
+  row) matched exactly once each, no `RuntimeError` -- the Highlights/fix
+  bullet edits do not touch either pattern.
+- `bash docs/testing/preflight.sh`: passed -- territory ok, coverage ok,
+  board files ok.
+- `git diff --stat`: `README.md | 10 +++++++---`, no other file touched.
