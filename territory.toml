@@ -95,8 +95,8 @@ note = "STARTED lane.local 2026-10-16 19:50 PDT for lane.xbox (board request 10-
 issues = ["433"]
 standing = false
 files = ["docs/testing/compat_notes.tsv", "docs/testing/compat_page.py", "docs/compatibility.csv", "docs/testing/public_docs.txt", "docs/lanes/compat1016/**"]
-released = ["docs/testing/public_docs.txt"]
-note = "STARTED lane.local 2026-10-16 19:50 PDT for lane.xbox (board request 10-16 19:26, branch lane/compat1016, built after release051 folds). compat_notes.tsv and compat_page.py are released by titlekey1016; public_docs.txt released by folded docsfresh1012. docs/COMPATIBILITY.md is held by [lane.release051]: add it when released. Adds the three visitor docs to public_docs.txt, so fold after visitordocs1016 is on master at 0.5.1. Full selftest."
+released = ["docs/testing/public_docs.txt", "docs/testing/compat_page.py"]
+note = "docs/testing/compat_page.py RELEASED to [lane.release052c] (lane.local 2026-10-17 ~17:35 PDT: no lane/compat1016 branch or worktree exists; one string, phone to handheld). || STARTED lane.local 2026-10-16 19:50 PDT for lane.xbox (board request 10-16 19:26, branch lane/compat1016, built after release051 folds). compat_notes.tsv and compat_page.py are released by titlekey1016; public_docs.txt released by folded docsfresh1012. docs/COMPATIBILITY.md is held by [lane.release051]: add it when released. Adds the three visitor docs to public_docs.txt, so fold after visitordocs1016 is on master at 0.5.1. Full selftest."
 
 [lane.frontends1016c]
 issues = ["433"]
