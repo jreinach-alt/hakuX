@@ -4,6 +4,16 @@ RalliSport Challenge 2 (4D530039) on the Nova, owner hand-play 2026-10-18
 10:19-10:29 PDT. Scorer: fps_ok 0.9873, window median 59.76, gameplay 514 s,
 audio_starve_share 0.0134 (bar 0.001), 3 hitches after warm-up, worst 1403 ms.
 
+## Why attempt 1 did not finish
+
+Attempt 1 ended correctly, on a `waiting:` for its pilot dispatch request
+(Status, at the end of this file). The pilot then claimed the Nova at 11:39
+PDT and ran for about 2.5 minutes. At about 11:41:40 hakux-0b stopped it
+while the owner was steering, and the Nova went to lane.local's owner Fable
+hold. So attempt 1 got a partial pilot and no arm. That pilot is enough to
+name the mechanism (section "Pilot" below). Attempt 2 builds the fix it
+points at and waits for the hold to be released before any arm.
+
 ## Step 0: already tried (read before doing anything)
 
 | Source | What was tried | Measured | Concluded / do not repeat |
@@ -84,9 +94,16 @@ lock outside its own is the BQL, for an interrupt update after a voice
 notification (apu.c frame thread loop; vp.c sets `set_irq` on every
 notify). Its throughput is a fork-join over 4 voice workers per 5.33 ms
 EP frame. Both are exposed to CPU contention: compile workers, PFIFO, the
-vCPU (97-99% busy) and the voice workers all run at nice 0 on 8 cores.
+vCPU (97-99% busy) and the voice workers all share 8 cores.
 Which of these stopped it, the capture cannot say. It has no
 producer-side timing.
+
+(Corrected after the pilot: this section first said these threads all ran
+at nice 0. The pilot's `apu_prio:` line shows the APU frame thread already
+at nice -16 and the voice workers at -4 before this branch touched them.
+The pilot also answered the question. In the race the producer is
+CPU-bound in the voice workers, not starved of CPU by other threads. See
+"Pilot".)
 
 ## Work 1: the instrument added
 
@@ -124,9 +141,12 @@ It is not perflog-gated. That is deliberate:
    That is Android's THREAD_PRIORITY_AUDIO, the value SDLAudioManager
    already gives its own audio threads. It logs `apu_prio: on|off ...
    N of M set`.
-   - It fits the measured shape: the producer falls behind real time
-     while other work saturates the cores, and a 1500 Hz fork-join is the
-     most wake-latency-sensitive work in the process.
+   - In effect it raises only the voice workers, from -4 to -16. The frame
+     thread is already at -16 (pilot). The most it can recover is the
+     workers' run-queue wait, which was 2.6-4.8% of their time in the
+     race (`wrq` 526-955 ms per 5 s, summed over 4 workers).
+   - The 1500 Hz fork-join is the most wake-latency-sensitive work in the
+     process.
    - It cannot take more than the audio needs, because the FIFO paces it:
      at the high watermark the thread sleeps.
    - It does not help if the stop is a BQL wait. The `bql=` field says
@@ -135,6 +155,135 @@ It is not perflog-gated. That is deliberate:
    periods deep. Each period adds 42.7 ms of latency. It is for the tail
    if the priority alone does not close it. It is off by default because
    latency is a cost the player hears.
+3. (attempt 2, from the pilot) `vp.c`: the voice processor reads voice
+   registers and SSL entries straight from guest RAM, and skips a
+   voice-register store when the value is unchanged. There is no flag,
+   because the output is the same bytes. Detail in "The fix the pilot
+   points at".
+
+## Pilot (partial, 10-18 11:39-11:41:54, `HAKUX_APU_PRIO=0 HAKUX_PLC_WIPE=1`)
+
+Dispatch result `1-1792348243-lane.ralli2audio1018-2335205`, ref
+988b7e91f0, `GPU: PurpleVK`. It is not a clean arm. It was stopped at about
+11:41:40 PDT (the last lines are at 11:41:57), the owner was steering for
+part of it, and only about 35 s of it is the race. The owner's verdict
+from the same minutes: "the audio choppiness/cutouts are definitely still
+there". The `prod:` lines, read raw:
+
+| window ends | starve | blocks (real time 937.5 per 5 s) | free-run blocks | wall ms/block | VP frame us (mean) | BQL max ms | worker run-queue ms (sum of 4) |
+|---|---|---|---|---|---|---|---|
+| 3 x 30 s before the race | 0.0% | 5625-5636 per 30 s | 0-9 | 1.00 | 103-106 | 0.35 | 727-791 per 30 s |
+| 11:41:13.6 (11 s) | 0.69% (1 empty) | 2011 | 0 | 1.07 | 113 | **160.9** | 313 |
+| 11:41:24.2 (10.6 s) | 0.05% | 1991 | 40 | 1.83 | 181 | 23.9 | 789 |
+| 11:41:29.2 | **7.05%** | 879 | 421 | **5.51** | **638** | 13.7 | 955 |
+| 11:41:34.2 | 0.21% | 939 | 75 | 4.83 | 572 | 1.6 | 697 |
+| 11:41:39.2 | **11.65%** | 825 | 465 | **5.53** | **642** | 66.1 | 864 |
+| 11:41:44.2 | 0.53% | 929 | 162 | 4.61 | 542 | 0.5 | 526 |
+| 11:41:49.2 | 2.69% | 909 | 430 | 5.26 | 620 | 0.5 | 620 |
+| 11:41:54.2 | 3.74% | 913 | 507 | 5.23 | 622 | 0.04 | 586 |
+
+The `voice_headroom` windows count active voice-frames:
+
+- before the race, 37,500 per 5 s, which is 5 voices per VP frame;
+- in the race, 881,540-896,082 per 5 s. Divided by the VP frames actually
+  run (8 per block), that is about 120 voices per frame.
+
+Read together:
+
+- **In the race the producer is CPU-bound in the voice fork-join.**
+  - A VP frame is 32 samples, 667 us of audio, and the voice workers take
+    542-642 us of it.
+  - Eight VP frames make a 5.33 ms block, and a block takes 4.6-5.5 ms of
+    wall. The frame thread's own CPU is only 0.77-0.87 ms per block; the
+    rest is waiting on the workers.
+  - The producer therefore runs at 86-104% of real time. In half or more
+    of its blocks the FIFO is too low for the throttle to sleep (free-run
+    421-507 of about 900 in the bad windows).
+  - The windows with wall over 5.33 ms per block are the 2.7-11.7% starve
+    windows. The windows at 4.6-4.8 ms are the 0.2-0.5% ones.
+- This is the owner's tail. At this load the producer has no slack, so a
+  compile burst or a run-queue wait anywhere tips it below real time.
+  That matches Work 1: losses concentrated in compile bursts, with a
+  0.1-1% tail between them.
+- **It is not the BQL, the frame thread's run queue, or the sink.**
+  - BQL waits are under 15 ms per window, except one 66 ms wait.
+  - The frame thread's run-queue wait is 2.7-22.7 ms per 5 s.
+  - Each worst short comes with the producer behind: `lvl` 1-6 KB, and
+    the last push 1-5 ms before the callback.
+- The one empty short before the race (11:41:13) sits on a 161 ms BQL
+  wait. It is a single event, worth 0.69% of an 11 s window.
+- Worker priority can recover at most the workers' run-queue wait, 2.6-4.8%
+  of their time. That is real, but too small to move a producer that needs
+  10-30% more throughput.
+
+## The fix the pilot points at: the guest-memory API in the voice workers
+
+Where the voice workers' CPU goes, from the one per-thread device profile
+of a voice-heavy race (`lanelocal-scratch/nfs-race-1009/prof/split.txt`,
+NFS Most Wanted, 0.4.1-1009 perflog, 45 s):
+
+- the four voice workers (tids 32429-32432) total 19,159 samples;
+- **7,066 (36.9%) are in the guest-memory API**, which is 46% of the
+  workers' user-mode time:
+  - `ldl_le_phys` / `stl_le_phys`;
+  - `address_space_ldl_internal` and `address_space_translate_internal`;
+  - the RCU read lock, reached through a TLS descriptor (`get_ptr_rcu_reader`,
+    then `tlsdesc_resolver_dynamic` in linker64);
+  - on stores, `invalidate_and_set_dirty`.
+- The rest is real work (decode, resample, mix) and the fork-join's kernel
+  wakes (11-23% of worker samples).
+
+Each active voice calls `voice_get_mask`/`voice_set_mask` a few dozen times
+per 32-sample frame: the list walk, PAR_STATE/OFFSET/CFG reads, two
+envelopes and the SSL entry. Every call goes through the full address-space
+path. The envelope state machine also rewrites unchanged fields every
+frame (OFF and SUSTAIN rewrite count and level, HOLD rewrites level 0xFF),
+and every one of those stores pays for the dirty-bitmap and TB-invalidate
+bookkeeping.
+
+The change (`vp.c`, `voice_ldl`, `voice_get_mask`, `voice_set_mask`, the SSL
+read, `mcpx_apu_vp_init`):
+
+- Read from `d->ram_ptr` when the address is below the RAM region's size.
+  That is the same bounds-checked direct access the PRD and sample reads in
+  the same file already use (`vp.c` PRD read, the ADPCM/PCM block reads,
+  the voicelog CBO read). Xbox RAM is one region at guest physical 0
+  (`xbox.c`), so the bytes read are the same. Anything above RAM still goes
+  through `ldl_le_phys`.
+- Store only when the new 32-bit word differs from the one read. An
+  unchanged store wrote the same bytes, and its dirty marking and TB
+  invalidation had nothing to act on. The read-modify-write could already
+  race a guest write to the same word. Skipping the store narrows that
+  window; it never widens it.
+
+Output: the same samples. No flag, per the brief's rule for byte-identical
+changes.
+
+Expected (the prediction this lane's arms test, not yet measured):
+
+- The memory API is 36.9% of worker samples. If the RalliSport race
+  matches that share, the fork-join drops from about 620 to 390-450 us per
+  VP frame (the lower figure if the share applies to the whole fork-join
+  wall, the higher if the kernel wake time stays fixed).
+- The producer then runs at about 65-75% of real time instead of 86-104%.
+  That gives 25-35% slack for compile bursts.
+- **What would falsify it:** in the arm's race windows, `vp=` mean stays
+  above 520 us, or wall per block stays above 4.6 ms. Either means the
+  RalliSport workers spend their time elsewhere (sample decode, the
+  resampler, the kernel), and the next lever is the next row below.
+
+Not done here, ranked by expected impact:
+
+1. **The fork-join wake cost.** 1500 joins per second over 4 workers, and
+   11-23% of worker samples are in the kernel. Spinning briefly before
+   sleeping, or giving each worker a fixed voice slice, could recover
+   10-20%. It is likely to help, but it changes scheduling, so it needs its
+   own A/B arm.
+2. **The stub resampler** (`android/app/src/main/cpp/samplerate_stub.c`)
+   does a malloc, a memcpy and a free on every refill. It is small, and
+   outside this lane's files.
+3. **Worker priority**: already on this branch (`HAKUX_APU_PRIO`), worth at
+   most 2.6-4.8%.
 
 ## Work 2: the 1403 ms freeze (10:21:20.8, 55 s into the race)
 
@@ -190,7 +339,10 @@ handed back, not built here.
 `dispatch/board-requests/ralli2audio1018.md` asks for
 `hw/xbox/mcpx/apu/apu.c` (held by x1port1012, a stale hold whose branches
 are in master), predictions and a selftest fragment. It was pending at
-11:40 PDT.
+11:40 PDT. Attempt 2 added `hw/xbox/mcpx/apu/vp/vp.c` to the same request.
+No row holds it; halo1016, the last row to name it, is retired. `apu_int.h`,
+`vp.h` and `debug.c` are held by audio1016, so the change stays inside
+`vp.c`, with a file-static RAM size instead of a new state field.
 
 ## Device plan
 
@@ -201,10 +353,23 @@ are in master), predictions and a selftest fragment. It was pending at
   the owner's did. Without it, the first arm warms the driver cache for
   the second, and the second looks fixed for the wrong reason.
 - Pilot: `HAKUX_APU_PRIO=0 HAKUX_PLC_WIPE=1` (870 s). It gives the `prod:`
-  lines that name the mechanism, at the prior thread priority.
-- Then `HAKUX_PLC_WIPE=1` (priority on), then two plain default runs for
-  the bar. The default goes last, so the device's env pref is left as
-  shipped.
+  lines that name the mechanism, at the prior thread priority. It ran
+  partially (above). Its result already decides the next step, so it is
+  not repeated.
+- Next, after the owner hold on the Nova is released, on the head that
+  carries the `vp.c` change:
+  1. `HAKUX_PLC_WIPE=1` (everything on, cold cache), 870 s. Read `prod:`
+     in the race: `vp=` mean and wall per block against the prediction
+     above. That is the pilot verdict, written to
+     `pilots/lane.ralli2audio1018.ok` with python3.
+  2. If it holds, two plain default runs for the bar (same route, same
+     race), each scored with `title_verdict.py --require confirmation`,
+     plus `audio_starve_share`. The default goes last, so the device's env
+     pref is left as shipped.
+  - The installed build is 635141c4cc-perflog, and a request reinstalls,
+    which clears the shader caches anyway.
+  - Three requests of 870 s are 48 min with setup. That exceeds the 30 min
+    pilot gate, so 2 waits for the verdict file from 1.
 
 ## Stop rule
 
@@ -212,14 +377,26 @@ The same failure twice for one cause: stop and report.
 
 ## Status
 
-[lane.ralli2audio1018] waiting: dispatch request
-1-1792348243-lane.ralli2audio1018-2335205 (Nova, ref 988b7e91f0, 870 s,
-route ralli2audio1018-drive, env HAKUX_APU_PRIO=0 HAKUX_PLC_WIPE=1; queued
-11:44 PDT behind gta3car1018's hold). On its result:
+Attempt 1 waited on dispatch request
+1-1792348243-lane.ralli2audio1018-2335205. That request ran partially;
+see "Pilot".
 
-1. Check `GPU: PurpleVK` and that the route raced (frames: race clock,
+Attempt 2 (10-18, about 12:50 PDT):
+
+- The `vp.c` fix is built.
+- It syntax-checks clean with both the desktop and the arm64 NDK flags of
+  this tree's compile databases. The only warning is upstream
+  `target_page.h`, which it already raised.
+- It is not yet measured on a device.
+
+[lane.ralli2audio1018] waiting: the owner hold on the Nova (`hold.sh who
+nova` = lane.local, owner Fable session since 18:39Z). Once it is
+released:
+
+1. Queue arm 1 from "Device plan" on this branch's head with request.sh.
+2. Check `GPU: PurpleVK` and that the route raced (frames: race clock,
    LAP, minimap).
-2. Read `tools/timeline.py <logcat> --prod`.
-3. Write the pilot verdict to `pilots/lane.ralli2audio1018.ok`.
-4. Queue `HAKUX_PLC_WIPE=1` (priority on), then two default runs for the
-   bar.
+3. Read `tools/timeline.py <logcat> --prod`, and test `vp=` and wall per
+   block against the prediction.
+4. Write the verdict to `pilots/lane.ralli2audio1018.ok`.
+5. Queue the two default runs for the bar.
