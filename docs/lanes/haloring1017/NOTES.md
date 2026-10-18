@@ -6,19 +6,19 @@ Brief: `/home/justin/hakux-work/briefs/haloring1017.md`.
 The owner's goal is the ring the way the console draws it. Every surface turns with the ring, and the bright mottled
 grey layer covers the whole ring, the unlit side included.
 
-[lane.haloring1017] waiting: (c) is answered. The inside band turns on screen off the stock driver: slope 0.88 on the
-desktop, 1.02 on Turnip (run 13, PurpleVK confirmed from its log). The lane narrows to (a). (a) is made inside the
-hull draw (M3). A software render reproduces hakuX's hull to r 0.977 (M4), and it is the judge for the console
-photos.
+[lane.haloring1017] blocked: (a) needs a console capture that a phone photo cannot give. (c) is answered: the stock
+driver. The inside band turns on screen off it, at slope 0.88 on the desktop and 1.02 on Turnip (run 13, PurpleVK
+confirmed from its log). (a) is made inside the hull draw if anywhere (M3). A software render reproduces hakuX's hull
+to r 0.977 (M4), and it is the judge for the console photos.
 
-The Nova dump at photos 1-4's poses landed and was used (M10). The hull is not on screen at those poses, so the
-photos cannot judge it. On photo 5, the console's hull has hakuX's structure: the same texture phase, the same cube
-mask, the same cube face layout. Most of its extra brightness on the dark faces is the photo's own lift on its right
-side (R11). What is left is a reflection step 1.7x hakuX's at the bright face's edge (R12), which is either the
-console or the camera. No mechanism in hakuX's state for the hull is identified.
-
-The lane waits on a fixed-exposure console capture of the menu: the board request to lane.xbox, 10-18 06:35 PDT, in
-`dispatch/board-requests/xbox.md`.
+Photos 1-4 hold no hull at their poses on the Nova dump (M10). On photo 5 the console's hull has hakuX's structure:
+the same texture phase, the same cube mask, the same cube face layout (M5, M9, M10). Its extra brightness, face 0's
+included, is inside what the photo's own dark-level lift at that place predicts. That lift is fitted on the space
+background, which both machines draw the same (M11). No measurement shows the console drawing more than hakuX, and
+nothing in hakuX's state for the hull is wrong. What would settle (a) is "Root cause and remedies" remedy 1, a
+capture card on the console with frames judged against hakuX's framebuffer, or remedy 2, the owner viewing both
+machines on one TV. Both are asked of lane.xbox (board request 10-18 06:35 PDT and its follow-up). The PR is ready as
+analysis and tools.
 
 ## Attempt 1 did not finish: the turn cap
 
@@ -42,6 +42,23 @@ committing it: three new tools (`faceedge.py`, `glarefit.py`, `framepick.py`), a
 new run's video is on a 120/1 base, not 59.94), an outside-the-photo mask in `posefit.py`, and `margin=`/`exclude=`
 in `photocal.py`. Their outputs sat in scratch only (`hr/sw/n14`). Attempt 4 commits the tools first, reads those
 outputs instead of re-running them where they are complete, and commits after every measurement.
+
+## Attempt 4: the last, and how it ends
+
+Attempt 4 (10-18 07:38 PDT onward) committed attempt 3's tools, then M10 (photos 1-4 on the Nova dump; glare; cube
+edges), then M11 (the background's gain field). It ends with the PR ready and (a) blocked on an owner-side
+instrument (see the top line), not on the turn cap. Nothing is left uncommitted.
+
+What is still open, exactly:
+- (a)'s cause. No measurement shows a difference that is the console's and not the photo's or the display's.
+- The lane.xbox board request (10-18 06:35) and its follow-up are unanswered: the capture card, the same-TV view, and
+  the #939 comment for (c).
+- A7's PSHDBG crash on the desktop. It is not needed for (a) unless a capture shows a gap. Desktop runs stay paused
+  under 40 GB free on C: (32 GB at the end of attempt 4).
+
+The next lane, if a capture lands, should not re-run photos 1-5. It should pose the capture's frames with
+`posefit.py` against a fresh `gd` dump at the same menu time, render with `hullsw.py` (add `n6` first: M10), and
+calibrate on the overlays with `photocal.py`. A capture card needs no `gainfield.py` correction, which is the point.
 
 ## Step 0: what was searched
 
@@ -97,7 +114,7 @@ outputs instead of re-running them where they are complete, and commits after ev
 
 | | symptom | known where | account |
 |---|---|---|---|
-| (a) | bright mottled grey layer missing over the whole ring | desktop lavapipe; Nova run 13 | open |
+| (a) | bright mottled grey layer missing over the whole ring | desktop lavapipe; Nova run 13 | **open, and not shown by any measurement.** It is made in `n5`, if anywhere (M3). On photo 5, the one console image with a dump at its pose, the console's hull is hakuX's structure (M5, M9, M10). Its extra brightness is inside what the photo's own dark-level lift at that place predicts (M11, R11 0.5). The owner's by-eye account may be the display (R13 0.3). A real gap up to about hakuX's own dark-face level fits inside the photo's error (R10, R12, R5 together about 0.2). See "Root cause and remedies" |
 | (c) | the inside surface does not rotate | Nova release app 0.5.1-rc1 on the **stock** driver only | **the stock driver (R4)**: the band turns in the guest (M1), on the desktop (M2, slope 0.88) and on Turnip (M2b, slope 1.02). See "The account of (c)" |
 | (a)+(c) | one cause or two | | two. (c) is the driver; (a) reproduces on lavapipe and Turnip, so it is the emulator's |
 | (b) | bursts | fixed (A12) | only as far as a mechanism touches c13.w |
@@ -121,9 +138,10 @@ console's brightness.
 | R6 | unwritten VP outputs take the attribute registers' current values on hardware (Cxbx-R PR #2109); hakuX sets them to (0,0,0,1). The hull never writes oT0/oT1/oT2.zw (the PROJECT2D q), oT3.w, oB0, oB1 | (a), perhaps (c) | 0.1 -> 0.03 (M5: t0 and t2.r land on the console at the dump's own scale and phase, which a q != 1 would move) | new: searched hakuX git and `vsh.c`, nothing; Cxbx-R PR #2109 | inline attribute values for v9-v12 (or the slots each output maps to) give q != 1, and a render with that q matches the console | q = 1 under that model | the `gd` dump's inline attribute values; a software render |
 | R8 | the cube's LOD: on hardware the hull's reflection samples a coarse mip of the 64x64 cube (near each face's mean) where hakuX samples a fine one, so the reflection is t2.r times a near-constant over the whole hull, not only where a bright face is hit | (a), and (b)'s flicker source | 0.3 (new, M6) -> 0.01 (M7: each face's mean is the same at every mip, and the screen LOD is 0) | new: M6's t2.r-without-cube fit | the reflection with the cube at a coarse LOD fits the console's rank and level better than at hakuX's LOD | no LOD bias raises the fit over D + c·t2.r's | `termfit.py` with an LOD bias on t3 |
 | R9 | the fresnel oD1 differs on hardware (its inputs: v5/v6's formats, or an unwritten register), so oD1.rgb·oD1.a is near-constant | (a) | 0.15 (new, M6) -> 0.2 (M7: on the pixels where t2.r and D disagree, the excess follows t2.r) -> 0.07 (M9: hakuX's mask t2.r·oD1.rgb·oD1.a fits best, a flat or t2.r-only mask worse; the pooled t2.r loading is one screen region, face 3, flat in t2.r inside it) | new | a near-constant oD1 with the cube at hakuX's or a coarse LOD fits the console | the fresnel-shaped term fits as well as a flat one | `termfit.py`; the VP's oD1 inputs read from the dump |
-| R10 | the hull's diffuse counts for ~1.4x more on hardware (the detail map t1 at a higher level, or the s6 sum t0·t1 + t0·t1 scaled differently) | (a) | 0.3 (new, M7: D x 1.5 + X0 is the best joint fit; the hull's gain is flat over hakuX's mid-range) -> 0.3 (M9: rejected pooled at 95%, but inside each cube face the console is hakuX's own pattern at 1.07-1.50x; the gain is not one constant across faces) -> 0.15 (M10: faces 3 and 5's gain is mostly the photo's own lift at their place, R11; what is left is face 0's 1.5x, where D and X0 are collinear, so a gain there is R12's as much as R10's) | M7 `texregs.py`: no LOD bias or clamp; t1's mips cap the lift at x1.39 | the unlit hull stays dark on the console, and a desktop render with D x k matches photo 5 | the console lights the unlit hull | a console photo of the unlit side; `hullsw.py` with D x k |
-| R11 | part of photo 5's hull excess is the photo, not the console: the camera or TV reads brighter on the right, where cube face 3 falls at that pose | (a)'s size, not its presence | 0.4 that it is part, 0.05 that it is all (new, M9: the background reads +0.013, and +0.046 in its bright half, at x 480-640 against -0.03 at the left; face 3's flat +0.115 sits there) -> **0.7 that it is most of faces 3 and 5's lift**, 0.15 that it is all of (a) on photo 5 (M10: the background at face 3's place and level is lifted as much as face 3, 0.177 to 0.267 against 0.150 to 0.270; the lift is smooth across the 3\|5 cube edge, step -0.027, CI -0.076 to +0.019; not veiling glare, whose coefficient is negative) | new | at photos 1-4 the excess follows the photo's position, not the cube face or the lighting | the excess follows a face or a term wherever it falls on the photo | M10: photos 1-4 hold no hull at their poses, so the test ran on photo 5's background and cube edges instead (`glarefit.py`, `faceedge.py`) |
-| R12 | the reflection's amplitude is about 2x hakuX's on hardware (oD1, the cube texel or the stage-7 product), with hakuX's face layout and mask | (a) on the bright face | 0.2 (new, M10: the console's step at the 0\|5 edge is 1.7x hakuX's, at hakuX's place; M9's face-0 fit 1.95x). Against: no input or combiner word in `n5`'s state gives a factor of 2 (c4.w 2, c12.w 1, specular alpha passed, two-side off), and a phone's local tone mapping sharpens steps | new | a fixed-exposure console capture shows the bright face's reflection at about 2x hakuX's, against an overlay of known level | the capture's reflection matches hakuX's | the console clip (board request to lane.xbox) |
+| R10 | the hull's diffuse counts for ~1.4x more on hardware (the detail map t1 at a higher level, or the s6 sum t0·t1 + t0·t1 scaled differently) | (a) | 0.3 (new, M7: D x 1.5 + X0 is the best joint fit; the hull's gain is flat over hakuX's mid-range) -> 0.3 (M9: rejected pooled at 95%, but inside each cube face the console is hakuX's own pattern at 1.07-1.50x; the gain is not one constant across faces) -> 0.15 (M10: faces 3 and 5's gain is mostly the photo's own lift at their place, R11; what is left is face 0's 1.5x, where D and X0 are collinear, so a gain there is R12's as much as R10's) -> 0.07 (M11: face 0's excess is inside what the background's gain field at its place predicts) | M7 `texregs.py`: no LOD bias or clamp; t1's mips cap the lift at x1.39 | the unlit hull stays dark on the console, and a desktop render with D x k matches photo 5 | the console lights the unlit hull | a console photo of the unlit side; `hullsw.py` with D x k |
+| R11 | part of photo 5's hull excess is the photo, not the console: the camera or TV reads brighter on the right, where cube face 3 falls at that pose | (a)'s size, not its presence | 0.4 that it is part, 0.05 that it is all (new, M9: the background reads +0.013, and +0.046 in its bright half, at x 480-640 against -0.03 at the left; face 3's flat +0.115 sits there) -> **0.7 that it is most of faces 3 and 5's lift**, 0.15 that it is all of (a) on photo 5 (M10: the background at face 3's place and level is lifted as much as face 3, 0.177 to 0.267 against 0.150 to 0.270; the lift is smooth across the 3\|5 cube edge, step -0.027, CI -0.076 to +0.019; not veiling glare, whose coefficient is negative) -> **0.5 that it is all of photo 5's hull excess** (M11: a gain field fitted on the background alone predicts the excess on faces 0 and 3 inside its interval, and face 5 at its low edge; level alone does not; the interval still leaves room for a layer about as bright as hakuX's own face 3) | new | at photos 1-4 the excess follows the photo's position, not the cube face or the lighting | the excess follows a face or a term wherever it falls on the photo | M10: photos 1-4 hold no hull at their poses, so the test ran on photo 5's background and cube edges instead (`glarefit.py`, `faceedge.py`) |
+| R12 | the reflection's amplitude is about 2x hakuX's on hardware (oD1, the cube texel or the stage-7 product), with hakuX's face layout and mask | (a) on the bright face | 0.2 (new, M10: the console's step at the 0\|5 edge is 1.7x hakuX's, at hakuX's place; M9's face-0 fit 1.95x). Against: no input or combiner word in `n5`'s state gives a factor of 2 (c4.w 2, c12.w 1, specular alpha passed, two-side off), and a phone's local tone mapping sharpens steps -> 0.08 (M11: face 0's excess is inside the background gain field's prediction; the step's excess interval reaches zero; the profile across the edge is a sharpening camera's overshoot and undershoot, and glarefit's 6 px halo is negative) | new | a fixed-exposure console capture shows the bright face's reflection at about 2x hakuX's, against an overlay of known level | the capture's reflection matches hakuX's | the console clip (board request to lane.xbox) |
+| R13 | the owner's by-eye difference is the display. hakuX draws the hull's values as the console does. The console's TV, through its dark-level response (and an off-axis view), shows the unlit hull's crater texture, 2·t0·t1·oD0 at fb 0.07-0.15 in hakuX. The screen hakuX was watched on shows it near black | (a) as the owner saw it | 0.3 (new, M11). For: photo 5's hull is hakuX's under the photo's own dark-level lift (M11); inside each face it is hakuX's pattern (M9); the face layout is hakuX's (M10); nothing in `n5`'s state gives a factor. Against: the owner calls the layer bright and the sprite. hakuX's reflection on the dark faces is about fb 0.02-0.03 (X0 on face 5, M10), too faint for any display to show as a pattern. And whether the owner watched hakuX on the console's TV is not recorded | new | hakuX on the console's own TV (HDMI from the Thor or a desktop), or one capture card on both, shows the same unlit hull | the same display still shows the console's layer and not hakuX's | the owner's comparison on one display; a capture card's frames against hakuX's framebuffer |
 
 ## Measurements
 
@@ -886,6 +904,90 @@ One photo cannot say which.
   lane.xbox, 10-18 06:35). The other is hakuX and the console photographed by one camera on one TV, so that the
   camera and the TV's off-axis response cancel.
 
+### M11: on photo 5, the background's own gain at the hull's place predicts the hull's excess (`gainfield.py`)
+
+M10 compared the background with the hull at matched levels in one strip on the right. `glarefit.py`'s last block went
+further, but its numbers did not reach M10. That block fits the photo's departure from hakuX on the space background
+as a gain field, in linear light: photo - video = video x (g0 + gx x + gy y) + c. Both machines draw the same pixels
+there, so whatever the field does is the camera, the TV or the display chain. The field is then applied to hakuX's
+hull. `gainfield.py` repeats the fit with three changes:
+- both sides are box means (radius 3) inside their own mask, as the hull's already are. Misregistration of the fine
+  background art then cannot pull the fit toward a gain of -1;
+- the prediction carries a block bootstrap over 24 px blocks;
+- it runs two controls.
+
+Inputs: render f507, `reg5`, `cal5v1806`, video `v01806`. Background: 121,208 px. Hull core: 47,162 px.
+
+| model, fitted on the background | R² | hull, all | face 0 | face 3 | face 5 | band `n4` |
+|---|---|---|---|---|---|---|
+| console - hakuX, linear (the excess) | | +0.028 | +0.046 | +0.041 | +0.012 | +0.092 |
+| position gain, all background | 0.19 | +0.038 (0.021 .. 0.055) | +0.064 (0.032 .. 0.095) | +0.049 (0.027 .. 0.070) | +0.020 (0.012 .. 0.027) | +0.58 (0.25 .. 0.92) |
+| position gain, background > 40 px off the ring | 0.07 | +0.025 (-0.027 .. 0.069) | +0.041 (-0.056 .. 0.118) | +0.032 (-0.035 .. 0.088) | +0.013 (-0.011 .. 0.035) | +0.36 (-0.62 .. 1.00) |
+| level only, no position | 0.27 | +0.008 (0.004 .. 0.012) | +0.015 (0.006 .. 0.024) | +0.006 (0.004 .. 0.010) | +0.006 (0.003 .. 0.008) | -0.026 |
+
+The gain field is g0 -0.65 (-1.00 .. -0.40), gx +1.07 (+0.47 .. +2.00), gy +4.89 (+2.20 .. +7.58). So the photo reads
+dark pixels about 3x brighter in linear light at the bottom of the frame than at the top-left. The hull sits at the
+bottom.
+
+**What the table says:**
+- **The position field predicts the hull's excess on faces 0 and 3.** It does so inside its interval, face 0's
+  doubling included. Face 5 sits at the low edge of its interval (+0.012 against 0.012-0.027): the console is no
+  brighter there than the background's field would make hakuX.
+- **Level alone does not predict it** (all four outside, too low). The photo's lift depends on where a pixel is.
+  M10's strip on the right said the same.
+- **The hold-out is not informative.** Fitted only on background more than 40 px off the ring, every interval spans
+  zero. It neither confirms nor breaks the result.
+- **The band is not a control.** At 0.30 linear the band is far above the background's levels, where the photo's
+  curve flattens, and a linear gain extrapolated there over-predicts it 6x. The field is a dark-level lift, not a
+  true gain. The hull, at 0.013-0.050 linear, is in the background's own range.
+
+**So on photo 5 the console's hull is no brighter than the photo's own dark-level lift at its place would make
+hakuX's hull.** The same goes for face 0's 1.7x step (M10). Its excess step's interval already reached zero (-0.160 ..
++0.006), and M10's glare fit found a negative halo at 6 px (-0.17), a camera that sharpens. Overshoot on face 0's
+bright side and undershoot on face 5's (excess -0.05 to -0.02 at 16-32 px) are its signature.
+
+**The limit of this.** The prediction's interval is wide. On face 3 the console could hold a layer of up to about
++0.014 linear (fb 0.15 to 0.20) above the field's lowest prediction, about hakuX's own face-3 level, and the photo
+could not tell. What photo 5 does bound is the total: the console's face 3 reads fb 0.27 through the photo's
+calibration. Neither a "bright" layer over the dark faces nor its absence is shown by this photo. The photo is
+consistent with none.
+
+## Root cause and remedies
+
+**(c): the stock Qualcomm driver (R4, 0.9).** The band turns in the guest, on lavapipe and on Turnip. Nothing to fix
+in hakuX; the driver is out of scope by the owner's rule.
+
+**(b): fixed by FIST_ROUND (A12).** Not reopened.
+
+**(a): no root cause, because no measurement shows the console drawing more than hakuX.** Every instrument this lane
+had points the other way. The one console image with a dump at its pose (photo 5) has hakuX's texture scale and phase,
+cube mask and cube face layout. Its brightness is inside what the photo itself does to the background at the same
+place. Photos 1-4 hold no hull at their poses. hakuX's own state for `n5` was decoded word by word, and every factor
+that could scale a term was read and found to match. What is left:
+
+| account | P | what decides it |
+|---|---|---|
+| R11: photo 5's excess is the photo (camera and TV off-axis) | 0.5 | already measured (M11); fixed exposure on a capture card would confirm |
+| R13: the owner's by-eye difference is the display hakuX was watched on | 0.3 | hakuX and the console on one display |
+| a real gap in `n5`, below photo 5's precision (R10 0.07, R12 0.08, R5 0.1; not exclusive) | 0.2 | a capture card's frames of the console against hakuX's framebuffer, at matched frames |
+
+R11 and R13 are not exclusive: R11 is about photo 5, R13 about the owner's eye. The third row is what a code fix
+would need, and it is the least likely.
+
+**Ranked remedies, by P x win.** Here the win is closing (a) correctly, either way.
+
+| # | remedy | P it settles (a) | win | P x win | who | chased |
+|---|---|---|---|---|---|---|
+| 1 | a capture card on the console's video out, frames compared with hakuX's framebuffer by `hullsw.py`, `photocal.py` (with the overlays as the calibration) and `gainfield.py` | 0.9 | full: a framebuffer-to-framebuffer judge with no camera or TV in it, and the term-by-term tools already exist | 0.9 | owner's console | yes: board request to lane.xbox, 10-18 06:35, with a follow-up asking for a capture card over a phone |
+| 2 | the owner watches hakuX and the console on the same TV, the menu side by side | 0.6 (it settles R13 either way; it cannot size a remaining gap) | most: closes (a) if R13 holds, otherwise it makes the gap one display's worth and points at `n5` | 0.5 | owner, 10 min | yes: question 1 at the end of this file and in the board follow-up |
+| 3 | code: the diffuse gain (R10: t1's level or the s6 sum) | 0.07 | full if true | 0.07 | lane, after 1 | no: nothing in the state supports it (M7, M11) |
+| 4 | code: the reflection's amplitude (R12) | 0.08 | partial (face 0 only) | 0.04 | lane, after 1 | no: no word in `n5` gives the factor (M10) |
+
+No code remedy is worth a device run until remedy 1 or 2 shows a gap. Two lane attempts already went to that kind of
+pre-instrument fix in A1-A20.
+
+**Measured fix: none.** Nothing was changed in hakuX, so there is nothing to measure. The PR is analysis and tools.
+
 ## Plan
 
 1. ~~(c) off the stock driver~~: done (M2, M2b). R4 holds.
@@ -896,19 +998,33 @@ One photo cannot say which.
    - ~~Photos 1-4~~: done (M10) on dump 1792329678 (PurpleVK). They show no hull at their poses, and the band sits in
      their tone-curve shoulder, so they cannot judge (a). R11 was tested on photo 5 instead: the face-3 lift is the
      photo's own, and the cube's face layout is hakuX's. R12, the reflection's height at the bright face, is left.
+   - ~~Photo 5's gain field~~: done (M11). The background's dark-level lift at the hull's place predicts the hull's
+     excess per face. R11 0.5, R12 0.08, R10 0.07; R13 (the display) new at 0.3.
    - The console side: a board request to lane.xbox for a fixed-camera clip of the menu, filed 10-18 06:35 PDT
      (`dispatch/board-requests/xbox.md`, "lane.haloring1017: #939 (a) needs a fixed-camera console clip"). It asks
      for a capture card or a locked-exposure phone on a stand, 2 minutes from the menu's first frame, and 5 s of a
      plain grey screen as a flat field. A clip shows the same hull faces at many screen positions under one
      calibration: an excess that moves with the hull is the console (R10), one that stays on the right is the photo
      (R11). The same entry asks for the #939 comment on (c) and reports the dispatcher's install without `-d`.
-4. The desktop (A7's PSHDBG crash, the leaders): paused while C: is under 40 GB free (38 GB on 10-18).
+4. The desktop (A7's PSHDBG crash, the leaders): paused while C: is under 40 GB free (38 GB at 06:29 on 10-18,
+   32 GB at the end of attempt 4). Not needed for (a) until remedy 1 or 2 shows a gap.
 
-## Waiting
+## Status
 
-[lane.haloring1017] waiting: a fixed-exposure console capture of the menu from lane.xbox (board request filed 10-18
-06:35 PDT, in `dispatch/board-requests/xbox.md`). The Nova dump 1792329678 landed and is used (M10). C: needs to be
-back at 40 GB free before desktop runs resume (38 GB at 06:29).
+[lane.haloring1017] blocked: (a) needs a console capture on a capture card, judged against hakuX's framebuffer
+(remedy 1), or the owner's view of hakuX and the console on one TV (remedy 2). Both are asked of lane.xbox (board
+request 10-18 06:35 PDT and its follow-up, in `dispatch/board-requests/xbox.md`). The Nova dump 1792329678 landed and
+is used (M10, M11). The PR is ready as analysis and tools. C: needs to be back at 40 GB free before desktop runs
+resume (32 GB at the end of attempt 4).
 
 Before every desktop run that may crash, `df -B1G /mnt/c` must show at least 40 GB free. After every run, delete only
 this run's own dumps in `wsl-crashes/`, by exact name, and log each crash here.
+
+## Questions for the owner
+
+1. On 10-16, when you saw the bright grey layer over the dark part of the ring on the console, where were you
+   watching hakuX: on the same TV, or on the handheld or a monitor? If it was a different screen, one look at hakuX's
+   menu on the console's TV (HDMI from the Thor or the desktop) tests R13. If hakuX's unlit hull shows its grey
+   crater texture there too, (a) is the display and closes with no code change.
+2. Is a capture card available for the console's video out (component or HDMI adapter)? A phone cannot give
+   framebuffer values (M10, M11). A capture card's frames go straight into this lane's judge.
