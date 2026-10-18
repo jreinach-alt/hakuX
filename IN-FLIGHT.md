@@ -6,7 +6,10 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Right now
 
-No lane session is running.
+| Lane | Model | Running for | Working on |
+|---|---|---|---|
+| `bootstatic1017` | claude-opus-5-5 | 8 min | bootstatic1017: the brief static or green flash at every title start (#1045) |
+| `gta3drive1017` | claude-opus-5-5 | 12 min | gta3drive1017: Grand Theft Auto III drops into the teens while driving (#433) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -112,7 +115,10 @@ No lane session is running.
 
 ## Work in progress
 
-No branch is being worked right now.
+| Branch | Topic | Tip | Last change |
+|---|---|---|---|
+| `lane/bootstatic1017` | bootstatic1017: the brief static or green flash at every title start (#1045) | `3eae1f77df` | 2026-10-17 17:10 |
+| `lane/gta3drive1017` | gta3drive1017: Grand Theft Auto III drops into the teens while driving (#433) | `c179fb3059` | 2026-10-17 17:11 |
 
 ## Recently landed on master
 
@@ -125,4 +131,4 @@ No branch is being worked right now.
 - 2026-10-17 release052: the 0.5.2 release commit (#433)
 - 2026-10-17 defaulton1017: S2T_CVT, REPORT_EARLY and FLDCW_CHAIN on by default, after one default-on screen
 
-_Updated 2026-10-17 17:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-17 17:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
