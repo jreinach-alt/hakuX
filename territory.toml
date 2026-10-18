@@ -3031,3 +3031,10 @@ issues = ["433"]
 standing = false
 files = ["docs/lanes/compat1017c/**", "docs/testing/compat_notes.tsv", "docs/compatibility.csv", "docs/COMPATIBILITY.md", "docs/testing/titles/targets.toml"]
 note = "STARTED lane.local 2026-10-17 ~23:55 PDT (Sonnet, docs): NBA Live 07 banked Playable from the owner's Nova play session; the compatibility page, CSV and targets.toml catch up (90 -> 91). README stays numberless (home sets the count)."
+
+
+[lane.snaptargets1018]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/snaptargets1018/**", "docs/testing/dispatcher.sh", "docs/testing/jobs/selftest.d/97-dispatch-snapshot-drive.sh", "docs/testing/jobs/selftest.sh"]
+note = "STARTED lane.local 2026-10-18 ~01:45 PDT (Sonnet): the dispatcher snapshot ships titlestate.py but not targets.toml, so a first-run or find-route title (Fable, 4D5300D1) crashes at claim with FileNotFoundError; ship it and add a selftest."
