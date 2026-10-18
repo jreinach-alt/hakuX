@@ -1,14 +1,14 @@
 # hakuX status
 
-_updated 2026-10-18 06:23 PDT_
+_updated 2026-10-18 06:55 PDT_
 
-0.6: Measured 261 / 300 · Playable 91 / 110.
+0.6: Measured 263 / 300 · Playable 95 / 110.
 
 ## How close is 0.6?
 
-Measured **261** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓▓▓░`
+Measured **263** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓▓▓░`
 
-Playable **91** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓▓░░`
+Playable **95** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓▓▓░`
 
 ![Titles over time](chart.svg)
 
@@ -18,15 +18,15 @@ Playable **91** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓▓░░`
 
 | release | Measured target | projected date | Playable target | projected date |
 |---|---|---|---|---|
-| 0.6 | 300 | 2026-10-20 | 110 | 2026-10-21 |
-| 0.7 | 425 | 2026-10-29 | 185 | 2026-11-01 |
-| 0.8 | 575 | 2026-11-08 | 300 | 2026-11-18 |
-| 0.9 | 725 | 2026-11-18 | 480 | 2026-12-15 |
-| 1.0 | 876 | 2026-11-28 | 789 | 2027-01-30 |
+| 0.6 | 300 | 2026-10-20 | 110 | 2026-10-20 |
+| 0.7 | 425 | 2026-10-28 | 185 | 2026-10-30 |
+| 0.8 | 575 | 2026-11-07 | 300 | 2026-11-15 |
+| 0.9 | 725 | 2026-11-17 | 480 | 2026-12-10 |
+| 1.0 | 876 | 2026-11-27 | 789 | 2027-01-21 |
 
 Measured: titles with a frame rate reading taken during gameplay, on either handheld. Playable: titles rated Playable. The charts place each title on the date it first qualified, and the projected dates in the table assume the last 7 days' pace continues.
 
-Ships when both are met. At the last 48 h rate: no rate yet (nothing measured in the last 48 h).
+Ships when both are met. At the last 48 h rate: about 2026-11-24.
 
 Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/Nova handhelds.
 
@@ -53,6 +53,7 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | **Call of Duty 3** | 🟢 Playable | **29.4**<br>Nova, Oct 6 |
 | **Capcom vs. SNK 2 EO** | 🟢 Playable | **59.8**<br>Nova, Oct 7 |
 | **Castlevania: Curse of Darkness** | 🟢 Playable | **59.9**<br>Thor, Oct 1 |
+| **Cel Damage** | 🟢 Playable | **29.9**<br>Nova, Oct 7 |
 | **Conan (Europe)** | 🟢 Playable |  |
 | **Conspiracy: Weapons of Mass Destruction** | 🟢 Playable |  |
 | **Crimson Skies: High Road to Revenge** | 🟢 Playable | **30.0**<br>Nova, Oct 13 |
@@ -82,16 +83,19 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | **Knockout Kings 2002** | 🟢 Playable |  |
 | **KOF: Maximum Impact – Maniax** | 🟢 Playable | **59.9**<br>Nova, Oct 17 |
 | **Legacy of Kain: Defiance** | 🟢 Playable | **29.0**<br>Nova, Oct 11 |
+| **Lemony Snicket's A Series of Unfortunate Events (USA)** | 🟢 Playable |  |
 | **Manhunt** | 🟢 Playable |  |
 | **Marvel Nemesis: Rise of the Imperfects** | 🟢 Playable | **30.0**<br>Nova, Oct 6 |
 | **Mat Hoffman's Pro BMX 2** | 🟢 Playable |  |
 | **Max Payne** | 🟢 Playable |  |
 | **Max Payne 2: The Fall of Max Payne** | 🟢 Playable | **59.9**<br>Nova, Oct 11 |
 | **Mercenaries: Playground of Destruction** | 🟢 Playable |  |
+| **Micro Machines (Europe)** | 🟢 Playable |  |
 | **MLB SlugFest - Loaded** | 🟢 Playable | **58.9**<br>Nova, Oct 5 |
 | **MLB SlugFest 2003** | 🟢 Playable | **59.9**<br>Nova, Oct 5 |
 | **MLB SlugFest 2004** | 🟢 Playable | **44.4**<br>Nova, Oct 5 |
 | **Mortal Kombat: Armageddon** | 🟢 Playable | **59.2**<br>Nova, Oct 6 |
+| **Mortal Kombat: Shaolin Monks** | 🟢 Playable | **59.9**<br>Nova, Oct 18 |
 | **MTV Celebrity Deathmatch** | 🟢 Playable | **57.2**<br>Nova, Oct 4 |
 | **MVP Baseball 2003** | 🟢 Playable |  |
 | **NBA 2K2** | 🟢 Playable | **57.0**<br>Nova, Oct 5 |
@@ -127,7 +131,6 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | **X-Men: The Official Game (Europe)** | 🟢 Playable |  |
 | **Arctic Thunder** | 🟡 Below 30 fps | **21.4**<br>Thor, Sep 27 |
 | **Black** | 🟡 Below 30 fps | **7.5**<br>Thor, Sep 26 |
-| **Bloody Roar: Extreme** | 🟡 Below 30 fps | **9.8**<br>Nova, Oct 2 |
 | **Brute Force** | 🟡 Below 30 fps | **13.2**<br>Thor, Sep 27 |
 | **Burnout** | 🟡 Below 30 fps | **10.8**<br>Thor, Sep 27 |
 | **Counter-Strike** | 🟡 Below 30 fps | **25.9**<br>Nova, Oct 3 |
@@ -174,10 +177,10 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | **Blinx: The Time Sweeper** | 🔵 Measured, not rated yet | **14.8**<br>Thor, Sep 26 |
 | **BloodRayne** | 🔵 Measured, not rated yet | **29.9**<br>Nova, Oct 14 |
 | **BloodRayne 2 USA** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 8 |
+| **Bloody Roar: Extreme** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 18 |
 | **Brian Lara International Cricket 2005 Europe** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 15 |
 | **Buffy the Vampire Slayer** | 🔵 Measured, not rated yet | **29.7**<br>Nova, Oct 18 |
 | **Burnout 3: Takedown** | 🔵 Measured, not rated yet | **30.8**<br>Nova, Oct 14 |
-| **Cel Damage** | 🔵 Measured, not rated yet | **29.9**<br>Nova, Oct 7 |
 | **Conan Europe En Fr De Es It** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 12 |
 | **Conflict Desert Storm II Back to Baghdad USA** | 🔵 Measured, not rated yet | **41.1**<br>Nova, Oct 13 |
 | **Conflict Global Terror USA** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 13 |
@@ -230,7 +233,6 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | **Micro Machines Europe En Fr De Es It** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 14 |
 | **Midnight Club II** | 🔵 Measured, not rated yet | **23.1**<br>Nova, Oct 5 |
 | **Mortal Kombat: Deadly Alliance** | 🔵 Measured, not rated yet | **39.9**<br>Nova, Oct 6 |
-| **Mortal Kombat: Shaolin Monks** | 🔵 Measured, not rated yet | **45.9**<br>Nova, Oct 6 |
 | **Motor Trend Presents Lotus Challenge USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 15 |
 | **MTV Music Generator 3 This Is the Remix USA En Es** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 7 |
 | **MVP Baseball 2003 USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 16 |
@@ -282,7 +284,7 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | **Tiger Woods PGA Tour 2003 USA** | 🔵 Measured, not rated yet | **20.3**<br>Nova, Oct 16 |
 | **Tom Clancy s Splinter Cell Double Agent USA** | 🔵 Measured, not rated yet | **23.5**<br>Nova, Oct 12 |
 | **Tony Hawk s Underground 2 USA Europe En Fr De** | 🔵 Measured, not rated yet | **59.7**<br>Nova, Oct 13 |
-| **Top Spin** | 🔵 Measured, not rated yet | **32.6**<br>Nova, Oct 9 |
+| **Top Spin** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 18 |
 | **Torino 2006 Europe En Fr De Es It** | 🔵 Measured, not rated yet | **39.1**<br>Nova, Oct 15 |
 | **Tron 2.0 : Killer App** | 🔵 Measured, not rated yet | **54.8**<br>Nova, Oct 6 |
 | **Turok Evolution** | 🔵 Measured, not rated yet | **29.9**<br>Nova, Oct 7 |
@@ -297,7 +299,7 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | **XIII USA Europe En Fr De Es It** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 7 |
 | **Yetisports Arctic Adventures Europe** | 🔵 Measured, not rated yet | **35.1**<br>Nova, Oct 16 |
 
-<details><summary>358 titles not tested yet</summary>
+<details><summary>356 titles not tested yet</summary>
 
 | Title |
 |---|
@@ -565,7 +567,6 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | Largo Winch Empire Under Threat |
 | Legends of Wrestling |
 | Legends of Wrestling II |
-| Lemony Snicket s A Series of Unfortunate Events |
 | LMA Manager 2003 |
 | Loons The Fight for Fame |
 | Mace Griffin Bounty Hunter |
@@ -581,7 +582,6 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | Metal Arms |
 | Metal Dungeon |
 | Metal Gear Solid 2 Substance |
-| Micro Machines |
 | Midway Arcade Treasures |
 | Midway Arcade Treasures 2 |
 | Mission Impossible Operation Surma |
@@ -662,5 +662,5 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 
 </details>
 
-620 titles: 91 Playable, 9 below 30 fps, 14 crash or hang, 148 measured but not rated yet, 358 not tested yet.
+620 titles: 95 Playable, 8 below 30 fps, 14 crash or hang, 147 measured but not rated yet, 356 not tested yet.
 
