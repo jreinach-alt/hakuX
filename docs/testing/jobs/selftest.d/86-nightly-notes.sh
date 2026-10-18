@@ -168,6 +168,8 @@ check "the harness is one sentence, not a list or a tally" \
     bash -c '[ "$(grep -cxF "Plus internal test-harness work." "$1")" = 1 ] && ! grep -qiE "^### (Harness|Docs)|did the work|more\._|fold tick|handback" "$1"' _ "$NB/new.md"
 check "the fold merge subjects take no line" \
     bash -c '! grep -qF "fold: " "$1"' _ "$NB/new.md"
+check "the GPU driver notice links docs/gpu-driver.md" \
+    grep -qF "docs/gpu-driver.md" "$NB/new.md"
 check "the install lines and the ES-DE line are kept, and the body ends with the UTC stamp" \
     bash -c 'grep -qF "Installs alongside an official hakuX build" "$1" && grep -qF "docs/es-de/" "$1" && tail -1 "$1" | grep -qE "^_Notes updated [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2} UTC\._$"' _ "$NB/new.md"
 check "the log counts the changes: 8 emulator, 6 lines, 2 left out" \
