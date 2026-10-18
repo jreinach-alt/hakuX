@@ -38,6 +38,54 @@ A resume reads this table first and extends it; it never repeats a row.
 **Stop rule (owner 10-17):** the same attempt voids twice for the same cause means stop, write what it was and
 what would change, and report to lane.local. No third try.
 
+## 2. Desktop proof (lavapipe, build-linux at 8e42fa1058's texture.c, NV2A_PERF_LOG=1)
+
+### 2.1 The pgraph suites, each switch on and off
+
+`gta3fps1017/tools/desk_suites.py` on `r1suites.iso` (the seven surface-as-texture suites, 363 tests), each arm on a
+fresh blank HDD; `tools/suite_band.py`-style comparison against sOFF (`build-linux/run/arms-*.tsv`).
+
+| arm | switches | exit | tests | switch log lines | differ vs sOFF: Texture_shadow_comparator | differ vs sOFF: elsewhere |
+|---|---|---|---|---|---|---|
+| sOFF | none (R1 on) | 0 | 363 | none | -- | -- |
+| sOFF2 | none (rerun) | 0 | 363 | none | 74 | 1: Antialiasing `FramebufferNotModifiedBySurfaceState`, 1 px |
+| sW | `HAKUX_S2T_WIDEN=1` | 0 | 363 | `[s2twiden] on` | 80 | the same test, 1 px |
+| sS | `HAKUX_S2T_SHARE=1` | 0 | 363 | `[s2tshare] on` | 88 | the same test, 242 px |
+| sS2 | `HAKUX_S2T_SHARE=1` (rerun) | 0 | 363 | `[s2tshare] on` | 78 | the same test, 1 px |
+| sWS | both | 0 | 363 | both `on` lines | (not diffed) | (not diffed) |
+
+Green with each switch on: every arm exits 0 with all 363 tests, and the only test outside Texture_shadow_comparator
+that moves is one that moves between two switch-off runs too (sOFF vs sOFF2). sS's 242 px is not R3's: R3 never
+shared in any arm (no `first share` line), and its rerun sS2 is back at 1 px. **No arm printed `[s2twiden] first
+bind` or `[s2tshare] first share`: the suites reach neither branch**, as they reached no R1 branch (row 6). They show
+the switches are inert where they do not apply, not that the branches are right; 2.2 is where R2's branch runs.
+
+### 2.2 GTA III on foot, R2 off and on (the brief's step 7)
+
+`gta3fps1017/tools/desk_census.py` (A-train 30 x A from 60 s, then held), the same scene; 60-flip `[s2c]` windows
+from 360 s on (on foot, after the A-train). cW ran through `tools/desk_census_nd.py` (below).
+
+| run | switches | windows from 360 s | copies/flip | why | R2 binds/flip (`r2[map]`) | dup | log lines |
+|---|---|---|---|---|---|---|---|
+| cOFF | none (R1 on) | 15 | **2.00** | `map` 100% | 0 | 0 | none |
+| cW | `HAKUX_S2T_WIDEN=1` | 17 | **0.00** | -- | **2.00** (120 in every window) | 0 | `[s2twiden] on`, `[s2twiden] first bind` (16 s) |
+
+R2 takes both on-foot copies to binds, every window, with no Vulkan error, no crash dump, and the run to its end. The
+frames (11 shots each from 360 s) are the same place, lighting and look; they are not pixel-comparable, because the
+two runs' clocks and camera drift apart (in-game 04:52 against 05:12 at the same wall second, the player framed
+further right), so a per-pixel diff between arms (20-54% of pixels > 8) mostly measures the camera, against 2-9%
+between one arm's consecutive shots. Mean frame colour 36.6/43.1/47.6 (off) against 39.9/46.3/52.5 (R2), sd ~2:
+the framing differs, so this neither shows nor rules out a tone change. The pixel argument (section 3) is what says
+the image is the same.
+
+An earlier cW (`cW.void-relpath`) is void: a relative OUT path sent the pad file and dump dir under qemu's cwd, so the
+A-train never reached the game. Same build, same switch; nothing from it is used.
+
+**C: guard.** C: had 16.7 GB free, under desk_census.py's 20 GB guard (a qemu segfault pipes a ~7.8 GB dump to C:).
+`tools/desk_census_nd.py` runs the same tool with qemu non-dumpable instead: with `fs.suid_dumpable` 0, a binary the
+user cannot read (`chmod 0311`) execs non-dumpable and the kernel never calls the crash pipe. It checks that
+qemu's `/proc/PID/environ` is root-owned after launch and stops it otherwise (verified on `sleep`: root vs justin).
+
 ## 1. Plan
 
 1. Merge `origin/lane/gta3fps1017` (R1 + census). Build the desktop tests.
