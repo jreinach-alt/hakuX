@@ -8,8 +8,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `dispatchdoctor1017` | claude-sonnet-5 | 3h 28m | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what  |
-| `gta3fps1017b` | claude-opus-5-5 | 4 min | gta3fps1017b: GTA III fps -- R2 (bind the forced-alpha surface view) and R3 (share one copy between nodes), bo |
+| `gta3fps1017b` | claude-opus-5-5 | 0 min | gta3fps1017b: GTA III fps -- R2 (bind the forced-alpha surface view) and R3 (share one copy between nodes), bo |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `owner.gta3play-1017`
@@ -19,10 +18,13 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Playable titles
 
-**88 titles are confirmed Playable** (1 today). Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
+**91 titles are confirmed Playable** (4 today). Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
 
 | Confirmed | Title | Result |
 |---|---|---|
+| 2026-10-17 | Pac-Man World 2 | Playable, 10-minute run |
+| 2026-10-17 | Mortal Kombat: Deadly Alliance | Playable, 10-minute run |
+| 2026-10-17 | Dead or Alive 3 | Playable, 10-minute run |
 | 2026-10-17 | Marvel Nemesis: Rise of the Imperfects | Playable, 10-minute run on the Nova |
 | 2026-10-16 | Family Guy Video Game | Playable, accepted on review, median 29.97 fps |
 | 2026-10-16 | ESPN MLS ExtraTime 2002 | Playable, 10-minute run, median 59.94 fps |
@@ -112,14 +114,13 @@ The harness dashboard, with each release's targets and the progress charts, is [
 | 2026-09-29 | KOF: Maximum Impact – Maniax | Playable, 10-minute run on the Nova |
 | 2026-09-26 | Alien Hominid | Playable, 10-minute run on the Thor |
 
-67 of these still await the owner's flicker check.
+70 of these still await the owner's flicker check.
 
 ## Work in progress
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/dispatchdoctor1017` | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what stops a ru | `0c33d7db0c` | 2026-10-17 22:58 |
-| `lane/gta3fps1017b` | gta3fps1017b: GTA III fps -- R2 (bind the forced-alpha surface view) and R3 (share one copy between nodes), both off by  | `b1828311f2` | 2026-10-17 22:56 |
+| `lane/gta3fps1017b` | gta3fps1017b: GTA III fps -- R2 (bind the forced-alpha surface view) and R3 (share one copy between nodes), both off by  | `a6680ef37e` | 2026-10-17 22:56 |
 
 ## Recently landed on master
 
@@ -135,4 +136,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 release052b: versionCode 10, the driver link, and two known-issue lines for 0.5.2 (#433)
 - 2026-10-17 drivernotice1017: every release note names the one tested GPU driver (#433)
 
-_Updated 2026-10-17 23:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-17 23:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
