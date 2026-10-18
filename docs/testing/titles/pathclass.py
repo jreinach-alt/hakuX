@@ -285,6 +285,10 @@ class Classifier:
         torch, np = self.torch, self.np
         with torch.no_grad():
             pooled, grid = self._forward(self._tensor(path))
+        # #433 Part C: stashed for classify() to attach to its answer -- the embedding a
+        # learned-table lookup matches screens by. Already L2-normalized (_forward), so a
+        # plain dot product between two of these IS their cosine similarity.
+        self._last_embedding = pooled[0].cpu().numpy()
         if self.head is not None:
             h = self.head
             x = head_input(self.feats, pooled[0].cpu().numpy(), None if grid is None else grid[0].cpu().numpy(), menu)
@@ -369,6 +373,7 @@ class Classifier:
                 "top3": [[s, round(p, 3)] for s, p in ranked[:3]],
                 "moving": fc["moving"], "diff": fc["diff"], "black": fc["black"], "menu": menu,
                 "action": action, "escalate": esc, "source": source,
+                "embedding": [round(float(v), 4) for v in self._last_embedding],
                 "ms": round((time.time() - t0) * 1000, 1), "ms_image": round((t_img - t0) * 1000, 1)}
 
 

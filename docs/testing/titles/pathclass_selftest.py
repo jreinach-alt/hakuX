@@ -28,6 +28,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import classify  # noqa: E402
 import drive  # noqa: E402
+import learned  # noqa: E402  (drive.py's own import already put pathknow/ on sys.path)
 
 PROF = os.path.join(HERE, "drive-profiles")
 RESULTS = os.path.join(os.environ.get("DISPATCH_DIR", "/home/justin/hakux-work/dispatch"), "results")
@@ -212,6 +213,16 @@ def problems(drv, tsv):
 def main(argv):
     fails = 0
 
+    # #433 Part C: every scenario below that reaches `unknown` presses and so writes a
+    # learned-table record (profile name "generic") -- redirect learned.py's module-level
+    # paths to a throwaway directory for this whole run, or every selftest invocation
+    # pollutes the real `pathknow/learned/generic.jsonl` a live `--profile generic` run
+    # also reads, making both the real table and this file's own test order non-
+    # reproducible (caught by running this file twice in a row and diffing the output).
+    learned_td = tempfile.mkdtemp(prefix="pathclass-selftest-learned-")
+    learned.DIR = os.path.join(learned_td, "learned")
+    learned.GLOBAL_PATH = os.path.join(learned.DIR, "_global.jsonl")
+
     # #433 Part A: no API key path anywhere in drive.py's runtime loop or the files it
     # reads. A reintroduced `ask_model`/ANTHROPIC_API_KEY/etc. (even just a string naming
     # them) fails this, not just a wired-up call -- the owner's ask was to remove the path,
@@ -295,6 +306,46 @@ def main(argv):
     fails += not ok4
     print("%s  AvP Extinction title screen: generic presses START, not stuck at `unknown`  inputs=%s" %
           ("ok  " if ok4 else "FAIL", [i["input"] for i in drv.inputs]))
+
+    # #433 Part C mutant: a button that `advanced` a screen is suggested FIRST the next
+    # time that exact screen (same key, no embedding here) comes up -- before any ladder
+    # fallback, which would otherwise always start from the ladder's first rung.
+    learned.record("generic", "unknown:test-screen", None, "X", "advanced", 1.0, "run1")
+    own, glob = learned.load("generic")
+    suggested = learned.suggest(own, glob, "unknown:test-screen", None, [])
+    ok5 = suggested == "X"
+    fails += not ok5
+    print("%s  learned table: a button that `advanced` a screen is suggested first next time  got %s" %
+          ("ok  " if ok5 else "FAIL", suggested))
+
+    # #433 Part C mutant (veto): a button that ever `regressed` this screen is never
+    # suggested again -- even as the ONLY record for it, where a plain "any record"
+    # or "most recent" pick would hand it right back.
+    learned.record("generic", "unknown:veto-screen", None, "B", "regressed", 1.0, "run2")
+    own, glob = learned.load("generic")
+    suggested2 = learned.suggest(own, glob, "unknown:veto-screen", None, [])
+    ok6 = suggested2 is None
+    fails += not ok6
+    print("%s  learned table: a button that `regressed` a screen is never suggested again  got %s" %
+          ("ok  " if ok6 else "FAIL", suggested2))
+
+    # #433 Part B mutant: an `unknown` screen that never resolves -- every one of 20
+    # captures reads the same confidence-starved answer -- must never Fail. The route's own
+    # wall-clock budget (seconds=15, fast_s=1.0) ends it; this exercises the full 8-button
+    # ladder (generic.toml has no paused crop, so START is excluded) past one full wrap.
+    install_stub([("controller_prompt", 0.1)] * 20)
+    fl, d = sim_frames()
+    live = os.path.join(d, "124950-entry.png")
+    with tempfile.TemporaryDirectory() as td:
+        drv = drive.Driver(drive.SimDevice([live] * 20, 1.0), classify.load_profile(os.path.join(PROF, "generic.toml")),
+                           td, td, 15.0, mark=True, sim=True)
+        rc = drv.run()
+    ok7 = (rc == 0 and drv.result == "window-done" and drv.seen == ["unknown"]
+           and len(drv.inputs) > 0 and all(b != "START" for (_, b, _) in drv.explored))
+    fails += not ok7
+    print("%s  never idle-fail: an `unknown` screen that never resolves ends on budget, not Fail  "
+          "result=%s inputs=%d explored=%d" %
+          ("ok  " if ok7 else "FAIL", drv.result, len(drv.inputs), len(drv.explored)))
 
     print("pathclass_selftest: %d failure(s)" % fails)
     return 1 if fails else 0

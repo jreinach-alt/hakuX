@@ -89,9 +89,24 @@ for a cursor the d-pad does not move (Castlevania's save prompt).
                          input.stall_cycles, a list of cycles, plays
                          escape n with cycle (n-1) mod len: one run tries
                          several escapes, one per stall.
-  unknown                wait (ACT-OBSERVE below replaces this in #433 step B).
+  unknown                one free capture (a confidence blip often clears on its own),
+                         then press and observe: the learned table's best answer for
+                         this screen, or the next untried rung of EXPLORE_LADDER
+                         otherwise, wrapping forever. Never waits to fail -- see
+                         ACT-OBSERVE below.
 A state seen after a later one in the profile's `order` (a main_menu after
 play) is logged as `anomaly`.
+
+ACT-OBSERVE (owner, #433, 2026-10-18 Part B/C). An `unknown` screen is never idle-waited
+to a timeout any more: it is pressed and learned from. Each press's outcome is read off
+the NEXT capture -- `advanced` (left `unknown` into a state later in `order`), `regressed`
+(left `unknown` into one earlier -- vetoes that button for this screen from here on),
+`changed` (stayed `unknown` but the frame moved: `classify.py`'s motion fraction, or if
+that branch didn't run, pathclass's own embedding far enough from the last one), or `none`
+(stayed `unknown`, nothing visibly different). Every outcome is appended to
+`pathknow/learned/<profile name>.jsonl` and `_global.jsonl` (learned.py): the next time
+this exact screen (or, via the pathclass embedding, a visually similar one on another
+title) comes up, its best non-vetoed button is tried before any ladder fallback.
 
 ENDING AT GAMEPLAY (owner, ADDENDUM 1). With --find the driver's job is to
 FIND gameplay, not to play a window: `find_play_s` (20 s) of consecutive
@@ -137,16 +152,24 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import classify  # noqa: E402
+sys.path.insert(0, os.path.join(HERE, "pathknow"))
+import learned  # noqa: E402  (unknown-screen memory, #433 Part C)
 
 PAD = os.path.join(HERE, "..", "perf", "pad.sh")
 SKIPPABLE = ("logo", "intro_video", "cutscene")
 MENU_LIKE = ("title", "main_menu", "profile", "ingame_menu")
 LADDER = ("A", "START", "B", "X", "START+A")
+# #433 Part B: pressed on an `unknown` screen the learned table has no (or a vetoed)
+# answer for, in order, skipped and retried once the whole ladder has come up empty --
+# never idle. START excluded unless the profile can SEE a pause (has_pause_crop), the
+# same rule the cutscene skip ladder already uses, for the same reason: a wrong START
+# this loop cannot see is a pause this loop cannot undo.
+EXPLORE_LADDER = ("A", "START", "B", "X", "Y", "DOWN", "LX:min", "R1", "L1")
 NEVER = {"BACK", "SELECT"}            # BACK exits to the dashboard on some titles; no guide button exists here
 
 DEFAULTS = dict(
     fast_s=1.0, slow_s=5.0, skip_settle_s=1.5, skip_passes=3, menu_gap_s=2.0, menu_max_presses=25,
-    resume_tries=3, stall_fail_s=40.0, unknown_fail_s=90.0,
+    resume_tries=3, stall_fail_s=40.0,
     find_play_s=20.0, confirm_play_s=6.0, keep_every_s=30.0, screencap_fail_s=60.0,
     hud_memory_s=20.0, escape_max=6, escape_capture_s=0.0, escape_reset_s=0.0,
     progress_bar=0.0, progress_window_s=10.0, stall_clear_s=0.0, keep_all=0,
@@ -321,7 +344,13 @@ class Driver:
         self.ladder = None               # current skip attempt: dict
         self.screen_presses = {}         # (state, source) -> presses this visit
         self.resume_tries = 0
-        self.unknown_since = None
+        self.explore = None              # the pending explore press awaiting its outcome: dict
+        self.explore_tried = []          # buttons tried this unknown stretch (resets on entry/exit/wrap)
+        self.explore_fresh = False       # just entered `unknown`: give the classifier one free
+                                          # capture to resolve a confidence blip before pressing anything
+        self.explored = []               # [#433] every (key, button, outcome) this run recorded, for finish()
+        self._own_learned = None         # lazily loaded, then kept current in-memory (learned.py)
+        self._global_learned = None
         self.stalled_since = None
         self.escapes = 0                 # stall_cycle runs so far
         self.esc_frames = 0
@@ -763,21 +792,50 @@ class Driver:
                 act += " tap %s" % b + ("x%d" % n if n > 1 else "")
         return act
 
+    # -- learned table (#433 Part C) ---------------------------------------
+    def learned_tables(self):
+        if self._own_learned is None:
+            self._own_learned, self._global_learned = learned.load(self.p.get("name"))
+        return self._own_learned, self._global_learned
+
+    def resolve_explore(self, outcome):
+        """The pending explore press's outcome is in: write it to the learned table (own
+        in-memory copy too, so a later capture in THIS run sees it without a re-read) and
+        clear the pending slot. Never called with nothing pending."""
+        ex = self.explore
+        rec = learned.record(self.p.get("name"), ex["key"], ex["embedding"], ex["button"], outcome,
+                              self.t(), os.path.basename(self.out))
+        own, _ = self.learned_tables()
+        own.append(rec)
+        self._global_learned.append(rec)
+        self.explored.append((ex["key"], ex["button"], outcome))
+        self.explore = None
+
     def enter(self, state, r, frame):
         t = self.t()
         prev = self.state
         self.state, self.state_since = state, t
         if state not in self.seen:
             self.seen.append(state)
+        regressed = (state in self.order and self.order.index(state) < self.furthest
+                     and state not in ("paused", "ingame_menu", "loading", "cutscene", "stalled"))
         if state in self.order:
             i = self.order.index(state)
-            if i < self.furthest and state not in ("paused", "ingame_menu", "loading", "cutscene", "stalled"):
+            if regressed:
                 self.anomalies.append(dict(t=round(t, 1), state=state, after=self.order[self.furthest]))
             self.furthest = max(self.furthest, i)
         if state in ("title", "play") and state not in self.time_to:
             self.time_to[state] = round(t, 1)
         if prev == "title" and state in ("play", "paused"):
             self.anomalies.append(dict(t=round(t, 1), state=state, after="title"))
+        # an explore press resolves the moment the screen stops being `unknown` (#433 Part
+        # B): the same order-regression check above decides whether the button that got us
+        # here `advanced` past it or `regressed` into an earlier state.
+        if self.explore and prev == "unknown" and state != "unknown":
+            self.resolve_explore("regressed" if regressed else "advanced")
+        if prev != "unknown" and state == "unknown":
+            self.explore_tried = []          # a fresh screen gets a fresh ladder
+            self.explore_fresh = True        # ... and one free capture before the first press
         # a skip attempt resolves on the first capture in another state
         if self.ladder and state != self.ladder["state"]:
             lad = self.ladder
@@ -811,8 +869,6 @@ class Driver:
             self.release_play()
         if state != "stalled":
             self.stalled_since = None
-        if state != "unknown":
-            self.unknown_since = None
         if state != "play":
             self.play_since = None
             self.play_frames = []
@@ -907,12 +963,44 @@ class Driver:
                 act_reset = ""
             return "hold" + self.play_taps(t) + act_reset
 
-        # unknown
-        if self.unknown_since is None:
-            self.unknown_since = t
-        if t - self.unknown_since >= cfg["unknown_fail_s"]:
-            raise Fail("unknown screen for %.0f s" % (t - self.unknown_since))
-        return "wait (unknown)"
+        # unknown (#433 Part B): never wait-then-fail. Resolve whatever press is still
+        # awaiting an outcome from the LAST capture (the screen stayed `unknown`, so it's
+        # `changed` or `none`), then pick the next one -- the learned table first, the next
+        # untried rung of the exploration ladder otherwise, wrapping forever once the whole
+        # ladder's been tried this stretch. The route's own wall-clock budget in `run()` is
+        # the only thing allowed to end a run that never gets past this; this branch itself
+        # must never raise Fail.
+        if self.explore is not None:
+            embedding = (r.get("pathclass") or {}).get("embedding")
+            if r.get("changed") is not None:
+                moved = r["changed"] > classify.STATIC_BAR
+            else:
+                prev_embedding = self.explore["embedding"]
+                moved = (embedding is None or prev_embedding is None or
+                         learned.cosine(embedding, prev_embedding) < learned.SIM_BAR)
+            self.resolve_explore("changed" if moved else "none")
+        if self.explore_fresh:
+            # a low-confidence reading is often gone on the very next capture with no input
+            # at all (AvP Extinction's own recorded run: two of its three `unknown` frames
+            # here resolve for free one capture later) -- one free look before spending a
+            # press on what might be nothing.
+            self.explore_fresh = False
+            return "wait (unknown, confirming)"
+        if t - self.last_press_t < cfg["skip_settle_s"]:
+            return "settle (exploring)"
+        key = "unknown:%s" % r.get("source")
+        embedding = (r.get("pathclass") or {}).get("embedding")
+        own, glob = self.learned_tables()
+        btn = learned.suggest(own, glob, key, embedding, self.explore_tried)
+        if btn is None:
+            rung = [b for b in EXPLORE_LADDER if self.has_pause_crop or "START" not in b]
+            if len(self.explore_tried) >= len(rung):
+                self.explore_tried = []      # exhausted this screen's ladder: wrap, keep trying
+            untried = [b for b in rung if b not in self.explore_tried]
+            btn = untried[0] if untried else rung[0]
+        self.explore_tried.append(btn)
+        self.explore = dict(key=key, embedding=embedding, button=btn, t=t)
+        return self.press(btn, "explore unknown (%s)" % r.get("source"))
 
     def interval(self):
         cfg = self.cfg
@@ -1033,15 +1121,15 @@ class Driver:
                    result=res, seconds=round(t, 1), time_to_title_s=self.time_to.get("title"),
                    time_to_play_s=self.time_to.get("play"), states_seen=self.seen, skips=self.skips,
                    inputs=self.inputs, anomalies=self.anomalies, classifier_sources=self.sources,
-                   play_stretch_frames=self.play_frames,
+                   play_stretch_frames=self.play_frames, explored=self.explored,
                    written_utc=dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
         tmp = os.path.join(self.out, ".route-solution.json.tmp")
         with open(tmp, "w") as f:
             json.dump(sol, f, indent=1)
         os.replace(tmp, os.path.join(self.out, "route-solution.json"))
-        print("drive: %s after %.0f s; title at %s s, play at %s s; %d inputs, %d skips"
+        print("drive: %s after %.0f s; title at %s s, play at %s s; %d inputs, %d skips, %d explored"
               % (res, t, self.time_to.get("title"), self.time_to.get("play"), len(self.inputs),
-                 len(self.skips)))
+                 len(self.skips), len(self.explored)))
 
 
 class Fail(Exception):

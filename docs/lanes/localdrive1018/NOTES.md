@@ -86,8 +86,84 @@ Two corrections to the research above and to the brief's own text:
   false-pass case.
 - Land A+B+C first (own commit, selftest green, PR.md ready), then D.
 
+## Part B/C -- done (commit, this lane)
+`pathclass.py`: `classify_image()` now stashes its pooled, L2-normalized embedding
+(`self._last_embedding = pooled[0].cpu().numpy()`, already computed every call, just
+discarded before) and `classify()` attaches it to its answer as `"embedding"` (rounded to
+4dp). No change to `Client`/`serve()` -- both pass the dict through verbatim, so
+`classify.py`'s existing `out["pathclass"] = ans` carries it automatically.
+
+`pathknow/learned.py` (new): one JSONL record per explore press --
+`{title, key, embedding, button, outcome, t, run}`. `key` is `"unknown:<classify.py
+source>"`, the fallback match whenever either side has no embedding (a crop-only profile,
+or this module's own selftest, which never sets one). `outcome` is `advanced`/`changed`/
+`regressed`/`none`. Two files per record (`learned/<title>.jsonl`, `learned/_global.jsonl`,
+title = the profile's `name`, there being no 8-hex title-id field anywhere in the current
+profile schema). `suggest()` ranks by outcome (`advanced` > `changed` > `none`), own table
+before global, and **vetoes** any button that ever `regressed` this screen -- even if it is
+the only record for it. `cosine()` is a plain dot product (pure Python, no numpy): since
+pathclass's embedding is already L2-normalized, that IS cosine similarity. `SIM_BAR = 0.90`
+is explicitly untuned (comment in the file) pending real GTA III / held-out frames in Part D.
+
+`drive.py`'s `act()`, `state == "unknown"` branch, rewritten (replacing the old
+wait-then-`Fail` on `unknown_fail_s`, which is now gone from `DEFAULTS` and from
+`drive-profiles/generic.toml`'s comments): resolve any press still awaiting an outcome
+(`"changed"` if `r["changed"]` -- the frame-diff fraction classify.py already computes --
+clears `classify.STATIC_BAR`, else by embedding cosine distance against `SIM_BAR`, else
+`"none"`), then pick the next button: `learned.suggest()` first, the next untried rung of
+a new `EXPLORE_LADDER` (`A, START, B, X, Y, DOWN, LX:min, R1, L1`, START excluded unless
+`has_pause_crop`, reusing the cutscene skip-ladder's exact safety rule) otherwise, wrapping
+forever once every rung's been tried this stretch. **Never raises `Fail`** for this reason
+any more -- the route's own `while self.t() < self.seconds` budget in `run()` is the only
+thing that ends a run stuck here, already landing as `result="window-done", rc=0` with no
+code change needed (that path existed already; removing the `Fail` call was the whole fix).
+
+One addition past the brief's own text, found by running the existing AvP Extinction
+selftest (Addendum 6) against this code: a FRESH `unknown` (the first capture after
+entering it) gets one free capture before the first explore press, not instead of one --
+`self.explore_fresh`, set in `enter()`, consumed once in `act()`. Without it, the AvP replay
+failed: a single-frame low-confidence blip between `intro_video` and `title` (the real run's
+own data: 2 of its 3 `unknown` frames resolve for free one capture later, confidence noise,
+not a stuck screen) ate an explore press that pushed `last_press_t` just inside
+`menu_gap_s`, so the very next capture (the real title screen, confidence 0.8, clears both
+floors) read `settle` instead of pressing START -- and the fixture's last recorded frame is
+that one, so there was no later capture to recover on. This is bounded to exactly one
+capture per fresh `unknown` entry; it does not reintroduce any wait-and-fail, and it is
+grounded in this run's own recorded confidence fluctuation, not a guess.
+
+`finish()` / `route-solution.json` gained `explored` (every `(key, button, outcome)` this
+run recorded) replacing the old `model_calls` field; the printed summary line now reports
+`%d explored` instead of `%d model calls`.
+
+Selftest (`pathclass_selftest.py`, still runs with no venv): three new checks plus every
+old one, all green --
+- learned table: a button that `advanced` a screen is suggested first next time (direct
+  `learned.record`/`load`/`suggest`, no Driver needed).
+- learned table: a button that `regressed` a screen is never suggested again, even as the
+  only record for it (the veto, not a ranking).
+- never idle-fail: 20 identical confidence-starved captures (one fixed profile, `generic`,
+  which has no paused crop so the 8-button ladder excludes START) press 7 different buttons,
+  wrap once, and end on `result="window-done", rc=0` -- never a `Fail` -- within a 15 s
+  budget at `fast_s=1.0`.
+All of this file's tests write learned-table records (even the pre-existing ones -- any
+`unknown` capture does); `learned.DIR`/`learned.GLOBAL_PATH` are monkeypatched to a
+`tempfile.mkdtemp()` for the whole selftest run, or they write into and read back from the
+real `pathknow/learned/generic.jsonl` a live `--profile generic` run also uses, making the
+selftest both non-reproducible (ran twice in a row, got a different first button the second
+time off stale state from the first) and a source of real pollution. Caught by running this
+file twice and diffing stdout; verified clean (byte-identical output) after the fix. The
+actual `pathknow/learned/` directory this created on disk before the fix (accumulated across
+my own debugging runs this session) was moved aside, not committed -- it was test pollution,
+not a real learned table; nothing here has a bootstrapped/fabricated outcome in it.
+
+Ran `pathclass_selftest.py` and `classify_selftest.py` after every edit in this section: 0
+failures throughout, including all of Part A's checks (unchanged) and the mutant above.
+
 ## Open questions (not blocking; keep working)
 - Whether pathclass.py already exposes the embedding vector for an arbitrary frame as a reusable function,
-  or only as an internal step of classify_frame -- checking next.
-- Exact schema for the learned JSONL -- drafting in the next NOTES.md update before writing any code that
-  writes one.
+  or only as an internal step of classify_frame -- resolved: it computes one every call already
+  (`_forward`'s pooled output), just discarded it; stashing it cost one line.
+- Exact schema for the learned JSONL -- resolved, see Part B/C section above.
+- Part D (GTA III profile/head/route) needs real captured frames and a device to confirm against;
+  this lane currently has neither (Nova/Thor both unavailable) -- reporting what's blocked rather
+  than guessing at numbers.
