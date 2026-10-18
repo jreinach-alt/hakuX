@@ -8,8 +8,8 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `bootstatic1017` | claude-opus-5-5 | 7 min | bootstatic1017: black while the guest has the screen off, no static or green at title start (#1045) |
-| `dispatchdoctor1017` | claude-sonnet-5 | 13 min | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what  |
+| `bootstatic1017` | claude-opus-5-5 | 22 min | bootstatic1017: black while the guest has the screen off, no static or green at title start (#1045) |
+| `dispatchdoctor1017` | claude-sonnet-5 | 28 min | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what  |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -117,8 +117,8 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/bootstatic1017` | bootstatic1017: black while the guest has the screen off, no static or green at title start (#1045) | `5723904eef` | 2026-10-17 18:37 |
-| `lane/dispatchdoctor1017` | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what stops a ru | `50ec1b82f6` | 2026-10-17 19:37 |
+| `lane/bootstatic1017` | bootstatic1017: black while the guest has the screen off, no static or green at title start (#1045) | `4b1ac4965e` | 2026-10-17 19:47 |
+| `lane/dispatchdoctor1017` | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what stops a ru | `439feb72b2` | 2026-10-17 19:45 |
 
 ## Recently landed on master
 
@@ -132,4 +132,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 lane worktrees are created sparse, without docs/lanes/pathfind/runs (#433)
 - 2026-10-17 relnotes1017: release notes carry only features and bug fixes (#433)
 
-_Updated 2026-10-17 19:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-17 20:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
