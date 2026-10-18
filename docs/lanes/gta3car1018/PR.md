@@ -4,7 +4,7 @@ State: ready
 
 Lane: gta3car1018            Issue: #1049 #433
 Base: master @ 343221f6fc (merges lane/gta3instr1018 9eabf6a463 for the `[dipwin]` line; master merged again at 3357b0e196 and 635141c4cc)
-Files: docs/lanes/gta3car1018/**, hw/xbox/nv2a/pgraph/vk/texture.c, docs/lanes/gta3instr1018/** (via merge), docs/testing/jobs/selftest.d/99-dipwin-counters.sh (via merge), hw/xbox/nv2a/pgraph/vk/dipwin.h (via merge), hw/xbox/nv2a/pgraph/vk/draw.c (via merge), hw/xbox/nv2a/pgraph/vk/surface.c (via merge)
+Files: docs/lanes/gta3car1018/**, hw/xbox/nv2a/pgraph/vk/texture.c, docs/testing/nv2a_index.json (regenerated for texture.c's new REF site, preflight gate), docs/lanes/gta3instr1018/** (via merge), docs/testing/jobs/selftest.d/99-dipwin-counters.sh (via merge), hw/xbox/nv2a/pgraph/vk/dipwin.h (via merge), hw/xbox/nv2a/pgraph/vk/draw.c (via merge), hw/xbox/nv2a/pgraph/vk/surface.c (via merge)
 Prediction: none: the switch is off by default and the in-car arms are soaks; RenderTextureLoop checked against its golden with the switch on and off (requests 1792347481-gta3car1018-2028877, 1792347484-gta3car1018-2030801)
 Needs device: yes    Needs NDK: yes
 Selftest: none -- the change is behind an env switch that is off by default; its check is the golden run above
