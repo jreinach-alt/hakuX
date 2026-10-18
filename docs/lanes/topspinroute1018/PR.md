@@ -1,6 +1,6 @@
 # Top Spin: a state:any route that gets past Controller Select
 
-State: draft
+State: ready
 
 Lane: topspinroute1018            Issue: #433
 Base: master @ 4a504d9aaa
