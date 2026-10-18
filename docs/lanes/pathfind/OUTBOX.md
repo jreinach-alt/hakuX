@@ -1238,3 +1238,70 @@ Wars: The Clone Wars, Aeon Flux, NBA Inside Drive 2004, Area 51, NBA 2K7), each 
 (600-640 s play) whose `failing` field names the fps bar directly, not an early abort/hang/menu-stuck run. A first
 pass that filtered fps_ok_share<0.9 by hand would have wrongly flagged several hung/short/menu-stuck runs as fps
 caps; using the maintained seed function instead of a hand-written filter avoided that. No device time spent.
+
+## #433 -- 2026-10-18 08:30 PDT (lane.pathfind, attempt 4 of 4)
+
+[lane.pathfind] **Correction: MK Shaolin Monks (4D570029) is not Playable; I removed attempt 3's ledger row.** That row
+was banked from `runs/sweep-4D570029`, which ran on gpunonrender APK a771c3e50905 (ref 9609d0299f) with HAKUX_GPUXFR=1
+HAKUX_GPUXFR_CTRL=16. Your own 06:35 10-06 order ("RE-HOLD FIVE TITLES ON MASTER FIRST") names that run void. The title's
+real result is the master re-hold `runs/shaolin-1006`: FAIL, fps_ok 0.4912 (#874, #986). `pm/playable-accepted.tsv` is
+back to 95 lines (backup `pm/playable-accepted.bak-shaolin-void-1018`), and `runs/sweep-4D570029/VOID.txt` records it.
+**lane.local: please revert the compat page row `Mortal Kombat: Shaolin Monks,4D570029`** that compat1018 (`b970c27693`)
+published from the void row. I checked the other rows attempt 3 banked (Cel Damage, Micro Machines, Lemony Snicket)
+against the dispatcher log: they are master builds with an empty env, so they stand.
+
+NEW ISSUE: classify.py names a dark menu `black` on mean luminance alone, so a title's save prompt stalls a route as a load
+Evidence: in z-1792324130-lanelocal-1593049 (Bloody Roar Extreme 48550001, a 10-18 gen route), route-state reads `black`
+from 37.1 s to 299.0 s at luma 1.1. The frame is "Create BLOODY ROAR extreme save data? YES NO", white text on black:
+mean 1.17, std 12.31. `classify.py:381-383` tests `lu < black_luma or flat` (BLACK_LUMA 8.0) with no std term, so the
+route waits on a "load" that is a prompt asking for input. pathfind.py's own `is_black` also needs std < 6 and would have
+read the frame as a menu. A fix should require low std for the luma test too, with a selftest frame from this run.
+Blocks: any gen/route run whose title opens on a dark text prompt. It does not decide Bloody Roar, which is below bar
+(#743).
+
+[lane.pathfind] Pool rows (pm/pathfind-pool.tsv, read in full). Full table in NOTES.md "Pool rows".
+- **Top Spin** (z-1792324129-lanelocal-1592984): the gen route's mark fired at Controller Select with both pads
+  unassigned, and the game then ran a CPU-vs-CPU match. pathknow already has LEFT, A there, and topspinroute1018 folded a
+  route past it (6bd7ed71f3).
+- **Bloody Roar Extreme**: the classifier issue above.
+- **Shaolin Monks** (z-1792324132-lanelocal-1593292): `drive generic 300 mark` hit window-done with no mark. 0 model
+  calls, because there is no model key.
+- **Battlefield 2: MC** and **D&D Heroes**: below bar, #745/#656 and #747.
+
+**Refused.** Every one of these is below bar, so the 10-06 rule refuses them before any step, until its issue has a
+fix. I added four rows to `docs/lanes/pathfind/below-bar.tsv`, each citing its issue and a source verdict copied into
+`runs/`: Top Spin #992 (owner 10-14 "does not pass", 0.8326), Bloody Roar #743 (~10 fps), BF2 MC #745, D&D #747.
+Shaolin's row already existed (0.4912). I did not write `pm/failure-resolved.txt`: nothing was fixed, and a release
+would only let a retest be queued.
+
+[lane.pathfind] **Amped 2 (4D530041): its below-bar cause is stale.** It reads 0.4423 (retro-amped2). Pool run
+z-1792324129-lanelocal-1592919, on master ref ab404210b2 (perflog APK 0ab9fb47aa8e), measures **fps_ok 0.9267, median 59.9**,
+over 375 s. Two things still fail it:
+- The recorded `amped2` route ends ~578 s after launch, so the hold is short of 600 s.
+- It has 9 stalls of 520-547 ms (bar 500 ms) that nothing explains yet.
+
+375 s on a perflog build is a bound, not a confirmation, so I left the refusal in place. lane.local: please update the
+cause column to these numbers. The next step is a route of ≥ 600 s plus stall telemetry, not pathing.
+
+[lane.pathfind] **Fold gate bug (hostops): a selftest shard killed by a signal counts as a pass.** The 07:26 fold of
+lane/pathfind reported `08:03:21 FOLDED as eb46eb2548`.
+- Shard 1 failed beside the others on master's red `66-status-titles.sh` ("check --pages": "PAGE README.md: the
+  Playable line is not the numberless form home_page.py rewrites", also in dispatchdoctor1017's OUTBOX `ac2c73c9d3`).
+- Its solo re-run hit the same FAIL (`fold-logs/lane_pathfind-20261018T0726-selftest.log:1816`).
+- The re-run was then SIGTERMed after `85-fold-ci.sh`; the header says `(re-run alone) (rc -15)`.
+- `offline_fold.py:203` is `rc = max(rcs.values())`, and `max(0, 0, 0, -15)` is 0, so the `.out` printed "selftest
+  passed".
+
+This PR's diff was data that no fragment reads, so this fold result is right. The gate is wrong for any PR whose
+re-run is killed. Fix: take the first nonzero rc, not the max. Something also sent the re-run SIGTERM ~2 min in, and
+that is worth finding. I did not edit offline_fold.py, which is outside this lane.
+
+[lane.pathfind] Device: none this session. The Nova is owner-held (play-through, attach never launch) and the Thor has
+been offline since 10-13. Pathing candidates when the Nova frees: Phantom Crash (gave up after 4 steps, 10-04), Tron
+2.0, and Halo 2 behind #739.
+
+**This was attempt 4 of 4:**
+- No background job is running and no result is unread.
+- The run backlog's text evidence is committed (`eb626c7a8d`, 1509 files). Frames, video and logcat stay on disk
+  under `runs/.gitignore` while C: is at 99%.
+- More pathing work needs a new brief.
