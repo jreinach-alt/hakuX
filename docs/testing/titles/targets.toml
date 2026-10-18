@@ -657,7 +657,7 @@ notes = "No #431 target; the default 30 applies. route = gen-nba-live-06: #433 s
 name = "NBA Live 07"
 iso = { nova = "454100A1-NBA_Live_07.xiso.iso" }
 route = "gen-nba-live-07"
-notes = "No #431 target; the default 30 applies. route = gen-nba-live-07: #433 step 6c classifier-path benchmark opening (drive generic), basketball play loop (move/shoot), not yet device-proven."
+notes = "No #431 target; the default 30 applies. Playable per an owner play session on the Nova, 2026-10-17 (762 s of play, window median ~51 fps, 98.6% at or above the bar); supersedes the 2026-10-06 pathfind run (median 19.99 fps). route = gen-nba-live-07: #433 step 6c classifier-path benchmark opening (drive generic), basketball play loop (move/shoot)."
 
 [titles."45410050"]
 name = "NBA Live 2005"

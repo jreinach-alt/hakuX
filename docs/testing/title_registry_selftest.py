@@ -129,5 +129,22 @@ class DriftCheckCatchesTheDisagreement(unittest.TestCase):
                                  "mutant survived: a disabled drift check still agrees with the real one")
 
 
+    def test_readme_playable_line_must_be_the_numberless_form(self):
+        """home_page.py rewrites master's exact numberless line; a numbered one
+        (what compat1017 wrote, 10-17) froze every home update."""
+        good = ("**Games rated Playable so far:** [the list, with progress charts]"
+                "(https://github.com/jreinach-alt/hakuX/blob/home/STATUS.md).\n")
+        bad = ("**[88 Playable games](https://github.com/jreinach-alt/hakuX/blob/home/STATUS.md)** "
+               "so far, with progress charts \u2014 88 games rated Playable.\n")
+        with tempfile.TemporaryDirectory() as tmp:
+            p = make_fixture(tmp, "Crimson Skies: High Road to Revenge", "Conker: Live & Reloaded")
+            for text, want in ((good, True), (bad, False), ("", False)):
+                p.repo_readme = os.path.join(tmp, "README.md")
+                write(p.repo_readme, text)
+                self.assertEqual(TR.readme_has_numberless_line(p), want, text[:40])
+            p.repo_readme = os.path.join(tmp, "missing.md")
+            self.assertFalse(TR.readme_has_numberless_line(p))
+
+
 if __name__ == "__main__":
     unittest.main()
