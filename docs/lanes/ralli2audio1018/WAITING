@@ -1,0 +1,7 @@
+# NOTES.md "Status" names the wait as the owner's Fable hold on the Nova; that hold has since
+# been lifted (hold.sh who nova = free), but the Nova is now physically offline for an unrelated
+# reason: the owner's by-hand Thor thermal test took it out ~12:00 PDT for ~5h (dispatch/hold/thor.why,
+# pm/stall-accepted.tsv device:wedged:nova:adb). adb devices confirms ee317437 absent. Re-check at
+# 17:00 PDT, the same re-check time already recorded for that stall; resume re-verifies the device
+# is actually back (hold.sh who nova + adb devices) before queuing arm 1, same as "Device plan" says.
+time 2026-10-18T17:00
