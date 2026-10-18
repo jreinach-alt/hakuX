@@ -23,6 +23,22 @@ and report rather than attempt a third variant.
 
 ## Design landed on
 
+- `hold.sh`'s new helpers (`owner_play`, `cap_unit`, `cap_pidfile`,
+  `cap_pathfile`, `label_serial`, `logcat_spec`, `capture_since`,
+  `capture_running`, `capture_report`, `capture_ensure`, `capture_release`)
+  sit between `valid()` and `hold_py()`. `take`/`who`/`wait-idle`/`release`
+  each gained one `owner_play "$tag"` (or the stored tag read back from
+  `hold/<label>`) gated block; every other tag takes the untouched path.
+- `take` for an owner-play tag calls `capture_ensure` only after
+  `hold_py take` has already succeeded; a failed capture start rolls the
+  hold back with `hold_py release` and exits 6, so the hold is never left
+  orphaned (brief point 3).
+- `wait-idle` ANDs the existing idle gate with `capture_report`: idle with a
+  dead capture now exits 5 rather than 0 (brief point 4).
+- `release` calls `capture_release` only after `hold_py release` itself
+  returned 0 -- a refused release (wrong tag) never touches the capture
+  (brief point 5).
+
 - Detection of "is a capture already running for `<label>`" is by a pidfile
   this lane writes (`$DISPATCH_DIR/hold/<label>.capture.pid`, holding the
   capture loop's own `$$`) plus `/proc/<pid>/cmdline` containing `logcat` --
@@ -41,3 +57,48 @@ and report rather than attempt a third variant.
   `adb devices`, `device_env` each, compare `$DEVICE_LABEL`) rather than
   adding a reverse lookup to `devices.sh`, which is outside this lane's
   `Files:` list.
+
+## Selftest fragment
+
+`selftest.d/99-ownerplay-capture.sh` (new). `99-hold-take.sh` needed no edit:
+none of its tags start `owner-play`, so its existing legs are the regression
+check for brief point 7 (non-owner-play tags unaffected) for free. The new
+fragment installs its own local `adb`/`systemd-run` on a PATH ahead of
+selftest.sh's global shims (the global `systemd-run` only logs argv and
+never runs anything; the global `systemctl is-active` answers "active"
+unconditionally) -- same shape `79-stop-hook-hold.sh` already uses for its
+own local `adb`. Legs (a)-(g) cover every point in brief item 6, plus a
+mutant (capture_ensure's call skipped) that turns leg (a) red, proving it is
+not vacuous.
+
+## Full suite: ran twice, both green except one pre-existing failure
+
+`origin/master` had moved 55 commits ahead of this branch's base
+(`bb1817defc` -> `7e00c7cf73`); merged it in (merge commit, no conflicts,
+nothing in the 55 commits touches `hold.sh`, `selftest.sh`, `selftest.d/` or
+the CI workflow) before trusting any run. `SELFTEST_SHARD` is pinned to
+exactly `4` by `shard_check` against `.github/workflows/jobs-selftest.yml`'s
+`matrix.shard`, so each pass is 4 shards (0/4..3/4), each ~15-90 min, run
+detached and polled to completion rather than foreground (the Bash tool's
+10-minute cap).
+
+| Pass | Shard | Fragments | Passed | Failed |
+|---|---|---|---|---|
+| 1 | 0/4 | 13 | 290 | 0 |
+| 1 | 1/4 | 46 | 1113 | 0 |
+| 1 | 2/4 | 44 | 1155 | 0 |
+| 1 | 3/4 | 47 | 1160 | 1 |
+| 2 | 0/4 | 13 | 290 | 0 |
+| 2 | 1/4 | 46 | 1113 | 0 |
+| 2 | 2/4 | 44 | 1155 | 0 |
+| 2 | 3/4 | 47 | 1160 | 1 |
+
+Both passes: 3718 passed, 1 failed, 150/150 fragments. The one failure, both
+times, same place: `66-status-titles.sh`, "check --pages passes when every
+page agrees and fails naming the one page a mutant disagreed on" -- a
+README.md Playable-line/home_page.py formatting check with no connection to
+`hold.sh` or captures. This is the exact fragment and failure mode the
+brief's own precedent names (lane.snaptargets1018, same fragment). Not
+investigated further: outside this lane's `Files:` list and unrelated to
+the owner-play capture logic by inspection (nothing it checks touches
+`hold.sh`, `DISPATCH_DIR`, or any hold state).
