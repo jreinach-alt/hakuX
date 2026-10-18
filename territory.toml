@@ -3068,8 +3068,10 @@ note = "STARTED lane.local 2026-10-18 ~07:35 PDT (Sonnet): decompose the overnig
 [lane.holdcap1018]
 issues = ["433"]
 standing = false
-files = ["docs/lanes/holdcap1018/**", "docs/testing/jobs/hold.sh", "docs/testing/jobs/selftest.d/99-hold-take.sh"]
-note = "STARTED lane.local 2026-10-18 ~07:50 PDT (Sonnet): an owner-play hold starts a host logcat capture as a systemd unit; who/wait-idle/release report it; a take that cannot record is refused."
+files = ["docs/lanes/holdcap1018/**", "docs/testing/jobs/hold.sh", "docs/testing/jobs/selftest.d/99-hold-take.sh", "docs/testing/jobs/selftest.d/99-ownerplay-capture.sh"]
+released = ["docs/lanes/holdcap1018/**", "docs/testing/jobs/hold.sh", "docs/testing/jobs/selftest.d/99-hold-take.sh", "docs/testing/jobs/selftest.d/99-ownerplay-capture.sh"]
+released_at_ready = 1066
+note = "STARTED lane.local 2026-10-18 ~07:50 PDT (Sonnet): an owner-play hold starts a host logcat capture as a systemd unit; who/wait-idle/release report it; a take that cannot record is refused. || GRANTED+RELEASED AT READY (hostops, jam duty, 2026-10-18 11:48 PDT): foldqueue FAILED 11:41 PDT -- the lane's own commit (5bc67eb7af) adds selftest.d/99-ownerplay-capture.sh, never claimed on this row; added it to files. PR #1066 is also ready (isDraft=false, mergeable=MERGEABLE, unit hakux-lane-holdcap1018.service inactive) -- released all 4 files per roles/board.md (release at ready, not at fold); matches tonight's bootstatic1017/perflog1016 pattern."
 
 [lane.gta3dip1018]
 issues = ["1049", "433"]
