@@ -8,9 +8,9 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `dispatchpush1018` | claude-sonnet-5 | 16 min | dispatcher: fix the staged-disc push's /mnt/d path so adb.exe can open it |
-| `gta3instr1018` | claude-opus-5-5 | 15 min | GTA III dip frame: race-free render-pass-break counters and timed vertex-copy, shader-bind and fence-wait cost |
-| `holdcap1018` | claude-sonnet-5 | 1h 30m | holdcap1018: an owner-play hold starts a host logcat capture |
+| `dispatchpush1018` | claude-sonnet-5 | 30 min | dispatcher: fix the staged-disc push's /mnt/d path so adb.exe can open it |
+| `gta3instr1018` | claude-opus-5-5 | 30 min | GTA III dip frame: race-free render-pass-break counters and timed vertex-copy, shader-bind and fence-wait cost |
+| `holdcap1018` | claude-sonnet-5 | 1h 45m | holdcap1018: an owner-play hold starts a host logcat capture |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -142,4 +142,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-18 Top Spin: a state:any route that gets past Controller Select
 - 2026-10-18 high-speed driving fps (GTA III + GTA: San Andreas)
 
-_Updated 2026-10-18 09:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 09:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
