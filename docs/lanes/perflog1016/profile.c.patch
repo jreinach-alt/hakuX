@@ -1,0 +1,66 @@
+diff --git a/hw/xbox/nv2a/pgraph/profile.c b/hw/xbox/nv2a/pgraph/profile.c
+index ff3c3d52d6..fa08085371 100644
+--- a/hw/xbox/nv2a/pgraph/profile.c
++++ b/hw/xbox/nv2a/pgraph/profile.c
+@@ -17,6 +17,9 @@
+  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
+  */
+ 
++/* #433 perflog1016: nv2a_perflog_set()/_poll() live in debug.h; this is
++ * their one implementation. Before the first include that reaches it. */
++#define NV2A_PERFLOG_RT_IMPLEMENTATION
+ #include "hw/xbox/nv2a/nv2a_int.h"
+ #include "hw/xbox/nv2a/pgraph/glsl/shaders.h"
+ #ifdef __ANDROID__
+@@ -100,12 +103,10 @@ static void snapshot_phase_timing(void)
+     SMOOTH(gpu_pre_rp);
+     SMOOTH(gpu_post_rp);
+     SMOOTH(gpu_max_gap);
+-#if NV2A_PERF_LOG
+     SMOOTH(draw_sfp);
+     SMOOTH(draw_mfp);
+     SMOOTH(draw_ftx);
+     SMOOTH(tex_hash);
+-#endif
+ #undef SMOOTH
+ 
+ #define SMOOTH_CNT(dst, src) \
+@@ -941,8 +942,10 @@ void nv2a_profile_flip_stall(void)
+         pace_max_us = pace_span_us = 0;
+     }
+ 
+-#if defined(__ANDROID__) && NV2A_PERF_LOG
+-    if ((g_nv2a_stats.frame_count % 60) == 0) {
++#if defined(__ANDROID__)
++    /* A perflog build, or the run-time tier while it is on (#433,
++     * perflog1016): nv2a_perflog_on() is constant true in the first. */
++    if (nv2a_perflog_on() && (g_nv2a_stats.frame_count % 60) == 0) {
+         char buf[512];
+         nv2a_profile_get_phase_timing_str(buf, sizeof(buf));
+         __android_log_print(ANDROID_LOG_INFO, "hakuX-phase", "%s", buf);
+@@ -1033,21 +1036,15 @@ void nv2a_profile_get_pacing_str(char *buf, int bufsize)
+ }
+ 
+ /*
+- * Perf-only fields, spliced in so that without NV2A_PERF_LOG the format and
+- * its arguments are exactly what they were. TxH (texture content hash) nests
+- * in Tx and FTx as Tex does; Sfp, Mfp and FTx are children of Draw.
++ * TxH (texture content hash) nests in Tx and FTx as Tex does; Sfp, Mfp and
++ * FTx are children of Draw. Once perf-only; in every build since the
++ * run-time tier times them too (#433, perflog1016), so its hakuX-phase line
++ * has the perflog build's shape and the same readers parse it.
+  */
+-#if NV2A_PERF_LOG
+ #define PHASE_TXH_FMT " TxH:%.1f"
+ #define PHASE_TXH_ARGS p->tex_hash_ms,
+ #define PHASE_FAST_FMT " Sfp:%.1f Mfp:%.1f FTx:%.1f"
+ #define PHASE_FAST_ARGS p->draw_sfp_ms, p->draw_mfp_ms, p->draw_ftx_ms,
+-#else
+-#define PHASE_TXH_FMT ""
+-#define PHASE_TXH_ARGS
+-#define PHASE_FAST_FMT ""
+-#define PHASE_FAST_ARGS
+-#endif
+ 
+ void nv2a_profile_get_phase_timing_str(char *buf, int bufsize)
+ {
