@@ -9,8 +9,16 @@ grey layer covers the whole ring, the unlit side included.
 [lane.haloring1017] waiting: (c) is answered. The inside band turns on screen off the stock driver: slope 0.88 on the
 desktop, 1.02 on Turnip (run 13, PurpleVK confirmed from its log). The lane narrows to (a). (a) is made inside the
 hull draw (M3). A software render reproduces hakuX's hull to r 0.977 (M4), and it is the judge for the console
-photos. Photo 5 is exhausted (M9): the console's hull is brighter on every cube face, and the cube's mask is hakuX's.
-The lane waits on the Nova dump at photos 1-4's poses (1792329678-haloring1017-2242539).
+photos.
+
+The Nova dump at photos 1-4's poses landed and was used (M10). The hull is not on screen at those poses, so the
+photos cannot judge it. On photo 5, the console's hull has hakuX's structure: the same texture phase, the same cube
+mask, the same cube face layout. Most of its extra brightness on the dark faces is the photo's own lift on its right
+side (R11). What is left is a reflection step 1.7x hakuX's at the bright face's edge (R12), which is either the
+console or the camera. No mechanism in hakuX's state for the hull is identified.
+
+The lane waits on a fixed-exposure console capture of the menu: the board request to lane.xbox, 10-18 06:35 PDT, in
+`dispatch/board-requests/xbox.md`.
 
 ## Attempt 1 did not finish: the turn cap
 
@@ -102,8 +110,8 @@ console's brightness.
 
 | id | hypothesis | symptom | P | row | hit | miss | instrument |
 |---|---|---|---|---|---|---|---|
-| R1 | the reflection term is wrong: R lands on the wrong face, or v1 scales it to near zero | (a) | 0.35 -> 0.1 (M6: a bright face everywhere, with the fresnel, adds nothing over D) | A8, A10, A15 | the console look returns with the cube term forced to a bright face and v1 replaced | forcing it gives a coloured sheen, not grey crater mottling | `swr.py`-style software render of `n5` from the dg dump, and a desktop PSHDBG mode once A7's crash is fixed |
-| R1b | ...the global cube mirror | (a) | in R1 -> 0.03 (M6: none of 48 signed axis permutations beats the identity) | A10 | the mirrored R lands on face 0 or 4 (bright) over most of the hull at photo 5's pose | mirrored R still on dark faces | `vpemu.py` R per vertex, face histogram per mirror |
+| R1 | the reflection term is wrong: R lands on the wrong face, or v1 scales it to near zero | (a) | 0.35 -> 0.1 (M6: a bright face everywhere, with the fresnel, adds nothing over D) -> 0.03 for the wrong face (M10: the console steps at hakuX's 0\|5 edge and not at the 3\|5 edge); a wrong scale is R12 | A8, A10, A15 | the console look returns with the cube term forced to a bright face and v1 replaced | forcing it gives a coloured sheen, not grey crater mottling | `swr.py`-style software render of `n5` from the dg dump, and a desktop PSHDBG mode once A7's crash is fixed |
+| R1b | ...the global cube mirror | (a) | in R1 -> 0.03 (M6: none of 48 signed axis permutations beats the identity) -> 0.01 (M10: the console steps at hakuX's 0\|5 cube edge) | A10 | the mirrored R lands on face 0 or 4 (bright) over most of the hull at photo 5's pose | mirrored R still on dark faces | `vpemu.py` R per vertex, face histogram per mirror |
 | R2 | another draw (`n4`, `n6`, `n0`) ignores its own scroll | (c) | 0.3 if (c) reproduces -> 0.02 (M2, M2b: `n4` follows its scroll; `n6` has none by design) | new: searched x1 NOTES and git, nothing (A6 left them undone) | across consecutive frames, a per-frame change in the draw's guest state that its generated shader does not use | every per-frame change is used, and the output moves | `gdread.py diff` over consecutive frames, per draw |
 | R2b | the guest computes `n4`'s scroll wrongly (a CPU defect, like (b)) | (c) | 0.1 -> 0.02 (M1: missed; the rates agree to three figures, on Turnip, run 13) | new: A12 measured c13.w on `n5` only | `n4`'s w rate (0.0000977/frame, ~8x below `n5`'s 0.00078) times its c13.x gives a different angular rate from `n5`'s | rates agree, so the guest means the band to turn at the hull's speed | `gdread.py draw` for c13 on `n4`/`n5` in two frames |
 | R3 | v0.a non-zero on hardware: the final combiner lerps toward c0_8 (white) | (a), and a common wash of `n4`+`n5` | 0.2 -> 0.1 (M6: v4 is 2 components on both draws, so the premise holds; but the floor is inert at this pose, a lerp leaves the lower hull's texture-led pattern unexplained, and one k does not fit both draws' levels) | A14 | a software render with v0.a = k matches photo 5's brightness and keeps faint panel lines; the terrain band whitens by the same k | the panel lines vanish before the brightness is reached, or the band's whitening differs | software render against the pose-matched pair |
@@ -113,8 +121,9 @@ console's brightness.
 | R6 | unwritten VP outputs take the attribute registers' current values on hardware (Cxbx-R PR #2109); hakuX sets them to (0,0,0,1). The hull never writes oT0/oT1/oT2.zw (the PROJECT2D q), oT3.w, oB0, oB1 | (a), perhaps (c) | 0.1 -> 0.03 (M5: t0 and t2.r land on the console at the dump's own scale and phase, which a q != 1 would move) | new: searched hakuX git and `vsh.c`, nothing; Cxbx-R PR #2109 | inline attribute values for v9-v12 (or the slots each output maps to) give q != 1, and a render with that q matches the console | q = 1 under that model | the `gd` dump's inline attribute values; a software render |
 | R8 | the cube's LOD: on hardware the hull's reflection samples a coarse mip of the 64x64 cube (near each face's mean) where hakuX samples a fine one, so the reflection is t2.r times a near-constant over the whole hull, not only where a bright face is hit | (a), and (b)'s flicker source | 0.3 (new, M6) -> 0.01 (M7: each face's mean is the same at every mip, and the screen LOD is 0) | new: M6's t2.r-without-cube fit | the reflection with the cube at a coarse LOD fits the console's rank and level better than at hakuX's LOD | no LOD bias raises the fit over D + c·t2.r's | `termfit.py` with an LOD bias on t3 |
 | R9 | the fresnel oD1 differs on hardware (its inputs: v5/v6's formats, or an unwritten register), so oD1.rgb·oD1.a is near-constant | (a) | 0.15 (new, M6) -> 0.2 (M7: on the pixels where t2.r and D disagree, the excess follows t2.r) -> 0.07 (M9: hakuX's mask t2.r·oD1.rgb·oD1.a fits best, a flat or t2.r-only mask worse; the pooled t2.r loading is one screen region, face 3, flat in t2.r inside it) | new | a near-constant oD1 with the cube at hakuX's or a coarse LOD fits the console | the fresnel-shaped term fits as well as a flat one | `termfit.py`; the VP's oD1 inputs read from the dump |
-| R10 | the hull's diffuse counts for ~1.4x more on hardware (the detail map t1 at a higher level, or the s6 sum t0·t1 + t0·t1 scaled differently) | (a) | 0.3 (new, M7: D x 1.5 + X0 is the best joint fit; the hull's gain is flat over hakuX's mid-range) -> 0.3 (M9: rejected pooled at 95%, but inside each cube face the console is hakuX's own pattern at 1.07-1.50x; the gain is not one constant across faces) | M7 `texregs.py`: no LOD bias or clamp; t1's mips cap the lift at x1.39 | the unlit hull stays dark on the console, and a desktop render with D x k matches photo 5 | the console lights the unlit hull | a console photo of the unlit side; `hullsw.py` with D x k |
-| R11 | part of photo 5's hull excess is the photo, not the console: the camera or TV reads brighter on the right, where cube face 3 falls at that pose | (a)'s size, not its presence | 0.4 that it is part, 0.05 that it is all (new, M9: the background reads +0.013, and +0.046 in its bright half, at x 480-640 against -0.03 at the left; face 3's flat +0.115 sits there) | new | at photos 1-4 the excess follows the photo's position, not the cube face or the lighting | the excess follows a face or a term wherever it falls on the photo | `facefit.py` and `spatial.py` at photos 1-4 (dump 1792329678) |
+| R10 | the hull's diffuse counts for ~1.4x more on hardware (the detail map t1 at a higher level, or the s6 sum t0·t1 + t0·t1 scaled differently) | (a) | 0.3 (new, M7: D x 1.5 + X0 is the best joint fit; the hull's gain is flat over hakuX's mid-range) -> 0.3 (M9: rejected pooled at 95%, but inside each cube face the console is hakuX's own pattern at 1.07-1.50x; the gain is not one constant across faces) -> 0.15 (M10: faces 3 and 5's gain is mostly the photo's own lift at their place, R11; what is left is face 0's 1.5x, where D and X0 are collinear, so a gain there is R12's as much as R10's) | M7 `texregs.py`: no LOD bias or clamp; t1's mips cap the lift at x1.39 | the unlit hull stays dark on the console, and a desktop render with D x k matches photo 5 | the console lights the unlit hull | a console photo of the unlit side; `hullsw.py` with D x k |
+| R11 | part of photo 5's hull excess is the photo, not the console: the camera or TV reads brighter on the right, where cube face 3 falls at that pose | (a)'s size, not its presence | 0.4 that it is part, 0.05 that it is all (new, M9: the background reads +0.013, and +0.046 in its bright half, at x 480-640 against -0.03 at the left; face 3's flat +0.115 sits there) -> **0.7 that it is most of faces 3 and 5's lift**, 0.15 that it is all of (a) on photo 5 (M10: the background at face 3's place and level is lifted as much as face 3, 0.177 to 0.267 against 0.150 to 0.270; the lift is smooth across the 3\|5 cube edge, step -0.027, CI -0.076 to +0.019; not veiling glare, whose coefficient is negative) | new | at photos 1-4 the excess follows the photo's position, not the cube face or the lighting | the excess follows a face or a term wherever it falls on the photo | M10: photos 1-4 hold no hull at their poses, so the test ran on photo 5's background and cube edges instead (`glarefit.py`, `faceedge.py`) |
+| R12 | the reflection's amplitude is about 2x hakuX's on hardware (oD1, the cube texel or the stage-7 product), with hakuX's face layout and mask | (a) on the bright face | 0.2 (new, M10: the console's step at the 0\|5 edge is 1.7x hakuX's, at hakuX's place; M9's face-0 fit 1.95x). Against: no input or combiner word in `n5`'s state gives a factor of 2 (c4.w 2, c12.w 1, specular alpha passed, two-side off), and a phone's local tone mapping sharpens steps | new | a fixed-exposure console capture shows the bright face's reflection at about 2x hakuX's, against an overlay of known level | the capture's reflection matches hakuX's | the console clip (board request to lane.xbox) |
 
 ## Measurements
 
@@ -775,6 +784,108 @@ oD1.a -0.43), which is how a coarser t1 mip would look: t1's mip means rise 0.25
 (`texture.c:3440`, `4399-4415`), so both machines filter isotropically. The gains of 1.07-1.50 would need t1 at mip
 1.5-5, against p50 0.85 here. A different isotropic LOD formula moves it by half a mip at most.
 
+### M10: photos 1-4 on the Nova dump cannot judge the hull; photo 5's face-3 lift is the photo (`framepick.py`, `posefit.py`, `vidpose.py` at 120/1; `photocal.py`, `unlitjudge.py`; `glarefit.py`, `faceedge.py`)
+
+**The dump.** 1792329678-haloring1017-2242539 (Nova, master da6e8949dc) landed 10-18 06:39 with a 142 MB `gd` dump
+of 600 frames and its video. Its logcat has `GPU: PurpleVK`, so it is off the stock driver. The video's time base is
+120/1 (variable rate), not run 13's 59.94. `vidpose.py` now reads the rate from ffprobe.
+
+**The poses.** Each photo is matched to the new video by `vidpose.py` (luminance NCC). The video frame is then
+matched to the dump in two ways: by `framepick.py` (hullsw's render of each candidate frame against that video frame,
+r over the render's ring pixels) and by `posefit.py` (ring-silhouette IoU against the photo).
+
+| photo | video t, NCC | framepick: best frame, r vs video | posefit: best frame, IoU | n4 px | n5 px |
+|---|---|---|---|---|---|
+| 4 | 51.989 s, 0.905 | f124, 0.654 | f125, 0.095 | 10,130 | 0 |
+| 3 | 64.468 s, 0.853 | f310, 0.927 | f309, 0.204 | 9,241 | 0 |
+| 2 | 69.173 s, 0.899 | (not run) | f379, 0.507 | 15,431 | 1 |
+| 1 | 73.677 s, 0.813 | f440, -0.000 (none of f440-f455 above 0) | f446, 0.443 | 21,095 | 76 |
+
+The video times are about twice run 13's spacing (photo 4 to 1: 21.7 s here, 10.8 s in run 13), but the dump frames
+are not: 316 frames, which at run 13's 0.0334 s a frame is 10.6 s. The time column is the video's frame index over
+120, and that is not its clock. Only the frame mapping is used.
+
+**The hull is not on screen at photos 1-4.** hakuX's render at each pose has 0-76 hull (`n5`) pixels. Frame 310 has
+`n5` at its usual count (4362) and textures, so it is drawn and is off screen or culled. What shows is the band `n4`.
+Next to it is a dark strip that the render does not draw: at photo 3 (edge-on) and under the band at photo 2, hakuX's
+video and the console photo both have a dark strip with grey edges, where the render has bright band or nothing. That
+is the inner rim `n6` (510 vertices, a DST_COLOR x ZERO multiply), which `hullsw.py` does not draw. By eye, console
+and hakuX agree on it at photo 3.
+
+**The band cannot be judged either:**
+- **The photos' tone curve has a shoulder at the band's level.** Photo 2 (L, fb to photo): 0.27 to 0.69, 0.50 to
+  0.82, 0.80 to 0.87. Photo 3 jumps from 0.08 to 0.11 at the bottom to 0.15 to 0.60. The band sits at fb 0.4-0.6. One
+  photo step above fb 0.5 is 3-6 fb steps, so a 1.3x band would move the photo by about 0.02.
+- **The render is not hakuX's frame on the band.** Over the render's band core, hakuX's own video reads:
+
+  | photo | video | render | console |
+  |---|---|---|---|
+  | 2 | 0.109 | 0.604 | 0.117 |
+  | 3 | 0.086 | 0.450 | |
+  | 4 | 0.330 | 0.455 | 0.283 |
+
+  The missing `n6` and a few pixels of placement are enough to do this. So the render is not the judge on the band,
+  and video against photo needs pixels known to be band in both.
+
+Photos 1-4 add nothing on (a). Their one by-eye remark (the console's band brighter and whiter, M8) sits in the
+tone-curve shoulder and stays unattributed.
+
+**Photo 5's lift: veiling glare is out** (`glarefit.py`, render f507, `reg5`, `cal5v1806`, video `v01806`, linear
+light at gamma 2.2). On the space background, photo minus hakuX's video is fitted on a Gaussian blur of hakuX's frame:
+- the coefficient is negative at every width (6 px: -0.17, CI -0.26 to -0.04; R² 0.04);
+- on the hull, glare predicts +0.001 of the +0.027 excess.
+
+So the camera or TV adding a halo from bright neighbours does not make the console's hull brighter.
+
+**But the photo reads dark pixels brighter toward its right, at about face 3's level.** The background's brightest
+tenth per x band, photo over video:
+
+| x | 15-160 | 160-320 | 320-480 | 480-640 |
+|---|---|---|---|---|
+| photo / video | 0.93 | 0.86 | 1.15 | **2.46** |
+| video level (linear) | 0.129 | 0.403 | 0.053 | 0.022 |
+
+In fb units, the background at x 480-640 reads 0.177 in hakuX and 0.267 on the photo. Face 3, on that side, reads
+0.150 in hakuX and 0.270 on the console. **The background at the same place and level is lifted as much as face 3
+is.** Face 5, in the middle and dark, reads 0.140 against 0.185. The background at x 320-480 is lifted +0.017 there.
+That fits a TV seen off-axis, whose black level rises toward one side, more than it fits a cube face.
+
+**No step at the face 3|5 edge.** `faceedge.py` bins c - h by signed distance from the edge where hakuX's R crosses
+between faces, in photo units (h through CAL's forward curve, which cannot grow a saturating step). Across the 3|5
+edge, c - h ramps smoothly: +0.17 at 48 px inside face 3, +0.15 at the edge, +0.06 at 48 px inside face 5. The step
+at 0 is -0.027 (CI -0.076 to +0.019). A cube term that differed between faces 3 and 5 on the console would step
+there. **Face 3's lift is smooth across the cube edge, which is how the photo's position term looks.**
+
+**A step at the face 0|5 edge, where hakuX's is, 1.7x as tall.** Across the 0|5 edge, hakuX's own final steps by
+-0.123 (CI -0.20 to -0.04) and its reflection X0 by -0.079. The console steps by -0.211 (CI -0.32 to -0.07), so the
+excess steps by -0.089 (CI -0.160 to +0.006). The console's step is at hakuX's edge. **So the cube's face layout on
+the console is hakuX's**, which takes another mirror or face permutation off the table (R1b, A10). Its height is 1.7x
+hakuX's, which matches M9's face-0 fit (the console's reflection 1.95x hakuX's).
+
+Nothing in `n5`'s state accounts for a doubled reflection:
+- the reflection vector is a true one (c4.w = 2, c12.w = 1: R = 2(E·N)N - E, x1 NOTES 648, 926);
+- the specular alpha passes through (the hull's VS has no `vtxD1.w = 1.0`, so ALPHA_FROM_MATERIAL_SPECULAR is set,
+  `vsh.c:106-121`);
+- two-sided lighting is off (`pD0 = vtxD0`, `psh_48c74844.glsl:316`);
+- the combiner words decode to hakuX's chain (M3).
+
+A phone's local tone mapping sharpens steps against smooth areas, so the 1.7x is either the console or the camera.
+One photo cannot say which.
+
+**Where (a) stands after M10.**
+- The console's hull at photo 5 has hakuX's structure: the same texture scale and phase (M5), the same cube mask
+  (M9), the same cube face layout (this section).
+- Its brightness differs in two ways:
+  - a lift on the right and centre that the photo's background shares at the same place and level, smooth across a
+    cube edge (R11);
+  - a taller reflection step at the bright face's edge (1.7x), which is the console or the camera.
+- No mechanism in hakuX's state for the hull reproduces either.
+- The owner's account (a sprite present across the dark portions) is not reproduced by any number on these photos.
+  Their dark portions read as the photo's own dark-level behaviour.
+- Settling (a) takes one of two instruments. One is a console capture with a fixed exposure (the board request to
+  lane.xbox, 10-18 06:35). The other is hakuX and the console photographed by one camera on one TV, so that the
+  camera and the TV's off-axis response cancel.
+
 ## Plan
 
 1. ~~(c) off the stock driver~~: done (M2, M2b). R4 holds.
@@ -782,11 +893,9 @@ oD1.a -0.43), which is how a coarser t1 mip would look: t1's mip means rise 0.25
 3. (a): the software render of `n5` with R3's k, R1's forced face and mirror, and R6's q, judged by region against
    the pose-matched console photos. Then fix A7's crash and check the leaders on the desktop.
    - Photo 5: done (M5-M9). It does not part R10 from R1/R9. R9 and the ungated t2.r layer are down (M9).
-   - Photos 1-4: posed (M8). Their dump is request 1792329678-haloring1017-2242539 (Nova, master da6e8949dc). When it
-     lands: check its log for `GPU: PurpleVK`; run `vidpose.py` for each photo on its video; map frames to the dump
-     by M2b's clock; run `hullsw.py` at each pose, then `photocal.py`, `unlitjudge.py`, `facefit.py`,
-     `maskfit.py` and `spatial.py`. The question is whether the excess follows a cube face, a term or the photo's
-     position (R10, R1, R11).
+   - ~~Photos 1-4~~: done (M10) on dump 1792329678 (PurpleVK). They show no hull at their poses, and the band sits in
+     their tone-curve shoulder, so they cannot judge (a). R11 was tested on photo 5 instead: the face-3 lift is the
+     photo's own, and the cube's face layout is hakuX's. R12, the reflection's height at the bright face, is left.
    - The console side: a board request to lane.xbox for a fixed-camera clip of the menu, filed 10-18 06:35 PDT
      (`dispatch/board-requests/xbox.md`, "lane.haloring1017: #939 (a) needs a fixed-camera console clip"). It asks
      for a capture card or a locked-exposure phone on a stand, 2 minutes from the menu's first frame, and 5 s of a
@@ -797,10 +906,9 @@ oD1.a -0.43), which is how a coarser t1 mip would look: t1's mip means rise 0.25
 
 ## Waiting
 
-[lane.haloring1017] waiting: the Nova `gd` dump at the console photos' poses, request
-1792329678-haloring1017-2242539 (its result dir under `dispatch/results/`; at 06:30 it was first in the queue,
-behind lane.local's running `z-1792324132-lanelocal-1593292`). Also a console clip from lane.xbox (board request filed 10-18 06:35 PDT, in
-`dispatch/board-requests/xbox.md`). C: needs to be back at 40 GB free before desktop runs resume (38 GB at 06:29).
+[lane.haloring1017] waiting: a fixed-exposure console capture of the menu from lane.xbox (board request filed 10-18
+06:35 PDT, in `dispatch/board-requests/xbox.md`). The Nova dump 1792329678 landed and is used (M10). C: needs to be
+back at 40 GB free before desktop runs resume (38 GB at 06:29).
 
 Before every desktop run that may crash, `df -B1G /mnt/c` must show at least 40 GB free. After every run, delete only
 this run's own dumps in `wsl-crashes/`, by exact name, and log each crash here.
