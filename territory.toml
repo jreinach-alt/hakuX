@@ -3120,7 +3120,20 @@ note = "CLAIMED by the lane 2026-10-18 09:52 PDT: vk/vertex.c from [lane.fps1015
 issues = ["433"]
 standing = false
 files = ["docs/lanes/compat1018c/**", "docs/testing/compat_notes.tsv", "docs/compatibility.csv", "docs/COMPATIBILITY.md", "README.md", "docs/testing/titles/targets.toml", "docs/testing/compat_page.py", "docs/testing/compat_page_selftest.py"]
-note = "STARTED lane.local 2026-10-18 ~10:20 PDT (Sonnet): RalliSport Challenge and Mortal Kombat: Shaolin Monks to Playable on the public compat page and docs (92 -> 94); owner 10-18 after hand-play."
+released = ["README.md"]
+note = "STARTED lane.local 2026-10-18 ~10:20 PDT (Sonnet): RalliSport Challenge and Mortal Kombat: Shaolin Monks to Playable on the public compat page and docs (92 -> 94); owner 10-18 after hand-play. FOLDED to master (343221f6fc); README.md released 11:15 PDT to [lane.readme1018]."
+
+[lane.readme1018]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/readme1018/**", "README.md"]
+note = "STARTED lane.local 2026-10-18 ~11:15 PDT (Sonnet): README Highlights: GTA III / Vice City out of the Playable list; TimeSplitters 2, Shaolin Monks, Burnout Revenge in; Crimson Skies and RalliSport fix bullets (owner 10-18). Brief: briefs/readme1018.md."
+
+[lane.homeroot1018]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/homeroot1018/**"]
+note = "STARTED lane.local 2026-10-18 ~11:20 PDT (Sonnet): the home branch root carries chart.svg, chart2.svg and COPYING.LIB beside the markdown files (owner 10-18: sloppy landing page). Move them under docs on home. Host-tools copies are delivered through docs/lanes/homeroot1018/host-tools/ as statuspage1013 did. Brief: briefs/homeroot1018.md."
 
 [lane.gta3car1018]
 issues = ["1049", "433"]
