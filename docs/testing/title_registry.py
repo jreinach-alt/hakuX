@@ -961,6 +961,21 @@ def freshness(p, path=None, now=None):
     return True, "registry built %s, %.0f s old, sources unchanged" % (hdr["generated_utc"], age)
 
 
+README_NUMBERLESS = (r"\*\*Games rated Playable so far:\*\* \[the list, with progress charts\]\("
+                     r"https://github\.com/jreinach-alt/hakuX/blob/home/STATUS\.md\)\.")
+
+
+def readme_has_numberless_line(p):
+    """master's README carries the Playable line WITHOUT a number (owner 10-16);
+    host-tools/home_page.py matches this exact text and writes the count from
+    STATUS.md into home's copy. A number here breaks that match and freezes the
+    public page (10-17: every home update failed from 23:00 until it was put back)."""
+    try:
+        return len(re.findall(README_NUMBERLESS, open(p.repo_readme, encoding="utf-8", errors="replace").read())) == 1
+    except OSError:
+        return False
+
+
 def page_playable_counts(p):
     """{label: int or None} -- the Playable count each public/rendered page
     states, by regex or row-count against the page's own text. Never joins
@@ -973,14 +988,6 @@ def page_playable_counts(p):
         out["status page"] = int(m.group(1)) if m else None
     except OSError:
         out["status page"] = None
-    try:
-        readme = open(p.repo_readme, encoding="utf-8", errors="replace").read()
-        m1 = re.search(r"\[(\d+) Playable games\]", readme)
-        m2 = re.search(r"(\d+) games rated Playable\.", readme)
-        out["README.md (link)"] = int(m1.group(1)) if m1 else None
-        out["README.md (bullet)"] = int(m2.group(1)) if m2 else None
-    except OSError:
-        out["README.md (link)"] = out["README.md (bullet)"] = None
     try:
         compat = open(p.repo_compat, encoding="utf-8", errors="replace").read()
         m = re.search(r"(\d+) Playable ·", compat)
@@ -1093,6 +1100,11 @@ def main(argv=None):
                 fail = True
             else:
                 table_playable = sum(1 for r in rows.values() if r.get("status") == "PLAYABLE")
+                if readme_has_numberless_line(p):
+                    print("PAGE README.md: numberless Playable line, as home_page.py expects (home sets the count)")
+                else:
+                    print("PAGE README.md: the Playable line is not the numberless form home_page.py rewrites")
+                    fail = True
                 for label, n in page_playable_counts(p).items():
                     if n is None:
                         print("PAGE %s: Playable count not found" % label)
