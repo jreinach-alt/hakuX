@@ -1,1 +1,7 @@
-owner lane.local to lend/land the 4 OUTBOX patches (profile.c, pfifo.c, vk/renderer.c, vk/surface.c) into lane.fps1015/lane.x1port1012, plus the MainActivity.kt/strings.xml JNI wiring
+# P2 (perflog1016-postlend.json), Nova, behind the owner's hold; then abread.py --judge ... --on <ON>
+run 1-1792344816-perflog1016-1365941
+run 1-1792344821-perflog1016-1366376
+run 1-1792344826-perflog1016-1366882
+run 1-1792344832-perflog1016-1368963
+run 1-1792344837-perflog1016-1369630
+run 1-1792344843-perflog1016-1370194

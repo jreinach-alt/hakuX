@@ -4,49 +4,71 @@ The owner asked, 10-16: "Can I get a toggle in the pause menu for turning that
 on and off?" and "If I encounter a defect like the flicker in ESPN Baseball,
 I'd like to be able to capture that without having to restart my run."
 
-## Where this stands (2026-10-16, attempt 2)
+## Where this stands (2026-10-18, attempt 3)
 
 - Done on this branch:
   - the run-time switch in `debug.h`;
   - the TCG `[tcg787]` hooks under it (`cputlb.c`, `translate-all.c`);
-  - the pause-menu buttons (`PauseMenuOverlay.kt`);
-  - the host selftest: 16+4+2 passes, 11/11 header mutants caught. It also runs 9
-    static checks that `PauseMenuOverlay.kt` agrees with its other side, 14/14 mutants
-    caught. The other side is: the marker and env names in debug.h; the flip-line tag;
-    the dispatcher's logcat spec; the mark line route.sh writes and hitch_report reads;
-    the literal labels; the launch-time clear, built from `onCreate`; renderer.c's
-    frame-dump marker; and version_stamp's `-perflog` suffix;
-  - the NDK compile check.
-- **Blocked on a lend.** The switch's implementation and its one poll site live
-  in files lane.fps1015 holds: `pgraph/profile.c` and `vk/renderer.c`. Two more
-  of that lane's files carry gated hooks the switch covers: `pfifo.c` and
-  `vk/surface.c`. All four are in this directory as patches, with `NEED:` lines
-  in OUTBOX.md. Until `profile.c` and `renderer.c` land, nothing calls
-  `nv2a_perflog_poll()`, so the switch stays OFF and the button only writes a
-  marker nobody reads.
-- `lend_check.py` (10-16 10:03 PDT, after a fetch): all 4 patches apply
-  cleanly on origin/master 4bf47129b1, origin/lane/fps1015 c11e7d3db3 and
-  origin/lane/x1port1012 5dfea123a3. None of those refs carries
-  `NV2A_PERFLOG_RT_IMPLEMENTATION` yet.
-- The `MainActivity.kt`/`strings.xml` JNI wiring the brief anticipated is **not
-  needed**. The switch is a marker file in the app's external files dir, the
-  same dir as `frame_dump.on`, written by `PauseMenuOverlay.kt` (mine). The
-  labels are literal strings. Only the four C patches are needed.
-- Device A/B of the default path: queued. The request ids are in "The
-  default-path A/B" below. See there for what it covers before and after the
-  lend.
+  - the pause-menu buttons (`PauseMenuOverlay.kt`): Perflog OFF/ON, Mark this
+    moment, Frame dump;
+  - **the three granted files**, `pgraph/profile.c`, `vk/renderer.c` and
+    `pfifo.c`. lane.local put them on this row 10-16 09:49 PDT. This lane's own
+    patches were applied at ce91b11b74, after a merge of origin/master
+    7e00c7cf73. With them, the switch can turn on: profile.c compiles
+    set/poll, renderer.c polls, and pfifo.c's puller/pusher timers follow the
+    switch;
+  - the host selftest. `selftest.py` gives SELFTEST OK:
+    - 16+4+2 passes;
+    - header mutants 11/11;
+    - 9 Kotlin cross-file checks, KT mutants 14/14;
+    - 6 wiring checks on the three granted files, WIRE mutants 11/11;
+    - 10 reader fixtures for `abread.py`;
+  - the NDK compile check on the merged tree: 0 new errors.
+- **Dropped:** `vk/surface.c` (OUTBOX NEED 4). lane.gta3instr1018 holds it, so
+  under the switch the `xemu-surf` line's own timers print 0.
+  `surface.c.patch` stays in this directory for whoever holds the file next.
+- **Not needed:** the `MainActivity.kt`/`strings.xml` JNI wiring. The switch is a
+  marker file in the app's external files dir, the same dir as
+  `frame_dump.on`, written by `PauseMenuOverlay.kt` (mine). The labels are
+  literal strings.
+- **P1, the default-path A/B before the patches (10-16): CLEARED.** It covers
+  debug.h and TCG only. The tables are in "The default-path A/B" below.
+- **P2, after the patches:** registered at b1ca4da762 before anything was
+  queued, then queued 10-18. It is the ON proof plus the default-path A/B on the
+  full PR. Every run waits behind the owner's Nova hold (lane.local, owner play,
+  from 16:40Z). The ids are in "P2" below.
 
-`[lane.perflog1016] waiting:` (10-16 10:2x PDT) on two things outside this session.
+`[lane.perflog1016] waiting:` (10-18) for the six P2 requests on the Nova:
+`1-1792344816-perflog1016-1365941` (ON), `1-1792344821-perflog1016-1366376`
+(A1), `1-1792344826-perflog1016-1366882` (B1), `1-1792344832-perflog1016-1368963`
+(A2), `1-1792344837-perflog1016-1369630` (B2), `1-1792344843-perflog1016-1370194`
+(A3). They resolve when every one has a result dir with `result.json`. Then run
+abread.py `--judge perflog1016-postlend.json --on <ON dir>` and write the
+verdict here and in PR.md.
 
-- **The A/B requests.** `1-1792169529-perflog1016-2121153` (B1, running),
-  `1-1792169535-perflog1016-2121769` (B2) and `1-1792169541-perflog1016-2122978`
-  (A2). A1 `1-1792169523-perflog1016-2120339` is done. When all four have a
-  `DONE`, run abread.py `--judge` and apply the B1/B2 cache rule.
-- **The lend.** lane.local to lend or land the 4 OUTBOX patches into
-  lane.fps1015/lane.x1port1012. That unblocks the ON proof and the post-lend
-  A/B. `lend_check.py` shows when they land.
+PR.md is `State: ready`: the code, inventory and goal-4 statement are done. The
+device proof is listed as pending, as the brief allows while the owner hold
+persists.
 
-The PR stays `State: draft` until the lend lands (hostops addendum).
+## Why attempt 2 did not finish
+
+Attempt 2 ended correctly, with a `waiting:` on its four A/B requests and on
+"the lend". Both resolved within hours, and nobody acted on either for 48 h:
+
+- The A/B finished 10-16. Read now, it is CLEARED (below).
+- The lend was granted at 10-16 09:49 PDT, but not the way attempt 2 was
+  watching for. lane.local put `profile.c`, `renderer.c` and `pfifo.c` on this
+  lane's own territory row; it did not land the patches in fps1015 or
+  x1port1012. `lend_check.py` checked only whether those lanes' branches
+  carried the patches, so it kept reporting "not landed". The board checkout
+  that would have shown the grant was 116 commits stale.
+- The 10-16 resume brief repeated the stale reading ("none of your 4 OUTBOX
+  patches have been lent/landed yet"). So that session wrote WAITING on lane.local,
+  and nothing woke the lane until the 10-18 territory audit.
+
+For the next lane: a lend can arrive as a territory grant to your own row.
+Check `origin/board:territory.toml` for your row's `files`, not only the
+holder's branch.
 
 ## Why attempt 1 did not finish
 
@@ -58,8 +80,8 @@ the A/B scene (`scan_soaks.py` written 07:44, never committed) when the cap cut
 it off at 07:45:53. It had never written NOTES.md, a WAITING file, or a
 `waiting:` line, so nothing told the board it was waiting on the lend. Spending
 turns on design and verification before writing the notes left nothing behind
-when the cap came. This attempt wrote NOTES.md and WAITING before queueing
-device work.
+when the cap came. Attempt 2 wrote NOTES.md and WAITING before queueing device
+work.
 
 ## Design
 
@@ -69,8 +91,8 @@ device work.
 | read | `debug.h` `nv2a_perflog_on()` | `__atomic_load_n(..., RELAXED) != 0` under `__builtin_expect(.., 0)`; constant `true` in a perflog build |
 | timers | `debug.h` `NV2A_PHASE_TIMER_*` (non-perflog branch) | BEGIN stores `t0 = on ? clock : 0`; END tests `t0`, not the flag, so a phase the flip lands in books all of itself or nothing. Off: one load + one not-taken branch at BEGIN, one not-taken branch at END, no clock read |
 | counters | `debug.h` `nv2a_profile_inc_counter()` | increments only while on |
-| set | `debug.h` `nv2a_perflog_set()` (under `NV2A_PERFLOG_RT_IMPLEMENTATION`, defined by `profile.c` = patch) | `__atomic_exchange_n`; logs only on a change: `[perflog] runtime tier ON (frame N, by marker)` on hakuX-perf |
-| poll | `nv2a_perflog_poll(dir)`, called from `vk/renderer.c` `fdump_poll_marker()` (patch) | at the flip, at most once a second (the frame dump's own rate limit), `access(dir/perflog.on)`. `XEMU_PERFLOG_RT=1` read once, pins on for the run. A perflog build says once `[perflog] perflog build: every phase is timed at all times; the run-time switch is inert` |
+| set | `debug.h` `nv2a_perflog_set()` (under `NV2A_PERFLOG_RT_IMPLEMENTATION`, defined at `profile.c:22`) | `__atomic_exchange_n`; logs only on a change: `[perflog] runtime tier ON (frame N, by marker)` on hakuX-perf (`by env` when pinned) |
+| poll | `nv2a_perflog_poll(dir)`, called once, from `vk/renderer.c:2465` in `fdump_poll_marker()` | at the flip, at most once a second (the frame dump's own rate limit), after that limit and before the dump's early returns, `access(dir/perflog.on)`. `XEMU_PERFLOG_RT=1` read once at the first poll, pins on for the run; a request sets it with `--env` (the env_vars pref, `setenv` in xemu_android.cpp, logged `env: K=V`). A perflog build says once `[perflog] perflog build: every phase is timed at all times; the run-time switch is inert` |
 | UI | `PauseMenuOverlay.kt` `rebuildDebugSection()` | `Perflog: OFF` / `Perflog: ON` / `Perflog: ON (perflog build)` / `Perflog: ON (XEMU_PERFLOG_RT)`; press toggles the marker and logs `[perflog] pause menu: ON requested` |
 | launch reset | `PauseMenuOverlay.kt` init | deletes a stale `perflog.on`, logs `[perflog] pause menu: cleared the last run's marker; OFF at launch` |
 | mark | `PauseMenuOverlay.kt` `createMarkButton()` | `Log.i("hakuX-route", "mark owner-N")`, the route driver's `log -t hakuX-route "mark <label>"` shape, numbered so it never collides with `gameplay`/`play` |
@@ -81,18 +103,24 @@ LOGCAT_SPEC is a tag list, so a new tag would be dropped from every queued run.
 
 ### What an ON-path hit looks like (said before any read)
 
-After the lend, on a plain debug build with the marker dropped (or the button
+On a plain debug build at this head, with the marker dropped (or the button
 pressed and the menu resumed), these appear in order:
 
 1. `hakuX-perf: [perflog] pause menu: ON requested` (button path only).
 2. Within about 1 s of resume: `hakuX-perf: [perflog] runtime tier ON (frame N, by marker)`, exactly once.
-3. From the next 60-frame boundary, every 60 frames, the block `profile.c:944`
+3. From the next 60-frame boundary, every 60 frames, the block at `profile.c:948`
    prints under the switch: `hakuX-phase` (`Surf: Tex: TxH: Shd: Draw: Sfp:
    Mfp: FTx: ... Fin:(Sub: Fen:) Flip: Idle:(Fr: St:)`, the perflog build's
-   shape), `hakuX-cpu`, `xemu-vsync`, `xemu-surf`, and the pacing line. A
-   plain build prints none of them. The only caller of
+   shape), `hakuX-cpu`, `xemu-vsync`, `xemu-surf`, `xemu-pace`, `xemu-work` and
+   `xemu-gpu`. A plain build prints none of them. The only caller of
    `nv2a_profile_get_phase_timing_str()` is that block, so making its
    TxH/Sfp/Mfp/FTx fields unconditional changes no line a plain build prints.
+   - Under the switch, `xemu-surf`'s own timers print 0, because the surface.c
+     hunk was dropped.
+   - `xemu-pace` shows min/max/Df already reset. The always-on hakuX-perf line
+     (`profile.c:821-826`) reads the pacing string first, and that read resets
+     them. A perflog build behaves the same way, and the always-on line is
+     unaffected.
 4. `[tcg787] w=...` lines once a window (`cputlb.c`), which a plain build never
    prints.
 
@@ -102,8 +130,10 @@ a failed switch, not an idle one.
 
 ## Inventory (goal 1)
 
-Line numbers: held files at origin/master 4bf47129b1 (unchanged there by this
-lane); lane files at this branch's head. Classes:
+Line numbers: files this lane edits, at this branch's head (ce91b11b74 for the
+three granted files). Files it does not edit, at origin/master 4bf47129b1; the
+class C rows are unchanged by the merge of 7e00c7cf73 in what they record,
+though their line numbers may have moved. Classes:
 
 - **A**: switchable with a negligible-cost check (a relaxed flag read).
 - **B**: switchable only with the check hoisted out of a hot loop, or at a
@@ -120,19 +150,23 @@ lane); lane files at this branch's head. Classes:
 | `debug.h` `FramePhaseTimingWork/Stats` `draw_sfp/mfp/ftx`, `tex_hash` (master 261-269, 310-315 `#if NV2A_PERF_LOG`) | the four Sfp/Mfp/FTx/TxH accumulators | A (layout made unconditional) | 32+16 bytes in `g_nv2a_stats`, not in any per-draw struct; needed so the switch has somewhere to book |
 | call sites of the macros | `vk/draw.c` ~101, `vk/surface.c` 14, `vk/texture.c` 10, `vk/vertex.c` 4, `vk/shaders.c` 3, `gl/*` 19, `pfifo.c` 2 (flip idle), `pgraph.c` 1, `vk/command.c` 1, `vk/display.c` 1 | A | the macro carries the check; no file edit, so held files (draw.c, texture.c, pgraph.c) are covered without a lend |
 
-### Class A/B by lend patch (held files; patches in this dir)
+### Class A/B in the three granted files (applied at ce91b11b74; the patches stay in this dir)
 
-| site (origin/master) | what it records | class | why | patch |
+| site (lane head) | what it records | class | why | patch |
 |---|---|---|---|---|
-| `pgraph/profile.c` top | defines `NV2A_PERFLOG_RT_IMPLEMENTATION`: the set/poll bodies compile here | - | **required**: without it nothing can turn the switch on | profile.c.patch |
-| `pgraph/profile.c:103` | SMOOTH of the four Sfp/Mfp/FTx/TxH fields into the stats | A | once per frame | profile.c.patch |
-| `pgraph/profile.c:944` | the frame-phase print block (every 60 frames) | B (frame boundary) | becomes `#if __ANDROID__` + `if (nv2a_perflog_on() && frame % 60 == 0)`: one check per frame | profile.c.patch |
-| `pgraph/profile.c:1040` | the `PHASE_TXH/FAST` fields of the phase-line format | A | format made unconditional; prints only under the check above | profile.c.patch |
-| `vk/renderer.c` `fdump_poll_marker()` | the poll | B (frame boundary) | **required**: the one call to `nv2a_perflog_poll()`, at the flip, inside the frame dump's existing once-a-second limit | renderer.c.patch |
-| `pfifo.c:1956-2111` | puller time, per-method time, lock-wait time | B (hoisted) | `const bool pl = nv2a_perflog_on();` once per puller call, never inside the method loop; the per-method clock reads stay behind `pl` | pfifo.c.patch |
-| `pfifo.c:2418-2423`, `2527` | pusher post-flip and push time; the idle split | B (hoisted) | flag read once per pusher pass; the idle split is gated on it | pfifo.c.patch |
-| `vk/surface.c:44` `SURF_TIMER` | per-surface-op timers (the `xemu-surf` line) | A | macros moved onto the switch, as `debug.h`'s | surface.c.patch |
-| `vk/surface.c:2116/2145/2158` | download flush / read timers | A | gated on the timer's own `_t0`, as the phase macros | surface.c.patch |
+| `pgraph/profile.c:22` | defines `NV2A_PERFLOG_RT_IMPLEMENTATION` before the first include: the set/poll bodies compile here | - | **required**: without it nothing can turn the switch on | profile.c.patch |
+| `pgraph/profile.c:106` | SMOOTH of the four Sfp/Mfp/FTx/TxH fields into the stats | A | once per frame | profile.c.patch |
+| `pgraph/profile.c:948` | the frame-phase print block (every 60 frames) | B (frame boundary) | `#if defined(__ANDROID__)` + `if (nv2a_perflog_on() && frame % 60 == 0)`: one check per frame. `pgraph_method_histogram_log_and_reset()` there is a plain stub (`pgraph.c:293`) outside a perflog build | profile.c.patch |
+| `pgraph/profile.c:1044` | the `PHASE_TXH/FAST` fields of the phase-line format | A | format made unconditional; prints only under the check above | profile.c.patch |
+| `vk/renderer.c:2465` in `fdump_poll_marker()` | the poll | B (frame boundary) | **required**: the one call to `nv2a_perflog_poll()`, at the flip, inside the frame dump's existing once-a-second limit | renderer.c.patch |
+| `pfifo.c:1959` in `pfifo_run_puller()` | puller time, per-method time, lock-wait time | A | `const bool pl = nv2a_perflog_on();` once per call. **Corrected 10-18:** the pusher's word loop calls `pfifo_run_puller()` once per method command (`pfifo.c:2258`), so this is one relaxed load per method command, not "never inside the method loop". It sits beside the four atomics `pfifo_puller_should_stall()` reads on the same call, so it is class A by the same argument as `debug.h`'s sites. Every clock read in the function is behind `pl` | pfifo.c.patch |
+| `pfifo.c:2422`, `2532` | pusher post-flip and push time; the idle split | B (hoisted) | flag read once per pusher pass; the idle split is gated on it | pfifo.c.patch |
+
+`vk/surface.c` (`SURF_TIMER` at 44, the download flush/read timers at
+2116/2145/2158) was in `surface.c.patch` as class A. **Dropped 10-18:**
+lane.gta3instr1018 holds the file. Those timers stay perflog-build only (class C
+for this PR), and under the switch the `xemu-surf` line prints 0 for them. The
+patch is still in this directory.
 
 ### TCG, class A (lane files, committed)
 
@@ -157,9 +191,10 @@ lane); lane files at this branch's head. Classes:
 | `vk/texture.c:45, 70, 318, 1502, 2745, 2850, 3110, 3205` | `TEX_PERF`, `txw`, #461/#474 bind-step attribution | per-bind clock reads inside the bind loop and per-texture fields |
 | `pgraph.c:243-294, 2431` | the per-method histogram | a table indexed per method in the method loop |
 | `pgraph.c:901, 907` | `LOCK474` lock attribution | per-acquisition bookkeeping on the lock path |
+| `vk/surface.c:44, 2116, 2145, 2158` | `SURF_TIMER` per-surface-op timers (`xemu-surf`), download flush/read timers | class A by design (`surface.c.patch`); C in this PR only because the file is lane.gta3instr1018's |
 | `vk/surface.c:797, 982-1101` | `sdrange`/`rfin` download-range attribution | per-download fields and loops |
 | `vk/surface.c:1869, 1940, 2042, 3240, 5860` | `sdcall`/`upw`/`surf413` per-call attribution | per-call records; 2042's `t0` stays compile-time because its consumer is C |
-| `pfifo.c:785` | `CBL` command-buffer log | per-method record |
+| `pfifo.c:785` | `CBL`: the callback-latency split, kick to dispatch, by category (parked, per method class, `dl`, `fin`) | a clock read per method dispatch and per park, plus per-category bookkeeping under pfifo.lock |
 | `accel/tcg/cpu-exec.c:1414-1572, 2375-2388` | `[tpc787]`: TB time by guest pc | a hash-table book on every TB exit, on the execution path; a flag read there is the cost the brief forbids (and the file is pmucounters') |
 
 ## What the switch gives, per defect class (goal 4)
@@ -171,8 +206,9 @@ cause for #998's flicker or any other defect.
 |---|---|---|
 | flicker, a wrong frame, a missing or wrong draw (#998) | **when**: a `mark owner-N` on the logcat clock at the moment, plus the frame-phase breakdown around it (did a phase spike on that frame?). The Frame dump button records the per-draw state of the next 30 frames without a rebuild (the existing live frame dump) | **why**, frame-exact: which draw wrote which pixels, draw-by-draw pipeline/texture/surface state, at the exact flickering frame. Those are records, not counters, and cannot be bought with a flag read in the hot path. The frame dump is the nearest no-rebuild tool, but it starts ~1 s after resume, not on the flicker frame. Per-draw surface reads need the diag capture (per-draw `pgraph_vk_finish`) |
 | a hitch, stall or slow scene | which phase took the time (surface/texture/shader/draw/finish/flip idle, Sfp/Mfp/FTx/TxH), per 60-frame window, from the press on; vCPU TLB flush/fill and code-gen time (`[tcg787]`) | per-draw/per-bind/per-upload attribution (`ubosz`, `TEX_PERF`, `txw`, `sdrange`, `sdcall`), pipeline eviction, GPU timestamps (`xfr`), per-method histogram, guest-pc time (`[tpc787]`): **a `-Pperflog=true` build** |
-| a lock or wait (pfifo/vCPU contention) | after the lend: puller/pusher time and lock-wait time per frame (pfifo.c, B) | per-acquisition lock attribution (`LOCK474`): a perflog build |
-| a crash or hang | nothing new. A crash leaves no tombstone; the last `mark owner-N` before it dates it | a debugger or a perflog build's `CBL` |
+| a lock or wait (pfifo/vCPU contention) | puller/pusher time and lock-wait time per frame (pfifo.c; the `hakuX-cpu` line) | per-acquisition lock attribution (`LOCK474`), the callback-latency split (`CBL`): a perflog build |
+| a surface-op cost (`xemu-surf`) | nothing: its timers print 0 under the switch (surface.c dropped) | a perflog build, or `surface.c.patch` applied by the file's next holder |
+| a crash or hang | nothing new. A crash leaves no tombstone; the last `mark owner-N` before it dates it | a debugger |
 | audio, pacing | nothing new; the always-on tier (hakuX-audio, hakuX-pace) already covers them | - |
 
 So the owner's case: on a flicker, press **Mark this moment**, then **Perflog**
@@ -197,10 +233,15 @@ the switch is OFF.
 
 ## The default-path A/B (goal 2's proof)
 
-**What it measures now.** The lane head carries every debug.h-gated site
-(~155) and the TCG sites with the switch OFF. It cannot be turned on, because
-the poll is in the renderer.c patch. So A = origin/master against B = lane head
-measures the OFF cost of everything except the four patches' hunks:
+Two predictions: P1 (10-16, before the patches; read, CLEARED) and P2 (10-18,
+after them, with the ON leg; queued). P1's text is kept as it was registered.
+
+### P1 (10-16)
+
+**What P1 measured.** The 10-16 lane head carried every debug.h-gated site
+(~155) and the TCG sites with the switch OFF. It could not be turned on, because
+the poll was in the renderer.c patch. So A = origin/master against B = lane head
+measured the OFF cost of everything except the four patches' hunks:
 
 - pfifo.c: one flag read per puller call and per pusher pass;
 - surface.c: macro-equivalent timers;
@@ -299,6 +340,107 @@ Reading rule:
 
 No B result yet; nothing but A1 has been read (the reader's self-check).
 
+**P1 result (all four done 10-16, read 10-18): CLEARED.** Reproduce with
+`python3 docs/lanes/perflog1016/abread.py --judge
+docs/testing/predictions/perflog1016-defaultpath.json --a <A1> --a <A2> --b <B1>
+--b <B2>`. The dirs are under `$DISPATCH_DIR/results/`.
+
+| arm | run | n_rdc | tcpu (ms/s) | gfps | Ri (ms) | cache |
+|---|---|---|---|---|---|---|
+| A1 | `1-1792169523-perflog1016-2120339` | 79 | 312.1 | 29 | 23.80 | cleared |
+| A2 | `1-1792169541-perflog1016-2122978` | 80 | 283.3 | 29 | 23.50 | cleared |
+| B1 | `1-1792169529-perflog1016-2121153` | 80 | 318.6 | 29 | 22.15 | cleared |
+| B2 | `1-1792169535-perflog1016-2121769` | 80 | 262.7 | 29 | 23.80 | kept (warm) |
+
+| reader | A mean | B mean | B-A | band | SE of B-A |
+|---|---|---|---|---|---|
+| tcpu (ms/s) | 297.70 | 290.64 | -7.05 | 55.98 | 31.49 |
+| gfps | 29.00 | 29.00 | +0.00 | 0.00 | - |
+| Ri (ms) | 23.65 | 22.98 | -0.67 | 1.65 | 0.84 |
+
+- **Cold runs only** (A1, A2 against B1): B-A tcpu +20.94 ms/s, gfps 0, Ri
+  -1.50 ms.
+- **The reading rule.** B1-B2, the same build cold against warm, is 55.9 ms/s,
+  more than the prior 14. So, per rule 2: the registered verdict, CLEARED,
+  stands as read, and **no tight cost bound is claimed**. The cold-only
+  figure, +20.9 ms/s, is one B run against two A runs.
+- **The noise.** A1-A2, the same build cold both times, is 28.8 ms/s. That is
+  about the size of the cold-only B-A, so this scene's run-to-run noise is
+  around 30 ms/s of tcpu. P1 can see a slowdown of the size a perflog build
+  costs (+74 ms/s). It cannot see the 0-3 ms/s point estimate.
+- **No B run printed any ON-path line.** All four logs have zero hakuX-phase,
+  hakuX-cpu, `[tcg787]` and runtime-tier lines. So B was OFF, and the "B must be
+  OFF" rule has a clean baseline.
+- B2 was warm, exactly as the confound note predicted. That is why P2
+  alternates the arms.
+
+### P2 (10-18): the full PR, plus the ON leg
+
+`docs/testing/predictions/perflog1016-postlend.json` (sha256 `2c3c4179...4bed`),
+written by `write_prediction_p2.py`. It was committed and pushed at b1ca4da762
+before any request was queued.
+
+- **A** = origin/master 7e00c7cf73.
+- **B** = ce91b11b74: A merged, plus every emulator hunk of the PR (debug.h,
+  TCG, pfifo.c, profile.c, renderer.c). Nothing else is in the diff, and
+  surface.c is not in it.
+- **ON** = B with `--env XEMU_PERFLOG_RT=1`.
+- **Order: ON A1 B1 A2 B2 A3.**
+  - Each run's APK differs from the one before it, and the dispatcher clears
+    the shader cache on every APK change (dispatcher.sh:630-667), so every
+    run starts cold.
+  - A comes last, so no env of ours is left in the Nova's env_vars pref. The
+    dispatcher clears it lazily, on the next request; A1 does that for the ON
+    run's env.
+- 6 x (330 + 90) s = 42 min, over the 30-min pilot budget. The pilot record
+  is `pilots/perflog1016.ok`, citing P1's four runs.
+- **Rules.**
+  - The P1 thresholds stand: SLOWDOWN if B-A tcpu > +15 ms/s and outside the
+    band, if Ri < -0.3 ms and outside the band, or if every B run's gfps is
+    1 or more below every A run's.
+  - Added `M1/cold_runs_only`: a warm run is listed and left out, and an arm
+    with fewer than 2 cold runs is VOID.
+  - A B run with a hakuX-phase line is VOID.
+  - The band will likely be near 30 ms/s (P1's same-build spread). So a
+    CLEARED here bounds the OFF cost under about that, not under the point
+    estimate.
+- **The ON leg, M2.** It is a HIT/MISS of its own, separate from the A/B
+  verdict:
+  - exactly one `runtime tier ON (frame N, by env)` line, and no other tier
+    line;
+  - from that line on, at least 50 hakuX-phase lines carrying
+    TxH/Sfp/Mfp/FTx, with median Draw ≥ 0.1 ms;
+  - hakuX-cpu medians Pull and Push ≥ 0.1 ms;
+  - at least 20 `[tcg787]` lines.
+  - The ON run's tcpu/gfps/Ri against the B mean are printed as the ON cost,
+    one run, not judged. Expected: +5 to +60 ms/s.
+- **Reader:** `abread.py --judge docs/testing/predictions/perflog1016-postlend.json
+  --a <A1> --a <A2> --a <A3> --b <B1> --b <B2> --on <ON>`. Exit codes: 0
+  CLEARED (and ON HIT), 1 SLOWDOWN, 2 VOID, 3 ON MISS.
+
+**Queue record** (10-18; requester `perflog1016`, priority arm, release tier
+0.5, pinned to the Nova, `--title 5454000F-Grand_Theft_Auto_Vice_City.xiso.iso
+--route gta-vc --seconds 330`, `--expect` the P2 file). All six wait behind the
+owner's Nova hold.
+
+| order | arm | ref | env | request id |
+|---|---|---|---|---|
+| 1 | ON | ce91b11b74 | `XEMU_PERFLOG_RT=1` | `1-1792344816-perflog1016-1365941` |
+| 2 | A1 | 7e00c7cf73 | - | `1-1792344821-perflog1016-1366376` |
+| 3 | B1 | ce91b11b74 | - | `1-1792344826-perflog1016-1366882` |
+| 4 | A2 | 7e00c7cf73 | - | `1-1792344832-perflog1016-1368963` |
+| 5 | B2 | ce91b11b74 | - | `1-1792344837-perflog1016-1369630` |
+| 6 | A3 | 7e00c7cf73 | - | `1-1792344843-perflog1016-1370194` |
+
+**Not yet shown on a device:** that the pause-menu button turns the switch on
+(`by marker`). The ON run proves the native path through the env pin: the same
+`nv2a_perflog_set()`, the same timers and prints. The marker branch of
+`nv2a_perflog_poll()` is covered by the host selftest's marker mode, which uses
+the real `debug.h`. The Kotlin side (createNewFile/delete on press) needs a
+person pressing the button on a device. That is the first thing to check in an
+owner session after this folds: press Perflog, resume, and look for one
+`runtime tier ON (frame N, by marker)`.
+
 ## Next lane: do not repeat
 
 - `nv2a_clock_ns()` is the counter since boot, so a taken `t0` is never 0.
@@ -310,16 +452,27 @@ No B result yet; nothing but A1 has been read (the reader's self-check).
 - The Kotlin label reads the marker file. It does not ask native, so a failed
   native poll would show ON in the menu with no `runtime tier ON` line in
   logcat. The logcat line is the truth.
+- Do not wait for a lend by checking only the holder's branch. A grant can
+  arrive as files on your own territory row (`origin/board:territory.toml`),
+  and that is how this one came. See "Why attempt 2 did not finish".
+- Do not order a same-build pair back to back on one device. The dispatcher
+  keeps the shader cache on a same-APK run, so the second run starts warm. P1's
+  B2 did, and was 56 ms/s under B1. Alternate the arms.
+- On GTA VC (gta-vc, Nova), same-build cold runs differ by ~30 ms/s tcpu. A
+  default-path cost below that needs many more runs, or a lower-noise reader,
+  not a re-run of the same pair.
+- `pfifo_run_puller()` runs once per method command, not once per batch. Any
+  flag read placed there is per method; it is cheap (one relaxed load beside
+  four atomics), but do not describe it as hoisted out of the method loop.
 
 ## Questions (for lane.local; none blocks the offline work)
 
-1. Lend: lane.fps1015 holds `profile.c`, `pfifo.c`, `vk/renderer.c`,
-   `vk/surface.c`. `profile.c.patch` and `renderer.c.patch` are the minimum
-   that makes the switch work: 66 and 17 lines, separate hunks. `pfifo.c` and
-   `surface.c` add coverage. Can these four be lent to this branch, or landed
-   by fps1015?
+1. ~~Lend~~: answered 10-18 by the hostops addendum. `profile.c`, `vk/renderer.c`
+   and `pfifo.c` were granted to this row on 10-16 and applied at ce91b11b74.
+   `vk/surface.c` was dropped, because lane.gta3instr1018 holds it.
 2. Owner-play capture: can `ownerplay.py`'s `LOGCAT_SPEC` gain
    `hakuX-phase:I hakuX-cpu:I xemu-vsync:I xemu-surf:I xemu-pace:I xemu-work:I
    xemu-gpu:I`? Without them an owner session records that the button was
    pressed, but not what it turned on. The table is in "Whether a capture keeps
-   it" above, and the NEED is in OUTBOX.md.
+   it" above, and the NEED is in OUTBOX.md. Still open, and lane.local's call
+   on its own file; it does not block this PR.
