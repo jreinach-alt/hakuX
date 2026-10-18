@@ -1,6 +1,6 @@
 # hakuX status
 
-_updated 2026-10-18 05:51 PDT_
+_updated 2026-10-18 06:23 PDT_
 
 0.6: Measured 261 / 300 · Playable 91 / 110.
 
@@ -26,7 +26,7 @@ Playable **91** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓▓░░`
 
 Measured: titles with a frame rate reading taken during gameplay, on either handheld. Playable: titles rated Playable. The charts place each title on the date it first qualified, and the projected dates in the table assume the last 7 days' pace continues.
 
-Ships when both are met. At the last 48 h rate: about 2027-01-04.
+Ships when both are met. At the last 48 h rate: no rate yet (nothing measured in the last 48 h).
 
 Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/Nova handhelds.
 
