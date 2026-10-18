@@ -3016,3 +3016,9 @@ issues = ["1049"]
 standing = false
 files = ["docs/lanes/gta3fps1017b/**", "docs/testing/predictions/gta3fps1017b-*", "hw/xbox/nv2a/pgraph/vk/texture.c"]
 note = "STARTED lane.local 2026-10-17 ~23:05 PDT on the owner's word (R2 and R3 were promised and not written): R2/R3 default-off switches on top of lane.gta3fps1017's unfolded R1. texture.c is shared with lane.gta3fps1017 until it folds; this lane folds after it and rebases."
+
+[lane.compat1017b]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/compat1017b/**", "docs/testing/compat_notes.tsv", "docs/testing/compat_page.py", "docs/testing/compat_page_selftest.py", "docs/compatibility.csv", "docs/COMPATIBILITY.md", "README.md", "docs/testing/titles/targets.toml"]
+note = "STARTED lane.local 2026-10-17 ~23:30 PDT on the owner's ruling (DOA3, MK:DA, Pac-Man World 2 make Playable; GTA SA does not): the compatibility page, CSV and README go from 88 to 91 Playable. Follows lane.compat1017 (folded)."
