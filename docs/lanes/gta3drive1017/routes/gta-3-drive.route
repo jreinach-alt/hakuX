@@ -39,7 +39,7 @@
 # passenger seat by then: 1-1792282254-...-1563459's onfoot frame (clock
 # 05:12) shows him in it before the Y press.
 #
-# Warm-up, before `mark gameplay`: the scored loop's cycle six times (~70 s),
+# Warm-up, before `mark gameplay`: the scored loop's cycle six times (~85 s),
 # with three frames a cycle (mid-throttle, after the Y, after the reverse).
 # In 1563459 the gate and the entry worked (matched at 0 s, in after one Y),
 # but the mission restarted within ~30 s of the throttle (clock 05:25 in the
@@ -53,9 +53,9 @@
 # LT brakes and reverses, LX steers (-32767..32767; the Nova and the Thor
 # cache the same ranges). Never START or BACK.
 #
-# Why this shape: three tries flipped the Kuruma on the bridge ramp, and a
+# Why this shape: four tries flipped the Kuruma on the bridge ramp, and a
 # flip fails the mission ("You flipped your wheels!") and restarts it with
-# Claude on foot beside the car (NOTES.md 8.3-8.5).
+# Claude on foot beside the car (NOTES.md 8.3-8.6).
 # - 1-1792283158-...-1853100: full throttle, 0.6 s full-lock pulses. On the
 #   first left pulse the car hit a lamp post on the ramp's wall and landed on
 #   its roof (172943-warm.png, clock 05:51).
@@ -63,18 +63,25 @@
 #   lamp post, the same flip, ~5 s into the throttle (174033-warm.png, 05:42).
 #   The ramp is narrow and its lamp posts stand on the walls, so any steering
 #   at speed there reaches one within 2 s.
+# - 1-1792284444-...-2291336: no steering at all, RT 18000. The ramp bends
+#   left about 5 s in, and the car went straight up the sloped right-hand
+#   wall and over (175130-warmy.png, 05:39). The Y re-entry below worked
+#   (175156 -> 175201), but each re-entry reversed toward the burning wreck,
+#   and the car flipped again every 30-40 s.
 # So:
-# - No steering going forward. The car runs straight, and turns only while
-#   reversing, slowly. Each cycle: RT 18000 for 6 s, brake straight for 2 s,
-#   then reverse 1.5 s with the wheel turned. Two turns one way, one the
-#   other, so the heading walks rather than oscillates.
-# - A Y at the end of each throttle stretch. GTA III, unlike Vice City, lets
+# - Slow: RT 14000. A sloped wall turns a slow car instead of rolling it.
+# - A small left bias going forward (LX -4000), for the ramp's left bend; in
+#   the streets it makes wide left arcs. No other steering going forward. Each
+#   cycle: 8 s forward, brake straight 2 s, reverse 1.5 s with the wheel
+#   turned, alternately right and left.
+# - A Y at the end of each forward stretch. GTA III, unlike Vice City, lets
 #   the player leave a car only at low speed or at a stop (Grand Theft Wiki,
 #   "Bail Out"), so at speed the press does nothing. After a restart it walks
-#   Claude back into the Kuruma (8-Ball waits in it, 8.3), which the old loop
-#   could not do. A car stuck against a wall is slow, so there Y gets out,
-#   and the next cycle's Y gets back in.
-# - A frame every cycle (~11 s), so a restart or a wreck in the scored window
+#   Claude back into the Kuruma (8-Ball waits in it, 8.3). Where the car is
+#   slow (a wall, or under the exit threshold) it gets out, and the next
+#   cycle's Y gets back in. The warm-up's `warmy` frames, taken right after
+#   each Y, show which.
+# - A frame every cycle (~13 s), so a restart or a wreck in the scored window
 #   shows in the frames and goes to drive_judge.py's --exclude.
 #
 wait 55
@@ -93,14 +100,16 @@ shot onfoot
 press-until Y at-kuruma 3 5 830,440,450,220 10
 wait 6
 shot incar
-repeat 2 {
-    axis RT 18000
-    wait 3
+repeat 3 {
+    axis LX -4000
+    axis RT 14000
+    wait 4
     shot warm
-    wait 3
+    wait 4
     press Y 300
     shot warmy
     axis RT min
+    axis LX mid
     axis LT max
     wait 2
     axis LX max
@@ -108,27 +117,15 @@ repeat 2 {
     axis LT min
     axis LX mid
     shot warmr
-    axis RT 18000
-    wait 3
+    axis LX -4000
+    axis RT 14000
+    wait 4
     shot warm
-    wait 3
+    wait 4
     press Y 300
     shot warmy
     axis RT min
-    axis LT max
-    wait 2
-    axis LX max
-    wait 1.5
-    axis LT min
     axis LX mid
-    shot warmr
-    axis RT 18000
-    wait 3
-    shot warm
-    wait 3
-    press Y 300
-    shot warmy
-    axis RT min
     axis LT max
     wait 2
     axis LX min
@@ -139,33 +136,26 @@ repeat 2 {
 }
 mark gameplay
 repeat forever {
-    axis RT 18000
-    wait 6
+    axis LX -4000
+    axis RT 14000
+    wait 8
     press Y 300
     shot drive
     axis RT min
+    axis LX mid
     axis LT max
     wait 2
     axis LX max
     wait 1.5
     axis LT min
     axis LX mid
-    axis RT 18000
-    wait 6
+    axis LX -4000
+    axis RT 14000
+    wait 8
     press Y 300
     shot drive
     axis RT min
-    axis LT max
-    wait 2
-    axis LX max
-    wait 1.5
-    axis LT min
     axis LX mid
-    axis RT 18000
-    wait 6
-    press Y 300
-    shot drive
-    axis RT min
     axis LT max
     wait 2
     axis LX min

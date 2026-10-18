@@ -1,17 +1,18 @@
 # lane.gta3drive1017 -- GTA III drops into the teens while driving (#433)
 
-Status (attempt 3, 10-17 17:55 PDT): the wait is located (section 6). R1 is built (c6ca5296fd, section 7). Its
+Status (attempt 3, 10-17 18:05 PDT): the wait is located (section 6). R1 is built (c6ca5296fd, section 7). Its
 arms are registered (section 8).
 - Step 1, the pixel suites, is judged (8.1): the same code ran in both arms, and every mover is run-to-run variance.
 - Drive pair 1 is VOID (8.2): the help-box gate never matched, so neither run entered the car. The gate is now the
   scene beside the Kuruma.
 - Its second try is VOID too (8.3). The new gate worked and Claude got in, but the mission restarted ~30 s into the
   drive and he stayed on foot. The route now has a warm-up drive, with dense frames, ahead of the mark.
-- The third and fourth tries are VOID (8.4, 8.5). Their warm-up frames show the cause: on the first steering pulse,
-  full lock or a third of it, the Kuruma hits a lamp post on the narrow bridge ramp's wall and lands on its roof. The
-  mission fails ("You flipped your wheels!") and restarts with Claude on foot.
-- The route now never steers going forward (it turns only while reversing). It presses Y at speed each cycle, which
-  GTA III ignores in a moving car and which gets Claude back in after a restart. B goes alone first again.
+- The third to fifth tries are VOID (8.4-8.6). Their warm-up frames show the cause: the Kuruma flips on the narrow
+  bridge ramp, which bends left about 5 s from the start. A steering pulse takes it into a lamp post (full lock or a
+  third of it); no steering takes it up the sloped right-hand wall. Either way the mission fails ("You flipped your
+  wheels!") and restarts with Claude on foot.
+- Try 5 proved the re-entry: a Y each cycle gets Claude back in after a restart. The route now drives slower (RT
+  14000) with a small left bias for the bend. B goes alone first again.
 - R2/R3's census (the copy refusal reasons, dups per flip) is in texture.c, perflog only, for a later run if R1
   falls short.
 
@@ -544,6 +545,47 @@ a drive for the same reason as 8.4.
   - `route.sh --check` passes.
 - **Next: B alone again, the same request.** Its warm-up frames settle two things: the car survives the ramp, and
   the Y at speed leaves Claude in the car. A follows at once if they do.
+
+### 8.6 Fifth try: no steering still flips; the Y re-entry works
+
+B `1-1792284444-lane.gta3drive1017-2291336` ran alone, 17:48-17:58 (RT 18000, no steering forward, reverse turns, Y
+each cycle). It is VOID as a drive.
+
+| frame | clock | what |
+|---|---|---|
+| 175126 warm | 05:35 | +3 s: straight up the ramp, centre-right; the right-hand wall bends left ahead |
+| 175130 warmy | 05:39 | +6 s, right after the Y: the car up on its side on the sloped right-hand wall |
+| 175135 warmr | -- | "MISSION FAILED!", "You flipped your wheels!" |
+| 175143 warmy | -- | the "Give Me Liberty" cutscene |
+| 175152 warm | 04:13 | on foot beside the new Kuruma, "Enter or exit a vehicle: Y" |
+| 175156 warmy | 04:17 | right after the cycle's Y: Claude walking to the car |
+| 175201 warmr | 04:22 | in it ("Kuruma"), reversing with the wheel turned |
+| 175218 warmy | -- | the cutscene again: the second restart |
+| 175249 warmr | 04:37 | in the Kuruma again; `mark gameplay` at 17:52:50 |
+| 175257-175419 drive | 04:11-04:45 | cutscenes, title art, on foot, "You flipped your wheels!" (175332), in the car by the burning wreck |
+
+- **The flip does not need steering.** The ramp bends left about 5 s in. Going straight, the car climbs the sloped
+  right-hand wall and rolls. With these three tries, every way of driving the ramp at speed has flipped: full lock,
+  a third of lock, and none. Pilot 2's one descent at full throttle (346093, Chinatown 36 game-seconds after the
+  restart) did not repeat in three tries.
+- **The Y re-entry works.** After the first restart, the cycle's Y walked Claude into the new Kuruma within one
+  cycle (175156 -> 175201). After the second, he was back in by 175249.
+- **The re-entry alone does not make a drive.** Each new start reversed toward the burning first wreck and flipped
+  again, so the scored window was restarts every 30-40 s.
+- **Not the pilots' state.** Both pilots' A-trains ended in the car already driving in Red Light District (343857's
+  153645-pregameplay.png, 05:16, with FPS 14-28 on its overlay), on the same boot as today's route
+  (cf0318d210's route file). The seven runs since all ended on foot beside the Kuruma. The difference is not in the
+  route, and it has not recurred. The only kept GTA III save is the golden profile (`titlestate.py saves`), so there
+  is no later start to load.
+- **The route's next shape:**
+  - RT 14000, slower, because a sloped wall turns a slow car instead of rolling it.
+  - A small left bias going forward (LX -4000), for the bend. In the streets it makes wide left arcs.
+  - 8 s forward, a 2 s straight brake, a 1.5 s reverse turn, alternately right and left.
+  - The Y each cycle stays. `warmy` frames right after each Y show whether this speed is above GTA III's exit
+    threshold. Below it, Y gets out and the next cycle gets back in, so the cost is one cycle in two.
+  - `route.sh --check` passes.
+- **Next: B alone again, the same request.** If its warm-up frames show the car down the ramp and moving at the
+  mark, A follows at once.
 
 ## Questions
 
