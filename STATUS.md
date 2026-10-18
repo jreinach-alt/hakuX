@@ -1,6 +1,6 @@
 # hakuX status
 
-_updated 2026-10-18 05:20 PDT_
+_updated 2026-10-18 05:51 PDT_
 
 0.6: Measured 261 / 300 · Playable 91 / 110.
 
@@ -26,7 +26,7 @@ Playable **91** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓▓░░`
 
 Measured: titles with a frame rate reading taken during gameplay, on either handheld. Playable: titles rated Playable. The charts place each title on the date it first qualified, and the projected dates in the table assume the last 7 days' pace continues.
 
-Ships when both are met. At the last 48 h rate: about 2026-10-29.
+Ships when both are met. At the last 48 h rate: about 2027-01-04.
 
 Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/Nova handhelds.
 
@@ -153,7 +153,7 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | **4x4 Evo 2** | 🔵 Measured, not rated yet | **53.2**<br>Nova, Oct 13 |
 | **Aeon Flux** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 13 |
 | **Aliens Versus Predator: Extinction** | 🔵 Measured, not rated yet | **31.0**<br>Nova, Oct 5 |
-| **Amped 2** | 🔵 Measured, not rated yet | **28.4**<br>Nova, Oct 4 |
+| **Amped 2** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 18 |
 | **Amped: Freestyle Snowboarding** | 🔵 Measured, not rated yet | **20.6**<br>Nova, Oct 4 |
 | **Area 51** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 8 |
 | **Arx Fatalis** | 🔵 Measured, not rated yet | **43.9**<br>Nova, Oct 7 |
@@ -175,7 +175,7 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | **BloodRayne** | 🔵 Measured, not rated yet | **29.9**<br>Nova, Oct 14 |
 | **BloodRayne 2 USA** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 8 |
 | **Brian Lara International Cricket 2005 Europe** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 15 |
-| **Buffy the Vampire Slayer** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 12 |
+| **Buffy the Vampire Slayer** | 🔵 Measured, not rated yet | **29.7**<br>Nova, Oct 18 |
 | **Burnout 3: Takedown** | 🔵 Measured, not rated yet | **30.8**<br>Nova, Oct 14 |
 | **Cel Damage** | 🔵 Measured, not rated yet | **29.9**<br>Nova, Oct 7 |
 | **Conan Europe En Fr De Es It** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 12 |
@@ -199,7 +199,7 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | **Fantastic 4** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 7 |
 | **FILA World Tour Tennis Europe** | 🔵 Measured, not rated yet | **56.8**<br>Nova, Oct 15 |
 | **Forgotten Realms Demon Stone USA** | 🔵 Measured, not rated yet | **28.9**<br>Nova, Oct 8 |
-| **Forza Motorsport** | 🔵 Measured, not rated yet | **29.0**<br>Nova, Sep 30 |
+| **Forza Motorsport** | 🔵 Measured, not rated yet | **25.1**<br>Nova, Oct 18 |
 | **Gauntlet: Dark Legacy** | 🔵 Measured, not rated yet | **14.2**<br>Thor, Sep 30 |
 | **Gene Troopers Europe En Fr De Es It** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 14 |
 | **Ghost Master The Gravenville Chronicles Europe En Fr De Es It** | 🔵 Measured, not rated yet | **57.6**<br>Nova, Oct 13 |
