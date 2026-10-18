@@ -3062,3 +3062,9 @@ issues = ["433"]
 standing = false
 files = ["docs/lanes/fpstel1018/**"]
 note = "STARTED lane.local 2026-10-18 ~07:35 PDT (Sonnet): decompose the overnight perflog runs of Forza (17.5% at 30 fps) and Buffy (73.9%), name the lever, write FINDINGS.md for a fix lane."
+
+[lane.holdcap1018]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/holdcap1018/**", "docs/testing/jobs/hold.sh", "docs/testing/jobs/selftest.d/99-hold-take.sh"]
+note = "STARTED lane.local 2026-10-18 ~07:50 PDT (Sonnet): an owner-play hold starts a host logcat capture as a systemd unit; who/wait-idle/release report it; a take that cannot record is refused."
