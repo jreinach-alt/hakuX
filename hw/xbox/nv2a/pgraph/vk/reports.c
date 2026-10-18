@@ -104,7 +104,7 @@ static struct {
 /*
  * #1039: HAKUX_ZREP=<path>[,<MB>], off unless set. Each query's count and
  * each report's value as the path that reads them writes them, so a frame
- * dump (schema 10: "zq" on a draw, {"t":"rep"} per report) can say which
+ * dump (schema 11: "zq" on a draw, {"t":"rep"} per report) can say which
  * draws a report counted and what it came to. Nothing is written until a
  * frame dump has been armed once; it stops at <MB> (default 256). Lines:
  *

@@ -19,6 +19,17 @@ after the cut, at alpha 0.18-0.20. The cause is `HAKUX_REPORT_EARLY`, which answ
 tests with the behind shot's counts (r4b). With EARLY off (e0) or ASYNC off (a0), the cut is clean. The
 mechanism and the guard's offline design are recorded below. "Reopening the desktop finding" has the recipe.
 
+**Why attempt 2's ready PR did not fold (attempt 3, 10-17 evening).** Attempt 2 did finish: 4a645e26c4
+was ready with its territory granted (14:54 PDT). The fold gate's merge with master then hit a content conflict in
+`vk/renderer.c`. #1038 (haloshadow1017, fold 07b7b6d996) had also claimed `FDUMP_SCHEMA 10`, for its
+shadow-sampling fields (`rttmaxNN`, 16-bit `rb`, `pv`/`tv`/`bv`/`pvi`, `ptd`). Both sets of fields are written
+in every draw record whenever a dump is armed, and neither has a switch of its own, so a merged build's dump
+carries both. Attempt 3 merged master in and kept #1038's paragraph as schema 10. It renumbered this lane's
+visibility-test fields (`zq`, `zp`, `{"t":"rep"}`) to **schema 11**, "as 10, plus". It did not combine the
+two under 10, because dumps already written under that number carry only one set or the other: #1038's on
+master have no `zq`, and this lane's r1-r5 have no `pv`. With 11, a header's number says which fields its dump
+has. No reader checks for schema 10 (grep). The desktop build passes after the merge.
+
 What follows is the lane's record as it stood when the order came.
 
 Step 0 done (this file, before any code). Desktop input works (r2), the cut is located (r2), the light tests
@@ -156,7 +167,8 @@ the guest being given a count that is not its own test's. Two ways to that, one 
 
 ## Instrument (#1039, committed before its data)
 
-Frame dump schema 10 (`vk/renderer.c`): each draw record gets `"zq"` (serial of the occlusion query it was
+Frame dump schema 11 (`vk/renderer.c`; written as 10 by this branch's builds for r1-r5, before the merge with
+#1038's schema 10): each draw record gets `"zq"` (serial of the occlusion query it was
 counted in, -1 none) and `"zp"` (the guest's ZPASS enable); each GET_REPORT/CLEAR_REPORT_VALUE writes
 `{"t":"rep","f","n","rs","qs","clr","off","zq"}`. `HAKUX_ZREP=<path>[,<MB>]` (`vk/reports.c`) writes, from
 whichever path reads the queries (async reader or sync finish), `q <serial> <samples>` per query and
@@ -372,7 +384,7 @@ place, shown one frame longer at its old spot. That is EARLY's designed latency 
 The EARLY one-frame flash is a measured fact on lavapipe, but no handheld run has confirmed it. The owner did
 not see it on Turnip. Watching for one frame at 30 fps by eye may simply miss it. If a later report brings it
 back, or someone wants EARLY to stay clean at cuts in general, it can be redone in about 25 minutes of desktop
-time. The instrument in this branch is off unless set: frame dump schema 10's visibility-test fields,
+time. The instrument in this branch is off unless set: frame dump schema 11's visibility-test fields,
 `HAKUX_ZREP`, and `HAKUX_PAD_FILE`.
 
 1. Build the desktop target from this branch, or from master once this folds. Before each run, `df -B1G /mnt/c`

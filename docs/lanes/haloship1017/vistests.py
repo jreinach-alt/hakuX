@@ -6,7 +6,8 @@ usage: vistests.py DUMP.jsonl ZREP.txt [--all] [--off HEX] [--draws]
 A GET_REPORT's count is the sum of the occlusion queries since the last
 CLEAR_REPORT_VALUE (reports.c ra_run: ra.sum, reset by a clear), so report R
 counts the queries with serial in (qs of the last clear, qs of R]. The dump
-(schema 10) gives every draw's query serial ("zq") and every report's serials
+(schema 11; r1-r5 were written as 10 before the merge with #1038's schema 10)
+gives every draw's query serial ("zq") and every report's serials
 ("rep": rs, qs); HAKUX_ZREP gives each query's samples ("q") and each report's
 value ("r"). Joined, each report says which draws it counted, with their depth
 state (NV_PGRAPH_CONTROL_0), zeta and colour target, and what it came to.
