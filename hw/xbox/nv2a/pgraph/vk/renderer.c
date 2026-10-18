@@ -2458,6 +2458,12 @@ static void fdump_poll_marker(NV2AState *d)
     }
     fdump.next_poll_ns = now + FDUMP_POLL_NS;
 
+    /* #433 perflog1016: the run-time perflog switch rides this poll -- the
+     * same once a second at the flip, its marker (perflog.on) in the same
+     * directory. Level, not one-shot: present means on. Before the dump's
+     * own early returns, so a dump in progress does not hold it. */
+    nv2a_perflog_poll(fdump_base_dir());
+
     if (fdump.fp) {
         return; /* a dump in progress does not consume a new arm */
     }

@@ -461,7 +461,8 @@ uint64_t hakux_gen_bytes;
  */
 uint64_t hakux_tb_codegen;
 
-#if defined(XBOX) && defined(NV2A_PERF_LOG) && NV2A_PERF_LOG
+#ifdef XBOX
+#include "hw/xbox/nv2a/debug.h"     /* nv2a_perflog_on() */
 /*
  * #787: tb_gen_code's own wall time, so a window can say how much of the
  * vCPU's time went to translation. Booked by the wrapper below around every
@@ -475,8 +476,9 @@ uint64_t hakux_tb_codegen;
  *
  * gc_ns - cg_ns is the recycle path (inv_htable hit: insert and link, no
  * codegen). vCPU thread only, like the rest of these. Printed by
- * hakux_tlb68_tick() in cputlb.c. Perflog builds only: a plain build calls
- * tb_gen_code_body's code directly, as before #787.
+ * hakux_tlb68_tick() in cputlb.c. Timed only while the perflog run-time
+ * switch is on (#433, perflog1016; always in a perflog build): off, the
+ * wrapper is a load, a branch and a tail call to tb_gen_code_body.
  */
 uint64_t hakux_tcg787_gc;
 uint64_t hakux_tcg787_gc_ns;
@@ -487,6 +489,9 @@ static TranslationBlock *tb_gen_code_body(CPUState *cpu, TCGTBCPUState s);
 
 TranslationBlock *tb_gen_code(CPUState *cpu, TCGTBCPUState s)
 {
+    if (!nv2a_perflog_on()) {
+        return tb_gen_code_body(cpu, s);
+    }
     uint64_t cg0 = hakux_tb_codegen;
     int64_t t0 = get_clock();
     TranslationBlock *tb = tb_gen_code_body(cpu, s);

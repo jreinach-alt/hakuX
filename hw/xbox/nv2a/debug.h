@@ -215,7 +215,9 @@ typedef struct ShaderPipelineStats {
     uint64_t instr_ns;                  /* this instrument's own bookkeeping */
 } ShaderPipelineStats;
 
-/* Before the structs below, whose perf-only fields test it */
+/* The compile-time perflog tier (-Pperflog=true). The phase timers below
+ * test it; with it off they run under the run-time switch instead
+ * (nv2a_perflog_on(), further down). */
 #ifndef NV2A_PERF_LOG
 #define NV2A_PERF_LOG 0
 #endif
@@ -258,15 +260,15 @@ typedef struct FramePhaseTimingWork {
     int gpu_gap_count_small;    /* gaps < 0.1ms */
     int gpu_gap_count_medium;   /* gaps 0.1-0.5ms */
     int gpu_gap_count_large;    /* gaps > 0.5ms */
-#if NV2A_PERF_LOG
     /* Sub-phases within draw_dispatch: the super-fast and medium-fast paths,
-     * and their texture binds, which neither of the two includes */
+     * and their texture binds, which neither of the two includes. In every
+     * build since the run-time tier (#433, perflog1016): its timers book
+     * them while the switch is on. */
     int64_t draw_sfp_ns;
     int64_t draw_mfp_ns;
     int64_t draw_ftx_ns;
     /* Texture content hash; nested in Tx and FTx, as texture_upload is */
     int64_t tex_hash_ns;
-#endif
 } FramePhaseTimingWork;
 
 typedef struct FramePhaseTimingStats {
@@ -307,12 +309,10 @@ typedef struct FramePhaseTimingStats {
     float gpu_gap_count_small;
     float gpu_gap_count_medium;
     float gpu_gap_count_large;
-#if NV2A_PERF_LOG
     float draw_sfp_ms;
     float draw_mfp_ms;
     float draw_ftx_ms;
     float tex_hash_ms;
-#endif
 } FramePhaseTimingStats;
 
 /* The vCPU's timed pfifo.lock acquisitions, by site (#433, lockwake1011):
@@ -453,6 +453,14 @@ typedef struct NV2AStats {
     VsyncTimingStats vsync;
     SurfTimingWork surf_working;
     SurfTimingStats surf;
+    /* The run-time perflog tier (#433, perflog1016): nonzero while it is on.
+     * Read only through nv2a_perflog_on(); written only by nv2a_perflog_set().
+     * Alone on its cache line: every timed phase reads it, on the PFIFO and
+     * render threads, and the accumulators above are written on those same
+     * paths, so sharing a line with them would bounce it between cores while
+     * the tier is on. Nothing memsets the whole struct; each snapshot clears
+     * its own working member. */
+    int perflog_rt __attribute__((aligned(64)));
 } NV2AStats;
 
 #ifdef __cplusplus
@@ -460,6 +468,44 @@ extern "C" {
 #endif
 
 extern NV2AStats g_nv2a_stats;
+
+/*
+ * The run-time perflog tier (#433, perflog1016). The owner asked for the
+ * perflog's timers from the pause menu, mid-run, without a rebuild. A perflog
+ * build (NV2A_PERF_LOG=1) times every phase unconditionally. Every other
+ * build times them while this switch is on, and pays one relaxed load and
+ * one not-taken branch per timed phase while it is off, which is the default
+ * at every launch.
+ *
+ * The switch is the marker NV2A_PERFLOG_MARKER in the directory the frame
+ * dump's marker lives in (the app's external files dir on Android): present
+ * means on. nv2a_perflog_poll() reads it at the flip, at most once a second,
+ * and never anywhere else. XEMU_PERFLOG_RT=1 in the environment turns it on
+ * at the first poll and pins it on for the run, for a queued soak.
+ *
+ * It switches what the phase-timer macros and nv2a_profile_inc_counter()
+ * gate, and whatever a caller gates on nv2a_perflog_on(). It does not switch
+ * code under #if NV2A_PERF_LOG; NOTES.md in docs/lanes/perflog1016 lists
+ * which hooks are which.
+ */
+#define NV2A_PERFLOG_MARKER "perflog.on"
+
+static inline bool nv2a_perflog_on(void)
+{
+#if NV2A_PERF_LOG
+    return true;
+#else
+    return __builtin_expect(
+        __atomic_load_n(&g_nv2a_stats.perflog_rt, __ATOMIC_RELAXED) != 0, 0);
+#endif
+}
+
+/* Turn the run-time tier on or off; one log line when it changes. `by`
+ * names who asked ("marker", "env"), for that line. */
+void nv2a_perflog_set(bool on, const char *by);
+/* Read the env (once) and the marker in `dir`, and follow them. At the flip;
+ * the caller rate-limits it. A NULL or empty `dir` reads as no marker. */
+void nv2a_perflog_poll(const char *dir);
 
 const char *nv2a_profile_get_counter_name(unsigned int cnt);
 int nv2a_profile_get_counter_value(unsigned int cnt);
@@ -554,21 +600,149 @@ static inline void nv2a_profile_inc_counter(enum NV2A_PROF_COUNTERS_ENUM cnt)
         g_nv2a_stats.phase_working.child##_ns - _phase_csnap_##phase; \
 } while (0)
 
-#else /* !NV2A_PERF_LOG */
+#else /* !NV2A_PERF_LOG: the same timers, under the run-time switch */
 
 static inline void nv2a_profile_inc_counter(enum NV2A_PROF_COUNTERS_ENUM cnt)
 {
-    (void)cnt;
+    if (nv2a_perflog_on()) {
+        g_nv2a_stats.frame_working.counters[cnt] += 1;
+    }
 }
 
-#define NV2A_PHASE_TIMER_BEGIN(phase) do { } while (0)
-#define NV2A_PHASE_TIMER_END(phase)  do { } while (0)
-#define NV2A_PHASE_TIMER_BEGIN_EXCL(phase) do { } while (0)
-#define NV2A_PHASE_TIMER_END_EXCL(phase)  do { } while (0)
-#define NV2A_PHASE_TIMER_BEGIN_EXCL_CHILD(phase, child) do { } while (0)
-#define NV2A_PHASE_TIMER_END_EXCL_CHILD(phase, child)  do { } while (0)
+/*
+ * BEGIN reads the switch once and keeps the answer in the phase's own t0: 0
+ * means "not timed". END tests that t0 rather than the switch, so a phase
+ * the switch turns on or off part-way through books either all of itself or
+ * nothing, never a span from a t0 it never took. (nv2a_clock_ns() is the
+ * counter since boot, so a taken t0 is never 0.) Off, a phase costs one load
+ * and one not-taken branch at each end, and no clock read.
+ */
+#define NV2A_PHASE_TIMER_BEGIN(phase) \
+    int64_t _phase_t0_##phase = nv2a_perflog_on() ? nv2a_clock_ns() : 0
+
+#define NV2A_PHASE_TIMER_END(phase) do { \
+    if (__builtin_expect(_phase_t0_##phase != 0, 0)) { \
+        g_nv2a_stats.phase_working.phase##_ns += \
+            nv2a_clock_ns() - _phase_t0_##phase; \
+    } \
+} while (0)
+
+#define NV2A_PHASE_TIMER_BEGIN_EXCL(phase) \
+    NV2A_PHASE_TIMER_BEGIN(phase); \
+    int64_t _phase_fsnap_##phase = _phase_t0_##phase ? \
+        g_nv2a_stats.phase_working.finish_ns : 0
+
+#define NV2A_PHASE_TIMER_END_EXCL(phase) do { \
+    if (__builtin_expect(_phase_t0_##phase != 0, 0)) { \
+        int64_t _nested = g_nv2a_stats.phase_working.finish_ns \
+                          - _phase_fsnap_##phase; \
+        g_nv2a_stats.phase_working.phase##_ns += \
+            nv2a_clock_ns() - _phase_t0_##phase - _nested; \
+    } \
+} while (0)
+
+#define NV2A_PHASE_TIMER_BEGIN_EXCL_CHILD(phase, child) \
+    NV2A_PHASE_TIMER_BEGIN_EXCL(phase); \
+    int64_t _phase_csnap_##phase = _phase_t0_##phase ? \
+        g_nv2a_stats.phase_working.child##_ns : 0
+
+#define NV2A_PHASE_TIMER_END_EXCL_CHILD(phase, child) do { \
+    if (__builtin_expect(_phase_t0_##phase != 0, 0)) { \
+        int64_t _nested = g_nv2a_stats.phase_working.finish_ns \
+                          - _phase_fsnap_##phase; \
+        g_nv2a_stats.phase_working.phase##_ns += \
+            nv2a_clock_ns() - _phase_t0_##phase - _nested \
+            - (g_nv2a_stats.phase_working.child##_ns - _phase_csnap_##phase); \
+    } \
+} while (0)
 
 #endif /* NV2A_PERF_LOG */
+
+/*
+ * nv2a_perflog_set() and nv2a_perflog_poll(), compiled once, by the file
+ * that defines NV2A_PERFLOG_RT_IMPLEMENTATION before its first include of
+ * this header (pgraph/profile.c), and by the host selftest
+ * (docs/lanes/perflog1016/selftest.py), which also defines
+ * NV2A_PERFLOG_RT_LOG to capture the lines.
+ */
+#ifdef NV2A_PERFLOG_RT_IMPLEMENTATION
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#ifdef __ANDROID__
+#include <android/log.h>
+#endif
+
+/* One line per flip. On hakuX-perf, the tag the dispatcher's logcat filter
+ * keeps (a new tag would be dropped from every queued run), in the bracketed
+ * shape the other hakuX-perf side lines use. */
+#ifndef NV2A_PERFLOG_RT_LOG
+#ifdef __ANDROID__
+#define NV2A_PERFLOG_RT_LOG(...) \
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-perf", __VA_ARGS__)
+#else
+#define NV2A_PERFLOG_RT_LOG(...) do { \
+    fprintf(stderr, "hakuX-perf: " __VA_ARGS__); \
+    fputc('\n', stderr); \
+} while (0)
+#endif
+#endif
+
+static struct {
+    bool env_read;
+    bool env_on;        /* XEMU_PERFLOG_RT pinned it on for the run */
+    bool build_said;    /* a perflog build has said so once */
+} nv2a_perflog_rt;
+
+void nv2a_perflog_set(bool on, const char *by)
+{
+    int was = __atomic_exchange_n(&g_nv2a_stats.perflog_rt, on ? 1 : 0,
+                                  __ATOMIC_RELAXED);
+    if ((was != 0) == on) {
+        return;
+    }
+    NV2A_PERFLOG_RT_LOG("[perflog] runtime tier %s (frame %u, by %s)",
+                        on ? "ON" : "OFF", g_nv2a_stats.frame_count,
+                        by ? by : "?");
+}
+
+void nv2a_perflog_poll(const char *dir)
+{
+#if NV2A_PERF_LOG
+    /* The compile-time tier times everything already; the switch has
+     * nothing to switch. Say so once, so a marker that changes nothing is
+     * not read as a switch that failed. */
+    (void)dir;
+    if (!nv2a_perflog_rt.build_said) {
+        nv2a_perflog_rt.build_said = true;
+        NV2A_PERFLOG_RT_LOG("[perflog] perflog build: every phase is timed "
+                            "at all times; the run-time switch is inert");
+    }
+#else
+    if (!nv2a_perflog_rt.env_read) {
+        nv2a_perflog_rt.env_read = true;
+        const char *env = getenv("XEMU_PERFLOG_RT");
+        nv2a_perflog_rt.env_on = env && env[0] && strcmp(env, "0");
+        if (nv2a_perflog_rt.env_on) {
+            nv2a_perflog_set(true, "env");
+        }
+    }
+    if (nv2a_perflog_rt.env_on) {
+        return;
+    }
+
+    bool want = false;
+    if (dir && dir[0]) {
+        char path[700];
+        int n = snprintf(path, sizeof(path), "%s/%s", dir,
+                         NV2A_PERFLOG_MARKER);
+        want = n > 0 && (size_t)n < sizeof(path) && access(path, F_OK) == 0;
+    }
+    nv2a_perflog_set(want, "marker");
+#endif
+}
+#endif /* NV2A_PERFLOG_RT_IMPLEMENTATION */
 
 void nv2a_dbg_renderdoc_init(void);
 void *nv2a_dbg_renderdoc_get_api(void);
