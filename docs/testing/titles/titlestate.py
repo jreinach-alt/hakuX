@@ -26,6 +26,9 @@ which route variant a title run should use.
     titlestate.py resolve-route --route NAME [--title-id T | --iso NAME] [--device D]
     titlestate.py suggest-route --title-id T       dispatchdoctor1017 1b: a route to auto-attach
     titlestate.py route-refs --route-path PATH [--cap BYTES]
+    titlestate.py backup-candidates --title-id T [--json]   dispatchdoctor1017 1c: store + hdd-reset
+    titlestate.py restore-backup --title-id T --by WHO (--save SAVE_ID | --import-dir DIR) [--route NAME]
+    titlestate.py store-dir --title-id T --save SAVE_ID      dispatchdoctor1017 1c: path, for `saves.py verify`
     titlestate.py tid-for-iso NAME
 
   THE PROFILE GATE (lane.profilegate1011; see "THE PROFILE GATE" below):
@@ -916,6 +919,70 @@ def import_save(src):
     if bad:
         raise SystemExit(f"titlestate: imported {tid}/{sid} does not verify: {bad[:3]}")
     return tid, sid
+
+
+def backup_candidates(title_id):
+    """dispatchdoctor1017 Section 1c: every place this host holds something
+    for TITLE_ID that could become its golden but is not it yet -- a save
+    already imported into the store (never promoted, or demoted to history
+    by a later `promote`), and an HDD-GUARD reset's saves/<TID> tree under
+    dispatch/hdd-reset/*/saves (dispatcher.sh's hdd_img_guard writes these).
+    Host-side only: the device's own hdd.img.bak-auto needs adb, which this
+    file never calls -- dispatcher.sh pulls that one itself and hands the
+    result to import_save/restore_backup the same way a staging-archive
+    find does. [{"kind": "store", "save": ..., "has_save_dir": bool} |
+    {"kind": "hdd-reset", "path": ...}], store entries first (cheapest:
+    already verified, no copy needed), then hdd-reset, lexical order (the
+    reset stamp sorts oldest-first)."""
+    dt = disk_tid(title_id)
+    gsave = (golden(title_id) or {}).get("save")
+    out = []
+    for sid in store_saves(dt):
+        if sid == gsave:
+            continue
+        out.append({"kind": "store", "save": sid, "has_save_dir": bool(save_dirs(dt, sid))})
+    for d in sorted(glob.glob(os.path.join(dispatch_dir(), "hdd-reset", "*", "saves", dt))):
+        if os.path.isfile(os.path.join(d, "save.json")):
+            out.append({"kind": "hdd-reset", "path": d})
+    return out
+
+
+def restore_backup(title_id, by, save=None, import_dir=None, route=None):
+    """dispatchdoctor1017 Section 1c: the gate between a found backup
+    candidate and promoting it -- the title's FIRST golden only, never a
+    replace (that stays `promote`'s job, lane.local's call). Never raises:
+    like resolve_route/admit, every outcome is a dict, {"refuse": ...} on
+    anything that stops it, so a bash caller can log the reason without a
+    traceback. SAVE must already be in the store with a save directory;
+    IMPORT_DIR is imported first via import_save (the only way a directory
+    that is not already in the store becomes one)."""
+    if golden(title_id):
+        return {"title_id": title_id,
+                "refuse": f"{title_id} already has a golden; restore-backup is for restoring a "
+                          f"lost one, not replacing it (use `promote`)"}
+    dt = disk_tid(title_id)
+    if import_dir:
+        try:
+            itid, isave = import_save(import_dir)
+        except SystemExit as e:
+            return {"title_id": title_id, "refuse": str(e)}
+        if itid != dt:
+            return {"title_id": title_id,
+                    "refuse": f"{import_dir} is a save for {itid}, not {title_id}"}
+        save = isave
+    if not save:
+        return {"title_id": title_id, "refuse": "restore-backup needs --save or --import-dir"}
+    if save not in store_saves(dt):
+        return {"title_id": title_id, "refuse": f"{title_id}: {save} is not in the store"}
+    if not save_dirs(dt, save):
+        return {"title_id": title_id,
+                "refuse": f"{title_id}: {save} is title data only, no save directory; a restored "
+                          f"profile needs one. {SETTINGS_ONLY_FIX}"}
+    try:
+        g = set_golden(title_id, save, by=by, how="restore", route=route, replace=False)
+    except SystemExit as e:
+        return {"title_id": title_id, "refuse": str(e)}
+    return {"title_id": title_id, "save": save, "golden": g}
 
 
 def compose(device, title_id=None, state="any", save=None):
@@ -2030,6 +2097,13 @@ def main(argv=None):
     s = sub.add_parser("suggest-route"); s.add_argument("--title-id", required=True)
     s = sub.add_parser("route-refs"); s.add_argument("--route-path", required=True)
     s.add_argument("--cap", type=int, default=2_000_000)
+    s = sub.add_parser("backup-candidates"); s.add_argument("--title-id", required=True)
+    s.add_argument("--json", action="store_true")
+    s = sub.add_parser("restore-backup"); s.add_argument("--title-id", required=True)
+    s.add_argument("--by", required=True); s.add_argument("--save"); s.add_argument("--import-dir")
+    s.add_argument("--route")
+    s = sub.add_parser("store-dir"); s.add_argument("--title-id", required=True)
+    s.add_argument("--save", required=True)
     s = sub.add_parser("tid-for-iso"); s.add_argument("name")
     s = sub.add_parser("iso-for-tid"); s.add_argument("--title-id", required=True)
     s.add_argument("--device")
@@ -2144,6 +2218,19 @@ def main(argv=None):
         r = route_refs(a.route_path, a.cap)
         print(json.dumps(r, sort_keys=True))
         return 3 if r.get("refuse") else 0
+    elif a.cmd == "backup-candidates":
+        cands = backup_candidates(tid_norm(a.title_id))
+        if a.json:
+            print(json.dumps(cands, sort_keys=True))
+        else:
+            for c in cands:
+                print(c)
+    elif a.cmd == "restore-backup":
+        r = restore_backup(tid_norm(a.title_id), a.by, a.save, a.import_dir, a.route)
+        print(json.dumps(r, sort_keys=True))
+        return 3 if r.get("refuse") else 0
+    elif a.cmd == "store-dir":
+        print(store_dir(tid_norm(a.title_id), a.save))
     elif a.cmd == "tid-for-iso":
         print(tid_for_iso(a.name) or "")
     elif a.cmd == "iso-for-tid":

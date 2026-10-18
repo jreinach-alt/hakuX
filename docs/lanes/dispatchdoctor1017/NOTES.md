@@ -270,3 +270,22 @@ needing re-confirmation post-1b) along with everything else.
 
 No live device was used for this section either -- same as Section 1,
 decided entirely by selftest. `Prediction: none` still stands.
+
+## Attempt 3 (resumed), 2026-10-17 -- why attempt 2 did not finish
+
+RESUME NOTE 2 (hostops) said attempt 2 committed 5f6e1b01ad (Sections 1 and
+1b, full unscoped selftest green) and then ended its turn with PR.md still
+draft, "no commit since". At this attempt's start the worktree in fact
+carried a third, *uncommitted* chunk on top of that commit: Section 1c in
+full -- `titlestate.py` `backup-candidates`/`restore-backup`/`store-dir`,
+`dispatcher.sh`'s `ensure_profile_restored`/`verify_profile_on_device`/
+`archive_backup_dir`/`device_bak_auto_dir` wired into the soak claim path,
+and ten new selftest legs in `98-dispatch-doctor.sh` covering all four
+backup sources, the already-golden/first-run no-ops, and both verify
+outcomes. So attempt 2 did not, in fact, stop at 1b -- it went on to write
+all of 1c in the same turn, then hit the same "ended turn with work
+uncommitted" failure mode RESUME NOTE 1 and 2 both describe, just one
+section later than the hand-off note could see (it was written from
+`git log`, which cannot show uncommitted tree state). Nothing here was
+reverted or is suspect; this session's job is to verify it (selftest,
+foreground, this turn) and commit it before moving on to Section 2.

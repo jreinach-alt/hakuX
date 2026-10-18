@@ -1215,6 +1215,196 @@ json.dump(d, open(req, "w"))
     log "  route: auto-attached '$rname' ($src) for $ttid, state=$state"
 }
 
+# archive_backup_dir <tid>: dispatchdoctor1017 Section 1c. The first
+# saves/<TID> tree (an HDD-GUARD-shaped export: save.json per save id) under
+# any nova-archive-*/lanelocal-* staging root -- the two archive kinds the
+# brief names for a profile backup, never sweep/xiso/staging/ingest, which
+# Section 1 already established are disc-image-only. Prints the first
+# match; non-zero, nothing printed, when none of those roots have one.
+archive_backup_dir() {
+    local tid="$1" root hit
+    while IFS= read -r root; do
+        case "$root" in *nova-archive-*|*lanelocal-*) ;; *) continue ;; esac
+        hit=$(find "$root" -type f -name save.json -path "*/saves/$tid/save.json" 2>/dev/null | head -1)
+        if [ -n "$hit" ]; then printf '%s\n' "$(dirname "$hit")"; return 0; fi
+    done < <(staging_roots)
+    return 1
+}
+
+# device_bak_auto_dir <tid> <rdir>: dispatchdoctor1017 Section 1c. This
+# device's own hdd.img.bak-auto (hdd_img_guard's pre-reset copy,
+# dispatcher.sh's hdd_img_guard) pulled, listed with saves.py, and -- only
+# when it actually carries TID's save -- extracted into an import-save-able
+# directory under $TITLESTATE_DIR/pull. Prints that directory; non-zero,
+# nothing printed, when the device has no bak-auto file, or it has one but
+# not this title's save. Scratch files are removed after use either way --
+# this never leaves a second copy of a backup lying around, only the one
+# import-save itself makes in the store.
+device_bak_auto_dir() {
+    local tid="$1" bak sha pulled outdir have
+    bak="$(x1box_dir)/hdd.img.bak-auto"
+    sha=$(dev_sha256 "$bak")
+    [ -n "$sha" ] || return 1
+    pulled="$TITLESTATE_DIR/pull/${DEVICE_LABEL:-dev}-bak-auto.img"
+    dev_pull "$bak" "$pulled" "$sha" || return 1
+    have=$(python3 "$SAVES_PY" list "$pulled" 2>/dev/null | awk -v t="$tid" '$1==t{print; exit}')
+    if [ -z "$have" ]; then rm -f "$pulled"; return 1; fi
+    outdir="$TITLESTATE_DIR/pull/${DEVICE_LABEL:-dev}-bak-auto-$tid"
+    rm -rf "$outdir"
+    python3 "$SAVES_PY" pull "$pulled" "$tid" "$outdir" >/dev/null 2>&1 || { rm -f "$pulled"; return 1; }
+    rm -f "$pulled"
+    [ -f "$outdir/save.json" ] || return 1
+    printf '%s\n' "$outdir"
+}
+
+# ensure_profile_restored <title id> <state> <rdir> <req>: dispatchdoctor1017
+# Section 1c ("a profile that has already been created and backed up must
+# be on the device's disk image when the title launches ... the dispatcher
+# must not respond by creating a profile again", owner 10-17). Runs after
+# the profile gate and before titles_disk_prepare, so a title with no
+# golden gets one FOUND here rather than titles_disk_prepare's own compose
+# refusing "no golden profile" -- but only ever as this title's FIRST
+# golden (a replace stays lane.local's: titlestate.py restore-backup
+# refuses outright when a golden already exists, same as `promote` without
+# `--replace` would). Looks, in order, at: a save already in this title's
+# own store but never promoted (titlestate.py backup-candidates); an
+# HDD-GUARD reset's saves/<TID> tree on the host (same subcommand); a
+# nova-archive-*/lanelocal-* staging root's saves/<TID> tree; this device's
+# own hdd.img.bak-auto. First one found is restored -- never a pick among
+# several. Writes $rdir/profile-backup.json naming every place this looked,
+# what (if anything) it found, and whether the restore stuck -- so a title
+# with nothing anywhere still leaves a readable trail behind the ERROR
+# titles_disk_prepare's own compose call goes on to raise.
+ensure_profile_restored() {
+    local ttid="$1" tstate="$2" rdir="$3" req="$4"
+    local g has searched="" kind="" detail="" rj="" refuse
+    [ -n "$ttid" ] || return 0
+    [ "$tstate" = first-run ] && return 0
+    g=$(python3 "$TITLESTATE" golden --title-id "$ttid" --json 2>/dev/null)
+    has=$(python3 -c '
+import json, sys
+d = json.loads(sys.argv[1] or "{}")
+rec = next(iter(d.values()), {})
+print("1" if rec.get("golden") else "")
+' "$g" 2>/dev/null)
+    [ -n "$has" ] && return 0
+
+    local cand sid path
+    cand=$(python3 "$TITLESTATE" backup-candidates --title-id "$ttid" --json 2>/dev/null)
+    searched="store"
+    sid=$(python3 -c '
+import json, sys
+for c in json.loads(sys.argv[1] or "[]"):
+    if c["kind"] == "store" and c.get("has_save_dir"):
+        print(c["save"]); break
+' "$cand" 2>/dev/null)
+    [ -n "$sid" ] && { kind=store; detail="$sid"; }
+
+    if [ -z "$kind" ]; then
+        searched="$searched,hdd-reset"
+        path=$(python3 -c '
+import json, sys
+for c in json.loads(sys.argv[1] or "[]"):
+    if c["kind"] == "hdd-reset":
+        print(c["path"]); break
+' "$cand" 2>/dev/null)
+        [ -n "$path" ] && { kind=hdd-reset; detail="$path"; }
+    fi
+    if [ -z "$kind" ]; then
+        searched="$searched,archive"
+        path=$(archive_backup_dir "$ttid")
+        [ -n "$path" ] && { kind=archive; detail="$path"; }
+    fi
+    if [ -z "$kind" ]; then
+        searched="$searched,device-bak-auto"
+        path=$(device_bak_auto_dir "$ttid")
+        [ -n "$path" ] && { kind=device-bak-auto; detail="$path"; }
+    fi
+
+    if [ -z "$kind" ]; then
+        python3 -c 'import json,sys; json.dump({"title_id": sys.argv[1], "searched": sys.argv[2].split(","), "found": None}, open(sys.argv[3], "w"))' \
+            "$ttid" "$searched" "$rdir/profile-backup.json"
+        log "  profile backup: none found for $ttid (looked: $searched)"
+        return 0
+    fi
+
+    if [ "$kind" = store ]; then
+        rj=$(python3 "$TITLESTATE" restore-backup --title-id "$ttid" --save "$detail" --by dispatcher 2>&1)
+    else
+        rj=$(python3 "$TITLESTATE" restore-backup --title-id "$ttid" --import-dir "$detail" --by dispatcher 2>&1)
+    fi
+    refuse=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("refuse") or "")' "$rj" 2>/dev/null) || refuse="titlestate.py restore-backup failed: $rj"
+    if [ -n "$refuse" ]; then
+        python3 -c 'import json,sys; json.dump({"title_id": sys.argv[1], "searched": sys.argv[2].split(","), "found": sys.argv[3], "detail": sys.argv[4], "restored": False, "refuse": sys.argv[5]}, open(sys.argv[6], "w"))' \
+            "$ttid" "$searched" "$kind" "$detail" "$refuse" "$rdir/profile-backup.json"
+        log "  profile backup: found a candidate ($kind: $detail) for $ttid but restore-backup refused: $refuse"
+        return 0
+    fi
+    python3 -c 'import json,sys; json.dump({"title_id": sys.argv[1], "searched": sys.argv[2].split(","), "found": sys.argv[3], "detail": sys.argv[4], "restored": True}, open(sys.argv[5], "w"))' \
+        "$ttid" "$searched" "$kind" "$detail" "$rdir/profile-backup.json"
+    log "  profile backup: restored $ttid's golden from $kind ($detail)"
+}
+
+# verify_profile_on_device <title id> <state> <rdir>: dispatchdoctor1017
+# Section 1c step 4, "Verify on the device". After titles_disk_prepare has
+# pushed (or kept) the composed titles.qcow2, pull it back and check it with
+# saves.py verify against the STORE's own save.json for the save hdd.json
+# says it loaded -- dev_push's own sha check already proves the BYTES
+# landed; this proves the title's save inside them is the one the claim
+# thinks it composed, which is the gap the brief names ("disk pushed but
+# the profile is not on it"). saves.py list's "saves" column is the
+# on-device FATX folder name a save's paths were originally pulled under
+# (titlestate1017's own fixture work found this the hard way: that folder
+# name is NOT the store's content-hash save id, so a bare `list`+grep for
+# the id would never match a real composed disk); `saves.py verify` instead
+# re-checks every path/hash saves.py pull itself once recorded for that
+# save, wherever on the image they are -- the same check 99-hdd-split.sh's
+# own verify_on() runs against a store save dir. Nothing was loaded for
+# this title (a first-run route, or a request with no title at all) is not
+# a failure -- there is nothing to verify, same as before this existed. A
+# mismatch is refused exactly like compose's own NoGolden, via
+# $rdir/hdd.refused and exit 3, which the soak block already turns into an
+# ERROR before launch. Writes $rdir/hdd.verify.json either way.
+verify_profile_on_device() {
+    local ttid="$1" tstate="$2" rdir="$3" hdd
+    hdd="$rdir/hdd.json"
+    [ -n "$ttid" ] || return 0
+    [ "$tstate" = first-run ] && return 0
+    [ -f "$hdd" ] || return 0
+    local save path sha pulled savedir bad rc
+    save=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("save") or "")' "$hdd" 2>/dev/null)
+    if [ -z "$save" ]; then
+        python3 -c 'import json,sys; json.dump({"title_id": sys.argv[1], "save": None, "verified": None}, open(sys.argv[2], "w"))' \
+            "$ttid" "$rdir/hdd.verify.json"
+        return 0
+    fi
+    savedir=$(python3 "$TITLESTATE" store-dir --title-id "$ttid" --save "$save" 2>/dev/null)
+    path=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("path") or "")' "$hdd" 2>/dev/null)
+    [ -n "$path" ] || path="$(x1box_dir)/titles.qcow2"
+    sha=$(dev_sha256 "$path")
+    pulled="$TITLESTATE_DIR/pull/${DEVICE_LABEL:-dev}-verify-$ttid.qcow2"
+    if ! dev_pull "$path" "$pulled" "$sha"; then
+        echo "no profile: could not pull $path off the device to verify $ttid's save $save is on it" > "$rdir/hdd.refused"
+        log "  PROFILE VERIFY: pull of $path failed"
+        python3 -c 'import json,sys; json.dump({"title_id": sys.argv[1], "save": sys.argv[2], "verified": False, "reason": "pull failed"}, open(sys.argv[3], "w"))' \
+            "$ttid" "$save" "$rdir/hdd.verify.json"
+        return 3
+    fi
+    bad=$(python3 "$SAVES_PY" verify "$pulled" "$savedir" 2>&1)
+    rc=$?
+    rm -f "$pulled"
+    if [ "$rc" != 0 ]; then
+        echo "no profile: the composed disk claims $ttid's save is $save, but saves.py verify does not find it on the pushed image ($bad)" > "$rdir/hdd.refused"
+        log "  PROFILE VERIFY: $save does not verify on device for $ttid ($bad)"
+        python3 -c 'import json,sys; json.dump({"title_id": sys.argv[1], "save": sys.argv[2], "verified": False, "detail": sys.argv[3]}, open(sys.argv[4], "w"))' \
+            "$ttid" "$save" "$bad" "$rdir/hdd.verify.json"
+        return 3
+    fi
+    log "  PROFILE VERIFY: $ttid save $save confirmed on device"
+    python3 -c 'import json,sys; json.dump({"title_id": sys.argv[1], "save": sys.argv[2], "verified": True}, open(sys.argv[3], "w"))' \
+        "$ttid" "$save" "$rdir/hdd.verify.json"
+}
+
 # titles_disk_prepare <id> <rdir> [<request env json>] [<title id>] [<state>] [<save>]:
 # make the device's titles disk the composed goldens for this title and state
 # (titlestate.py, GOLDENS: every title's golden profile, minus this title's on
@@ -1971,7 +2161,7 @@ PYEOF
         # Which title, and the state its route was written for (request.sh
         # --route, titlestate.py resolve-route). A request queued before that
         # carries neither: its title from the ISO name, state `any`.
-        local ttid tstate tsave trc
+        local ttid tstate tsave trc pbsearched
         ttid=$(jq_get "$req" title_id "")
         [ -n "$ttid" ] || ttid=$(python3 "$TITLESTATE" tid-for-iso "$title" 2>/dev/null)
 
@@ -1996,15 +2186,31 @@ PYEOF
             mv "$req" "$rdir/request.json"; return 0
         fi
 
+        # dispatchdoctor1017 Section 1c: before titles_disk_prepare's own
+        # compose call can refuse "no golden profile", give an
+        # existing-but-not-yet-golden backup a chance to become this
+        # title's FIRST golden (never a replace).
+        ensure_profile_restored "$ttid" "$tstate" "$rdir" "$req"
+
         titles_disk_prepare "$id" "$rdir" "$req_env" "$ttid" "$tstate" "$tsave"; trc=$?
         if [ "$trc" = 3 ]; then
-            echo "refused before the soak: the titles disk cannot carry what the route assumes: $(cat "$rdir/hdd.refused" 2>/dev/null)" > "$rdir/ERROR"
+            pbsearched=$(python3 -c 'import json,sys
+try: print(", ".join(json.load(open(sys.argv[1])).get("searched") or []))
+except Exception: print("")' "$rdir/profile-backup.json" 2>/dev/null)
+            echo "refused before the soak: the titles disk cannot carry what the route assumes: $(cat "$rdir/hdd.refused" 2>/dev/null)${pbsearched:+ (profile backup search looked at: $pbsearched)}" > "$rdir/ERROR"
             log "  TITLES DISK REFUSED"
             restore_hdd_pref
             mv "$req" "$rdir/request.json"; return 0
         elif [ "$trc" != 0 ]; then
             adb_error "could not prepare the titles disk; see dispatcher.log" > "$rdir/ERROR"
             log "  TITLES DISK SETUP FAILED"
+            restore_hdd_pref
+            mv "$req" "$rdir/request.json"; return 0
+        fi
+        verify_profile_on_device "$ttid" "$tstate" "$rdir"; trc=$?
+        if [ "$trc" = 3 ]; then
+            echo "refused before the soak: $(cat "$rdir/hdd.refused" 2>/dev/null)" > "$rdir/ERROR"
+            log "  PROFILE VERIFY REFUSED"
             restore_hdd_pref
             mv "$req" "$rdir/request.json"; return 0
         fi

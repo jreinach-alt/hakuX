@@ -9,8 +9,9 @@
 # only when it is unclaimed by any queued or running request AND verifies by
 # sha256 against a copy this host still holds on D:.
 #
-# Driven against a fake adb: `push` copies into a fake fs, and `shell` runs
-# real coreutils against the same fake fs with /storage/ remapped under it --
+# Driven against a fake adb: `push` copies into a fake fs, `pull` copies back
+# out of it (added for Section 1c's dev_pull use), and `shell` runs real
+# coreutils against the same fake fs with /storage/ remapped under it --
 # so sha256sum, stat, chmod, mv, rm and ls all behave exactly as the real
 # device's shell would, except `df -k`, which is special-cased to report
 # capacity-minus-actual-file-bytes so a deletion or a push moves the reported
@@ -53,6 +54,10 @@ case "$1" in
              dest="${remote//\/storage\//$DD_FS/storage/}"
              mkdir -p "$(dirname "$dest")" 2>/dev/null
              cp "$local" "$dest" ;;
+    pull)    remote="$2" local="$3"
+             src="${remote//\/storage\//$DD_FS/storage/}"
+             mkdir -p "$(dirname "$local")" 2>/dev/null
+             cp "$src" "$local" 2>/dev/null ;;
     shell)   shift; cmd="$*"
              case "$cmd" in
                  df\ -k*)
@@ -228,4 +233,214 @@ if [ "$before" = "$after" ]; then
     ok "1b already named: a request naming its own route is never overridden by the claim-time fallback"
 else
     bad "1b already named: request.json changed: before=[$before] after=[$after]"
+fi
+
+echo "== dispatch doctor: Section 1c, profile-backup discovery/restore before launch, and post-push verification"
+# ensure_profile_restored looks, in order, at: a save already in the store but
+# never promoted (titlestate.py backup-candidates, kind=store); an HDD-GUARD
+# reset's saves/<TID> tree (same subcommand, kind=hdd-reset); a
+# nova-archive-*/lanelocal-* staging root's saves/<TID> tree
+# (archive_backup_dir); this device's own hdd.img.bak-auto
+# (device_bak_auto_dir). First one found is restored as the title's FIRST
+# golden only -- never a replace, and never a search at all once a golden
+# already exists. verify_profile_on_device then pulls back whatever
+# titles_disk_prepare pushed (or kept) and confirms the claimed save is
+# really on it with saves.py list, refusing (hdd.refused, rc=3) on a
+# mismatch the way compose's own NoGolden does.
+PF="$DD/profile"; rm -rf "$PF"; mkdir -p "$PF/fs"
+PFTS="$DDT/titles/titlestate.py"
+
+# pf_mksave <outdir> <tid> -> prints the save_id: a save dir shaped like
+# saves.py's own pull output (save.json + UDATA/<tid>/<12-hex>/data.bin), its
+# save_id hashed for real so import_save's own re-hash check passes. Carries
+# the two ancestor "dir" entries (UDATA/<tid>, UDATA/<tid>/<12-hex>) that a
+# real saves.py pull always records alongside a file -- FatxWriter.add_file
+# creates them on build() regardless of what save.json lists, and pull()'s
+# own walk() always re-discovers them, so a savedir round-tripped through
+# pf_build_image + a real device pull (device_bak_auto_dir) comes back with
+# those two extra entries. save_id() ignores "times", only path+sha256/dir,
+# so this value is stable across that round trip either way; omitting the
+# dirs here (as an earlier version did) made the store/hdd-reset/archive
+# legs -- which import_save straight off this directory, no image involved
+# -- pass on a self-consistent but round-trip-incompatible id, and only the
+# device-bak-auto leg's real build+pull caught the mismatch.
+pf_mksave() {
+    python3 - "$1" "$2" <<'PY'
+import hashlib, json, os, sys
+outdir, tid = sys.argv[1], sys.argv[2]
+rel = f"UDATA/{tid}/BEEFBEEFBEEF/data.bin"
+os.makedirs(os.path.dirname(os.path.join(outdir, rel)), exist_ok=True)
+data = f"profile-backup-fixture-{tid}-{outdir}".encode()
+open(os.path.join(outdir, rel), "wb").write(data)
+sha = hashlib.sha256(data).hexdigest()
+m = {"title_id": tid, "entries": [
+    {"path": f"UDATA/{tid}", "dir": True, "times": {}},
+    {"path": f"UDATA/{tid}/BEEFBEEFBEEF", "dir": True, "times": {}},
+    {"path": rel, "dir": False, "bytes": len(data), "sha256": sha, "times": {}},
+]}
+h = hashlib.sha256()
+for e in sorted(m["entries"], key=lambda e: e["path"]):
+    h.update(f"{e['path'].upper()}\0{e.get('sha256', 'dir')}\n".encode())
+m["save_id"] = h.hexdigest()[:12]
+json.dump(m, open(os.path.join(outdir, "save.json"), "w"))
+print(m["save_id"])
+PY
+}
+# pf_build_image <out qcow2> <savedir>: a real FATX/qcow2 image carrying one
+# save, the same way saves.py's own CLI would build it (99-hdd-split.sh's
+# pattern) -- device_bak_auto_dir and verify_profile_on_device both read a
+# real image, not a stand-in.
+pf_build_image() {
+    python3 -c '
+import sys
+sys.path.insert(0, sys.argv[1]); import saves
+saves.build(sys.argv[2], [sys.argv[3]])
+' "$DDT/titles" "$1" "$2"
+}
+# pf_env <function + args...>: dispatcher.sh sourced with DISPATCH_DIR and
+# TITLESTATE_DIR under $PF, HAKUX_STAGING_ROOTS pointed at the fixture's own
+# nova-archive-x root, and the fake adb (now with a `pull` case) on PATH.
+pf_env() {
+    : > "$PF/log"
+    ( export DISPATCH_DIR="$PF/dispatch" TITLESTATE_DIR="$PF/dispatch/titlestate" \
+             HAKUX_STAGING_ROOTS="$PF/archive/nova-archive-x" \
+             SERIAL=ee317437 PATH="$DD/bin:$PATH" DD_FS="$PF/fs" ADB_RETRY_SLEEP=0
+      . "$DDT/dispatcher.sh" selftest-not-a-subcommand >/dev/null 2>&1
+      log() { printf '%s\n' "$*" >> "$PF/log"; }
+      "$@" )
+}
+pf_golden_save() {   # <tid>: the save id of a title's golden, or empty
+    python3 -c 'import json,sys
+try: g=json.load(open(sys.argv[1]))["titles"].get(sys.argv[2],{}).get("golden")
+except Exception: g=None
+print((g or {}).get("save") or "")' "$PF/dispatch/titlestate/golden.json" "$1" 2>/dev/null
+}
+pf_pb_field() {   # <field>: a field out of $PF/rdir/profile-backup.json
+    python3 -c 'import json,sys
+try: print(json.load(open(sys.argv[1])).get(sys.argv[2]))
+except Exception: print("<missing>")' "$PF/rdir/profile-backup.json" "$1" 2>/dev/null
+}
+pf_verify_field() {   # <field>: a field out of $PF/rdir/hdd.verify.json
+    python3 -c 'import json,sys
+try: print(json.load(open(sys.argv[1])).get(sys.argv[2]))
+except Exception: print("<missing>")' "$PF/rdir/hdd.verify.json" "$1" 2>/dev/null
+}
+TDEV="$PF/fs/storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box"
+
+# --- store: a save already in the store (never promoted) is the first golden ---
+rm -rf "$PF/dispatch" "$PF/rdir" "$PF/scratch"; mkdir -p "$PF/dispatch" "$PF/rdir" "$PF/scratch/a"
+sid=$(pf_mksave "$PF/scratch/a" CAFE1011)
+TITLESTATE_DIR="$PF/dispatch/titlestate" python3 "$PFTS" import-save --dir "$PF/scratch/a" >/dev/null
+echo '{}' > "$PF/req.json"
+pf_env ensure_profile_restored CAFE1011 returning "$PF/rdir" "$PF/req.json"
+if [ "$(pf_golden_save CAFE1011)" = "$sid" ] && [ "$(pf_pb_field found)" = store ] && [ "$(pf_pb_field restored)" = True ]; then
+    ok "1c store: CAFE1011's own unpromoted store save becomes its first golden (kind=store)"
+else
+    bad "1c store: golden-save=$(pf_golden_save CAFE1011) want=$sid found=$(pf_pb_field found) restored=$(pf_pb_field restored); log: $(cat "$PF/log")"
+fi
+
+# --- already golden: a second call is a no-op, no search attempted at all ---
+rm -f "$PF/rdir/profile-backup.json"
+pf_env ensure_profile_restored CAFE1011 returning "$PF/rdir" "$PF/req.json"
+[ ! -f "$PF/rdir/profile-backup.json" ] \
+    && ok "1c already golden: a title that already has a golden is left alone, no backup search attempted" \
+    || bad "1c already golden: profile-backup.json was written even though CAFE1011 already had a golden"
+
+# --- hdd-reset: an HDD-GUARD reset's saves/<TID> tree is the first golden ---
+rm -rf "$PF/dispatch" "$PF/rdir"; mkdir -p "$PF/dispatch/hdd-reset/2026-10-17T00-00-00/saves" "$PF/rdir"
+sid=$(pf_mksave "$PF/dispatch/hdd-reset/2026-10-17T00-00-00/saves/CAFE1012" CAFE1012)
+echo '{}' > "$PF/req.json"
+pf_env ensure_profile_restored CAFE1012 returning "$PF/rdir" "$PF/req.json"
+if [ "$(pf_golden_save CAFE1012)" = "$sid" ] && [ "$(pf_pb_field found)" = hdd-reset ] && [ "$(pf_pb_field restored)" = True ]; then
+    ok "1c hdd-reset: a reset's exported saves/<TID> tree becomes the first golden (kind=hdd-reset)"
+else
+    bad "1c hdd-reset: golden-save=$(pf_golden_save CAFE1012) want=$sid found=$(pf_pb_field found) restored=$(pf_pb_field restored); log: $(cat "$PF/log")"
+fi
+
+# --- archive: a nova-archive-x staging root's saves/<TID> tree is the first golden ---
+rm -rf "$PF/dispatch" "$PF/rdir" "$PF/archive"; mkdir -p "$PF/dispatch" "$PF/archive/nova-archive-x/saves" "$PF/rdir"
+sid=$(pf_mksave "$PF/archive/nova-archive-x/saves/CAFE1013" CAFE1013)
+echo '{}' > "$PF/req.json"
+pf_env ensure_profile_restored CAFE1013 returning "$PF/rdir" "$PF/req.json"
+if [ "$(pf_golden_save CAFE1013)" = "$sid" ] && [ "$(pf_pb_field found)" = archive ] && [ "$(pf_pb_field restored)" = True ]; then
+    ok "1c archive: a staging-archive saves/<TID> tree becomes the first golden (kind=archive)"
+else
+    bad "1c archive: golden-save=$(pf_golden_save CAFE1013) want=$sid found=$(pf_pb_field found) restored=$(pf_pb_field restored); log: $(cat "$PF/log")"
+fi
+
+# --- device-bak-auto: only this device's own hdd.img.bak-auto has it ---
+rm -rf "$PF/dispatch" "$PF/rdir" "$PF/fs" "$PF/scratch"; mkdir -p "$PF/dispatch" "$PF/rdir" "$TDEV" "$PF/scratch/d"
+sid=$(pf_mksave "$PF/scratch/d" CAFE1014)
+pf_build_image "$TDEV/hdd.img.bak-auto" "$PF/scratch/d"
+echo '{}' > "$PF/req.json"
+pf_env ensure_profile_restored CAFE1014 returning "$PF/rdir" "$PF/req.json"
+if [ "$(pf_golden_save CAFE1014)" = "$sid" ] && [ "$(pf_pb_field found)" = device-bak-auto ] && [ "$(pf_pb_field restored)" = True ]; then
+    ok "1c device-bak-auto: the device's own hdd.img.bak-auto is pulled, listed and imported as the first golden"
+else
+    bad "1c device-bak-auto: golden-save=$(pf_golden_save CAFE1014) want=$sid found=$(pf_pb_field found) restored=$(pf_pb_field restored); log: $(cat "$PF/log")"
+fi
+check "  ... the bak-auto pull's scratch files are cleaned up" \
+      test ! -e "$PF/dispatch/titlestate/pull/dev-bak-auto.img" -a ! -e "$PF/dispatch/titlestate/pull/dev-bak-auto-CAFE1014"
+
+# --- nothing found: no backup anywhere leaves a readable trail, nothing invented ---
+rm -rf "$PF/dispatch" "$PF/rdir" "$PF/fs" "$PF/archive"; mkdir -p "$PF/dispatch" "$PF/rdir" "$PF/fs"
+echo '{}' > "$PF/req.json"
+pf_env ensure_profile_restored CAFE1099 returning "$PF/rdir" "$PF/req.json"
+if [ "$(pf_pb_field found)" = None ] && [ "$(pf_pb_field searched)" = "['store', 'hdd-reset', 'archive', 'device-bak-auto']" ]; then
+    ok "1c nothing found: profile-backup.json records all four places looked, found=null, nothing invented"
+else
+    bad "1c nothing found: found=$(pf_pb_field found) searched=$(pf_pb_field searched)"
+fi
+
+# --- first-run: never triggers a backup search, even when a backup exists ---
+rm -rf "$PF/dispatch" "$PF/rdir"; mkdir -p "$PF/dispatch/hdd-reset/2026-10-17T00-00-00/saves" "$PF/rdir"
+pf_mksave "$PF/dispatch/hdd-reset/2026-10-17T00-00-00/saves/CAFE1017" CAFE1017 >/dev/null
+echo '{}' > "$PF/req.json"
+pf_env ensure_profile_restored CAFE1017 first-run "$PF/rdir" "$PF/req.json"
+if [ ! -f "$PF/rdir/profile-backup.json" ] && [ -z "$(pf_golden_save CAFE1017)" ]; then
+    ok "1c first-run: a first-run route is skipped even though a backup exists, no golden created"
+else
+    bad "1c first-run: profile-backup.json exists=$([ -f "$PF/rdir/profile-backup.json" ] && echo yes || echo no), golden-save=$(pf_golden_save CAFE1017)"
+fi
+
+# --- verify: the pushed titles disk really carries the save hdd.json claims.
+# Two DIFFERENT saves for CAFE1015 (distinct content -> distinct save_id),
+# both genuinely imported into the store so `store-dir` resolves to a real
+# save.json either way; the device image is built from save A only. Claiming
+# A verifies; claiming B (a real store save, just not the one on this image)
+# is the faithful "disk pushed but not really carrying this save" mismatch --
+# content differs under the same path, not a missing store dir to crash on.
+rm -rf "$PF/dispatch" "$PF/rdir" "$PF/fs" "$PF/scratch"
+mkdir -p "$PF/dispatch" "$PF/rdir" "$TDEV" "$PF/scratch/g" "$PF/scratch/h"
+sid_a=$(pf_mksave "$PF/scratch/g" CAFE1015)
+sid_b=$(pf_mksave "$PF/scratch/h" CAFE1015)
+TITLESTATE_DIR="$PF/dispatch/titlestate" python3 "$PFTS" import-save --dir "$PF/scratch/g" >/dev/null
+TITLESTATE_DIR="$PF/dispatch/titlestate" python3 "$PFTS" import-save --dir "$PF/scratch/h" >/dev/null
+pf_build_image "$TDEV/titles.qcow2" "$PF/scratch/g"
+python3 -c 'import json,sys; json.dump({"title_id":"CAFE1015","save":sys.argv[1]}, open(sys.argv[2],"w"))' "$sid_a" "$PF/rdir/hdd.json"
+pf_env verify_profile_on_device CAFE1015 returning "$PF/rdir"; rc=$?
+if [ "$rc" = 0 ] && [ "$(pf_verify_field verified)" = True ] && [ ! -f "$PF/rdir/hdd.refused" ]; then
+    ok "1c verify ok: the pushed disk's claimed save is confirmed present (rc=0)"
+else
+    bad "1c verify ok: rc=$rc verified=$(pf_verify_field verified) refused=$(cat "$PF/rdir/hdd.refused" 2>/dev/null)"
+fi
+
+# --- verify mismatch: hdd.json claims a real store save that is not really on this image ---
+rm -f "$PF/rdir/hdd.refused" "$PF/rdir/hdd.verify.json"
+python3 -c 'import json,sys; json.dump({"title_id":"CAFE1015","save":sys.argv[1]}, open(sys.argv[2],"w"))' "$sid_b" "$PF/rdir/hdd.json"
+pf_env verify_profile_on_device CAFE1015 returning "$PF/rdir"; rc=$?
+if [ "$rc" = 3 ] && [ "$(pf_verify_field verified)" = False ] && [ -s "$PF/rdir/hdd.refused" ]; then
+    ok "1c verify mismatch: a claimed save not really on the pushed disk refuses (rc=3), hdd.refused written"
+else
+    bad "1c verify mismatch: rc=$rc verified=$(pf_verify_field verified) refused=$(cat "$PF/rdir/hdd.refused" 2>/dev/null)"
+fi
+
+# --- verify nothing-loaded: no save claimed is not a failure, same as before this existed ---
+rm -f "$PF/rdir/hdd.refused" "$PF/rdir/hdd.verify.json"
+echo '{"title_id":"CAFE1015"}' > "$PF/rdir/hdd.json"
+pf_env verify_profile_on_device CAFE1015 returning "$PF/rdir"; rc=$?
+if [ "$rc" = 0 ] && [ "$(pf_verify_field verified)" = None ] && [ ! -f "$PF/rdir/hdd.refused" ]; then
+    ok "1c verify nothing-loaded: no save claimed means nothing to verify, not a failure"
+else
+    bad "1c verify nothing-loaded: rc=$rc verified=$(pf_verify_field verified) refused=$(cat "$PF/rdir/hdd.refused" 2>/dev/null)"
 fi
