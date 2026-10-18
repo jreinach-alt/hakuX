@@ -8,9 +8,11 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `haloring1017` | claude-opus-5-5 | 10 min | haloring1017: Halo CE main-menu ring: the missing surface layer and the static inside surface (#939) |
-| `holdcap1018` | claude-sonnet-5 | 15 min | holdcap1018: an owner-play hold starts a host logcat capture |
-| `pathfind` | claude-opus-5-5 | 10 min | pathfind: a screen-reading agent that drives a title from boot into gameplay |
+| `fabledip1018` | claude-sonnet-5 | 10 min | Fable and Blinx 2: decompose the gameplay dips, find what the frame spends its time on |
+| `gta3dip1018` | claude-sonnet-5 | 10 min |  |
+| `haloring1017` | claude-opus-5-5 | 25 min | haloring1017: Halo CE main-menu ring: the missing surface layer and the static inside surface (#939) |
+| `holdcap1018` | claude-sonnet-5 | 30 min | holdcap1018: an owner-play hold starts a host logcat capture |
+| `pathfind` | claude-opus-5-5 | 25 min | pathfind: a screen-reading agent that drives a title from boot into gameplay |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `owner-play`
@@ -125,7 +127,8 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/haloring1017` | haloring1017: Halo CE main-menu ring: the missing surface layer and the static inside surface (#939) | `835a37466a` | 2026-10-18 07:39 |
+| `lane/fabledip1018` | Fable and Blinx 2: decompose the gameplay dips, find what the frame spends its time on | `2546edf404` | 2026-10-18 07:55 |
+| `lane/haloring1017` | haloring1017: Halo CE main-menu ring: the missing surface layer and the static inside surface (#939) | `e46a5c0d1e` | 2026-10-18 07:59 |
 | `lane/holdcap1018` | holdcap1018: an owner-play hold starts a host logcat capture | `6a009e01b6` | 2026-10-18 07:38 |
 | `lane/pathfind` | pathfind: a screen-reading agent that drives a title from boot into gameplay | `abe4efd7f0` | 2026-10-18 06:53 |
 
@@ -143,4 +146,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 compat1017: catch up the compatibility page to the 88-row Playable ledger
 - 2026-10-17 A title with one measured stall reaches the owner the same day
 
-_Updated 2026-10-18 07:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 08:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
