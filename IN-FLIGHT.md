@@ -8,12 +8,12 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `fpsdiag1018` | claude-sonnet-5 | 30 min | fpsdiag1018: one FPS lane for GTA III, Blinx 2, Fable -- known/not/could-be and a diagnostic tool (#433) |
+| `fpsdiag1018` | claude-sonnet-5 | 45 min | fpsdiag1018: one FPS lane for GTA III, Blinx 2, Fable -- known/not/could-be and a diagnostic tool (#433) |
 
 - **Handhelds:** 1 connected.
   - Nova: free for the queue
   - Thor: held by `lane.local`
-- **Device queue:** 1 waiting, 0 running.
+- **Device queue:** 3 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -123,7 +123,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/fpsdiag1018` | fpsdiag1018: one FPS lane for GTA III, Blinx 2, Fable -- known/not/could-be and a diagnostic tool (#433) | `6697e28c19` | 2026-10-18 15:42 |
+| `lane/fpsdiag1018` | fpsdiag1018: one FPS lane for GTA III, Blinx 2, Fable -- known/not/could-be and a diagnostic tool (#433) | `d958cc7f9f` | 2026-10-18 15:48 |
 
 ## Recently landed on master
 
@@ -140,4 +140,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-18 Fable and Blinx 2: decompose the gameplay dips, find what the frame spends its time on
 - 2026-10-18 pathfind: a screen-reading agent that drives a title from boot into gameplay
 
-_Updated 2026-10-18 15:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 16:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
