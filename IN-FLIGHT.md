@@ -8,12 +8,12 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `gta3fps1017b` | claude-opus-5-5 | 49 min | gta3fps1017b: GTA III fps -- R2 (bind the forced-alpha surface view) and R3 (share one copy between nodes), bo |
+| `gta3fps1017b` | claude-opus-5-5 | 56 min | gta3fps1017b: GTA III fps -- R2 (bind the forced-alpha surface view) and R3 (share one copy between nodes), bo |
 
 - **Handhelds:** 2 connected.
-  - Nova: free for the queue
+  - Nova: held by `lane.xbox-fps1018`
   - Thor: held by `lanelocal-offline`
-- **Device queue:** 1 waiting, 1 running.
+- **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -137,4 +137,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 haloshadow1017: Halo CE's dark squares under soldiers' feet: the stock Adreno driver, not the code (#1038)
 - 2026-10-17 release052b: versionCode 10, the driver link, and two known-issue lines for 0.5.2 (#433)
 
-_Updated 2026-10-18 00:08 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 00:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
