@@ -8,8 +8,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `dispatchdoctor1017` | claude-opus-5-5 | 2h 25m | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what  |
-| `snaptargets1018` | claude-sonnet-5 | 1h 33m | snaptargets1018: the dispatcher snapshot ships titlestate.py but not targets.toml (#433) |
+| `snaptargets1018` | claude-sonnet-5 | 1h 48m | snaptargets1018: the dispatcher snapshot ships titlestate.py but not targets.toml (#433) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -121,7 +120,6 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/dispatchdoctor1017` | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what stops a ru | `ac2c73c9d3` | 2026-10-18 02:51 |
 | `lane/snaptargets1018` | snaptargets1018: the dispatcher snapshot ships titlestate.py but not targets.toml (#433) | `6aa30dabdc` | 2026-10-18 01:47 |
 
 ## Recently landed on master
@@ -138,4 +136,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 bootstatic1017: black while the guest has the screen off, no static or green at title start (#1045)
 - 2026-10-17 nearbar1017: three near-bar titles on the 0.5.2 build -- two clear Playable now
 
-_Updated 2026-10-18 03:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 03:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
