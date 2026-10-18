@@ -6,10 +6,12 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Right now
 
-No lane session is running.
+| Lane | Model | Running for | Working on |
+|---|---|---|---|
+| `dispatchdoctor1017` | claude-opus-5-5 | 10 min | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what  |
 
 - **Handhelds:** 2 connected.
-  - Nova: held by `lane.xbox-fps1018`
+  - Nova: held by `lane.local-shuffle1018`
   - Thor: held by `lanelocal-offline`
 - **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
@@ -116,7 +118,9 @@ No lane session is running.
 
 ## Work in progress
 
-No branch is being worked right now.
+| Branch | Topic | Tip | Last change |
+|---|---|---|---|
+| `lane/dispatchdoctor1017` | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what stops a ru | `0c33d7db0c` | 2026-10-17 22:58 |
 
 ## Recently landed on master
 
@@ -132,4 +136,4 @@ No branch is being worked right now.
 - 2026-10-17 release052c: the 0.5.2 release page tells the story since v0.3.1, and the driver notice says handheld (#433)
 - 2026-10-17 Halo CE: the ship's rear lights show through the hull after the cut to the front (opening cinematic)
 
-_Updated 2026-10-18 00:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 01:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
