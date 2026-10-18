@@ -8,9 +8,9 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `compat1018b` | claude-sonnet-5 | 16 min |  |
-| `holdcap1018` | claude-sonnet-5 | 1h 0m | holdcap1018: an owner-play hold starts a host logcat capture |
-| `mkdawhite1018` | claude-opus-5-5 | 16 min | mkdawhite1018: Mortal Kombat: Deadly Alliance arena floors and walls draw flat white (#1058) |
+| `dispatchpush1018` | claude-sonnet-5 | 0 min |  |
+| `gta3instr1018` | claude-opus-5-5 | 0 min |  |
+| `holdcap1018` | claude-sonnet-5 | 1h 15m | holdcap1018: an owner-play hold starts a host logcat capture |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -124,7 +124,6 @@ The harness dashboard, with each release's targets and the progress charts, is [
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
 | `lane/holdcap1018` | holdcap1018: an owner-play hold starts a host logcat capture | `6a009e01b6` | 2026-10-18 07:38 |
-| `lane/mkdawhite1018` | mkdawhite1018: Mortal Kombat: Deadly Alliance arena floors and walls draw flat white (#1058) | `cb77081690` | 2026-10-18 08:28 |
 
 ## Recently landed on master
 
@@ -140,4 +139,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-18 Top Spin: a state:any route that gets past Controller Select
 - 2026-10-18 high-speed driving fps (GTA III + GTA: San Andreas)
 
-_Updated 2026-10-18 08:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 08:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
