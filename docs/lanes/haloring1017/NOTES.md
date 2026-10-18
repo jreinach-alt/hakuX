@@ -7,7 +7,9 @@ The owner's goal is the ring the way the console draws it. Every surface turns w
 grey layer covers the whole ring, the unlit side included.
 
 [lane.haloring1017] working: (c) is answered. The inside band turns on screen off the stock driver: slope 0.88 on the
-desktop, 1.02 on Turnip (run 13, PurpleVK confirmed from its log). The lane narrows to (a).
+desktop, 1.02 on Turnip (run 13, PurpleVK confirmed from its log). The lane narrows to (a). (a) is made inside the
+hull draw (M3). A software render reproduces hakuX's hull to r 0.977 (M4), and it is the judge for the console
+photos.
 
 ## Attempt 1 did not finish: the turn cap
 
@@ -254,11 +256,66 @@ layer is the reflection term (R1), its turning must come from its t2.r mask, whi
 then has to be close to uniform over the ring: one bright face, or a mirror that lands on one. A layer that turns
 rules out a reading of (a) in which the cube's own detail makes the layer.
 
+### M3: (a) is made inside `n5` (run 13 f540, `gdread.py draws`, blend words)
+
+Frame 540 has 94 draws and no skips. The draws that touch the hull's pixels, in order:
+
+| draw | count | what | can it lighten the hull? |
+|---|---|---|---|
+| `n0` | 1227 | planet, additive | no: it draws before the hull, which has blend off and overwrites it |
+| `n1` | 51 | additive | no: before the hull |
+| `n2`, `n3` | quads | alpha | no: before the hull |
+| `n4` | 864 | the band, the hull's shader | it is the band |
+| `n5` | 4362 | the hull, blend off (0x542) | it is the hull |
+| `n6` | 510 | inner rim, DST_COLOR x ZERO | no: a multiply, it can only darken |
+| `n7` | quad | multiply by a final rgb of 1 | no: leaves the image unchanged |
+| `n8`-`n93` | quads | the menu's overlays | not over the hull except the logo, menu text and reticle |
+
+So the console's layer is a different value of `n5`'s own output. Nothing else could add it.
+
+`n5`'s inputs, from the generated VS (`vsh_48c74844.glsl` slots 0-44) and the frame's constants:
+- oD0.rgb = max(N.z, 0)·(1, 1, 1) + max(-N.z, 0)·(0.604, 0.573, 0.761) + (0.271, 0.278, 0.388). It is at least 0.27
+  everywhere, so the hull's darkness on hakuX comes from the textures, not from the lighting.
+- oD1 = (normalize(E)·N)·(0.620, 0.643, 0.376, 0.8) + (0.380, 0.357, 0.624, 0.2): 1 face-on, (0.38, 0.36, 0.62, 0.2)
+  grazing.
+- oD0.w = v4.z. v4 is the texcoord, two shorts (S1 x 2), so its z is the missing-component default, 0.
+
+The final combiner (SPECFOG0 0x340f010d, SPECFOG1 0x0c111800, SPECFOGFACTOR0 0xffffffff) is
+`(1 - v0.a)·r0 + v0.a·white + r1`, with r1 = 0. So v0.a is a lerp toward white: R3's k, where a nonzero v4.z would
+put a white wash over the whole ring, lit and unlit sides alike.
+
+The combiner (`psh_48c74844.glsl` 362-403, the words in `combwords.py`):
+- r0 = 2·t0·t1·(oD0 + t2.g) + cube(R)·oD1.rgb·t2.r·oD1.a;
+- each step is clamped to [-1, 1];
+- t2.b lerps toward a white change colour, so it has no effect.
+
+### M4: a software render of `n4`+`n5` that reproduces hakuX (`hullsw.py`, `swcheck.py`, `combwords.py`)
+
+`hullsw.py` renders the band and the hull from a `gd` dump and RAM in numpy:
+- the VS as generated;
+- rasterisation with a z-buffer and the dump's cull, perspective-correct;
+- the four textures from RAM, trilinear, with the LOD from each pixel's footprint; the cube with GL face orientation;
+- the combiner as generated, with the constants read from the frame's registers.
+
+It refuses a draw whose combiner words differ from the transcribed ones. It writes every term per pixel.
+
+**Control:** desktop dump m2a, f290, against hakuX's own image of that frame, with the menu overlays kept out
+(91,492 hull px):
+
+| measure | value |
+|---|---|
+| render - image, mean (r, g, b) | +0.002, -0.001, -0.002 |
+| luminance r, per pixel / 4 px blur / 16 px blur | 0.977 / 0.991 / 0.996 |
+| best shift | (0, 0) |
+| image ~ a·diffuse + b·reflection + c | a 0.998, b 0.979, c 0.001 |
+
+So the render is hakuX's hull to within a few hundredths. Any term it is missing against the console is missing in
+hakuX too, and swapping one term (k, the cube face, q, t1's strength) shows what hakuX would draw with that change.
+
 ## Plan
 
 1. ~~(c) off the stock driver~~: done (M2, M2b). R4 holds.
-2. (a): which draw is the console's layer on, and what term makes it. Take apart `n6` (it runs over the hull's pixels
-   too) and `n0` far enough to say whether either can lighten the hull.
+2. ~~(a): which draw~~: `n5` itself (M3).
 3. (a): the software render of `n5` with R3's k, R1's forced face and mirror, and R6's q, judged by region against
    the pose-matched console photos. Then fix A7's crash and check the leaders on the desktop.
 
