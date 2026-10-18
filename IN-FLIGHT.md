@@ -8,13 +8,13 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `gta3instr1018` | claude-opus-5-5 | 45 min | GTA III dip frame: race-free render-pass-break counters and timed vertex-copy, shader-bind and fence-wait cost |
-| `holdcap1018` | claude-sonnet-5 | 2h 0m | holdcap1018: an owner-play hold starts a host logcat capture |
+| `holdcap1018` | claude-sonnet-5 | 2h 15m | holdcap1018: an owner-play hold starts a host logcat capture |
+| `vtxstale1018` | claude-opus-5-5 | 3 min | vk: bring a frame slot's vertex RAM current by page, not by span (#1049) |
 
 - **Handhelds:** 2 connected.
-  - Nova: free for the queue
+  - Nova: held by `lane.local`
   - Thor: held by `lanelocal-offline`
-- **Device queue:** 1 waiting, 1 running.
+- **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -122,8 +122,8 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/gta3instr1018` | GTA III dip frame: race-free render-pass-break counters and timed vertex-copy, shader-bind and fence-wait costs | `25915ae59e` | 2026-10-18 09:17 |
 | `lane/holdcap1018` | holdcap1018: an owner-play hold starts a host logcat capture | `6a009e01b6` | 2026-10-18 07:38 |
+| `lane/vtxstale1018` | vk: bring a frame slot's vertex RAM current by page, not by span (#1049) | `be379c5b7e` | 2026-10-18 09:42 |
 
 ## Recently landed on master
 
@@ -140,4 +140,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-18 Top Spin: a state:any route that gets past Controller Select
 - 2026-10-18 high-speed driving fps (GTA III + GTA: San Andreas)
 
-_Updated 2026-10-18 09:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 09:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
