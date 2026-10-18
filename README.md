@@ -19,15 +19,19 @@ Snapdragon handhelds.
 - **Rated by play.** A game is Playable only after it reaches real gameplay on
   a handheld and holds 30 fps (within 5%) for at least 90% of a timed run, with
   no crash or hang. Among the Playable games: Halo: Combat Evolved, Jet Set
-  Radio Future, Panzer Dragoon Orta, Grand Theft Auto III and Vice City, Need
-  for Speed: Most Wanted, Crimson Skies, Max Payne 2, Mercenaries, Call of
-  Duty 3 and The Simpsons Hit & Run.
+  Radio Future, Panzer Dragoon Orta, TimeSplitters 2, Need for Speed: Most
+  Wanted, Crimson Skies, Max Payne 2, Mercenaries, Mortal Kombat: Shaolin
+  Monks, Burnout Revenge, Call of Duty 3 and The Simpsons Hit & Run.
 - **Save states.** Ten slots per game plus an auto slot, from the pause menu,
   with undo.
 - **Less stutter.** A new scene draws straight away while its shaders compile,
   and a game you have played before reuses what it built last time.
 - **Faster.** NBA Live 07 went from 23 to 47 fps, 007: Agent Under Fire from
   17 to 26, and the Need for Speed: Most Wanted race start from 26.4 to 29.8.
+- **Crimson Skies no longer crashes when skipping the intro video.** We know,
+  you've already seen it.
+- **RalliSport Challenge no longer flickers.** Rival cars stay on screen
+  through the countdown and close passes.
 - **Graphics checked against a real Xbox.** Rendering is compared with frames
   captured on Xbox hardware, and this release brings fog, texture decoding,
   blending, clipping and line drawing closer to it.
