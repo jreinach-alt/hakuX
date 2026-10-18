@@ -1,6 +1,6 @@
 # snaptargets1018: the dispatcher snapshot ships titlestate.py but not targets.toml (#433)
 
-State: draft
+State: ready
 
 Lane: snaptargets1018            Issue: #433
 Base: master @ 4a504d9aaa
@@ -51,7 +51,30 @@ in NOTES.md.
   with no `targets.toml` entry and no known path, asserting JSON comes back
   (not a traceback), and that `routes/` and `profile-transition.toml` landed
   in the snapshot. A mutant that drops `titles/targets.toml` from
-  `SNAPSHOT_GLOBS` reproduces the crash (checked by hand, see NOTES.md); the
-  leg is red against master and green with this fix.
+  `SNAPSHOT_GLOBS` reproduces the crash. Checked both ways by hand: reverted
+  the `SNAPSHOT_GLOBS` fix and reran the leg -- 5 of its checks go red, the
+  same shape as the brief's traceback; reapplied the fix and reconfirmed
+  green. Also fixed `mutant_drop`'s line-continuation handling, which my own
+  edit exposed (a word placed right after a backslash-newline never matched
+  the old byte-level matcher).
+- Found and fixed, scoped to just this leg: `sd_env_at`'s mutant files have
+  no `devices.sh` beside them, so sourcing a mutant dispatcher.sh died
+  before `snapshot_scripts` was even defined -- the two pre-existing
+  mutants in this file (`no-pathclass.sh`, `no-head.sh`) have never
+  actually exercised `snapshot_scripts`; they pass by checking file
+  *absence*, which holds whether or not anything ran. Fixed only for the
+  new `targets` leg (`cp devices.sh` beside its own mutant before sourcing);
+  left the shared helper and the two pre-existing legs untouched -- fixing
+  `sd_env_at` centrally would also expose that `SCRIPT_DEPS`'s mutant never
+  actually drops anything from the real copy loop (a second, independent,
+  pre-existing bug), which is outside this brief's files. Detail in
+  NOTES.md.
+- Full `docs/testing/jobs/selftest.sh` (148 fragments), run twice: 3606
+  passed, 1 failed both times, the same pre-existing failure both times
+  (`66-status-titles.sh`, a README.md/home_page.py page-agreement check,
+  unrelated to this defect). Reproduces identically with only the prior two
+  lane commits checked out (no dispatcher.sh/selftest edits applied) --
+  confirmed pre-existing on master, not a regression from this change. Not
+  fixed: outside this brief's files list.
 
 Selftest: 97-dispatch-snapshot-drive.sh (new `targets` leg)
