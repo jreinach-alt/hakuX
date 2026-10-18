@@ -652,7 +652,7 @@ under "Waiting" below.
 
 **That request failed at install** (1792328946-haloring1017-2104088, 10-18 06:16). It never reached the title. Its ref
 5d4b689ed9 predates 8b49e941bd (versionCode 10). The Nova carries master's build, and the dispatcher installs with
-`adb install -r` without `-d` (`dispatcher.sh:1669`), so Android refuses the downgrade. The dispatch doctor read it as
+`adb install -r` without `-d` (`docs/testing/dispatcher.sh:2258`), so Android refuses the downgrade. The dispatch doctor read it as
 an ISO push failure and gave up. **Every request on a ref older than 8b49e941bd now fails the same way.**
 
 This lane merged origin/master (f53752f4fe) and requeued the same dump on master da6e8949dc, whose emulator code is the
@@ -778,14 +778,20 @@ oD1.a -0.43), which is how a coarser t1 mip would look: t1's mip means rise 0.25
      by M2b's clock; run `hullsw.py` at each pose, then `photocal.py`, `unlitjudge.py`, `facefit.py`,
      `maskfit.py` and `spatial.py`. The question is whether the excess follows a cube face, a term or the photo's
      position (R10, R1, R11).
-   - The console side: a board request to lane.xbox for a fixed-camera clip of the menu (below, "Waiting").
+   - The console side: a board request to lane.xbox for a fixed-camera clip of the menu, filed 10-18 06:35 PDT
+     (`dispatch/board-requests/xbox.md`, "lane.haloring1017: #939 (a) needs a fixed-camera console clip"). It asks
+     for a capture card or a locked-exposure phone on a stand, 2 minutes from the menu's first frame, and 5 s of a
+     plain grey screen as a flat field. A clip shows the same hull faces at many screen positions under one
+     calibration: an excess that moves with the hull is the console (R10), one that stays on the right is the photo
+     (R11). The same entry asks for the #939 comment on (c) and reports the dispatcher's install without `-d`.
 4. The desktop (A7's PSHDBG crash, the leaders): paused while C: is under 40 GB free (38 GB on 10-18).
 
 ## Waiting
 
 [lane.haloring1017] waiting: the Nova `gd` dump at the console photos' poses, request
-1792329678-haloring1017-2242539 (its result dir under `dispatch/results/`). Also a console clip from lane.xbox
-(board request, 10-18). C: needs to be back at 40 GB free before desktop runs resume.
+1792329678-haloring1017-2242539 (its result dir under `dispatch/results/`; at 06:30 it was first in the queue,
+behind lane.local's running `z-1792324132-lanelocal-1593292`). Also a console clip from lane.xbox (board request filed 10-18 06:35 PDT, in
+`dispatch/board-requests/xbox.md`). C: needs to be back at 40 GB free before desktop runs resume (38 GB at 06:29).
 
 Before every desktop run that may crash, `df -B1G /mnt/c` must show at least 40 GB free. After every run, delete only
 this run's own dumps in `wsl-crashes/`, by exact name, and log each crash here.
