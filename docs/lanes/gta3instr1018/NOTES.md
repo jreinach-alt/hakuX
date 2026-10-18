@@ -1,7 +1,8 @@
 # lane.gta3instr1018 -- what the GTA III dip frame spends its time on (#1049, #433)
 
-Status (10-18, attempt 1): instrument built (section 4), compiles under the NDK flags with perflog on and off,
-selftest `99-dipwin-counters.sh` 13/13 eight runs in a row. Device runs: section 5.
+Status (10-18, attempt 1): instrument built (section 4) and run on the Nova (section 5). Selftest
+`99-dipwin-counters.sh` 13/13. FINDINGS.md has the numbers. The parked in-car window, which the brief's step 5
+asks for, is **blocked**: a dispatched run cannot load the owner's in-car state (5.3).
 
 ## 0. Already tried
 
@@ -79,7 +80,7 @@ rotation, over the whole span.
 | `hw/xbox/nv2a/pgraph/vk/shaders.c`, `hw/xbox/nv2a/debug.h` | lane.perflog1016 | held: not edited here |
 | `hw/xbox/nv2a/pgraph/vk/vertex.c` | lane.fps1015 (folded; row still lists it) | not edited here |
 | `hw/xbox/nv2a/pgraph/vk/texture.c` | lane.gta3fps1017b | not edited here |
-| `hw/xbox/nv2a/pgraph/vk/surface.c` | none (lane.defaulton1017 released it) | free: claimed 10-18 ~10:40 PDT (board 7a3f87c1f5) |
+| `hw/xbox/nv2a/pgraph/vk/surface.c` | none (lane.defaulton1017 released it) | free: claimed 10-18 09:01 PDT (board 7a3f87c1f5) |
 
 The instrument goes in `draw.c` (and one new header), emitted under the existing `hakuX-rpbrk` tag, so
 profile.c is not needed. The row `[lane.gta3instr1018]` (lane.local, 09:15 PDT) says the lane claims its pgraph
@@ -134,3 +135,90 @@ it removed: both clean (the only warnings are in code this lane did not touch). 
 as `docs/testing/jobs/selftest.d/99-dipwin-counters.sh`. The plain `+=` mutant mostly over-counts (its stale store
 puts back a value the reader already took: 391 M against 8 M adds), so the check is "windows sum to the adds", not
 "fewer".
+
+## 5. Device runs (Nova, 10-18)
+
+The dispatcher built both from ref 25915ae59e with `perflog: true` (debug package, apk 67f93c3b4c86). The
+installed release build was not touched. Pilot use for requester `gta3instr1018` was 1080 of 1800 s
+((480 + 90) + (420 + 90)).
+
+| run | title / route | live, end | `GPU: PurpleVK` | gameplay | `[dipwin]` windows |
+|---|---|---|---|---|---|
+| `1792340293-gta3instr1018-503029` | GTA III / `gta-3` (on foot) | live listing, route end 09:27:33, adb failures 0 | yes | `fist-hud` MATCH, `mark gameplay` 09:21:52 | 172 in gameplay |
+| `1792340341-gta3instr1018-509423` | Fable / `gen-fable` (`drive generic`) | ROUTE FAIL 147.8 s, "unknown screen for 91 s (model unavailable)" | yes | **no**: main menu | 122, menu and intro only |
+
+The logcat has no literal `GPU: PurpleVK` string. The check used instead is the driver's own two lines: the
+custom driver loads (`Loading custom Vulkan driver: vulkan.purple.so`) and `Selected physical device:
+PurpleVK-public Adreno (TM) 740` appears. Both runs show both lines.
+
+Reader: `dipwin_read.py` (this directory). The GTA III numbers and their reading are in FINDINGS.md sections 1-2.
+The full reader output is not committed. Re-run it with `--from 09:21:52` on that run's `logcat.txt`.
+
+### 5.1 What the GTA III run says (short)
+
+- The line is citable. Running totals are monotonic and flip-contiguous from one tid, every end is attributed,
+  and `fen` 2.36 ms/flip matches the `hakuX-phase` `Fen:` EMA of 2.4.
+- On foot the game holds its 30 fps cap with 7.64 render passes/flip. The ends are `bsnb` 4.02, `bnd` 1.99,
+  `bclre` 1.01, present 0.53 and vtx 0.09.
+- `Fen:` is 93% the stale vertex-RAM span memcpy (2.19 of 2.36 ms/flip). That is 30 MB/flip copied for
+  129 KB/flip uploaded. The fence wait is 0.04.
+- The nd offsets were symbolised against the unstripped `libxemu.so` from the same build (linked 09:18:50,
+  `.cxx/Release/6c4c3x1x`), with `llvm-addr2line -f -i -C -e <so> <off-4>`. The library's first PT_LOAD has
+  vaddr 0, so the offset is the vaddr.
+
+### 5.2 Step 5 of the brief: the parked in-car phase is blocked
+
+The brief's step 4 runs GTA III "from the owner's in-car save state", with the parked phase first. That state
+cannot be reached through `request.sh`:
+- the route grammar has no tap verb and no Android-BACK verb (MainActivity toggles pause on KEYCODE_BACK,
+  line 604), so a route cannot open the pause menu and press Load;
+- no request field writes `savestate_auto_load`, and no request field stages a state file into a slot.
+
+lane.xbox did it with direct adb (captures/lanexbox-fps1018/scripts: the state copied read-only into debug slot 5,
+`input keyevent 4`, taps), which a lane may not do. Scripted driving is already void six times over
+(gta3drive1017), so it was not tried a seventh time.
+
+So the dominant parked cost is named from the existing b3-B `hakuX-phase` numbers: GPU 24.6 ms a frame, at 52.4
+render passes against 7.7 on foot. The `[dipwin]` split of those 52 passes does not exist yet. FINDINGS.md
+section 4 has the levers with file, function and expected number.
+
+**No fix was made.** The one small, certain change the data shows is the page-granular stale copy (FINDINGS 4,
+lever 2). It is not in this PR, for two reasons:
+- (a) it edits `vk/vertex.c` (and `renderer.h`), which lane.fps1015's row still lists;
+- (b) the brief asks for a before/after parked-phase number from the same protocol, and that protocol is the
+  blocked one.
+
+On foot it would save about 2 ms/flip of PFIFO-thread time at a frame that is already capped. That is a cost,
+not the dip.
+
+**Unblock**, either of:
+1. a device-holding lane (lane.xbox) runs the perflog APK at 25915ae59e, or this branch's head, with its own
+   in-car protocol and hands over the `logcat.txt`, read with
+   `dipwin_read.py --from <park start> --to <RT down>`;
+2. a dispatcher capability to load a save state: a request field that stages a state into a slot and sets
+   `savestate_auto_load`, or a route verb for the pause menu's Load row.
+
+### 5.3 Fable: void, and the cause was known
+
+`gen-fable` is a `drive generic` route: it steers by the pathclass screen classifier plus a model. Memory
+`gen-routes-die-without-a-model-key` (the 10-18 overnight: 8 of 10 `gen-*` routes voided on the classifier)
+says that kind of route dies without a model key. It died exactly that way. **That is a process failure:** the
+route kind should have been checked before queueing.
+
+It was not retried. The cause is known, and it is not something this lane can change.
+
+The 122 windows do show the line holds on a second title: monotonic, one tid, unattributed 0. In the menu that
+is 16.7 ms/flip and 2.0 RP/flip. These are not gameplay numbers and are not used as such (FINDINGS 5).
+
+### 5.4 Do not repeat
+
+- Do not queue a `gen-*` route for a measurement while the classifier has no model. Record a route first.
+- Do not try to reach the GTA III in-car state with a scripted drive (six void, gta3drive1017) or a dispatched
+  run (no load path, 5.2).
+- Do not re-read `Fen:` as a GPU wait. On foot it is the stale-span memcpy. In the car the split (`stale`
+  against `rotfen`) is the first thing the in-car `[dipwin]` run decides.
+- Do not re-run on-foot GTA III for `[dipwin]`. It is capped at 30 fps; its costs are in FINDINGS 2.
+
+[lane.gta3instr1018] blocked: the parked in-car `[dipwin]` window. It needs either a device-holding lane to run
+the perflog APK at 25915ae59e with lane.xbox's in-car protocol, or a dispatcher save-state load (5.2). The Fable
+gameplay window needs a recorded route or the classifier's model.
