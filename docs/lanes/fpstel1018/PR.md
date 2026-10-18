@@ -1,6 +1,6 @@
 # fpstel1018: Forza and Buffy missed the bar -- decompose the frame, name the lever
 
-State: draft
+State: ready
 
 Lane: fpstel1018            Issue: #433
 Base: master @ da6e8949dc
@@ -27,4 +27,10 @@ near30, cloud-286, plus the brief's explicitly named #488 and the gta3fps
 surface-as-texture lane, both checked directly and ruled out by this run's
 own telemetry). `FINDINGS.md` has the per-title decomposition, ranked
 levers, and the one lever a fix lane should take first with a falsifiable
-prediction. Will flip to ready once FINDINGS.md lands.
+prediction: for Forza, a scene-independent guest/vCPU per-frame cost (GPU
+clock pinned at its floor the whole run, TB-invalidate/slow-store ruled out
+as this run's mechanism); for Buffy, an unattributed render-thread gap
+between the frame interval and the sum of every measured phase (#474 and
+the fence-wait phase both ruled out directly). Both titles' dominant costs
+differ from each other and from the levers already shipped or refuted for
+other titles. No fix lane started from here; lane.local briefs one next.
