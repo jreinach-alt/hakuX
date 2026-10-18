@@ -1,9 +1,9 @@
 # gta3fps1017: GTA III fps -- the census on foot (neither R2 nor R3), and R1: no #474 drain ahead of a plain colour copy (#1049)
 
-State: draft
+State: ready
 
 Lane: gta3fps1017            Issue: #1049 #433
-Base: master @ 6295705f20 (master 427164f2e0 merged in)
+Base: master @ 6295705f20 (master 8ea6676bd0 merged in)
 Files: docs/lanes/gta3fps1017/NOTES.md, docs/lanes/gta3fps1017/PR.md, docs/lanes/gta3fps1017/tools/arm_diff.py, docs/lanes/gta3fps1017/tools/desk_census.py, docs/lanes/gta3fps1017/tools/desk_suites.py, hw/xbox/nv2a/pgraph/vk/texture.c
 Prediction: none: no arm. R1 claims no pixel change, and no pgraph suite reaches its branch (three desktop arms here, the Nova arms in gta3drive1017 8.1); its proof is the on-foot before/after below
 Needs device: no    Needs NDK: yes
