@@ -488,9 +488,121 @@ nothing reached it. Attempt 4 changes the guard to `[ -f ]` (the script is
 run as `bash "$ddt"`, so the exec bit is irrelevant and a snapshot copy that
 drops it must not silently turn the doctor off) and keeps the 755 mode.
 
+## Section 3 -- a miss says where it looked, what it found, what the doctor decided (done)
+
+The brief: "The `ERROR` text for any miss says: where it looked, what it
+found in staging, and whether the doctor ran and what it decided", and
+Section 1's "The dispatcher must see to all three, and say in the result
+dir which it did."
+
+**`inputs.txt`, one line per input, every outcome.** Each of the three
+claim-time steps writes one `disc:`, `route:` or `profile:` line to
+`<rdir>/inputs.txt` (`inputs_note`) on every path, success or not. Before
+this, most outcomes only reached `dispatcher.log`, which a reader of one
+result dir never opens.
+
+| step | what the line says (examples, fixture-pinned in 98) |
+|---|---|
+| disc | `pushed <D: path> -> <device path> (2.0 KiB, sha checked)` · `already on the device at <path>` · `NOT STAGED: no CAFE7779-* image under <roots>; console: the console did not answer (stage_xiso.py exit 3); console-stage.log` · `NOT STAGED: found <path> (…) but did not push it: <root> has X free and must keep Y after the push; no on-device ISO was both unclaimed and verifiable against D: to delete (room.log, dispatcher.log)` · `NOT STAGED: not looked up, '<title>' has no TitleID …` · console `PAUSE`/`STOP` set → `console: not tried, <path> is set` |
+| route | `attached '<name>' for <TID>, state=…, N reference crop(s); why: proven, a judged run on it reached gameplay` (or `the title's configured route in targets.toml (recorded, not yet proven)`; plus `; replaces the generic survey the request named` when it did) · `none: no proven or recorded route for <TID> (…); the generic survey does not reach gameplay for most titles; running the survey the request asked for` · `'<name>', named by the request (left as is)` · `none attached: the request carries --find-route/…, which the profile gate decides` · `REFUSED: recorded route '<name>' (target) for <TID> fails its own check: waitfor 'title_screen': no reference crop <path>` |
+| profile | `restored <TID>'s first golden from a backup (store: <id>; copied, the backup is untouched)` · `<TID>'s golden (save <id>) is in the store; the titles disk is composed with it` · `<TID> has no golden and no backup was found (looked: store, hdd-reset, archive, device-bak-auto); nothing restored, no profile created` · `none loaded: a first-run route starts this title with no profile by design` · `device check: save <id> pulled back off <path> and verified (hdd.verify.json)` · `device check FAILED: save <id> is not on the pushed titles disk (…)` |
+
+**The miss ERROR leads with what staging found.** It was always
+`staging searched <roots>, none had it; title not on device: …`, even when
+staging HAD found the image and the push was refused by the free-space
+floor, or when the console was down. Now it is
+`staging: <the disc line without "NOT STAGED: ">; title not on device: …
+-- searched <device roots>`. The tail stays exactly `device_title_miss`'s
+text: `99-iso-roots.sh` (not this lane's file) sed-cuts the soak block out
+of `dispatcher.sh` and matches the ERROR's suffix, so nothing may follow it
+on that line, and the block's own inner `if`/`fi` must stay at 12+ spaces.
+
+**Console mirror outcome is distinguished** (`console-stage.result`, then
+the disc line): the console answered but the TitleID did not come back;
+the mirror timed out (rc 124, 900 s); the console did not answer
+(stage_xiso.py exit N); not tried because `PAUSE`/`STOP` is set or the
+script is missing. Done means #2's "a clear 'console did not answer'
+ERROR" is the third.
+
+**The doctor's decision is on the ERROR.** `maybe_run_doctor` appends
+`doctor: retry (see doctor.md)`, `doctor: give-up: <model's reason> (see
+doctor.md)`, or `doctor: give-up: not a class the doctor recognises` (no
+false "see doctor.md" when none was written). On a retry the line moves
+aside with the dir (`<rdir>.doctor1/ERROR`). The doctor's own brief now
+includes `inputs.txt`, `console-stage.result`, `room.log` and
+`route.refused`, so the model reads what the dispatcher already tried.
+
+**A 1b gap closed: a recorded route that fails its check refuses the
+claim.** Before, at claim time a configured route whose `route.sh --check`
+failed (a crop missing from `refs/<route>/`) was logged and the soak ran on
+the survey -- exactly the "fallback to mashing" the brief forbids. Now
+`ensure_route_attached` writes `route.refused` and returns 3, and the soak
+block ERRORs `refused before the soak: <why>` naming the crop. request.sh's
+queue-time attach already exited 2 on the same `--check` failure (line
+~1273), so both paths now agree. `fix attach-route` in the doctor reports
+the refusal as "a route lane's to repair, not a retry".
+
+**Two latent faults found while finishing.**
+- The doctor never ran from the dispatcher as committed in 75b1d3475d
+  (mode 644 behind `[ -x ]`; see Attempt 4 above). Fixed: `[ -f ]`, 755.
+- The 98 fixtures could reach the REAL console. `console_stage_tid` runs
+  `$STAGE_XISO` (default the real `stage_xiso.py`) unless `$HAKUX_XISO_DIR`
+  has a PAUSE/STOP file, and `/mnt/d/hakux-staging/xiso` has neither. Every
+  fixture env (`dd_run`, `dd2_env`, `mr_env`) now sets `STAGE_XISO` and
+  `HAKUX_XISO_DIR` to fixture paths; the "console answers" leg drives a fake
+  `stage_xiso.py` that drops `<tid>-Console_Game.xiso.iso` into the root.
+
+**`maybe_run_doctor` skips an empty `request.json`.** There is nothing to
+requeue, so a doctor session has nothing to act on. It is also what keeps
+`99-iso-roots.sh`'s cut-out soak block (which writes an empty request)
+from gaining a `doctor:` line after the suffix it matches -- the guard was
+added for that fixture, and holds for the reason above.
+
+**Classify replays real history for title-not-on-device too.** `dd_classify`
+matches `title not on device` anywhere in the line rather than the
+`staging searched` prefix, so the ~45 pre-lane results (bare
+`device_title_miss` text) classify, as do Section 1's and Section 3's
+wordings. 98 now replays one real result for that class
+(`0-0-c-1790377876-lane.tcgchurn-101517`) and pins both newer wordings.
+
+**Hourly report.** `host-tools/hourly_report.sh` is lane.local's; the
+block that prints `dispatch doctor: N sessions, M fixed, K gave up` from
+`$D/logs/dispatch-doctor.tsv` is in `OUTBOX.md` as a request.
+
+**Tests.** 98 gained 24 legs for Section 3: attempt 3's three ERROR-append
+legs (retry, give-up, unclassified), and this attempt's 7 staging outcomes,
+6 route, 5 profile lines, 1 empty-request, 1 real-history replay and 1
+classify of the new wording. Scoped runs green: 98 + 99-iso-roots
+85/0; 97-dispatch-deploy, 99-profile-gate, 99-title-state green. 51-dispatch-hardening
+needs 50-arms-requeue's fixture before it (it FAILs alone on "fixture not
+as 50 leaves it"; that is its own ordering, not this change).
+
+Full unscoped run on 6c2a4b5fdd (merged with origin/master 4a504d9aaa),
+in this session: **3683 passed, 1 failed, all 149 fragments.** The FAIL is
+66-status-titles' "check --pages passes when every page agrees …": its
+fixture README carries a numbered Playable line, and master's 48a6db90c5
+(compat1017b) made `title_registry.py check --pages` require the
+numberless form. It comes from master; this lane edits neither file, and
+it is outside this lane's territory to fix (OUTBOX.md flags it for
+lane.local).
+
+PR.md names the fold's fragments (`Selftest:`): the 51 fragments whose grep
+hit on a changed file is a real source/run/copy/lint, plus 50-arms-requeue
+(51's fixture) and 99-title-state; PR.md lists the 11 prose-only hits and
+66 that were left out, and why.
+
+**Not done, and not this lane's:** no live device run. Done means #1-#4 are
+shown against the fake adb/claude fixtures, not a device; the first real
+claims after lane.local deploys the folded dispatcher are the live check.
+A running dispatcher holds the version it started with, so none of this is
+live until lane.local restarts it.
+
+**Next lane, do not repeat:** do not append anything after
+`device_title_miss` on the miss ERROR line (99-iso-roots); do not guard a
+`bash "$x"` call on `[ -x ]`; give any fixture that can reach
+`console_stage_tid` a fake `STAGE_XISO`.
+
 ## Still to come
 
-Section 3 (richer ERROR text naming what the dispatcher/doctor tried and
-found; an hourly-report line via an OUTBOX request to lane.local -- never
-editing host-tools directly). PR stays in draft until that lands or a
-blocker is written up.
+Nothing in the brief's three sections. The hourly line waits on lane.local
+(OUTBOX.md); deploy is lane.local's step after the fold.

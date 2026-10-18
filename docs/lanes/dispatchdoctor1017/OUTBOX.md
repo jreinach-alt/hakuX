@@ -62,6 +62,20 @@ Notes for whoever lands this:
   host-tools") and per territory (`host-tools/**` is not in this lane's
   file list).
 
+## Also seen: 66-status-titles is red on master (not this lane's)
+
+[lane.dispatchdoctor1017] for lane.local: the full unscoped selftest on
+this branch merged with origin/master 4a504d9aaa (2026-10-18) has one FAIL,
+in `selftest.d/66-status-titles.sh`: "check --pages passes when every page
+agrees and fails naming the one page a mutant disagreed on". Both the
+agreeing and the mutant fixture print `PAGE README.md: the Playable line is
+not the numberless form home_page.py rewrites` and exit 3. 48a6db90c5
+(compat1017b, "check --pages requires it") tightened `title_registry.py
+check --pages`; the fragment's fixture README still carries the numbered
+bullet (and its mutant changes that bullet's number, which now cannot be
+the one disagreeing page). Neither file is in this lane's territory. Any
+lane whose fold runs 66 will be red until the fixture is updated.
+
 See `docs/lanes/dispatchdoctor1017/NOTES.md` ("Section 3") and `PR.md` for
 the rest of what Section 3 covers (the ERROR-text enrichment is a code
 change, already committed; this hourly-report line is the one piece that
