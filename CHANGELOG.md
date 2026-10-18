@@ -1,7 +1,7 @@
 # Changelog
 
 > **GPU driver.** hakuX is tested only with the Turnip Adreno Driver T30
-> (@Mr_Purple_666). The phone's own driver and other Turnip builds are
+> (@Mr_Purple_666). The handheld's own driver and other Turnip builds are
 > untested and draw some games wrongly.
 > [Which driver, and how to install it.](https://github.com/jreinach-alt/hakuX/blob/home/docs/gpu-driver.md)
 
@@ -14,7 +14,8 @@ instead of waiting on the GPU to confirm each one, skips a slower texture
 path the cinematic's colour surfaces were taking, and stops the CPU
 translator recompiling around one floating-point instruction. Answering
 occlusion tests early means a visual effect can show a frame
-late at a camera cut.
+late at a camera cut. Mortal Kombat: Shaolin Monks' Goro's Lair cutscene
+rises from about 27.5-29 fps to about 54 fps with the texture-path change.
 
 See [docs/releases/v0.5.2.md](docs/releases/v0.5.2.md).
 
@@ -73,6 +74,8 @@ texture formats, render targets, depth, fog and fixed-function lighting all
 move closer to the hardware. Several emulator aborts and Vulkan
 resource-lifetime bugs are fixed, and Android gets a clean exit on guest
 power-off, a separate debug build id, and emulator stderr reaching logcat.
+Skipping the intro video in Crimson Skies: High Road to Revenge no longer
+closes the emulator.
 
 See [`docs/releases/v0.4.0-j1.md`](docs/releases/v0.4.0-j1.md).
 
