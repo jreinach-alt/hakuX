@@ -1,0 +1,8 @@
+time 2026-10-18T17:00
+# Part D (GTA III profile/head/route proof run) needs a device; both Thor and Nova are
+# unavailable right now (Nova physically offline for the owner's thermal test since ~12:00 PDT,
+# Thor held by lane.local for the same test; dispatch/hold/thor.why, pm/stall-accepted.tsv
+# device:wedged:nova:adb, re-check 17:00 PDT). A+B+C are done and committed (5a3827eddd); nothing
+# else in this lane is blocked. Re-verify hold.sh/adb devices at resume time before queuing
+# anything -- if the owner's thermal test is still running past 17:00, this wait will correctly
+# re-fire as stale and need a later time, not a hand resume into a device that is still busy.
