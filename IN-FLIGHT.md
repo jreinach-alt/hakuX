@@ -8,14 +8,12 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `compat1018` | claude-sonnet-5 | 5 min |  |
-| `fpstel1018` | claude-sonnet-5 | 0 min |  |
-| `haloring1017` | claude-opus-5-5 | 1h 31m | haloring1017: Halo CE main-menu ring: the missing surface layer and the static inside surface (#939) |
+| `fpstel1018` | claude-sonnet-5 | 15 min | fpstel1018: Forza and Buffy missed the bar -- decompose the frame, name the lever |
 
 - **Handhelds:** 2 connected.
-  - Nova: free for the queue
+  - Nova: held by `owner-play`
   - Thor: held by `lanelocal-offline`
-- **Device queue:** 0 waiting, 1 running.
+- **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -126,10 +124,11 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/haloring1017` | haloring1017: Halo CE main-menu ring: the missing surface layer and the static inside surface (#939) | `60ce32f010` | 2026-10-18 06:33 |
+| `lane/fpstel1018` | fpstel1018: Forza and Buffy missed the bar -- decompose the frame, name the lever | `b98c2d5bff` | 2026-10-18 07:14 |
 
 ## Recently landed on master
 
+- 2026-10-18 compat1018: the compatibility page catches up to the 95-row Playable ledger
 - 2026-10-18 snaptargets1018: the dispatcher snapshot ships titlestate.py but not targets.toml (#433)
 - 2026-10-18 dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what stops a run
 - 2026-10-18 Top Spin: a state:any route that gets past Controller Select
@@ -141,4 +140,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 A title with one measured stall reaches the owner the same day
 - 2026-10-17 storydoc1017: a project history page, linked from the README's More table
 
-_Updated 2026-10-18 07:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 07:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
