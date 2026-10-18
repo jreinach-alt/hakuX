@@ -3120,3 +3120,15 @@ issues = ["433"]
 standing = false
 files = ["docs/lanes/compat1018c/**", "docs/testing/compat_notes.tsv", "docs/compatibility.csv", "docs/COMPATIBILITY.md", "README.md", "docs/testing/titles/targets.toml", "docs/testing/compat_page.py", "docs/testing/compat_page_selftest.py"]
 note = "STARTED lane.local 2026-10-18 ~10:20 PDT (Sonnet): RalliSport Challenge and Mortal Kombat: Shaolin Monks to Playable on the public compat page and docs (92 -> 94); owner 10-18 after hand-play."
+
+[lane.gta3car1018]
+issues = ["1049", "433"]
+standing = false
+files = ["docs/lanes/gta3car1018/**", "captures/gta3car1018/**"]
+note = "STARTED lane.local 2026-10-18 ~10:50 PDT (Opus): GTA III while DRIVING at the 30 fps bar (owner order). In-car [dipwin] run on the owner state, name the 52 render passes, remove the dominant cause. Claims pgraph/vk files on the board as it needs them. Brief: briefs/gta3car1018.md."
+
+[lane.ralli2audio1018]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/ralli2audio1018/**"]
+note = "STARTED lane.local 2026-10-18 ~10:50 PDT (Opus): RalliSport Challenge 2 audio dropouts (starve 1.34% vs 0.1% bar) and early-race freezes, owner order. Claims apu / pgraph files on the board as it needs them. Brief: briefs/ralli2audio1018.md."
