@@ -1,0 +1,1305 @@
+=== --grep -i 'garbage' (--all)
+4e690bbceb 2026-10-03 fold: lane/titleroutes (offline) -- titleroutes: sessions 64-65 -- Dino Crisis 3 route confirmed by replay; Buffy reaches play but sticks at a ledge in 2 replays (#397)
+333711ac66 2026-10-02 fold: lane/titleroutes (offline) -- titleroutes: sessions 64-65 -- Dino Crisis 3 route confirmed by replay; Buffy reaches play but sticks at a ledge in 2 replays (#397)
+f6792eb9b6 2026-10-02 fold: lane/titleroutes (offline) -- titleroutes: session 64 -- reviewed 4 pilot surveys frame-by-frame (1 of 4 was NOT gameplay despite a clean verdict), queued 2 more (#397)
+0e3a9ddf31 2026-09-13 test: say that editing the watchdog does not change the running watchdog [skip ci]
+59e2e5a2ce 2026-09-12 test: pin an A/B pair by hash, and let a worker see a tree edit again [skip ci]
+9094472fae 2026-09-08 nv2a/vk: wipe the shader cache when the state layout changes
+c58db99386 2026-03-29 re-enable TB prewarm/rewarm and tier-1 recompilation on Android
+2b2fb25c2a 2025-07-15 iotests/151: ensure subprocesses are cleaned up
+069a2ce8a7 2025-07-15 functional: ensure log handlers are closed
+1fa242bd00 2025-06-22 nv2a/vk: Only include palette in texture key when necessary
+a079836005 2025-04-24 tcg/loongarch64: Fix vec_val computation in tcg_target_const_match
+e6c38d2ab5 2025-03-10 util/cacheflush: Make first DSB unconditional on aarch64
+86f847a39a 2025-02-07 tests/tcg/arm: Remove test-arm-iwmmxt test
+066b9de4b3 2025-01-28 target/s390x: Fix MVC not always invalidating translation blocks
+e43ced8be1 2025-01-28 target/s390x: Fix MVC not always invalidating translation blocks
+9cde9b435a 2025-01-14 migration: Optimize postcopy on downtime by avoiding JSON writer
+6ba1f714c0 2024-11-11 pc-bios/s390-ccw: Re-initialize receive queue index before each boot attempt
+3805d4287f 2024-01-20 linux-user/elfload: test return value of getrlimit
+612b3ba218 2023-09-28 python/machine: close sock_pair in cleanup path
+f1b0f894c8 2023-08-10 gdbstub: don't complain about preemptive ACK chars
+ad17868eb1 2023-07-26 accel/tcg: Clear tcg_ctx->gen_tb on buffer overflow
+4c8baa02d3 2023-07-22 util/interval-tree: Use qatomic_set_mb in rb_link_node
+2b0d656ab6 2023-07-27 target/arm: Avoid writing to constant TCGv in trans_CSEL()
+896fbd90aa 2023-05-22 cutils: Set value in all qemu_strtosz* error paths
+a73049b2a1 2023-05-22 numa: Check for qemu_strtosz_MiB error
+edafce694a 2023-05-22 test-cutils: Prepare for upcoming semantic change in qemu_strtosz
+b83b40b614 2023-05-17 vfio/pci: Fix a use-after-free issue
+6fbef9426b 2023-01-14 target/i386: Fix 32-bit AD[CO]X insns in 64-bit mode
+57e3069641 2022-09-05 smbios: sanitize type from external type before checking have_fields_bitmap
+418ade7849 2022-06-21 softmmu: Always initialize xlat in address_space_translate_for_iotlb
+8164f14bb9 2022-04-24 tests/tcg/xtensa: restore vecbase SR after test
+8cc2246caa 2022-03-15 target/arm: Log M-profile vector table accesses
+dafb34c992 2022-03-14 virtio: Add vhost_svq_get_vring_addr
+3bc72e3aed 2022-01-10 python/aqmp: add __del__ method to legacy interface
+a92cecba27 2021-10-29 Merge remote-tracking branch 'remotes/rth/tags/pull-tcg-20211028' into staging
+faa2e10045 2021-08-26 tcg/optimize: Stop forcing z_mask to "garbage" for 32-bit values
+06aad78b82 2021-07-20 iotests: use with-statement for open() calls
+baa873f750 2021-08-13 tests/tcg/multiarch/linux-test: Zero-initialize sockaddr structs
+a8ca0033c2 2021-08-13 tests/qtest/ipmi-bt-test: Zero-initialize sockaddr struct
+fdcdf54d1e 2021-08-13 gdbstub: Zero-initialize sockaddr structs
+5929238462 2021-08-13 net: Zero sockaddr_in in parse_host_port()
+50a7470e3e 2021-06-13 target/arm: Improve vector REV
+29c3d213f4 2021-04-01 oslib-posix: Remove OpenBSD workaround for fcntl("/dev/null", F_SETFL, O_NONBLOCK) failure
+5f779a3a26 2021-04-13 linux-user/elfload: fix filling psinfo->pr_psargs
+e526ab61e9 2021-04-27 amd_iommu: fix wrong MMIO operations
+6162f7dafe 2021-03-23 utils: Work around mingw strto*l bug with 0x
+7bfc47936e 2021-02-02 migration: Fix cache_init()'s "Failed to allocate" error messages
+2dfa2f1871 2021-02-05 tcg/aarch64: Do not convert TCGArg to temps that are not temps
+c7811022eb 2020-04-17 linux-user: Prevent crash in epoll_ctl
+786d8b8e38 2020-05-11 migration/colo.c: Use cpu_synchronize_all_states()
+e83dd6808c 2020-05-11 mirror: Make sure that source and target size match
+e702fba831 2020-04-22 hw/timer/pxa2xx_timer: Add assertion to silent static analyzer warning
+acf768a904 2020-02-12 linux-user/i386: Split out gen_signal
+d9b3ade54e 2019-11-19 libvhost-user: Zero memory allocated for VuVirtqInflightDesc
+f344446654 2019-09-23 block: add empty account cookie type
+38e7d54bdc 2019-09-15 block/qcow2: Fix corruption introduced by commit 8ac0f15f335
+3cf746b3f1 2019-07-03 block: Deep-clear inherits_from
+2785f19631 2019-07-08 tests/migration-test: Fix read off end of aarch64_kernel array
+a9e0cb67b7 2019-05-13 hw/display/ramfb: lock guest resolution after it's set
+78e4f446d2 2019-04-20 net/colo-compare.c: Fix a crash in COLO Primary.
+=== --grep -i 'static' (--all)
+029987cd35 2026-10-17 bootstatic1017: open the lane claim (#433)
+d220b369fa 2026-10-16 perflog1016: static checks of the pause menu's contract, queue record, owner-capture NEED (#433)
+f327d67b8f 2026-10-13 fold: lane/holdinput1013 (offline) -- pathfind: a drive hold proves its gas, gets a stuck vehicle out, acts on an on-screen prompt, and tries every unstick rung; the verdict does not read a parked vehicle as travel (#433, 0.5)
+22d44c65f5 2026-10-13 fold: lane/compatpage1012 (offline) -- compatpage1012: the compatibility page in three sections, with regions and a CSV (#433, 0.5)
+cbda0e85fd 2026-10-13 vk: EDS1 core names alias the EXT ones; a NULL command is refused (0.5.1 A4)
+2117d4e3cb 2026-10-12 fold: lane/issuesync1012 (offline) -- issuesync1012: one issue number space, mirrored both ways (#433, 0.5)
+34a7b68322 2026-10-12 fold: lane/issuesync1012 (offline) -- issuesync1012: one issue number space, mirrored both ways (#433, 0.5)
+70e1c8c13f 2026-10-12 fold: lane/issuesync1012 (offline) -- issuesync1012: one issue number space, mirrored both ways (#433, 0.5)
+c03e17b8a0 2026-10-12 fold: lane/burnoutloop1012 (offline) -- burnoutloop1012: Burnout Revenge's play loop presses Retry so a run stuck on RESULTS keeps racing (#433, 0.5)
+13e0590809 2026-10-11 fold: lane/soakvideo1011-step2 (offline) -- soakvideo1011-step2: device proof of the dispatcher's soak video capture (#433, 0.5)
+32baa538da 2026-10-11 soakvideo1011-step2: device proof of the soak video capture on the Nova (#433)
+b73d50a070 2026-10-11 fold: lane/soakvideo1011 (offline) -- soakvideo1011: screen video during a routed soak, from the dispatcher; route crops now travel with the request (#433, 0.5)
+a96282f82d 2026-10-11 soakvideo1011: device-clock timestamps so hitch_report's window reads the dispatcher's own frames/ (Addendum 1, #433)
+be3195db77 2026-10-10 fold: lane/perdraw1009 (offline) -- perdraw1009: cut the renderer's per-draw CPU cost (NFS Most Wanted, ~11 us per draw) (#433, 0.5)
+4fbff52ae9 2026-10-10 fold: lane/boardgateenv1009 (offline) -- boardgateenv1009 -- the board push gate stages master's docs/testing into the pushing tree's index (#433, 0.5)
+9cf824802e 2026-10-10 perdraw1009: read the toggle run (3415447) -- all six legs PASS, -1.70 us/draw (#433, 0.5)
+7cde4fcf54 2026-10-09 surfgpu1009: hold the submitted batch aside (g_sg_held) -- the record residual NBA Live 07 showed (#433)
+11036da82f 2026-10-06 pathfind: Blowout validation run blowout-val2: play 0.981, patrol fired, verdict static-window on a dark hangar (#433)
+c6d73bcf10 2026-10-04 fold: lane/hangwatch (offline) -- hangwatch: a locked-up title is caught on telemetry in about 90 s, not waited out
+0d44dc6cf7 2026-10-04 hangwatch: the supervised Whiteout run confirms HANG; recheck counts only post-press telemetry
+425ffe1ad1 2026-10-04 fold: lane/vcpu60 (offline) -- lane.vcpu60 (#507): what it takes to get Simpsons, GTA SA, Nightfire and Forza to 60 fps
+4e690bbceb 2026-10-03 fold: lane/titleroutes (offline) -- titleroutes: sessions 64-65 -- Dino Crisis 3 route confirmed by replay; Buffy reaches play but sticks at a ledge in 2 replays (#397)
+bb399691a7 2026-10-03 pathfind: hold-play credits a play cycle only from its own frame, and reads a static look once
+73ab6212f9 2026-10-03 pathfind: hold-play (--hold-s, Nova only): play kept for 600 s on a genre loop, model reads only when play may have ended
+6b0c4a131f 2026-10-02 fold: lane/pathfind (offline) -- pathfind: a screen-reading agent that drives a title from boot into gameplay
+333711ac66 2026-10-02 fold: lane/titleroutes (offline) -- titleroutes: sessions 64-65 -- Dino Crisis 3 route confirmed by replay; Buffy reaches play but sticks at a ledge in 2 replays (#397)
+f6792eb9b6 2026-10-02 fold: lane/titleroutes (offline) -- titleroutes: session 64 -- reviewed 4 pilot surveys frame-by-frame (1 of 4 was NOT gameplay despite a clean verdict), queued 2 more (#397)
+7efa13af89 2026-10-02 fold: lane/routedriver (offline) -- routedriver: a screen-aware play driver, replacing the blind play loop (#433)
+980ac19321 2026-10-02 fold: lane/titleroutes (offline) -- titleroutes: session 63 -- queued pass-1 surveys for 4 of the 13-title Nova backlog (ADDENDUM 15); pilot gate hit, 8 titles still to queue (#397)
+c99506ec90 2026-10-01 fold: lane/collapse433 (offline) -- collapse433: Battlefield 2 on the Nova is GPU-bound in heavy views; the Thor collapses were heat
+7c6be56924 2026-10-01 collapse433: diagnosis complete: BF2 GPU-bound per draw, Thor heat, Blood Wake static window; PR ready (#433)
+380dda3401 2026-10-01 fold: lane/titleroutes (offline) -- titleroutes: session 61 -- Sonic Heroes loop fix + Super Monkey Ball Stage Select input finding (#397)
+7de6da09e1 2026-10-01 routedriver: Castlevania first run reaches play under drive --find on the Nova (#433)
+56c2a7b4a9 2026-10-01 fold: lane/hitchwatch (offline) -- hitchwatch: count the hitches, and catch a frozen/looping scored window (#433)
+575c480d27 2026-10-01 fold: lane/titleroutes (offline) -- titleroutes: session 56 -- Castlevania: Curse of Darkness's returning route CONFIRMED by an unattended replay
+f1a5f8b834 2026-09-29 titleroutes: session 34 -- a live dispatch wipe, the corrected work list, and a draft Midnight Club 3 route (#397)
+875c560d52 2026-09-26 lane.xbox: pgraph_run.py and the probe supervisor read the console's address from console.addr
+e50525052b 2026-09-25 fold.sh: resolve an index-only conflict by regenerating over pinned trees
+745a07260c 2026-09-25 fold: PR #230 lane/cloud-200 -- docs/testing: static PG_SET_MASK coverage of nv2a_regs.h fields (#200)
+b9a3fb1463 2026-09-25 docs/testing: static PG_SET_MASK coverage of nv2a_regs.h fields (#200)
+569fd86363 2026-09-21 tools/nv2a_probe: make the hazard-allowed build observable, and test the code that decides
+f71b474eab 2026-09-20 docs/testing: score #50's stack C on post-flush captures -- the falsifier fires
+92b696272d 2026-09-20 tools/nv2a_probe: read d:\nv2a_probe.cfg, so one binary runs anywhere
+cb14100124 2026-09-19 testing: the #elif fixture's expectation is a TRUE positive, not a false one
+4401ad3bda 2026-09-18 test: re-point #59's arm at the folded shas and drop #38's leg that cannot fire [skip ci]
+974f80a870 2026-09-18 predictions: register #81's dedup arm on counters, not captures [skip ci]
+272916294e 2026-09-15 docs: the GL SNORM fix, written out -- and the ONE line that needs a grant [skip ci]
+3c4892563b 2026-09-18 nv2a/vk: refuse a narrow BLEND_AND at the entry, not in the leaf (#84) [skip ci]
+391ac6bfb9 2026-09-18 board: M1 is fixed, and the hazard my own fold created is contained not folded [skip ci]
+f343580647 2026-09-18 nv2a/vk: refuse a narrow BLEND_AND at the entry, not in the leaf (#84) [skip ci]
+a01402598a 2026-09-18 board: #59 folds -- pass 2 clean, three HIGHs closed, build green [skip ci]
+116bcee603 2026-09-18 docs: audit pass 2 over #59's remediation -- 3 HIGH closed, M2 back a third time [skip ci]
+5791973106 2026-09-18 docs: audit pass 2 over #59's remediation -- 3 HIGH closed, M2 back a third time [skip ci]
+52600e6417 2026-09-18 board: #59's three HIGHs are remediated, and the root cause was a truncated grep [skip ci]
+fb43bf4bdc 2026-09-18 test: re-register #59's arm against the real fold candidate [skip ci]
+f0f4ab0c39 2026-09-18 test: re-register #59's arm against the real fold candidate [skip ci]
+b1b96fd925 2026-09-18 audit: pass 1 over #59's dual-source pad write -- 3 HIGH [skip ci]
+520e9c0c8b 2026-09-18 audit: pass 1 over #59's dual-source pad write -- 3 HIGH [skip ci]
+a3aef8f489 2026-09-15 docs: the GL SNORM fix, written out -- and the ONE line that needs a grant [skip ci]
+b31c484c49 2026-09-14 tcg: stop longjmping into a returned frame from the recycle path [skip ci]
+=== --grep -i 'green' (--all)
+5c4c24956e 2026-10-17 fold: lane/sparsewt1017 (offline) -- lane worktrees are created sparse, without docs/lanes/pathfind/runs (#433)
+9a177a6f82 2026-10-17 dispatchdoctor1017: Section 1b, auto-attaching a recorded route (selftest green)
+6fa12571d1 2026-10-17 dispatchdoctor1017: Section 1, the deterministic staging fast path (selftest green)
+56fdef2c85 2026-10-16 fold: lane/x1port1012-halo (offline) -- x1port1012-halo: #939 (b) root-caused and fixed behind HAKUX_FIST_ROUND=1 (verified on the Nova, run 13); (a), the layer missing on the ring's dark side, is NOT fixed
+beb9daa755 2026-10-16 fold: lane/logo1016-banner (offline) -- logo1016-banner: the new hakuX CE banner at the top of the README
+56bb989b0c 2026-10-16 fold: lane/sign1016 (offline) -- sign1016: rotate release key (lineage), minSdk 33 (#433)
+4bf47129b1 2026-10-16 fold: lane/titlekey1016 (offline) -- One display name per title_id, and nothing keyed by a name (#433)
+bea772d03d 2026-10-16 titlekey1016: one name-priority rule in Catalog, drift check in `check` (#433)
+15a72e10dc 2026-10-14 fold: lane/titledb1014 (offline) -- titledb1014: title_id as the join key, one table, every reader reads it (#433)
+4a7b7e24b7 2026-10-14 fold: lane/locations1014 (offline) -- A tracked listing of which title is where, keyed by title_id
+a02c2b5f31 2026-10-14 titledb1014: check fails on a duplicate title_id or an unresolved name, not just staleness (#433 Part 1)
+2c06371519 2026-10-13 fold: lane/statuspage1013 (offline) -- status page: track 0.6, 1.0 projection chart, drop Benchmarked and C I S B
+c55dd860b2 2026-10-13 fold: lane/hangstall1013 (offline) -- hangwatch: catch a frozen title that starves the GPU, spins the vCPU and silences the disc, even with non-flat audio
+c5b53396ad 2026-10-13 hangstall1013: State ready (merged origin/master, selftest green on merged tree)
+2117d4e3cb 2026-10-12 fold: lane/issuesync1012 (offline) -- issuesync1012: one issue number space, mirrored both ways (#433, 0.5)
+2f0bbb7a5c 2026-10-12 pathfind_selftest: green again under R3 and the stuck detector; legs for both (#433)
+8a4df3d1ab 2026-10-12 burnoutloop1012: press Retry so a run stuck on RESULTS keeps racing (#433, 0.5)
+72b4b07b77 2026-10-11 fold: lane/restoreprio1011 (offline) -- Lane: restoreprio1011            Issue: #433
+df1c3ada5a 2026-10-11 restoreprio1011: state the --force mutant's reach exactly; record take's known limit (#433, addendum 3)
+b74cff74ed 2026-10-10 fold: lane/modelpolicy1010 (offline) -- Lane: modelpolicy1010       Issue: #433 (umbrella, dispatched directly)
+d758e39a59 2026-10-10 fold: lane/fgrace1010 (offline) -- lane.fgrace1010 -- the display guard's "guest exit mid-route" leg loses a race and fails folds (#433, 0.5)
+2817f41c96 2026-10-10 fgrace1010: Audit L3 accepts either stopper, race reproduced and re-guarded
+4fbff52ae9 2026-10-10 fold: lane/boardgateenv1009 (offline) -- boardgateenv1009 -- the board push gate stages master's docs/testing into the pushing tree's index (#433, 0.5)
+28b714b557 2026-10-10 restoreleak1009: merge master, re-run 99-build-gate.sh alone, PR ready (#433)
+cd20abf797 2026-10-07 fold: lane/harnessfix1006 (offline) -- harnessfix1006: the Nova's runs record their build, and a test build never stays on it -- fixed the release check itself, which never matched a real run
+b6532fb3db 2026-10-06 fold: lane/dispatchgate1006 (offline) -- dispatchgate1006: a generated title registry and one admit() gate between "decide to run it" and a handheld (shadow mode); a fix counts only when recorded against the gate it answers
+3a9f995a91 2026-10-06 fold: lane/dispatchgate1006 (offline) -- dispatchgate1006: a generated title registry and one admit() gate between "decide to run it" and a handheld (shadow mode)
+dddc60a6f6 2026-10-06 dispatchgate1006: a fix counts only by a pm/title-fixes.tsv row or the title's own path file, never by being newer; BELOW_BAR gets no Playable attempt; forge over local HTTP, never gh; live_incidents on a scratch registry; flicker column
+976c5f60ab 2026-10-04 fold: lane/fmv303c (offline) -- 303: surface write-back probe for Spikeout's FMV green blocks (lane.fmv303c)
+4e690bbceb 2026-10-03 fold: lane/titleroutes (offline) -- titleroutes: sessions 64-65 -- Dino Crisis 3 route confirmed by replay; Buffy reaches play but sticks at a ledge in 2 replays (#397)
+83a84dd69d 2026-10-03 savestate433: the save store finds saves under an alias TitleID; status page and choose() read Gunvalkyrie's save (#433)
+6c828f9860 2026-10-03 fold: lane/memfast (offline) -- lane.memfast: remove the XBOX load fast path, with the [mf0] VA==PA census (#507)
+9d1155f919 2026-10-03 fold: lane/greensize303 (offline) -- Size the green-block FMV defect (#303): 2 titles, neither blocked in gameplay; #303 waits
+efb43cee5e 2026-10-03 greensize303: PR.md names the preflight output file
+5bf8fe81e4 2026-10-03 greensize303: preflight log and PR.md checks -- coverage gate did not run (gh 403)
+054ec8b073 2026-10-03 greensize303: size the green-block FMV defect (#303) -- 2 titles, pre-game screens only; neither blocked in gameplay, so #303 waits
+ddbc5f0173 2026-10-03 fold: lane/memfast (offline) -- lane.memfast: remove the XBOX load fast path, with the [mf0] VA==PA census (#507)
+f943e4beb9 2026-10-03 board: territory row [lane.greensize303] (fleet FAIL, running with no row); sizing lane, docs/lanes/greensize303/** only (#303)
+0c8ab805e0 2026-10-02 savestate433: PR.md ready -- full selftest green in four shards (#433)
+c0150e7bc6 2026-10-02 fold: lane/usagemode (offline) -- usagemode: a usage meter and an auto Low/Normal mode switch (#433)
+655985ae07 2026-10-02 pathknow: PR ready, selftest green (#433)
+b71f92a12a 2026-10-02 fold: lane/routedriver2 (offline) -- routedriver2: the screen-aware driver past its two proof titles (#433)
+333711ac66 2026-10-02 fold: lane/titleroutes (offline) -- titleroutes: sessions 64-65 -- Dino Crisis 3 route confirmed by replay; Buffy reaches play but sticks at a ledge in 2 replays (#397)
+8e3b1f2ad2 2026-10-01 fold: lane/localjobs (offline) -- localjobs: local, model-free replacements for the five GitHub-bound timers (#433)
+146b8887db 2026-09-30 fold: lane/hddcrash (offline) -- hddcrash: titles disk mode 660; a request's HAKUX_TITLES_DISK wins (#397)
+9a13bb5e43 2026-09-29 board: release lane.hddperm files at ready (PR #627)
+b0ccd2d999 2026-09-29 audit: PR #622 lane.hddsplit pass 2 -- both MEDIUMs verified fixed
+6fd7207dfa 2026-09-29 board: release lane.gmem474's files at PR #582 ready
+04fe22c958 2026-09-29 board: release lane.thorheat's files at PR #614 ready
+5a48117c8a 2026-09-29 board: tracker row for #617 (dispatch worker snapshot stale)
+bb9d338fa1 2026-09-29 board: retire lane.statuswindow (PR #615 merged)
+c224dedd55 2026-09-29 board: retire lane.handbackwaiter (PR #613 merged)
+dfb9156c14 2026-09-29 board: release lane.handbackwaiter's files (PR #613 ready)
+80c4cf933b 2026-09-28 board: release lane.statusguard's files at ready (PR #597)
+a83773f7bd 2026-09-28 board: release lane.energymap507's files at ready (PR #586)
+08c9b1ea53 2026-09-28 board: release fanduty507 (#571 ready) and turnipcost569 (#573 ready) at PR-ready; fix draw.c territory conflict (shaderfb569/uberspike569)
+3078417560 2026-09-28 board: release lane.idlehaltspin's files at PR #565 ready
+dd297c80e0 2026-09-28 board: retire lane.fleetstanding (PR #562 folded), release lane.pipeline413 at ready (#541)
+08d125f1a5 2026-09-28 board: release files at ready for lane.pacing (#529) and lane.xbox (#561)
+933912de6c 2026-09-28 board (job.board): release lane.slowtier2's files at PR #559 ready
+=== --grep -i 'flash' (--all)
+4a645e26c4 2026-10-17 haloship1017: closed, not a defect (owner: gone on Turnip; both sightings ran on stock); the desktop EARLY flash kept on record with a reopen recipe; index regenerated; ready (#1039)
+61ae61dd91 2026-10-16 fold: lane/visitordocs1016 (offline) -- visitordocs1016: security policy, code of conduct, getting your Xbox files
+3c2338eb2b 2026-10-13 fold: lane/x1port1012 (offline) -- x1port1012: X1 BOX fixes we still carry, as 0.5.1 candidates (#939, #938)
+d0eb2410b2 2026-10-13 setup: the flash ROM must be 256 KB, 512 KB or 1 MB (0.5.1 A5)
+e318ae70b5 2026-10-12 fold: lane/savestate1011 (offline) -- savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433)
+aeea8a79b1 2026-10-05 pathfind: a title hold judges still by the scene's shift, not the pixel change (Tork: an attack flash read 0.2 on a stand-still stair) (#433)
+4db9642680 2026-10-04 fold: lane/flicker801 (offline) -- flicker801: a flicker / geometry-instability detector for the Playable gate (#801)
+52a922da2b 2026-09-21 Add Sega Chihiro arcade support to the Android port
+86c488a461 2026-09-20 audit: pass 2 of PR #197 -- drvab77's driver A/B, clean
+3040ee3dbf 2026-09-20 docs/testing: first emulator-vs-hardware comparison at the register level
+34fec0a00d 2026-09-20 tools: NV2A hardware probe, phase one (read32/write32/reset/status)
+6d587ff5cb 2026-09-19 lane.diagsoak77: the stipple classifier, validated on the founding mosaics first
+687dd6faf1 2026-09-19 lane.diagsoak77: register #77's correlation falsifier before any dump is taken
+2bbfef444c 2026-09-19 board: wave 123 -- retire vblank65 and diagdump77, close #65, dispatch diagsoak77 for #77
+2f26267904 2026-09-18 docs: #92's verdict is that the verdict cannot answer it [skip ci]
+ae8854bfdb 2026-09-14 test: --env on a request, so a runtime option is reachable from the queue [skip ci]
+43b883db55 2026-09-14 test: run #77's own falsifier -- no single scene, but the cuts are not the cause [skip ci]
+92448fd78e 2026-09-14 test: claim lane.scene77 to run #77's own falsifier, wave 49 [skip ci]
+32b91eda77 2026-09-14 docs: every blocker on the board now carries a falsifier [skip ci]
+1402c4cfd7 2026-09-13 docs: #77's real blocker is the workload, and I broke the tracker writing it [skip ci]
+f49ee23a0f 2026-09-13 Land #77's driver A/B: the drivers are neither exonerated nor implicated [skip ci]
+88cadb7225 2026-09-13 docs: #77's Nova blocker was false, and the real one is the workload [skip ci]
+e1d7fd56ca 2026-09-13 test: register #77's driver A/B prediction, with V0 as a gate I expect to fail [skip ci]
+b8b725581a 2026-09-13 test: the Galleon flash rate was measured on the wrong event, and 2048 is fitted [skip ci]
+567067d2e4 2026-09-12 test: stream logcat through the dispatcher, so a dropped method is visible
+159ffb42d7 2026-09-12 docs: name four of the dropped methods from the test repo, and why the sweep is blocked
+2ddae97a77 2026-09-11 docs: the draw queue cannot see a transform-constant change
+865d829fe2 2026-09-11 nv2a/vk: report a texture stage's geometry when it changes
+3d2a7e99ff 2026-09-11 docs: Galleon's flashing deck is a mip-level defect, not a missing layer
+3e676d5629 2026-09-10 test: run the driver A/B one test per disc, and stop deleting the prefs file
+a7765290d1 2026-08-13 Add validation for Xbox flash ROM sizes and some optimizations improves forza and other games speed
+71ac0262d6 2026-03-26 android: reorganize settings, add system file pickers and HDD export
+93bc983201 2025-10-22 Merge tag 'pull-aspeed-20251022' of https://github.com/legoater/qemu into staging
+fa42484ee1 2025-10-16 hw/arm/aspeed: ast2600-evb: Use w25q512jv flash model
+71c01f5787 2025-10-15 hw/arm/aspeed_ast27x0-fc: Map FMC0 flash contents into CA35 boot ROM
+a7fd1fd7b3 2025-10-07 aspeed: Deprecate the fp5280g2-bmc machine
+b3b3b5be9c 2025-10-07 aspeed: Deprecate the qcom-dc-scm-v1-bmc and qcom-firework-bmc machines
+acd290b017 2025-10-07 aspeed: Deprecate the sonorapass-bmc machine
+85a3fd1c4c 2025-09-29 Merge tag 'pull-aspeed-20250929' of https://github.com/legoater/qemu into staging
+f821557f4f 2025-09-25 hw/arm/aspeed: Move aspeed_board_init_flashes() to common SoC code
+91589bcd9f 2025-08-31 Merge tag 'for-upstream' of https://gitlab.com/bonzini/qemu into staging
+b11ad71e32 2025-08-28 hw/i386/pc_piix.c: remove pc_system_flash_cleanup_unused() from pc_init_isa()
+170beda3cf 2025-07-03 i386/pc_sysfw: Ensure sysfw flash configuration does not conflict with IGVM
+e86c1f967a 2025-05-29 hw/block: Drop unused nand.c
+0dd5fe5ebe 2025-05-08 i386/tdx: load TDVF for TD guest
+658e501969 2025-04-29 hw/riscv/virt.c: use s->memmap in create_fdt() path
+47cdaa46f3 2025-04-22 hw/ssi/aspeed_smc: Allow 64-bit wide flash accesses
+51514a34b3 2025-04-03 tests/qtest: Skip Aarch64 VMapple machine
+560429fd74 2025-03-19 hw/uefi: flush variable store to disk in post load
+aa90f1161b 2025-03-16 Merge tag 'migration-20250314-pull-request' of https://gitlab.com/farosas/qemu into staging
+e56ba1878f 2025-03-07 pflash: fix cpr
+8dd163f915 2025-03-04 hw/arm/aspeed_ast27x0.c Fix boot issue for AST2700
+59f4d65584 2023-06-14 hw/vmapple/vmapple: Add vmapple machine type
+f41af4c585 2025-02-21 Merge tag 'pull-target-arm-20250220' of https://git.linaro.org/people/pmaydell/qemu-arm into staging
+e9be8467b4 2025-02-19 hw/ssi: Make flash size a property in NPCM7XX FIU
+8aa35bebee 2024-12-10 cpuhp: make sure that remove events are handled within the same SCI
+94b57605c1 2024-12-14 Merge tag 'pull-target-arm-20241213' of https://git.linaro.org/people/pmaydell/qemu-arm into staging
+332a04b63a 2024-12-06 docs/system/arm/xlnx-versal-virt: document ospi-flash property
+124f4dc0d8 2024-11-27 test/qtest/ast2700-smc-test: Support to test AST2700
+0f6e8aa4fc 2024-11-27 test/qtest/aspeed_smc-test: Support to test AST1030
+=== --grep -i 'noise' (--all)
+3c2338eb2b 2026-10-13 fold: lane/x1port1012 (offline) -- x1port1012: X1 BOX fixes we still carry, as 0.5.1 candidates (#939, #938)
+5dfea123a3 2026-10-13 x1port1012: Phase A smoke run 3 (Crimson Skies) judged PASS; PR ready
+1586f4c94c 2026-10-13 x1port1012: judge Phase A smoke runs 1-2; open halo PR; queue #939 triage video
+9b26a9647c 2026-10-10 fold: lane/drawrec1010 (offline) -- drawrec1010: HAKUX_DRAWREC=1 (default off) cuts NFS race-start recording 21%/draw; recorder-thread probes say do not build (#433, 0.5)
+6052ff98d4 2026-10-10 fold: lane/reportasync1010 (offline) -- reportasync1010: write the occlusion report after the GPU is done, off the PFIFO thread (#433, 0.5)
+071aea27ff 2026-10-10 fold: lane/gpupass1010 (offline) -- gpupass1010: NFS Most Wanted's GPU frame -- render mode A/B and the cold-start pass count (#433, 0.5)
+67187f9574 2026-10-10 fold: lane/texscan1010 (offline) -- lane.texscan1010 -- create_texture()'s surface-range scan: a GPU-side copy instead of the synchronous download, behind HAKUX_TEXSCAN=1 (#433, 0.5)
+d51a730bf4 2026-10-10 gpupass1010: register render-mode and texscan-census predictions
+c829b64c8e 2026-10-10 fold: lane/pfifowait1009 (offline) -- pfifowait1009: stop holding pfifo.lock across the report-processing fence waits (#433, 0.5)
+227a161cc2 2026-10-10 texscan1010: results -- the switch removes the cube downloads and slows the NFS start (+2.6 ms period); ready, default-off (#433)
+f1e99aaa0f 2026-10-10 pfifowait1009: resume attempt 3 -- read scored arms, VERDICT FAIL on both legs (#433, 0.5)
+f9eabe4ebf 2026-10-10 fold: lane/surfgpu1009 (offline) -- surfgpu1009: a GPU-side route for the reuse/surfupd rebind, behind HAKUX_SURFGPU=1 (NBA Live 05/06/07) (#433, 0.5)
+8c5834b710 2026-10-09 fold: lane/pmucounters (offline) -- State: ready
+4a3308a21e 2026-10-03 fold: lane/alwaystelemetry (offline) -- alwaystelemetry: perflog costs ~1.2 ms/frame of render thread (+30% CPU); design the always-on tier (#433)
+a143aa5db8 2026-10-03 fold: lane/tcg424flip (offline) -- lane.tcg424flip: the #424 range test measured on Arctic Thunder and pgraph; stays opt-in (#424)
+6c828f9860 2026-10-03 fold: lane/memfast (offline) -- lane.memfast: remove the XBOX load fast path, with the [mf0] VA==PA census (#507)
+ddbc5f0173 2026-10-03 fold: lane/memfast (offline) -- lane.memfast: remove the XBOX load fast path, with the [mf0] VA==PA census (#507)
+36c16a720f 2026-10-02 fold: lane/ibcache (offline) -- lane.ibcache: inline jump-cache probe at lookup_and_goto_ptr, opt-in (HAKUX_IBC=1) (#507)
+2ba1a6e9a2 2026-09-30 fold: lane/defecttriage433 (offline) -- defecttriage433: classify and rank the defects blocking otherwise-good titles
+dc5b824498 2026-09-29 lane.memfast: leg S passes on b_ref; the removal is 6% of GTA's vCPU, not 8.5 (#507)
+dd8846114a 2026-09-28 gmem474: register the render-mode arms by J/frame (DOA, AUF, Crimson), reader and queue
+fa04ca2031 2026-09-27 lane.remote: #461 register F461's two arms (texture correctness, Crimson A/B)
+8c7e7f00b6 2026-09-26 lane.doa413b: notes -- arm passes (one known-noise row), soak pair re-queued on the Nova (#413)
+0932702362 2026-09-26 lanes/zrtz272: judge arm 1 (FAIL: F24 refuted), register arm 2
+4498310b58 2026-09-25 xbox: complete silicon reference set at 6743b6a -- the goldens hold, bar Clear
+3040ee3dbf 2026-09-20 docs/testing: first emulator-vs-hardware comparison at the register level
+3d1f93661e 2026-09-20 docs/testing: preflight the mapping plan on hardware, and correct what it got wrong
+c232769c0c 2026-09-20 test: register the X1A7 download-conversion prediction before the run
+3beca48079 2026-09-19 #13: re-register the cap-clip prediction on the deadbanded shader, 2 runs/arm
+afe994a896 2026-09-19 lane.diagsoak77: a graded companion for every leg, and the noise floor in the sign test
+633f0b3cb5 2026-09-18 docs: the fold list, for the session that merges branch by branch [skip ci]
+4279160242 2026-09-18 issues: pay lane.remote the tracker notes it was owed, and unstick five stale blockers [skip ci]
+fc9ce176a0 2026-09-15 docs: corpus re-triage, and Window_clip is a FLAKE I nearly called a regression [skip ci]
+1330369294 2026-09-15 docs: 3D_primitive's axis is the AA SURFACE, not the smooth flags [skip ci]
+dc7c9ed7f2 2026-09-14 docs: the eviction mechanism I published yesterday is wrong, retracted [skip ci]
+c055ca9ff4 2026-09-14 docs: the surface-alias predicate fix is a net regression, and why [skip ci]
+5ac3c9017a 2026-09-14 docs: four audit LOWs where my own comments claimed more than the code does [skip ci]
+bde4b8b237 2026-09-14 docs: #44's skew bound closes the desktop race, and GL then equals Vulkan [skip ci]
+6520163e77 2026-09-14 docs: #60 measured on the campaign branch -- 31,436 px, one line recovers 23,244 [skip ci]
+5d2bff8c25 2026-09-14 test: register #60's campaign arm before running it, predicting it is NOT inert [skip ci]
+475cd47e62 2026-09-18 board: the dispatch gate cannot tell unallocated from ordered [skip ci]
+7994cff380 2026-09-18 board: fold the toolsmith's queue, and correct the row that claimed a snapshot [skip ci]
+89c6e94953 2026-09-14 test: an absent ai= counter crashed the whole report instead of being said [skip ci]
+ae8854bfdb 2026-09-14 test: --env on a request, so a runtime option is reachable from the queue [skip ci]
+7d285138ef 2026-09-14 test: quote the disc_id heredoc, which the shell was running before Python [skip ci]
+bdaa5d2e14 2026-09-15 docs: corpus re-triage, and Window_clip is a FLAKE I nearly called a regression [skip ci]
+59cbecac96 2026-09-15 docs: 3D_primitive's axis is the AA SURFACE, not the smooth flags [skip ci]
+9d020102db 2026-09-14 docs: the eviction mechanism I published yesterday is wrong, retracted [skip ci]
+d7dfe14688 2026-09-14 docs: the surface-alias predicate fix is a net regression, and why [skip ci]
+3fed2f4ee0 2026-09-14 docs: record how Image_blit's blend defect was settled off the device [skip ci]
+8c864b1d22 2026-09-14 docs: four audit LOWs where my own comments claimed more than the code does [skip ci]
+ec6e3377e3 2026-09-14 docs: record how Image_blit's blend defect was settled off the device [skip ci]
+33e12dac00 2026-09-14 test: task lanes and standing lanes, wave 54 [skip ci]
+b07a8f7483 2026-09-14 test: a partial-coverage suite can never get a noise floor [skip ci]
+f6bcb31d30 2026-09-14 test: carry #68's registered prediction onto the branch, unrun [skip ci]
+36df43dbff 2026-09-13 docs: reword two blockers that fleet.py read as undispatched work [skip ci]
+850e1d0ad6 2026-09-13 test: ab_compare hashes the captures, so `same` cannot mean two pictures [skip ci]
+08b4219aec 2026-09-13 test: daily DX pass as a systemd user timer, following the nightly [skip ci]
+1ab0a57051 2026-09-14 docs: #44's skew bound closes the desktop race, and GL then equals Vulkan [skip ci]
+f485bc9035 2026-09-13 test: measure what the wide-line fix can reach on a real rasteriser, and correct two counts [skip ci]
+=== --grep -i 'uninitiali' (--all)
+8d3dee36da 2026-09-12 docs: name the last three unhandled methods from nxdk's headers [skip ci]
+159ffb42d7 2026-09-12 docs: name four of the dropped methods from the test repo, and why the sweep is blocked
+c58db99386 2026-03-29 re-enable TB prewarm/rewarm and tier-1 recompilation on Android
+ff633bc5d5 2025-12-03 include/aarch64/host: Fix atomic16_fetch_{and,or}
+e8779f3d15 2025-10-24 Merge tag 'pull-riscv-to-apply-20251024' of https://github.com/alistair23/qemu into staging
+a66d9c3798 2025-10-21 target/riscv: Fix a uninitialized variable warning
+f79afdf7da 2025-07-16 Merge tag 'pull-vfio-20250715' of https://github.com/legoater/qemu into staging
+622740aad9 2025-07-15 hw/vfio-user: fix use of uninitialized variable
+bc2200134c 2025-06-16 migration: Fix migration failure when aia is configured as aplic-imsic
+345bef46a1 2025-03-04 rust: qom: change instance_init to take a ParentInit<>
+ba2868ce09 2025-06-10 hw/virtio/virtio: avoid cost of -ftrivial-auto-var-init in hot path
+c653b67d18 2025-06-10 include/qemu/compiler: add QEMU_UNINITIALIZED attribute macro
+081c09dc52 2025-06-10 migration: lower handler priority
+b61a4eb3f3 2025-02-23 docs/qapidoc: support header-less freeform sections
+d922088eb4 2025-02-03 Merge tag 'ui-pull-request' of https://gitlab.com/marcandre.lureau/qemu into staging
+c0fb8e88cb 2024-11-15 plugins: fix -Werror=maybe-uninitialized false-positive
+9736ee382e 2025-01-30 Merge tag 'migration-20250129-pull-request' of https://gitlab.com/farosas/qemu into staging
+ed19620846 2025-01-14 migration: fix -Werror=maybe-uninitialized
+3499f7e356 2025-01-10 hw/arm/stellaris: Map both I2C controllers
+9ee90cfc25 2025-01-03 Merge tag 'qtest-20250102-pull-request' of https://gitlab.com/farosas/qemu into staging
+9a9320a543 2024-12-09 tests/qtest/virtio-iommu-test: Don't pass uninitialized data into qtest_memwrite
+117221ad99 2024-12-09 tests/qtest/migration: Initialize buffer in probe_o_direct_support
+ad06bb324d 2024-12-13 hw/intc/arm_gicv3_its: Zero initialize local DTEntry etc structs
+9678b9c505 2024-12-13 hw/intc/arm_gicv3_its: Zero initialize local DTEntry etc structs
+17437418c4 2024-11-22 virtio-net: Initialize hash reporting values
+4daff81efb 2024-11-05 migration: Check current_migration in migration_is_running()
+622b0efa37 2024-11-05 Merge tag 'qga-pull-2024-11-4' of https://github.com/kostyanf14/qemu into staging
+ad58ba13d0 2024-11-05 target/m68k: Initialize float_status fields in gdb set/get functions
+24287d440b 2024-10-30 qga: fix -Wsometimes-uninitialized windows warning
+c9b8a13a88 2024-08-12 target/ppc: Set ctx->opcode for decode_insn32()
+91e4e1832e 2024-10-21 Merge tag 'edgar/xen-queue-2024-10-21.for-upstream' of https://gitlab.com/edgar.iglesias/qemu into staging
+676a68fd48 2024-10-07 hw/xen: Avoid use of uninitialized bufioreq_evtchn
+423be09ab9 2024-10-03 Merge tag 'warn-pull-request' of https://gitlab.com/marcandre.lureau/qemu into staging
+8f3375434d 2024-09-24 qom/object: fix -Werror=maybe-uninitialized
+79660687df 2024-09-24 fsdep/9p: fix -Werror=maybe-uninitialized false-positive
+eb5d28c783 2024-09-24 block: fix -Werror=maybe-uninitialized false-positive
+3073c6b995 2024-03-28 hw/virtio: fix -Werror=maybe-uninitialized
+4770030bcb 2024-03-28 tests: fix -Werror=maybe-uninitialized false-positive
+3cd804c565 2024-09-24 target/loongarch: fix -Werror=maybe-uninitialized false-positive
+0d0f95c7bc 2024-09-24 linux-user/hppa: fix -Werror=maybe-uninitialized false-positive
+85f99eb2cb 2024-03-28 migration: fix -Werror=maybe-uninitialized false-positive
+26a690c36e 2024-03-28 hw/virtio-blk: fix -Werror=maybe-uninitialized false-positive
+7cea863719 2024-03-28 migration: fix -Werror=maybe-uninitialized false-positives
+ae11f6ca66 2024-04-09 block/block-copy: fix -Werror=maybe-uninitialized false-positive
+ea34d1dd96 2024-03-28 hw/sdhci: fix -Werror=maybe-uninitialized false-positive
+fa7e5e9e1c 2024-03-28 hw/vhost-scsi: fix -Werror=maybe-uninitialized
+7d6e63d982 2024-03-28 hw/ahci: fix -Werror=maybe-uninitialized false-positive
+ce2a0ef65c 2024-03-28 block/stream: fix -Werror=maybe-uninitialized false-positives
+5791ba529b 2024-04-09 block/mirror: fix -Werror=maybe-uninitialized false-positive
+ba11c88d7a 2024-03-28 block/mirror: fix -Werror=maybe-uninitialized false-positive
+73ce9bbf8a 2024-03-28 nbd: fix -Werror=maybe-uninitialized false-positive
+0a0744f6d8 2024-03-28 hw/qxl: fix -Werror=maybe-uninitialized false-positives
+5491295fa5 2024-03-28 util/timer: fix -Werror=maybe-uninitialized false-positive
+25bc7d16fa 2024-03-28 util/coroutine: fix -Werror=maybe-uninitialized false-positive
+9eb5bfbe33 2024-08-20 Merge tag 'for_upstream' of https://git.kernel.org/pub/scm/virt/kvm/mst/qemu into staging
+a8e63ff289 2024-08-06 virtio-pci: Fix the use of an uninitialized irqfd
+075fd020af 2024-08-20 Merge tag 'nvme-next-pull-request' of https://gitlab.com/birkelund/qemu into staging
+6a22121c4f 2024-08-20 hw/nvme: fix leak of uninitialized memory in io_mgmt_recv
+2089a2e5bb 2024-07-05 plugins: Ensure vCPU index is assigned in init/exit hooks
+f5fcc64808 2024-07-05 hw/core: ensure kernel_end never gets used undefined
+=== --grep -i 'first frame' (--all)
+b25eeffaab 2026-10-11 fold: lane/snapshot1011 (offline) -- snapshot1011: save states phase 0 -- a save and a load that survive a scene change (#433)
+5661db4f2b 2026-10-02 fold: lane/uberdefault569 (offline) -- lane.uberdefault569: the ubershader on by default, a settings toggle, and a notice when it is off (#569, #672)
+8443d87ebc 2026-09-12 test: state which binary a run is, on its first frame [skip ci]
+=== --grep -i 'first present' (--all)
+36dcc8dbac 2026-09-10 ui: keep the GL context in Vulkan mode; only its absence is not fatal
+=== --grep -i 'black screen' (--all)
+9abd80e90c 2026-10-17 fold: lane/bindpose1017 (offline) -- bindpose1017: THPS4 and Max Payne 2 bind pose: the stock Adreno driver, not the code (#1043)
+d0eb2410b2 2026-10-13 setup: the flash ROM must be 256 KB, 512 KB or 1 MB (0.5.1 A5)
+b25eeffaab 2026-10-11 fold: lane/snapshot1011 (offline) -- snapshot1011: save states phase 0 -- a save and a load that survive a scene change (#433)
+1f23c068f0 2026-10-01 titleroutes: session 60, build the real waitfor/press-until fix (ADDENDUM 11) for castlevania-cod.first-run
+2a87446629 2026-10-01 titleroutes: session 47, read the eight pending results, author thps3.route
+390d35807f 2026-09-21 xbox: gate the MCPX overlay on the machine type, not the BIOS size
+905f99959c 2026-09-07 android: do not crash when the ROM URI cannot be forwarded
+7592336667 2026-08-22 fix black screen for some devices
+931150e56b 2023-08-16 vfio/display: Fix missing update to set backing fields
+58ea90f803 2023-07-24 ui/gtk: set scanout mode in gd_egl/gd_gl_area_scanout_texture
+2ff408de9c 2017-10-02 gtk: fix wrong id between texture and framebuffer
+b69a553b4a 2016-08-16 ui: fix refresh of VNC server surface
+569a93cbbe 2016-03-14 spice: Disallow use of gl + TCP port
+381600dad9 2014-06-23 ui/cocoa: Cope with first surface being same as initial window size
+f0138a63a4 2009-12-18 Make sure to enable dirty tracking of VBE vram mapping
+=== --grep -i 'boot anim' (--all)
+1d9c3e4c0f 2026-09-26 vk/draw.c: the SFP misses while a fixed-function uniform is dirty (#274)
+390d35807f 2026-09-21 xbox: gate the MCPX overlay on the machine type, not the BIOS size
+08c0c8db3d 2026-04-01 android: add skip boot animation toggle, remove Simple VBLANK setting
+=== --grep -i 'skip.*boot' (--all)
+390d35807f 2026-09-21 xbox: gate the MCPX overlay on the machine type, not the BIOS size
+75c43fc1fb 2026-04-07 android: refactor SettingsActivity for consistency and maintainability
+08c0c8db3d 2026-04-01 android: add skip boot animation toggle, remove Simple VBLANK setting
+bf035cb391 2026-02-28 fix hanging skipping tlb bypass for boot
+a876b05d38 2025-07-04 Merge tag 'pull-aspeed-20250704' of https://github.com/legoater/qemu into staging
+51ac481bff 2025-06-18 hw/misc/aspeed_sdmc: Skipping dram_init in u-boot for AST2700
+d0394ab5b9 2025-05-05 Merge tag 'pull-request-2025-04-30' of https://gitlab.com/thuth/qemu into staging
+bcfee4938f 2025-04-24 tests/functional/test_ppc64_pseries: Skip test_ppc64_linux_smt_boot if necessary
+2d082fea48 2025-03-04 hw/misc/aspeed_scu: Skipping dram_init in u-boot
+2abf0da22c 2024-01-02 roms/opensbi: Upgrade from v1.3.1 to v1.4
+25da6e3113 2022-08-13 hw/riscv: microchip_pfsoc: fix kernel panics due to missing peripherals
+14fe4edcfa 2020-09-21 Merge remote-tracking branch 'remotes/philmd-gitlab/tags/acceptance-next-20200918' into staging
+b6eea069ab 2020-09-18 tests/acceptance: Skip slow quanta-gsj U-boot+Linux test
+de15df5ead 2020-07-02 seabios: update submodule to pre-1.14 master snapshot
+1e3f9c69a4 2019-05-17 Merge tag 's390-ccw-bios-2019-05-08' into s390-next-staging
+f7a339a5ba 2019-05-08 pc-bios/s390: Update firmware image with "Skip bootmap signature entries" fix
+2497b4a3c0 2019-04-29 s390-bios: Skip bootmap signature entries
+3b77f6c353 2018-05-10 arm/boot: split load_dtb() from arm_load_kernel()
+3812c71ffa 2014-01-20 PPC: e500: Move to u-boot as firmware
+=== --grep -i 'splash' (--all)
+f2da40f0e3 2026-10-01 fold: lane/titleroutes (offline) -- titleroutes: session 48 -- six pending results read, Castlevania reaches gameplay, Sonic Heroes flagged racy
+0221d73ce6 2019-11-06 seabios: update to pre-1.13 snapshot
+c82c7336de 2019-06-20 ati-vga: Implement DDC and EDID info from monitor
+8dc7fd56dd 2019-05-23 Merge remote-tracking branch 'remotes/philmd-gitlab/tags/fw_cfg-20190523-pull-request' into staging
+3ae9dd1a30 2019-04-24 tests: fw_cfg: add 'splash-time' test case
+a6d3c23803 2019-03-12 Merge remote-tracking branch 'remotes/vivier2/tags/trivial-branch-pull-request' into staging
+96f209b946 2019-03-08 hw/nvram/fw_cfg: Remove the unnecessary boot_splash_filedata_size
+e59dbbac03 2019-01-04 Merge remote-tracking branch 'remotes/philmd/tags/fw_cfg-20190104-pull-request' into staging
+19bcc4bc32 2018-11-20 fw_cfg: Make qemu_extra_params_fw locally
+6912bb0b3d 2018-11-20 fw_cfg: Fix -boot bootsplash error checking
+bed6633677 2018-10-31 fw_cfg: Improve error message when can't load splash file
+26b2a2a491 2018-02-23 s390-ccw: parse and set boot menu options
+6e99f5741f 2016-10-27 seabios: update to 1.10.0 release.
+ea996ebd65 2016-07-04 seabios: update 128k config
+11938d7863 2013-10-15 roms: update seabios submodule to 31b8b4eea9d9ad58a73b22a6060d3ac1c419c26d
+d09acb9b5e 2013-01-23 fw_cfg: Splash image loader can overrun a stack variable, fix
+3d3b8303c6 2011-07-27 showing a splash picture when start
+758c309f0a 2010-10-25 seabios: Update to 0.6.1
+8c929e1e41 2010-07-13 Update SeaBIOS
+=== --grep -i 'flicker' (--all)
+52aa206f93 2026-10-16 tcg/aarch64: HAKUX_FIST_ROUND on by default (#939)
+56fdef2c85 2026-10-16 fold: lane/x1port1012-halo (offline) -- x1port1012-halo: #939 (b) root-caused and fixed behind HAKUX_FIST_ROUND=1 (verified on the Nova, run 13); (a), the layer missing on the ring's dark side, is NOT fixed
+5d4b689ed9 2026-10-16 x1port1012-halo: HAKUX_FIST_ROUND=1, inline FIST/FISTP round per the guest's RC on aarch64 (#939)
+eaea5fc82d 2026-10-16 territory: [lane.perflog1016] (pause-menu run-time switch for the perflog tier, #998 flicker capture, #433)
+c6a5dd6e1a 2026-10-16 tracker: row for #998 (ESPN Major League Baseball flicker while the ball is in play, Nova; stays Playable)
+1ba53dcbdc 2026-10-14 tracker: row for #994 (Halo 2 title-screen flicker, audio dropouts, stalls on the Nova)
+b23a3ea5ac 2026-10-13 tracker: #982 Voodoo Vince freeze, #983 ATV 2 opponent flicker (low), #984 Lemony/Shrek 2 quiet movie audio
+22d44c65f5 2026-10-13 fold: lane/compatpage1012 (offline) -- compatpage1012: the compatibility page in three sections, with regions and a CSV (#433, 0.5)
+d8983519cb 2026-10-12 fold: lane/pubdocs1012 (offline) -- pubdocs1012: public docs pass for 0.5 (README, compatibility, limitations, attribution) (#433, 0.5)
+00fde8afb3 2026-10-11 fold: lane/defaulton1011 (offline) -- defaulton1011: HAKUX_VTX_HAZARD and HAKUX_APU_PACE on by default -- GTA San Andreas sky, NFS Most Wanted audio (#433, 0.5)
+0af0042d92 2026-10-11 board: #938 Halo CE speech level and #939 Halo CE menu ring flicker (owner hands-on test 10-11)
+6052ff98d4 2026-10-10 fold: lane/reportasync1010 (offline) -- reportasync1010: write the occlusion report after the GPU is done, off the PFIFO thread (#433, 0.5)
+0f6326deac 2026-10-10 reportasync1010: the five checks read (determinism: every pixel-leg mover is flicker; gate ZPass PASS 72/72; gated NFS 0 report waits at 12 starts), default-on recommended; waiting on the addendum-2 frametrace pair (#433)
+ffda08b215 2026-10-09 board: tracker row for forge #897, Beyond Good & Evil whole-screen flicker on the Nova (owner-deferred 10-09)
+b6532fb3db 2026-10-06 fold: lane/dispatchgate1006 (offline) -- dispatchgate1006: a generated title registry and one admit() gate between "decide to run it" and a handheld (shadow mode); a fix counts only when recorded against the gate it answers
+dddc60a6f6 2026-10-06 dispatchgate1006: a fix counts only by a pm/title-fixes.tsv row or the title's own path file, never by being newer; BELOW_BAR gets no Playable attempt; forge over local HTTP, never gh; live_incidents on a scratch registry; flicker column
+d5da10732f 2026-10-05 pathfind: NFL Blitz 2002 CLEAR (fps), flicker unchecked: 600 s held, 5-min quarter set via OPTIONS, play-call overlays counted as play (OUTBOX, hint, run record) (#433)
+d32c35d3ce 2026-10-04 fold: lane/accuracy804 (offline) -- accuracy804 (re-open): the #804 fix keeps the rival cars; the owner's "no cars" is Career on any build (#804)
+ea128b5023 2026-10-04 fold: lane/async794 (offline) -- State: ready
+6f463a0ae2 2026-10-04 fold: lane/accuracy804 (offline) -- accuracy804: RalliSport's cars blink on alternate frames (#804): identified and fixed
+4db9642680 2026-10-04 fold: lane/flicker801 (offline) -- flicker801: a flicker / geometry-instability detector for the Playable gate (#801)
+91e818584f 2026-10-04 board: grant docs/testing/flicker.md to lane.flicker801 (fold refused for territory); tracker row for #804 (coverage gate)
+822b5a9515 2026-10-04 flicker801: PR.md (#801)
+f0ca24a9c1 2026-10-04 flicker801: session 3 confirms the gate; unmeasured verdict; frame-review procedure (#801)
+7b1966e253 2026-10-04 flicker801: p90 is the burst number, gate 5; RalliSport race start 194 vs negatives <= 1.56 (#801)
+a10f36aafa 2026-10-04 board: hostops jam duty: grants for lane.async794, lane.thorbottom800, lane.flicker801 (draw.c from [free]); tracker rows for #794 #795 #796 #797 #800 #801
+8b467432ca 2026-10-04 flicker801: notes, instrument choice and the separation criterion before capture (#801)
+da67878428 2026-10-04 flicker801: Nova session driver for burst captures during pathfind hold-play (#801)
+e90de67d0f 2026-10-04 flicker801: inventory, burst capture and a triple-blink flicker score (#801)
+f916fc79fe 2026-10-04 flicker801: lane notes stub (#801)
+c988dd3c40 2026-09-29 refactor: rename draw_merge preference to draw_merge_v2 and update related logic to fix flickering problem
+fa04ca2031 2026-09-27 lane.remote: #461 register F461's two arms (texture correctness, Crimson A/B)
+ef5dad47f0 2026-09-12 test: automate the per-issue A/B, with the day's traps as hard refusals [skip ci]
+468103b321 2026-09-12 test: automate the per-issue A/B, with the day's traps as hard refusals [skip ci]
+bd7ecf7af1 2026-03-27 nv2a/vk: add multi-frame diagnostic capture with shader source and per-draw surface dumps
+798ad30819 2025-02-28 nv2a: Perspective-correct interpolation for w-buffering
+e24f095e44 2016-12-06 Merge remote-tracking branch 'kraxel/tags/pull-vga-20161205-1' into staging
+9c1f5bbc73 2015-10-16 Merge remote-tracking branch 'remotes/pmaydell/tags/pull-cocoa-20151016' into staging
+c9003eb466 2015-10-09 Merge remote-tracking branch 'remotes/kraxel/tags/pull-virgl-20151008-1' into staging
+136a8d9d44 2015-06-12 sdl2: stop flickering
+97ad1c260c 2011-07-30 sdl: Avoid redundant scaling deactivation
+=== --grep -i 'corrupt' (--all)
+3c2338eb2b 2026-10-13 fold: lane/x1port1012 (offline) -- x1port1012: X1 BOX fixes we still carry, as 0.5.1 candidates (#939, #938)
+dd5e3cb3c6 2026-10-12 fold: lane/issuemirror1012 (offline) -- issuemirror1012: the issue mirror on a timer: one lock, incremental sync, budget-true pre-check (#433, 0.5)
+2117d4e3cb 2026-10-12 fold: lane/issuesync1012 (offline) -- issuesync1012: one issue number space, mirrored both ways (#433, 0.5)
+34a7b68322 2026-10-12 fold: lane/issuesync1012 (offline) -- issuesync1012: one issue number space, mirrored both ways (#433, 0.5)
+70e1c8c13f 2026-10-12 fold: lane/issuesync1012 (offline) -- issuesync1012: one issue number space, mirrored both ways (#433, 0.5)
+4884b0bb5c 2026-10-10 fold: lane/fleetflush1010 (offline) -- lane.fleetflush1010 -- fleet.py's FAIL lines land mid-line when stdout and stderr share a file (#433, 0.5)
+c829b64c8e 2026-10-10 fold: lane/pfifowait1009 (offline) -- pfifowait1009: stop holding pfifo.lock across the report-processing fence waits (#433, 0.5)
+1878dbf06d 2026-10-10 fold: lane/restoreleak1009 (offline) -- Lane: restoreleak1009            Issue: #433
+10f14d301d 2026-10-04 fold: lane/libfolders (offline) -- libfolders (#433): the game library takes more than one games folder
+9937ccd462 2026-09-25 board: toolsmith defect 13 -- snapshot_scripts rewrites $SNAP in place and corrupts the other device's run (lane.xbox) (host session)
+e8e92c077a 2026-09-23 chihiro: drop the Ghost Squad diagnostics
+b34cd137e3 2026-09-23 chihiro: build FATX images that can hold a large game
+50edeb5241 2026-09-20 nv2a_probe: refuse registers that point hardware at memory
+e81aaca8ae 2026-09-19 testing: catch desktop-only GL tokens reaching the GLES build, before CI does
+5031a6124a 2026-09-19 nv2a/gl: the pad-bit blend path must not be compiled on GLES (audit H1)
+0fc596b706 2026-09-19 lane/blendrace50: the race breaks a bit-exact region, and the SADD split explains the exception (#50)
+d10af53ce4 2026-09-19 selftest: pin nightly_build.sh's say() on the call, not the one-line form
+e18511efac 2026-09-19 lane/nightlynotes: merge origin/master
+be2bdc2529 2026-09-18 audit: pass-2 LOWs N1-N6 -- name all four flag readers, enforce the beta bound, warn per format, and three gate.sh residuals [skip ci]
+9db71ddcb2 2026-09-18 nv2a/vk: BLEND_AND blit hard-codes 32bpp; refuse narrow formats (#84) [skip ci]
+70e4073441 2026-09-18 nv2a/vk: BLEND_AND blit hard-codes 32bpp; refuse narrow formats (#84) [skip ci]
+ecf6e53c04 2026-09-18 audit: pass-2 LOWs N1-N6 -- name all four flag readers, enforce the beta bound, warn per format, and three gate.sh residuals [skip ci]
+12870b8fde 2026-09-18 nv2a/vk: BLEND_AND blit hard-codes 32bpp; refuse narrow formats (#84) [skip ci]
+0e919fe51e 2026-09-18 board: pass 2 is clean where it was remediated, and corrects me on #84 [skip ci]
+3ce63ac9e7 2026-09-18 docs: audit pass 2 over lane.remote -- clean where remediated, two MEDIUMs never were [skip ci]
+f6165f00c5 2026-09-18 docs: audit pass 2 over lane.remote -- clean where remediated, two MEDIUMs never were [skip ci]
+2d5c9b9b20 2026-09-14 test: a soak can keep its frames, instead of leaving them in a scratchpad [skip ci]
+521296dfff 2026-09-14 test: one log line is not one instant, so discard_model gets the same slack [skip ci]
+d6aa26ac77 2026-09-14 tcg: count what the inv_htable recycle cache costs, for M5's bound [skip ci]
+2fdef463af 2026-09-13 test: register the ring-0 root-cause fix before the arm [skip ci]
+c2d57ba21a 2026-09-13 nv2a: #43 fold the signed blend source across two passes [skip ci]
+322adc3a01 2026-09-13 nv2a: #43 fold the signed blend source across two passes [skip ci]
+59dea1642d 2026-09-12 test: an orphan with no owner is not mine
+b6a35b3439 2026-09-12 nv2a: rasterise the NV04 solid line, so 2D_Lines draws [skip ci]
+aa842e98a4 2026-09-12 nv2a: rasterise the NV04 solid line, so 2D_Lines draws [skip ci]
+9342fc827d 2026-09-12 docs: retract #54's mechanism -- the guest's stores are not the problem [skip ci]
+ade16fa90c 2026-09-12 tcg: EXPERIMENT restore the guest memory barriers XBOX elides [skip ci]
+25b7ac6fb6 2026-09-12 tcg: EXPERIMENT restore the guest memory barriers XBOX elides [skip ci]
+02d8338c59 2026-09-12 docs: every guest memory barrier is elided on this machine [skip ci]
+878507db2f 2026-09-12 nv2a: grow the inline vertex buffer, instead of writing 16x past its end [skip ci]
+61acdde772 2026-09-12 docs: the extra colours are the -Z face, and the corner position dithers too [skip ci]
+5f6d159680 2026-09-09 tools: one documented way to talk to a device
+aeb6f38530 2026-09-07 test: give the Android app its first tests, and fix what they found
+bafebdce1a 2026-09-07 android: add Export EEPROM, and say when a backup is safe to take
+949e7585d7 2026-04-08 nv2a/diag: fix per-draw surface dumps and JSON overflow
+21e61a4e01 2026-04-08 nv2a: fix BC3 corruption by disabling native BC for 3D textures
+1d10f6cb2a 2026-04-03 Re-apply stale VRAM fix and SPIRV cache persistence
+b6166424b4 2026-04-07 Revert "nv2a: add GPU compute shader for BC3/DXT5 texture decompression"
+b9ff4d1013 2026-04-07 nv2a/android: add texture dump and replacement infrastructure
+81239fdd5a 2026-04-06 nv2a: add GPU compute shader for BC3/DXT5 texture decompression
+a493ba06d5 2026-04-01 android: restore :xemu process separation for emulator isolation
+e5c2d4dbef 2026-04-01 android: add Xbox dashboard management with NAT networking and crash fixes
+318eabae51 2026-03-31 revert VBLANK/NOP/flip safety valves — not needed, caused regressions
+344a87bdd1 2026-03-31 nv2a/vk: fix surface eviction VRAM corruption and stale texture sampling
+c174c8bde8 2026-03-30 fix tier-1 recompilation stability and NV2A safety valves on Android
+c58db99386 2026-03-29 re-enable TB prewarm/rewarm and tier-1 recompilation on Android
+60acaaa254 2026-03-27 fix HDD corruption: restore bdrv_flush_all, sync cache clear writes
+76859920ec 2026-02-28 fix hdd corruption to fsync issues
+fe29c30406 2026-02-24 fix cache corruption and needless hdd copy
+17313df879 2025-12-09 Merge tag 'pull-10.2-more-final-fixes-091225-1' of https://gitlab.com/stsquad/qemu into staging
+=== --grep -i 'stale frame' (--all)
+=== --grep -i 'swapchain' (--all)
+ed84d90a00 2026-08-05 Improve Vulkan swapchain handling for Android with dynamic present modes
+=== --grep -i 'present' (--all)
+3dda513a92 2026-10-17 board: #1039 present in 0.5.1-rc1 and 0.5.2-rc1 (owner 10-17; lane.xbox request 11:39)
+15f8524be1 2026-10-17 fold: lane/halo1016 (offline) -- halo1016: Halo CE cutscenes on the Nova -- quiet speech under loud music (#938), cinematic at 8-19 fps (#1018)
+fbafbac000 2026-10-16 fold: lane/fps1015 (offline) -- fps1015: measured causes for the owner's FPS defects (MKSM, Top Spin, Batman Begins, Prince of Persia, Halo 2); HAKUX_S2T_CVT
+c1c41f70db 2026-10-16 frontends1016: docs/frontends/* -- stock launcher tested, all four written up
+15a72e10dc 2026-10-14 fold: lane/titledb1014 (offline) -- titledb1014: title_id as the join key, one table, every reader reads it (#433)
+22dff9e0a2 2026-10-13 fold: lane/docsfresh1012 (offline) -- docsfresh1012: a freshness check for the public docs, an hourly alarm and a release step (#433, 0.5)
+dd5e3cb3c6 2026-10-12 fold: lane/issuemirror1012 (offline) -- issuemirror1012: the issue mirror on a timer: one lock, incremental sync, budget-true pre-check (#433, 0.5)
+2117d4e3cb 2026-10-12 fold: lane/issuesync1012 (offline) -- issuesync1012: one issue number space, mirrored both ways (#433, 0.5)
+09dc30de8e 2026-10-12 fold: lane/boxart1012 (offline) -- boxart1012: box-art lookup is opt-in, asked at setup (#433, 0.5)
+01d5dc1a80 2026-10-12 fold: lane/ownersign1012 (offline) -- ownersign1012: owner builds are signed again, and refuse an unsigned apk (#433, 0.5)
+34a7b68322 2026-10-12 fold: lane/issuesync1012 (offline) -- issuesync1012: one issue number space, mirrored both ways (#433, 0.5)
+3d41440129 2026-10-12 fold: lane/release05-notes (offline) -- release05: v0.5.0 release notes (#433, 0.5)
+342bc44313 2026-10-12 fold: lane/nightlysign1012 (offline) -- nightlysign1012: the nightly refuses to publish an unsigned or unnamed apk (#433, 0.5)
+1e97a7e0dd 2026-10-12 fold: lane/debugcap1012 (offline) -- debugcap1012: Debug Capture is off by default in versioned releases (#433, 0.5)
+f27d9c1095 2026-10-12 nightlysign1012: refuse to publish an unsigned or unnamed nightly (#433)
+cc2625e4c2 2026-10-12 release05: v0.5.0 release notes (#433)
+755ac97c96 2026-10-12 fold: lane/pathfind (offline) -- pathfind: a screen-reading agent that drives a title from boot into gameplay
+f4a1c6df96 2026-10-12 fold: lane/pathclass (offline) -- pathclass: a local GPU screen-state classifier for pathfind (#433)
+2219a61879 2026-10-12 fold: lane/pathclass (offline) -- pathclass: a local GPU screen-state classifier for pathfind (#433)
+254d4690ce 2026-10-12 pathclass: step 6c offline prep -- 29 classifier-path benchmark routes + targets.toml rows (#433)
+597df4af82 2026-10-11 fold: lane/gtasagpu1011 (offline) -- gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5)
+13e0590809 2026-10-11 fold: lane/soakvideo1011-step2 (offline) -- soakvideo1011-step2: device proof of the dispatcher's soak video capture (#433, 0.5)
+32baa538da 2026-10-11 soakvideo1011-step2: device proof of the soak video capture on the Nova (#433)
+b73d50a070 2026-10-11 fold: lane/soakvideo1011 (offline) -- soakvideo1011: screen video during a routed soak, from the dispatcher; route crops now travel with the request (#433, 0.5)
+a96282f82d 2026-10-11 soakvideo1011: device-clock timestamps so hitch_report's window reads the dispatcher's own frames/ (Addendum 1, #433)
+6d8947bb47 2026-10-11 fold: lane/fastpaths1010 (offline) -- fastpaths1010: the six renderer switches as one Graphics toggle, on by default (#433, 0.5)
+7a4da16480 2026-10-11 fastpaths1010: scope widens 32 -> 39 (lane.local Addenda 2/3, 7 of 12 blocked titles restored) (#433, 0.5)
+e3485b360c 2026-10-11 fastpaths1010: step-3 scope 32 of 44 -- Alien Hominid pilot found 12 more gone (#433, 0.5)
+f0314170df 2026-10-10 fastpaths1010: register step-3 screen prediction; scope to 20 of 44 (#433, 0.5)
+071aea27ff 2026-10-10 fold: lane/gpupass1010 (offline) -- gpupass1010: NFS Most Wanted's GPU frame -- render mode A/B and the cold-start pass count (#433, 0.5)
+67187f9574 2026-10-10 fold: lane/texscan1010 (offline) -- lane.texscan1010 -- create_texture()'s surface-range scan: a GPU-side copy instead of the synchronous download, behind HAKUX_TEXSCAN=1 (#433, 0.5)
+4ce94086ec 2026-10-10 fold: lane/nfsframe1010 (offline) -- NFS Most Wanted race start: where the rest of the frame goes (#433, 0.5)
+07937793af 2026-10-10 fold: lane/lanepath1009 (offline) -- lane.lanepath1009: lane.sh gives each lane unit a shim-first PATH with --setenv (#433, 0.5)
+9266273ad7 2026-10-10 surfgpudefault1009: fold-head confirmation run PASSED, remove WAITING (#433)
+34a0b032b9 2026-10-09 fold: lane/fpstelemetry1008 (offline) -- fpstelemetry1008: one cause table for the below-bar titles -- perflog + GPU xfr + frame trace on the Nova (#433)
+58c7e9b804 2026-10-09 fold: lane/surfdl1008 (offline) -- surfdl1008: does the NBA Live 05 surface-download finding generalise? NBA Live 06/07, Midnight Club 2 (#433, 0.5)
+cc775f16e8 2026-10-09 fold: lane/profileddefault1008 (offline) -- profileddefault1008: TU_AUTOTUNE_ALGO=profiled behind an autotune override; fleet A/B read, default does not flip
+93fbc525fc 2026-10-08 fold: lane/surfdl1008 (offline) -- surfdl1008: does the NBA Live 05 surface-download finding generalise? NBA Live 06/07, Midnight Club 2 (#433, 0.5)
+76291926ff 2026-10-05 frametrace: per-frame critical-path record behind HAKUX_FRAMETRACE=1 (#433)
+d32c35d3ce 2026-10-04 fold: lane/accuracy804 (offline) -- accuracy804 (re-open): the #804 fix keeps the rival cars; the owner's "no cars" is Career on any build (#804)
+5e16698c99 2026-10-04 nv2a: env-gated occlusion report log and fence-wait switch for #804; NOTES: the owner's build is the code three car-present captures ran
+6f463a0ae2 2026-10-04 fold: lane/accuracy804 (offline) -- accuracy804: RalliSport's cars blink on alternate frames (#804): identified and fixed
+fbfbdd60d2 2026-10-04 fold: lane/toolsmith (offline) -- dispatcher: a soak from a pre-libfolders ref still finds its games folder
+793b82351b 2026-10-04 fold: lane/pathfind (offline) -- pathfind: a screen-reading agent that drives a title from boot into gameplay
+b559c094eb 2026-10-04 hitchcause: [ide425] is a 2 s window line from the IDE IRQ path, not per command (telemetry only) (#433)
+3fe51047d8 2026-10-04 fold: lane/pathfind (offline) -- pathfind: a screen-reading agent that drives a title from boot into gameplay
+40b62fd533 2026-10-04 fold: lane/thorbottom800 (offline) -- thorbottom800: full-screen game on the Thor's bottom screen (#800)
+0c453c1357 2026-10-04 fold: lane/pathfind (offline) -- pathfind: a screen-reading agent that drives a title from boot into gameplay
+51305b71dd 2026-10-03 fold: lane/failgate (offline) -- failgate: a failed or unproven run goes for identification, not a re-run (#433)
+8f728257c7 2026-10-03 failgate: 99-play-share and 99-verdict-10min carry post-mark frames; attempt-3 notes (#433)
+5d5d2c51a5 2026-10-03 fold: lane/pathfind (offline) -- pathfind: a screen-reading agent that drives a title from boot into gameplay
+9d1155f919 2026-10-03 fold: lane/greensize303 (offline) -- Size the green-block FMV defect (#303): 2 titles, neither blocked in gameplay; #303 waits
+c99506ec90 2026-10-01 fold: lane/collapse433 (offline) -- collapse433: Battlefield 2 on the Nova is GPU-bound in heavy views; the Thor collapses were heat
+8e3b1f2ad2 2026-10-01 fold: lane/localjobs (offline) -- localjobs: local, model-free replacements for the five GitHub-bound timers (#433)
+4f37bdfbc7 2026-10-01 fold: lane/titleroutes (offline) -- titleroutes: session 57 -- Super Monkey Ball Deluxe confirmed on the Nova, a premark.py timing bug fixed
+0595c03956 2026-09-28 lane.remote: #461 readers: the txh/txu/txr lines count per finish, not per flip
+c9a66088b9 2026-09-27 lane.pacing: sleep the frame limiter to its deadline, request 60 Hz for the game surface (#526)
+3866893d54 2026-09-26 #431: swap_interval.py -- read each title's swap interval from hakuX's hakuX-pace lines
+54aeec62d8 2026-09-25 board: a float impact ranks by value; an unreadable one is not a measured zero
+3914c81000 2026-09-24 docs/lanes/cloud190: reproduce the red index check on pristine master, and name its fix
+=== --grep -i 'display texture' (--all)
+=== --grep -i 'clear.*display' (--all)
+b038262185 2026-09-20 test: a scorer for the one X1A7 capture that shows the stored bytes
+a0c05ef6c3 2026-03-27 android: add clear code cache button in settings
+454f4b0f59 2025-07-09 hw/display: Allow injection of virtio-gpu EDID name
+e2665f314d 2020-11-29 target/mips: Alias MSA vector registers on FPU scalar registers
+8ec1415935 2020-07-13 vfio: fix use-after-free in display
+0b8f74488e 2018-11-06 update seabios to master snapshot
+429d3ae2c8 2018-06-20 seabios: update submodule to release 1.11.2
+67c4c2bd95 2016-01-12 vnc: clear vs->tlscreds after unparenting it
+=== --grep -i 'video mode' (--all)
+832cd70452 2025-06-11 seabios: update submodule to 1.17.0
+df8abbbadf 2021-10-07 macfb: add common monitor modes supported by the MacOS toolbox ROM
+bbcdeb623d 2019-03-05 vnc: fix update stalls
+d46b40fce2 2018-09-25 display/stdvga: add edid support.
+72d277a70e 2018-09-25 display/edid: add edid generator to qemu.
+765c942908 2018-05-22 hw/display: add new bochs-display device
+94ef4f337f 2016-05-17 vga: add sr_vbe register set
+ab9509ccea 2014-09-03 spice: make sure we don't overflow ssd->buf
+b91f93243b 2013-12-16 Merge remote-tracking branch 'spice/tags/pull-spice-1' into staging
+f1d3e586f0 2013-12-02 spice: flip streaming video mode to off by default
+898ae2846d 2013-09-04 sdl: Reverse support for video mode setting
+6f8111a16d 2013-04-16 Merge remote-tracking branch 'spice/spice.v69' into staging
+5c74fb27f9 2013-04-04 qxl: add 2000x2000 and 2048x2048 video modes
+eb2f9b024d 2013-03-25 hw/vmware_vga.c: various vmware vga fixes.
+e32c25b5f2 2012-10-30 qxl: call dpy_gfx_resize when entering vga mode
+e9c6149f6a 2012-05-24 vga: raise xres+yres limits
+758c309f0a 2010-10-25 seabios: Update to 0.6.1
+b6034a399e 2010-03-08 sdl: improve error message on fatal error
+=== --grep -i 'pcrtc' (--all)
+fcdce59bed 2026-09-24 docs/testing: the under-load read fixes the bit MASK, not the bit->engine map
+1eee7098f8 2026-09-20 docs/testing: NV_PMC_ENABLE under load, which retires the planned write
+50edeb5241 2026-09-20 nv2a_probe: refuse registers that point hardware at memory
+2bbfef444c 2026-09-19 board: wave 123 -- retire vblank65 and diagdump77, close #65, dispatch diagsoak77 for #77
+f497b85c81 2026-09-19 board: #65 gets a lane for its four remaining defects
+3383bc9eec 2026-09-13 nv2a: defer_cap 15 -> 12 in unlock mode, at the knee rather than at a margin [skip ci]
+64c9f000d2 2026-09-13 nv2a: one VBLANK source in simple mode, and a jitter figure that is written [skip ci]
+71ee02dd23 2026-09-13 nv2a: measure the VBLANK's phase, not just its rate, and attribute the coalescing [skip ci]
+413c871e84 2026-09-13 nv2a: one VBLANK source in simple mode, and a jitter figure that is written [skip ci]
+fc59b50726 2026-09-13 nv2a: measure the VBLANK's phase, not just its rate, and attribute the coalescing [skip ci]
+b80492f6dd 2026-09-12 nv2a: count NV_PCRTC_RASTER reads, because ours is not a scanline [skip ci]
+56be1278e4 2026-09-12 nv2a: measure the VBLANK the guest sees, not the one we scheduled [skip ci]
+6598c032cc 2026-09-12 nv2a: count NV_PCRTC_RASTER reads, because ours is not a scanline [skip ci]
+5309ae3957 2026-09-12 nv2a: measure the VBLANK the guest sees, not the one we scheduled [skip ci]
+318eabae51 2026-03-31 revert VBLANK/NOP/flip safety valves — not needed, caused regressions
+4b70acfb85 2026-03-31 nv2a: flip stall auto-completion, NOP timing, and simple VBLANK mode
+098baf16e9 2026-03-10 vk: add adaptive frame skipping to maintain game speed when lagging
+0433c5e6bc 2020-10-25 nv2a: Simulate PCRTC_RASTER register
+=== --grep -i 'start address' (--all)
+579be921f5 2025-11-07 hw/display/exynos4210_fimd: Account for zero length in fimd_update_memory_section()
+b2d0bf872d 2025-11-03 hw/hppa: Enable LASI i82596 network on 715 machine
+b74d843f7b 2025-09-23 acpi/ghes: Use HEST table offsets when preparing GHES records
+77707bfdf8 2025-07-06 target/riscv: Fix pmp range wraparound on zero
+221d22d830 2025-05-23 hw/arm/aspeed_ast27x0: Fix unimplemented region overlap with vbootrom
+5071c22910 2025-05-15 test/qtest/hace: Add tests for AST2700
+4f4e25507d 2025-05-15 test/qtest/hace: Add tests for AST1030
+a3e7f6d05d 2025-05-15 test/qtest/hace: Adjust test address range for AST1030 due to SRAM limitations
+6262c8addc 2025-05-15 hw/misc/aspeed_hace: Add support for source, digest, key buffer 64 bit addresses
+8dd163f915 2025-03-04 hw/arm/aspeed_ast27x0.c Fix boot issue for AST2700
+1e86400298 2024-12-19 s390x/s390-virtio-ccw: prepare for memory devices
+973a724eb0 2014-12-29 vga: implement horizontal pel panning in graphics modes
+9b53b95a1c 2014-12-29 vga: mask addresses in non-VESA modes to 256k
+ad4feaca61 2023-10-30 file-posix: fix over-writing of returning zone_append offset
+3307e08c6f 2023-06-29 accel/tcg: Fix start page passed to tb_invalidate_phys_page_range__locked
+4f9a4cd37e 2022-12-18 Merge tag 'pull-hex-20221216-1' of https://github.com/quic/qemu into staging
+564b2040a6 2022-11-10 Hexagon (target/hexagon) Use direct block chaining for tight loops
+0c2994ac90 2022-08-11 dump: Rework get_start_block
+d057aaece7 2022-09-14 hw/riscv: opentitan: Fixup resetvec
+ad40be2708 2022-01-12 target/riscv: Support start kernel directly by KVM
+13d63de59b 2021-12-17 ppc/ppc405: Rework FW load
+f14fb6c2db 2021-03-09 dma: Introduce dma_aligned_pow2_mask()
+0436c55edf 2021-03-08 Merge remote-tracking branch 'remotes/bonzini-gitlab/tags/for-upstream' into staging
+e20e182ea0 2021-03-02 x86/pvh: extract only 4 bytes of start address for 32 bit kernels
+64ea2d9f74 2021-02-16 hw/sd: sd: Fix address check in sd_erase()
+ccc5ccc17f 2021-01-08 linux-user/mmap: Avoid asserts for out of range mremap calls
+38bc4e34f2 2020-10-13 hw/riscv: Load the kernel after the firmware
+9e54dee71f 2020-07-28 hw/arm/smmu-common: Manage IOTLB block entries
+9ef82119b1 2020-07-28 target/riscv: Fix the translation of physical address
+b25fbd6a13 2020-07-17 pseries: Update SLOF firmware image
+aeb07b5f6e 2020-07-14 Merge remote-tracking branch 'remotes/alistair/tags/pull-riscv-to-apply-20200713' into staging
+cfad709bce 2020-07-06 target/riscv: Fix pmp NA4 implementation
+8590f53661 2020-07-01 RISC-V: Support 64 bit start address
+e46c0b18cf 2020-05-13 qemu-img: refactor dump_map_entry JSON format output
+25aa6b3718 2020-02-18 memory: Fix start offset for bitmap log_clear hook
+3e5da78157 2020-02-18 memory: Fix start offset for bitmap log_clear hook
+71e415c8a7 2020-01-03 tpm-ppi: page-align PPI RAM
+9a4bb8391f 2019-06-24 intel_iommu: Fix unexpected unmaps during global unmap
+97256e799f 2019-05-02 tests: acpi: add a way to start tests with UEFI firmware
+06164cc402 2019-02-20 contrib/elf2dmp: add kernel start address checking
+567d7d3e6b 2019-02-21 vfio/common: Work around kernel overflow bug in DMA unmap
+4856c2c70c 2019-02-14 Merge remote-tracking branch 'remotes/palmer/tags/riscv-for-master-4.0-sf1' into staging
+5010e5c4f4 2019-02-11 target/hppa: move GETPC to HELPER() functions
+40e46e516d 2019-01-24 riscv: Ensure the kernel start address is correctly cast
+5edc406e1b 2018-01-20 hvf: Fix bug that fails to find slot on border.
+a98ff0ec2b 2018-07-09 Merge remote-tracking branch 'remotes/dgibson/tags/ppc-for-3.0-20180709' into staging
+33159dd7ce 2018-07-04 sm501: Fix support for non-zero frame buffer start address
+52c95cae4e 2018-03-11 pc-dimm: make qmp_pc_dimm_device_list() sort devices by address
+0f79bfe38a 2018-01-25 Merge remote-tracking branch 'remotes/vivier2/tags/linux-user-for-2.12-pull-request' into staging
+191f59dc17 2018-01-11 vga: check the validation of memory addr when draw text
+95e6d4305a 2018-01-07 linux-user/mmap.c: Avoid choosing NULL as start address
+4a42fa0ee2 2017-11-14 acpi: Update TPM2 ACPI table to more recent specs
+4f6482bfe3 2017-11-30 s390x/pci: search for subregion inside the BARs
+7fb394ad8a 2017-07-21 xen-mapcache: Fix the bug when overlapping emulated DMA operations may cause inconsistency in guest memory mappings
+1045e3cdaf 2017-07-05 hw/s390x/ipl: Fix endianness problem with netboot_start_addr
+8a3c3d996e 2017-04-28 hax: Fix memory mapping de-duplication logic
+698feb5e13 2017-04-07 memory: add section range info for IOMMU notifier
+99b72e0fbb 2016-11-01 pc-bios/s390-ccw: Use the ccw bios to start the network boot
+f38b5b7fc4 2016-10-20 s390x/ipl: Load network boot image
+f153b563f8 2017-01-25 cirrus: handle negative pitch in cirrus_invalidate_region()
+=== --grep -i 'pvideo' (--all)
+5f89032611 2026-09-26 lane.fps382: ftpvideo.py reads the console's address from console.addr
+de1c93d244 2026-09-25 nv2a/vk: #303 probe v2 -- count the green in the guest's ARGB FMV buffer
+4fe77d5830 2026-09-25 nv2a/vk/display: #303 probe -- guest bytes behind the bound video sources
+74dd4d8f5a 2026-09-25 xbox: correct PVIDEO's exclusion reason (#296); add a RenderTextureLoop leg (#294)
+aa0a15bf29 2026-09-25 xbox: register a complete silicon reference set at the pinned tests commit
+c2493500cc 2026-09-25 xbox: silicon references for Fog planar vsh and Surface as vertex array
+f5d6c8939a 2026-09-25 xbox: register silicon references for the three suites nothing has captured
+2f96844a49 2026-09-25 Merge origin/master into claude/handoff-on-hardware
+894d4c1fd9 2026-09-24 docs/testing: remediate pass 1 on #216 -- unbounded marker, strike the overlay row
+33f7b8273a 2026-09-24 docs/testing: handoff for on-hardware work, and the instrument it depends on
+fcdce59bed 2026-09-24 docs/testing: the under-load read fixes the bit MASK, not the bit->engine map
+42740526d7 2026-09-20 docs/testing: 0x13111113 is the implemented-bit mask, and pbkit writes all-ones
+1eee7098f8 2026-09-20 docs/testing: NV_PMC_ENABLE under load, which retires the planned write
+a89e498e76 2026-09-20 docs/testing: verify A2 and A5 -- three of five now measured on both sides
+bc34421694 2026-09-20 docs/testing: verify gap list A against the emulator, two of five
+05adaad5d3 2026-09-20 docs/testing: where this emulator differs from the console
+c77bbaf927 2026-09-20 nv2a_probe: sweep the right addresses, and refuse to call an empty run a run
+50edeb5241 2026-09-20 nv2a_probe: refuse registers that point hardware at memory
+912f58a1c1 2026-09-19 fold: PR #117 lane/cloud-110 -- lane/cloud-110: PVIDEO overlay size/pitch limits -- registered expectation for a hardware run (#110)
+f26a1d62cc 2026-09-18 pvideo #110: register the overlay size/pitch expectation a hardware run needs
+2db97dbd18 2026-09-18 lane.cloud-110: NOTES -- #110's premise is wrong, the overlay is implemented in the display path
+193105b63d 2026-09-13 test: patch the prebuilt XBE to lift the interactive-only filter [skip ci]
+c700b2a647 2025-09-16 nv2a: Fix fixed point NV_PVIDEO_POINT_IN handling
+fe030fdac9 2025-09-16 nv2a: Fix handling of PVIDEO color key red channel
+1fb9e050a4 2025-09-16 nv2a: Ignore alpha when processing PVIDEO color keying
+d054b366f8 2024-08-01 nv2a/vk: Add pvideo support
+ea0a906707 2022-07-06 nv2a: Handle value in NV_PVIDEO_STOP writes
+f29c2ff42c 2022-07-11 nv2a: Handle PVIDEO ds_dx and dt_dy registers
+9fd957d950 2022-07-08 nv2a: Add hack for NV_PVIDEO_SIZE_IN sentinel
+a675666051 2022-07-08 nv2a: Handle SIZE_IN > SIZE_OUT case
+2d50239832 2022-05-10 nv2a: Fix subscreen pvideo overlay position
+6b821d2062 2022-01-22 nv2a: Implement pvideo color keying
+48c1720da8 2021-03-01 nv2a: Support PVIDEO overlays again
+=== --grep -i 'overlay' (--all)
+68b858642f 2026-10-16 frontends1016: NOTES.md -- why attempt 2/3 stalled, merge master, Daijisho blocked
+d220b369fa 2026-10-16 perflog1016: static checks of the pause menu's contract, queue record, owner-capture NEED (#433)
+4bf47129b1 2026-10-16 fold: lane/titlekey1016 (offline) -- One display name per title_id, and nothing keyed by a name (#433)
+bea772d03d 2026-10-16 titlekey1016: one name-priority rule in Catalog, drift check in `check` (#433)
+e89540cf3c 2026-10-13 board: playsecs1013 takes MainActivity.kt, not PauseMenuOverlay.kt
+f9a39121be 2026-10-13 board: holdinput1013 released; start holdfollow1013 and playsecs1013
+f327d67b8f 2026-10-13 fold: lane/holdinput1013 (offline) -- pathfind: a drive hold proves its gas, gets a stuck vehicle out, acts on an on-screen prompt, and tries every unstick rung; the verdict does not read a parked vehicle as travel (#433, 0.5)
+6cbb32ce05 2026-10-13 holdinput1013 Part D: no measure separates a parked vehicle from a real drive at route-frame cadence (#433)
+1e97a7e0dd 2026-10-12 fold: lane/debugcap1012 (offline) -- debugcap1012: Debug Capture is off by default in versioned releases (#433, 0.5)
+79f3c4dea8 2026-10-12 fold: lane/burnoutunlock1012 (offline) -- burnoutunlock1012: Burnout Revenge's play loop can't get back into a race after a medal (#433, 0.5)
+e318ae70b5 2026-10-12 fold: lane/savestate1011 (offline) -- savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433)
+d5da10732f 2026-10-05 pathfind: NFL Blitz 2002 CLEAR (fps), flicker unchecked: 600 s held, 5-min quarter set via OPTIONS, play-call overlays counted as play (OUTBOX, hint, run record) (#433)
+10f14d301d 2026-10-04 fold: lane/libfolders (offline) -- libfolders (#433): the game library takes more than one games folder
+9550493846 2026-10-02 fold: lane/bf2push656 (offline) -- bf2push656: pushing BF2's changed uniform rows halves its UBO binds and saves no GPU time (#656)
+b80a92b61f 2026-10-02 bf2push656: judged -- binds per draw halved, heavy GPU unchanged; revert the overlay, write up (#656)
+07b58193dc 2026-10-02 pathfind: Bruce Lee false pass caught in review; letterbox veto, 1.5x-control probe, 30-s recheck, FPS overlay is not a HUD
+7efa13af89 2026-10-02 fold: lane/routedriver (offline) -- routedriver: a screen-aware play driver, replacing the blind play loop (#433)
+db0f71230e 2026-09-27 usbdialog: after the dialog BACK, resume a paused hakuX or abort (pass-1 MEDIUM 1)
+c037e7003a 2026-09-27 titleroutes: the Azurik and D&D Heroes soaks are void (no input focus on the Thor)
+1805b012e0 2026-09-27 displayguard: refuse a soak whose display 0 is covered; void black-frame runs (#494)
+b1eb34301b 2026-09-27 lane.xbox: the v3 dry run's data is void (a full-screen overlay covered hakuX on the Thor from 11:06)
+a8a5108d8e 2026-09-25 docs/lanes/ghoul311: outcome -- culprit 21cacb354a (host driver, lane reads), fix is lane.fix311's; TCG models refuted
+1d8fbb74d0 2026-09-25 docs/lanes/ghoul311: attempt 4 -- the pair is both bad, the re-arm model is refuted, round 3 read good
+2f96844a49 2026-09-25 Merge origin/master into claude/handoff-on-hardware
+894d4c1fd9 2026-09-24 docs/testing: remediate pass 1 on #216 -- unbounded marker, strike the overlay row
+33f7b8273a 2026-09-24 docs/testing: handoff for on-hardware work, and the instrument it depends on
+390d35807f 2026-09-21 xbox: gate the MCPX overlay on the machine type, not the BIOS size
+7845556f8d 2026-09-20 audit: pass 2b of PR #187 -- cloud-10's Y16 class, over the pass-2 remediation
+47921a9f53 2026-09-20 remediate: #187 pass 2 -- there is text drawn inside the measured quads
+05adaad5d3 2026-09-20 docs/testing: where this emulator differs from the console
+4fbc8e1a73 2026-09-20 audit: pass 2 of PR #187 -- cloud-10's Y16 class
+50edeb5241 2026-09-20 nv2a_probe: refuse registers that point hardware at memory
+912f58a1c1 2026-09-19 fold: PR #117 lane/cloud-110 -- lane/cloud-110: PVIDEO overlay size/pitch limits -- registered expectation for a hardware run (#110)
+f26a1d62cc 2026-09-18 pvideo #110: register the overlay size/pitch expectation a hardware run needs
+2db97dbd18 2026-09-18 lane.cloud-110: NOTES -- #110's premise is wrong, the overlay is implemented in the display path
+09d522a9c4 2026-09-18 docs: audit pass 2 over #84/#88 -- code clean, fold the prediction with it [skip ci]
+d6aa26ac77 2026-09-14 tcg: count what the inv_htable recycle cache costs, for M5's bound [skip ci]
+99644c604a 2026-09-14 tcg: #68's arm is not void -- the instrument checked a retired identity [skip ci]
+c90d12d4c9 2026-09-14 docs: a remediation is a claim, and M5 is folded unremediated on purpose [skip ci]
+2bc4389cf5 2026-09-14 Land the accel/tcg HIGH, and one MEDIUM is declined with a reason [skip ci]
+b31c484c49 2026-09-14 tcg: stop longjmping into a returned frame from the recycle path [skip ci]
+a30b6a80a6 2026-09-14 test: file #81, claim lane.tcgfix for the accel/tcg HIGH, wave 47 [skip ci]
+ec5de2ac63 2026-09-14 Land audit pass 1 on accel/tcg: 1 HIGH, 6 MEDIUM, 7 LOW [skip ci]
+70c94ded2a 2026-09-14 audit: pass 1 over accel/tcg, the core the first audit declined [skip ci]
+2af6def68a 2026-09-14 tcg: hash without CF_INVALID on removal, unstranding #73's blocks [skip ci]
+937848c9e7 2026-09-14 tcg: restore the range test on invalidation, guarded for superblocks [skip ci]
+a94386a3c8 2026-09-14 tcg: hash without CF_INVALID on removal, unstranding #73's blocks [skip ci]
+bc93e1bf10 2026-09-14 test: log the USB chooser as a paper cut, since it outlives any one session [skip ci]
+88cadb7225 2026-09-13 docs: #77's Nova blocker was false, and the real one is the workload [skip ci]
+36544da814 2026-09-13 Merge #52's Cn-half retry (six legs PASS) and #50's race-or-device pair
+41729df90f 2026-09-13 docs: a failed guard can be the better measurement -- diff it by region [skip ci]
+2aa701028d 2026-09-13 #76: the label check does not apply to a depth capture [skip ci]
+a772b40adb 2026-09-12 docs: a second paired draw kills both readings of the pair rule [skip ci]
+435253e363 2026-09-12 test: measure where silicon samples a colour, per axis, and on what grid [skip ci]
+7844c343ba 2026-09-12 docs: a second paired draw kills both readings of the pair rule [skip ci]
+e695ae3576 2026-09-12 test: measure where silicon samples a colour, per axis, and on what grid [skip ci]
+4a6a98dce4 2026-09-13 test: scope the label check to the label, so a white palette stops voiding a row [skip ci]
+0760a58f2e 2026-09-13 test: register #41's prediction -- the mechanism logged, not inferred from pixels [skip ci]
+906ab0395f 2026-09-13 nv2a/vsh: #41's RADIAL coordinate is the stale generator value, and it is computable [skip ci]
+284e101885 2026-09-13 test: score the line rules over the whole scene, not only the decisive pixels [skip ci]
+=== --grep -i 'yuv' (--all)
+9d1155f919 2026-10-03 fold: lane/greensize303 (offline) -- Size the green-block FMV defect (#303): 2 titles, neither blocked in gameplay; #303 waits
+0d8c3c5e96 2026-09-26 board (hostops): #10/#423 blockers: lane.yuv10 retired; parked after 0.5
+24c8a4ed31 2026-09-26 board (hostops): retire lane.claimrace (PR #446 folded 7946f52ab2) and lane.yuv10 (PR #419 folded 09f7a7f030)
+09f7a7f030 2026-09-26 fold: PR #419 lane/yuv10 -- lane.yuv10: #10 SET_CONTROL0 colour-space conversion as silicon measured it
+2367cfefb4 2026-09-26 audit: PR #419 yuv10 pass 2 -- index regenerated at c44fd699bf, CI green; clean
+009d1a2269 2026-09-26 audit: PR #419 yuv10 pass 2 -- pass-1 scenarios closed; head's nv2a index is stale (CI check red)
+268f74d5e5 2026-09-26 lane.yuv10: convert under SCRYSCB_TO_RGB; store undefined CSC values as 3
+22a3bd63e2 2026-09-26 Merge origin/master into lane/yuv10 (index-only conflict: master's nv2a_index.json, regenerated below)
+8512772cab 2026-09-26 audit: PR #419 yuv10 pass 1 -- one MEDIUM (SCRYSCB leaves YUV unconverted), four LOW
+fe175642a2 2026-09-26 Merge origin/master into lane/yuv10 (index-only conflict: master's nv2a_index.json, regenerated below)
+bd811ee3d3 2026-09-26 board tick (job.board): release yuv10 files at ready (PR #419)
+9536845ce5 2026-09-26 lane.yuv10: arm PASS (4 x 111,496 -> 1,576), NOTES
+afe475f91d 2026-09-26 Merge remote-tracking branch 'origin/master' into lane/yuv10
+e6dd8d4c8e 2026-09-26 board tick (job.board): #423 blocked on psh.c held by lane.yuv10 (PR #419)
+aa2b0f84d9 2026-09-26 board tick (job.board): release lane.foldcancel's files at ready (PR #415); #10 blocked_on lane.yuv10 in flight (fixed-part cannot be available)
+5cb22726fa 2026-09-26 lane.yuv10: NOTES, waiting on the arm
+a5f1374543 2026-09-26 lane.yuv10: register yuv10-csc (43dc17e38b vs b4850a34eb), NOTES
+43dc17e38b 2026-09-26 lane.yuv10: NOTES stub, model dry run reproduces 1,688
+9f5a3dfc98 2026-09-26 fold: PR #411 lane/xbox-csc10 -- #10 YUV class: SET_CONTROL0's colour-space field on silicon -- every stage converted; bump and luminance read raw
+1e76ca2962 2026-09-26 hostops: #10 dispatch_state empty (fixed-part; covered by lane.yuv10)
+b72cd02c9f 2026-09-26 hostops: lane.yuv10 (#10 YUV fix, on lane.xbox's request); #10 unblocked; pgraph.c lent from ring53impl for SET_CONTROL0
+1e6c45dfbd 2026-09-26 #10 YUV class: SET_CONTROL0's colour-space field measured on silicon
+568c9328c3 2026-09-26 #10 YUV class: register what SET_CONTROL0's colour-space field does to texture samples
+1c67ab0d91 2026-09-25 docs/lanes/fmv303: the green is Cr=0 with Y and Cb intact, not our YUV converter
+78e405581f 2026-09-19 lane.hilodot10: #10 -- name the mechanism for the Bump env lum luminance classes
+8669a52dc8 2026-09-19 board: dispatch lane.hilodot10 on #10, wave 124
+4cd5807c2a 2026-09-19 board: brief #10's Y16 characterization to cloud (analysis-only, YUV set aside)
+a9ad4012c2 2026-09-13 docs: #10's luminance-literal arm PASSES -- 108,280 px, mechanism leg checked [skip ci]
+de9d2e299c 2026-09-13 docs: #31's blocker was false and #10's arm had already passed [skip ci]
+e8f391846a 2026-09-13 Merge #31: the W-slope anchor row, the first arm this issue has ever had
+93196d2d05 2026-09-13 #10: a sign flag on a swizzle literal has nothing to sign [skip ci]
+f69b5c4067 2026-09-12 docs: record the solved R16B16 dot-product class on #10's index entry [skip ci]
+4b41a1b5c3 2026-09-12 docs: record the solved R16B16 dot-product class on #10's index entry [skip ci]
+fac2659237 2026-09-12 docs: #4 confirmed on the device lane, with a proof that needs no arithmetic [skip ci]
+02a475e93e 2026-09-12 docs: #4 confirmed on the device lane, with a proof that needs no arithmetic [skip ci]
+fe1cde4909 2026-09-12 nv2a/gl: a converted texture buffer is four bytes per pixel on every platform [skip ci]
+966784d004 2026-09-12 test: #10's three texture classes are in psh.c, not the decode -- measured [skip ci]
+5a5e4ca1c5 2026-09-12 docs: #10's three texture-input classes are not in the decode, measured [skip ci]
+564af1f1a7 2026-09-12 docs: #10's three texture-input classes are not in the decode, measured [skip ci]
+b8ef5d834d 2026-09-12 test: #10 is texture decode plus the #38 floor, not a bump defect [skip ci]
+5497784d0f 2026-09-12 docs/testing: #10 is four classes, and the bump arithmetic is not one of them [skip ci]
+7037d18558 2026-09-12 docs/testing: #10 is four classes, and the bump arithmetic is not one of them [skip ci]
+37ee9f108f 2026-09-12 test: #4 measured out -- its headline number was #27's contamination [skip ci]
+c0d7241c97 2026-09-12 docs: #4's nine-million-channel figure is the loop contamination [skip ci]
+ece70fab05 2026-09-12 docs: #4's nine-million-channel figure is the loop contamination [skip ci]
+77a2c7a6bb 2026-09-12 Merge the desktop lane: 78 commits, verified to build, Adreno verification next
+01151f7fc6 2026-09-12 docs: the corpus TSV is wrong for Texture_render_target, by sixteen times [skip ci]
+cce62c20b3 2026-09-12 docs: 57% of the corpus is one-step, and re-ranking on the rest moves the board [skip ci]
+e758210f07 2026-09-12 docs: the non-YUV bump defect is a vertical-only sub-pixel displacement [skip ci]
+e2a400bf9e 2026-09-12 docs: hardware does not output TEX1 at all for a YUV bump source [skip ci]
+feec2f27de 2026-09-12 docs: the YUV bump hypothesis tested; that channel assignment is eliminated [skip ci]
+9641fc05c7 2026-09-12 docs: #19 measured — 2 contamination, 52 missing-state, not a third of failures
+54d70e5810 2026-09-12 docs: the bump offsets come from blue and green, not red and green [skip ci]
+351264aba7 2026-09-12 docs: the bump stage does not colour-convert a YUV source [skip ci]
+57d12c8501 2026-09-12 nv2a: take the remote lane's YUV decode, which rounds each term separately
+52defa5bf1 2026-09-12 nv2a: hardware rounds each YUV term separately, not the sum
+dfe67f3562 2026-09-12 docs: the YUV geometry is exact, so the conversion is the defect [skip ci]
+1886a50b91 2026-09-12 docs: the bump, fog and cubemap queue worked end to end [skip ci]
+146322c3a5 2026-09-11 nv2a: sign a bump environment map's channels the way the hardware does
+5b380c36c6 2026-09-11 nv2a: sign a bump environment map's channels the way the hardware does
+=== --grep -i 'SDLSurface' (--all)
+c9a66088b9 2026-09-27 lane.pacing: sleep the frame limiter to its deadline, request 60 Hz for the game surface (#526)
+=== --grep -i 'surfaceCreated' (--all)
+=== --grep -i 'surfaceChanged' (--all)
+=== --grep -i 'eglSwap' (--all)
+=== --grep -i 'title start' (--all)
+=== --grep -i 'launch' (--all)
+9abd80e90c 2026-10-17 fold: lane/bindpose1017 (offline) -- bindpose1017: THPS4 and Max Payne 2 bind pose: the stock Adreno driver, not the code (#1043)
+443dc1fbf7 2026-10-17 fold: lane/relnotes1017 (offline) -- relnotes1017: release notes carry only features and bug fixes (#433)
+9b67d01cc5 2026-10-17 board: [lane.dispatchdoctor1017] row -- dispatcher stages the title and a Sonnet doctor resolves launch failures (owner 10-17)
+0d9b9b6ea4 2026-10-16 fold: lane/frontends1016c (offline) -- frontends1016c: stock launcher tested on the Nova, Daijisho page rewritten for users (#433)
+35f7cde579 2026-10-16 frontends1016c: stock launcher tested on the Nova, Daijisho page rewritten for users (#433)
+718f8dc434 2026-10-16 territory: frontends1016b released (folded); lane.frontends1016c started for stock launcher + Daijisho docs (#433)
+fb6ebcff40 2026-10-16 fold: lane/frontends1016b (offline) -- frontends1016b: Pegasus tested, Daijisho integrated via its Apps tab (#433)
+bc52407fca 2026-10-16 frontends1016b: Daijisho integrated via its Apps tab, README index updated
+8cd408688e 2026-10-16 fold: lane/icon1016 (offline) -- icon1016: hakuX CE app icon (#433)
+56fdef2c85 2026-10-16 fold: lane/x1port1012-halo (offline) -- x1port1012-halo: #939 (b) root-caused and fixed behind HAKUX_FIST_ROUND=1 (verified on the Nova, run 13); (a), the layer missing on the ring's dark side, is NOT fixed
+deb99b09e2 2026-10-16 frontends1016b: Pegasus tested on the Thor, draft PR + notes
+beb9daa755 2026-10-16 fold: lane/logo1016-banner (offline) -- logo1016-banner: the new hakuX CE banner at the top of the README
+3ceee93982 2026-10-16 fold: lane/ce1016 (offline) -- ce1016: display name becomes hakuX CE (Community Edition) -- docs pass
+545886f9c0 2026-10-16 fold: lane/frontends1016 (offline) -- Wire hakuX into four launchers (ES-DE, Daijisho, Pegasus, stock), tested on the Thor
+3c13d4b6ae 2026-10-16 frontends1016: PR.md ready -- all four launchers written up
+c1c41f70db 2026-10-16 frontends1016: docs/frontends/* -- stock launcher tested, all four written up
+f1d35e0e16 2026-10-16 frontends1016: NOTES.md -- Pegasus blocked, APK only ever comes from GitHub
+d220b369fa 2026-10-16 perflog1016: static checks of the pause menu's contract, queue record, owner-capture NEED (#433)
+9681af2dbe 2026-10-16 frontends1016: NOTES.md -- ES-DE verified, 0.5.0 upgrade blocked by debug-signed install
+94c1fa3141 2026-10-16 perflog1016: pause menu: Perflog switch, Mark this moment, Frame dump (#433)
+24587895b1 2026-10-16 perflog1016: run-time perflog switch in debug.h, host selftest (#433)
+76bef8b162 2026-10-14 fold: lane/savestateconv1014 (offline) -- savestateconv1014: R3 admits --from-state; Part B names two blockers, with evidence (#433)
+d0102bb88d 2026-10-13 fold: lane/driverline1013 (offline) -- driverline1013: the compatibility page and README name the GPU driver the ratings were measured on (#433, 0.5)
+9557f484ad 2026-10-13 fold: lane/docsrewrite1012 (offline) -- docsrewrite1012: the public docs rewritten for players, each with a Last updated line (#433, 0.5)
+f3acdd0912 2026-10-13 nv2a: HAKUX_XVSS switch for the v0-hash skip (#939)
+172d94de1f 2026-10-13 vk: a rejected pipeline cache file starts an empty cache (0.5.1 A9)
+6f560dc44e 2026-10-12 fold: lane/changelog1012 (offline) -- changelog1012: changelog to 0.5.0, version numbers for official-build users, credits (#433, 0.5)
+09dc30de8e 2026-10-12 fold: lane/boxart1012 (offline) -- boxart1012: box-art lookup is opt-in, asked at setup (#433, 0.5)
+19c6021c9c 2026-10-09 fpstelemetry1008b attempt 3: read the two completed telemetry runs attempt 2's dying session left unreviewed, write the cause table, mark ready
+1aa9e37a40 2026-10-06 pathfind: OUTBOX for Strike Force FAIL, Blowout dark-scene check, Batman launch blocked (#433)
+10f14d301d 2026-10-04 fold: lane/libfolders (offline) -- libfolders (#433): the game library takes more than one games folder
+dfa6d4c044 2026-10-04 Game library: take several games folders, not one
+40b62fd533 2026-10-04 fold: lane/thorbottom800 (offline) -- thorbottom800: full-screen game on the Thor's bottom screen (#800)
+da6714e327 2026-10-03 pathfind: WAITING on arms run 1791042391 on the Nova; Panzer held run to re-launch (#433)
+6452b32a9f 2026-10-03 pathfind: attempt 5 -- WAITING met (lanelocal run DONE); NOTES why the last attempt stopped; Panzer held run launched (#433)
+5661db4f2b 2026-10-02 fold: lane/uberdefault569 (offline) -- lane.uberdefault569: the ubershader on by default, a settings toggle, and a notice when it is off (#569, #672)
+4f8700dc14 2026-10-02 territory: add [lane.buildstamp] row (RUNNING WITH NO TERRITORY ROW)
+7e1b471ef1 2026-10-02 fold: lane/stallmeasure569 (offline) -- lane.stallmeasure569: does the shipped shader pre-build remove first-play stalls? (#569)
+ca41344ce8 2026-10-02 stallmeasure569: pre-build removes replay stalls, not first-play ones (#569)
+dbf2ebe915 2026-10-02 fold: lane/blinx2input (offline) -- blinx2input: Blinx 2 "never moves" is Test 1's right-stick camera gate, not an input defect
+6b0c4a131f 2026-10-02 fold: lane/pathfind (offline) -- pathfind: a screen-reading agent that drives a title from boot into gameplay
+6c2b801c3b 2026-10-02 fold: lane/stopmarker (offline) -- stopmarker: lane.sh refuses to start or resume a lane the owner stopped
+b3900a8840 2026-10-02 stopmarker: lane.sh start/resume refuse a lane the owner stopped (exit 77)
+b71f92a12a 2026-10-02 fold: lane/routedriver2 (offline) -- routedriver2: the screen-aware driver past its two proof titles (#433)
+dd3c415756 2026-10-02 drive: no press while hakuX is not the focused app (Buffy b4: after an emulator abort, an A launched Calendar) (#433)
+36c16a720f 2026-10-02 fold: lane/ibcache (offline) -- lane.ibcache: inline jump-cache probe at lookup_and_goto_ptr, opt-in (HAKUX_IBC=1) (#507)
+c99506ec90 2026-10-01 fold: lane/collapse433 (offline) -- collapse433: Battlefield 2 on the Nova is GPU-bound in heavy views; the Thor collapses were heat
+4f37bdfbc7 2026-10-01 fold: lane/titleroutes (offline) -- titleroutes: session 57 -- Super Monkey Ball Deluxe confirmed on the Nova, a premark.py timing bug fixed
+21eff4e057 2026-10-01 titlestate: distinguish a bare title folder from a real save slot
+e999a849b2 2026-10-01 titleroutes: session 47 OUTBOX and PR.md; six re-screens/retries queued
+2a87446629 2026-10-01 titleroutes: session 47, read the eight pending results, author thps3.route
+a0b115c354 2026-09-30 fold: lane/titleroutes (offline) -- titleroutes: sessions 44-46 -- 187's route fixed, a mark audit that withdraws four Thor nominations, three new Thor routes
+b73367209a 2026-09-30 fold: lane/titleroutes (offline) -- titleroutes: session 45 -- stale work list refreshed (389 ISOs, 327 unrouted), seven Thor requests queued
+b1cea467c6 2026-09-30 fold: lane/shaderprebuild569 (offline) -- lane.shaderprebuild569: P3, pre-build known pipelines on a compile pool; save the pipeline cache during play (#569)
+43eb6c4626 2026-09-30 fold: lane/titleroutes (offline) -- titleroutes: session 44 -- six Thor screens read, a harness misdiagnosis found, four surveys queued
+7dc7053af1 2026-09-30 titleroutes: session 45, work list refreshed (389 ISOs, 327 unrouted), seven Thor requests queued (#397)
+56acf2f447 2026-09-30 titleroutes: session 44, six Thor/Nova results read, harness_health.py misdiagnosis found, four surveys queued (#397)
+68305202da 2026-09-30 lane.shaderprebuild569: register the DOA and Kabuki two-launch predictions; PR.md (#569)
+61e0edf87c 2026-09-27 android: per-title Turnip render mode, sysmem for DOA Ultimate and AUF (#474)
+4124a609e9 2026-09-27 thermal507: a cool-down gate before MAX: wait while xo-therm >= 65 C or a pause is set (#507)
+=== --grep -i 'startup' (--all)
+d0102bb88d 2026-10-13 fold: lane/driverline1013 (offline) -- driverline1013: the compatibility page and README name the GPU driver the ratings were measured on (#433, 0.5)
+e318ae70b5 2026-10-12 fold: lane/savestate1011 (offline) -- savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433)
+597df4af82 2026-10-11 fold: lane/gtasagpu1011 (offline) -- gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5)
+e53b9fa918 2026-10-11 gtasagpu1011: frame dump schema 8 -- non-surface texture readback, inline-array words, watchNN from startup (#433)
+7d574ece8b 2026-10-10 fold: lane/surfgpudefault1009 (offline) -- surfgpudefault1009: the surfgpu switch as a Graphics toggle, on by default (#433, 0.5)
+40b62fd533 2026-10-04 fold: lane/thorbottom800 (offline) -- thorbottom800: full-screen game on the Thor's bottom screen (#800)
+ddc61cb847 2026-10-04 android: start the window at 640x480 so a small panel is not shrunk to it (#800)
+4ac325bcd2 2026-10-04 thorbottom800: reproduce on the Thor's display 4; cause is the 640x480 startup shrink (#800)
+36038f098c 2026-10-02 fold: lane/snapdrive (offline) -- snapdrive: the dispatcher's script snapshot carries the screen-aware driver (#433)
+4f570d1b71 2026-10-02 dispatcher: the script snapshot carries the screen-aware driver (#433)
+42740526d7 2026-09-20 docs/testing: 0x13111113 is the implemented-bit mask, and pbkit writes all-ones
+4d7209c872 2026-09-19 desktop channel: a run subcommand, and NOTES for the whole channel
+f97c744429 2026-09-18 harness: Phase 0 -- private build tree, lane launcher, board job, session-start hook, CI gate restored [skip ci]
+ec39a652b8 2026-09-13 nv2a/vk: consult the push-constant guard where the template layouts are built [skip ci]
+4b349edd82 2026-09-13 test: claim lane.remediate1 for audit pass 1's HIGH, wave 36 [skip ci]
+945ed9d60f 2026-09-13 Land audit pass 1: 1 HIGH, 5 MEDIUM, 12 LOW [skip ci]
+934228e4b5 2026-09-13 test: read the retranslation counters off a soak, and state the rule first [skip ci]
+6b574e163e 2026-09-13 test: read the retranslation counters off a soak, and state the rule first [skip ci]
+70c46e3e1b 2026-09-13 mcpx/apu/vp: the rewind detector was reset in the wrong place (#73) [skip ci]
+ca0844d80b 2026-09-13 docs: both #73 soaks, and M5 recorded as the failure it is [skip ci]
+cdd052c130 2026-09-13 test: register the arm that decides whether mon_acc comes out (#73) [skip ci]
+37e1fabd89 2026-09-13 mcpx/apu/vp: the rewind detector was reset in the wrong place (#73) [skip ci]
+a278908fe2 2026-09-13 docs: both #73 soaks, and M5 recorded as the failure it is [skip ci]
+38c8e25c0b 2026-09-13 test: register the arm that decides whether mon_acc comes out (#73) [skip ci]
+07c83da3c7 2026-09-12 docs: register F1, that the level meter must not starve the thread it sits on [skip ci]
+fe30f8dadb 2026-09-12 test: check the snapshot the worker execs, not the source tree [skip ci]
+59e2e5a2ce 2026-09-12 test: pin an A/B pair by hash, and let a worker see a tree edit again [skip ci]
+25e5192856 2026-09-12 docs: register F1, that the level meter must not starve the thread it sits on [skip ci]
+32a0176586 2026-09-12 test: check the snapshot the worker execs, not the source tree [skip ci]
+f400fc1f2b 2026-09-12 test: output starvation measured at zero, and S2's second clause failed [skip ci]
+7a9e9ceda9 2026-09-12 test: output starvation measured at zero, and S2's second clause failed [skip ci]
+001e0285a7 2026-09-12 test: teach the dispatcher there are two handhelds
+ce9c4eecf8 2026-09-12 test: a dirty tree requeues a request, it does not fail it [skip ci]
+54a00d28fb 2026-09-12 apu: stop throwing away submix headroom on the monitor path
+780f2162c8 2026-09-12 apu: stop throwing away submix headroom on the monitor path
+9be5ca0c5d 2026-09-12 test: requeue orphans when the serve loop starts
+567067d2e4 2026-09-12 test: stream logcat through the dispatcher, so a dropped method is visible
+159ffb42d7 2026-09-12 docs: name four of the dropped methods from the test repo, and why the sweep is blocked
+9fa94bd70d 2026-09-12 docs: measuring one absent suite puts it third on the board [skip ci]
+03343203e2 2026-09-12 docs: the fifth-quad defect is not a dropped method
+976ed5eb3b 2026-09-11 docs: Galleon's ground cycles three tiling scales, and logcat is the wrong channel
+9edf95861d 2026-09-11 perf: instrument what a frame waits for, and who runs it
+8d12a494ce 2026-09-10 ui: only require a GL context when the GL renderer is in use
+c19074ed8a 2026-09-10 ci: gate the desktop build too, so shared headers have two checks
+9094472fae 2026-09-08 nv2a/vk: wipe the shader cache when the state layout changes
+a0c05ef6c3 2026-03-27 android: add clear code cache button in settings
+c1474b4f72 2026-03-25 vk: remove unnecessary full GPU stall from surface upload
+d94f73c88a 2026-03-04 added skip startup animation option
+46228925ed 2025-12-08 vhost: Always initialize cached vring data
+421dcc8023 2025-11-03 aio: add errp argument to aio_context_setup()
+8c1fa9cbec 2025-11-09 target/hppa: Update SeaBIOS-hppa to version 20
+df32e5c568 2025-10-11 i386/cpu: Prevent delivering SIPI during SMM in TCG mode
+aa3c761c70 2025-09-15 tests/functional/x86_64: Accept a few locked pages in test_memlock.py
+190d5d7fd7 2025-09-11 Merge tag 'pull-request-2025-09-09' of https://gitlab.com/thuth/qemu into staging
+2fc170bcdc 2025-09-08 tests/functional: purge scratch dir on test startup
+ca18b336e1 2025-08-28 Merge tag 'pull-lu-20250828' of https://gitlab.com/rth7680/qemu into staging
+e872342837 2025-08-03 linux-user/arm: Remove a.out startup remenents
+9de40d7df3 2025-07-03 backends/igvm: Process initialization sections in IGVM file
+4c7f0976b0 2025-07-03 i386/sev: Refactor setting of reset vector and initial CPU state
+f6ccfd5d16 2025-03-16 alsaaudio: Set try-poll to false by default
+=== --grep -i 'boot' (--all)
+029987cd35 2026-10-17 bootstatic1017: open the lane claim (#433)
+9abd80e90c 2026-10-17 fold: lane/bindpose1017 (offline) -- bindpose1017: THPS4 and Max Payne 2 bind pose: the stock Adreno driver, not the code (#1043)
+c3660fdd86 2026-10-17 fold: lane/defaulton1017 (offline) -- defaulton1017: S2T_CVT, REPORT_EARLY and FLDCW_CHAIN on by default, after one default-on screen; IBC stays off (#1018)
+04b52ceab4 2026-10-17 defaulton1017: MKSM judged (MKF, MKE hit; FL miss, 131k precision flips at boot); the registered conditional row MKC (FLDCW_CHAIN=0) queued (#1018)
+fb0f075729 2026-10-16 halo1016: cinematic route, pilot prediction (frametrace split, sysmem leg), hxs metadata reader (#1018, #938)
+61ae61dd91 2026-10-16 fold: lane/visitordocs1016 (offline) -- visitordocs1016: security policy, code of conduct, getting your Xbox files
+ea6c5ce2e3 2026-10-16 fold: lane/selftestclean1011 (offline) -- selftestclean1011: selftest.sh removes its fake host when it passes (#433)
+cf4b6b9c38 2026-10-16 x1port1012: #939 fast-paths-off run read: fast paths out, bursts repeat exactly per boot (#939)
+d0eb2410b2 2026-10-13 setup: the flash ROM must be 256 KB, 512 KB or 1 MB (0.5.1 A5)
+09dc30de8e 2026-10-12 fold: lane/boxart1012 (offline) -- boxart1012: box-art lookup is opt-in, asked at setup (#433, 0.5)
+d8983519cb 2026-10-12 fold: lane/pubdocs1012 (offline) -- pubdocs1012: public docs pass for 0.5 (README, compatibility, limitations, attribution) (#433, 0.5)
+fed8ef666a 2026-10-12 docs: describe the 0.5 build accurately (README, compatibility, limitations, privacy)
+1f317671b7 2026-10-12 fold: lane/zetaroutes1012 (offline) -- zetaroutes1012: returning gameplay routes for Buffy, DOA3 and NG Black, then HAKUX_ZETA_D24=1 runs (#433, 0.5)
+755ac97c96 2026-10-12 fold: lane/pathfind (offline) -- pathfind: a screen-reading agent that drives a title from boot into gameplay
+957762cda0 2026-10-12 zetaroutes1012: compose the three returning routes; admit() finding -- DOA3/NGB goldens are data-only (no save dir), so their header state is `any` not `returning` (#433)
+b50516bd53 2026-10-12 zetaroutes1012: fix DOA3 boot-table cycle numbers (character select is cycle3 not cycle7, first KO is cycle5 not cycle11); fast-KO window tightened to ~6s (#433)
+f4a1c6df96 2026-10-12 fold: lane/pathclass (offline) -- pathclass: a local GPU screen-state classifier for pathfind (#433)
+6cbe97f90c 2026-10-12 zetaroutes1012: DOA3 and NG Black boot tables from the kept-profile survey runs (#433)
+52e1570ad4 2026-10-12 zetaroutes1012: open lane; Buffy boot table from the kept-profile survey run (#433)
+2219a61879 2026-10-12 fold: lane/pathclass (offline) -- pathclass: a local GPU screen-state classifier for pathfind (#433)
+e318ae70b5 2026-10-12 fold: lane/savestate1011 (offline) -- savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433)
+9fe1e198ad 2026-10-12 fold: lane/gtawedge1012 (offline) -- State: ready
+daa2f4dbe8 2026-10-12 gtawedge1012: wedge escape in the GTA III/VC play loops; fix GTA III's boot gate (#433)
+0bcc698efb 2026-10-11 savestate1011: the auto-load toast names Undo load as the way back to a fresh boot (#433)
+fefe83e884 2026-10-11 savestate1011: auto-load uses the shared newest-loadable pick; F5b runs the boot's auto-load function (#433)
+5326de78b2 2026-10-11 fold: lane/nfsaudio1011 (offline) -- nfsaudio1011: HAKUX_APU_PACE in apu.c, off by default -- pacing at the low watermark removes NFS Most Wanted's audio replays (#433, 0.5)
+121cde1e09 2026-10-11 savestate1011: save states as files, native side (#433)
+3ce6b6ac96 2026-10-11 fold: lane/nfsaudio1011 (offline) -- nfsaudio1011: NFS Most Wanted audio stutter -- the APU's bursts outrun the game's writer; pacing at the low watermark removes every replay (#433, 0.5)
+4c9132fa17 2026-10-11 fold: lane/gtaroutes1011 (offline) -- gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5)
+c975179b51 2026-10-11 fold: lane/profileconv1011 (offline) -- profileconv1011: gta-sa and amped2 measure on their golden profiles (#433)
+a1d2f5a63f 2026-10-11 gtaroutes1011: write gta-3.route and gta-vc.route from pathfind's recorded paths
+95d0893061 2026-10-11 nfsroute1011: status -- Step 3 offline work done, waiting on ref-staging fix
+9dc20e31f9 2026-10-10 fold: lane/postput1010 (offline) -- postput1010: post the guest's DMA_PUT store when pfifo.lock is busy, behind HAKUX_POSTED_PUT=1 (#433, 0.5)
+713cd67a8a 2026-10-10 postput1010: full-switch read -- A2'b void (route desync after pad.sh rc 124 in the boot); V now fails a boot input failure; A2'c queued (#433)
+071aea27ff 2026-10-10 fold: lane/gpupass1010 (offline) -- gpupass1010: NFS Most Wanted's GPU frame -- render mode A/B and the cold-start pass count (#433, 0.5)
+9fd2608f8f 2026-10-10 fold: lane/perdrawon1010 (offline) -- Lane: perdrawon1010       Issue: #433 (umbrella), none filed
+58c7e9b804 2026-10-09 fold: lane/surfdl1008 (offline) -- surfdl1008: does the NBA Live 05 surface-download finding generalise? NBA Live 06/07, Midnight Club 2 (#433, 0.5)
+84497c68a6 2026-10-09 surfdl1008 attempt 3: read both NBA Live 06/07 Nova results, full generalisation, PR ready (#433)
+98cde806bd 2026-10-05 pathfind: AMF Xtreme Bowling boot hang (vCPU pinned at 800151ed), NEW ISSUE with evidence; OUTBOX (#433)
+6f463a0ae2 2026-10-04 fold: lane/accuracy804 (offline) -- accuracy804: RalliSport's cars blink on alternate frames (#804): identified and fixed
+fbfbdd60d2 2026-10-04 fold: lane/toolsmith (offline) -- dispatcher: a soak from a pre-libfolders ref still finds its games folder
+976c5f60ab 2026-10-04 fold: lane/fmv303c (offline) -- 303: surface write-back probe for Spikeout's FMV green blocks (lane.fmv303c)
+793b82351b 2026-10-04 fold: lane/pathfind (offline) -- pathfind: a screen-reading agent that drives a title from boot into gameplay
+2f3ab728e4 2026-10-04 accuracy804: capture 4 on master booted; the dump run shows the rival body in 7/7 shots, no blink; capture 5 without the dump queued (#804)
+bec70891bb 2026-10-04 dispatcher: a soak gets the pre-libfolders gamesFolderUri back before it starts
+f83a4b0543 2026-10-04 lane.fmv303c: #303 cf328d86f7 pair never booted (pre-libfolders pref); re-register the wb probe arm on e2b045168a
+3fe51047d8 2026-10-04 fold: lane/pathfind (offline) -- pathfind: a screen-reading agent that drives a title from boot into gameplay
+4db9642680 2026-10-04 fold: lane/flicker801 (offline) -- flicker801: a flicker / geometry-instability detector for the Playable gate (#801)
+0c453c1357 2026-10-04 fold: lane/pathfind (offline) -- pathfind: a screen-reading agent that drives a title from boot into gameplay
+51305b71dd 2026-10-03 fold: lane/failgate (offline) -- failgate: a failed or unproven run goes for identification, not a re-run (#433)
+5d5d2c51a5 2026-10-03 fold: lane/pathfind (offline) -- pathfind: a screen-reading agent that drives a title from boot into gameplay
+5426f4d874 2026-10-03 fold: lane/savestate433 (offline) -- savestate433: a settings-only refusal names its fix (`# state: any`); the save store finds saves under an alias TitleID
+fe090373b7 2026-10-03 fold: lane/savestate433 (offline) -- savestate433: a settings-only refusal names its fix (`# state: any`); the profile-save stage has no title left
+6c828f9860 2026-10-03 fold: lane/memfast (offline) -- lane.memfast: remove the XBOX load fast path, with the [mf0] VA==PA census (#507)
+dd4b5e5f49 2026-10-03 savestate433: a settings-only refusal names its fix (# state: any); profile-save stage has no title left (#433)
+cfa37a359e 2026-10-03 fold: lane/savestate433 (offline) -- savestate433: every title run starts from a golden profile, and a route's state is checked before device time
+ddbc5f0173 2026-10-03 fold: lane/memfast (offline) -- lane.memfast: remove the XBOX load fast path, with the [mf0] VA==PA census (#507)
+5661db4f2b 2026-10-02 fold: lane/uberdefault569 (offline) -- lane.uberdefault569: the ubershader on by default, a settings toggle, and a notice when it is off (#569, #672)
+21d2e41676 2026-10-02 savestate433: device proof -- Tron 2.0 returning loads its golden (Auto Load), first-run boots without (New Game) (#433)
+bd60cb603c 2026-10-02 savestate433: held sessions prepare the composed disk; a soak stops when its route dies (#433)
+=== -S 'NV_PCRTC_START' (--all, -- hw/xbox ui android)
+3d33d8101b 2018-09-26 cleanup nv2a
+584dbda1d6 2018-06-26 Fix and refactor NV2A code
+3f557e6d45 2018-03-24 Add hw/xbox sources from XQEMU 1.x @ 4d9107e
+=== -S 'pcrtc_start' (--all, -- hw/xbox ui android)
+2dd619ab2a 2026-10-01 better chihiro game support
+52a922da2b 2026-09-21 Add Sega Chihiro arcade support to the Android port
+=== -S 'NV_PRAMDAC_GENERAL_CONTROL' (--all, -- hw/xbox ui android)
+2dc570561e 2019-06-26 nv2a: Fix VGA get_bpp for X1R5G5B5
+=== -S 'vga_framebuffer' (--all, -- hw/xbox ui android)
+=== -S 'display.image' (--all, -- hw/xbox ui android)
+70aef9f9d3 2026-04-04 Better still needs work
+d0ced34ebd 2026-03-25 vk: remove unused compile-time optimization flags
+c2cd7f64e8 2026-02-26 add double buffer support
+a5385803db 2024-07-26 nv2a: Add Vulkan renderer
+=== -S 'display.draw_time' (--all, -- hw/xbox ui android)
+=== -S 'pgraph_vk_render_display' (--all, -- hw/xbox ui android)
+448b51a9b4 2026-08-23 enhance Vulkan support for Android by improving texture handling and memory management
+7592336667 2026-08-22 fix black screen for some devices
+70aef9f9d3 2026-04-04 Better still needs work
+f563f280ee 2026-03-31 nv2a/vk: batch render sync events and NEON-optimize blit operations
+41be412ae0 2026-03-18 vk: add render command thread with per-frame vertex RAM buffers
+14f020dd3b 2026-02-13 a little more stable and a little better performance.
+a5385803db 2024-07-26 nv2a: Add Vulkan renderer
+=== -S 'render_display' (--all, -- hw/xbox ui android)
+448b51a9b4 2026-08-23 enhance Vulkan support for Android by improving texture handling and memory management
+7592336667 2026-08-22 fix black screen for some devices
+70aef9f9d3 2026-04-04 Better still needs work
+f563f280ee 2026-03-31 nv2a/vk: batch render sync events and NEON-optimize blit operations
+7d285e9e51 2026-03-27 Revert "nv2a/gl: GLES performance optimizations (state cache, NEON expand)"
+9e62f34cad 2026-03-27 nv2a/gl: GLES performance optimizations (state cache, NEON expand)
+38b8f9e373 2026-03-27 nv2a/gl: port Android GLES renderer adaptations from x1_box
+41be412ae0 2026-03-18 vk: add render command thread with per-frame vertex RAM buffers
+8acb63d855 2026-03-01 reduce pgraph_vk_finish() frequency
+c2cd7f64e8 2026-02-26 add double buffer support
+ddc32eaea4 2026-03-06 added opengl es option
+14f020dd3b 2026-02-13 a little more stable and a little better performance.
+b75429b103 2026-02-06 Video working slow bad audio
+a5385803db 2024-07-26 nv2a: Add Vulkan renderer
+48c1720da8 2021-03-01 nv2a: Support PVIDEO overlays again
+d6e52a02c4 2020-10-19 nv2a: Lazily synchronize surface data to/from RAM
+=== -S 'VK_IMAGE_LAYOUT_UNDEFINED' (--all, -- hw/xbox ui android)
+8e40300c6c 2026-10-11 gtasagpu1011: frame dump schema 6 (rtt: small render-target and sampled-texture readbacks); NOTES 2d shadow findings and predictions (#433)
+bcb7433f0d 2026-09-26 nv2a/vk: rebuild push infos when a slot's sampled view changes, not only its node (#274)
+8428a60c16 2026-08-05 Add GPU properties determination for Vulkan renderer
+67fe8d7b2e 2026-07-28 Add Vulkan direct presentation support for Android
+70aef9f9d3 2026-04-04 Better still needs work
+e71284cfbf 2026-04-03 Re-apply Vulkan zeta surface texture correctness fix
+d726dbc780 2026-04-02 sloppy stuff
+f6522b69ea 2026-03-30 Improve Vulkan zeta surface texture correctness
+271944087d 2026-03-29 Sample Vulkan color surfaces directly as textures
+4f8d079d29 2026-03-29 Port hakuX Vulkan memory budget and surface pool
+1666e81d7a 2026-04-06 nv2a: comprehensive profiling fixes, GPU overhead reduction, and perf optimizations
+239028bea3 2026-04-06 nv2a: add adaptive BCn compression for uncompressed textures
+d7a6fa886b 2026-03-26 vk: alias zeta surfaces as textures to eliminate depth copy overhead
+03cb21a03b 2026-03-25 vk: use GENERAL layout for color surfaces and sample directly
+99842a38bd 2026-03-22 vk: add surface image pool and increase texture pool to reduce allocations
+4fa788fd42 2026-03-12 vk: add GPU texture pooling and GPU timestamp profiling
+c52a57062a 2026-03-11 vk: add frame blending and tune adaptive frame skip
+c2cd7f64e8 2026-02-26 add double buffer support
+77c3b0e2c0 2026-02-24 add true fps unlock
+46b93ede3b 2026-02-10 nv2a: Drop now-unused winding test
+36e4772996 2025-06-29 nv2a: Vertex reordering for flat shading in geometry shader
+d054b366f8 2024-08-01 nv2a/vk: Add pvideo support
+a5385803db 2024-07-26 nv2a: Add Vulkan renderer
+1fa9334dcb 2021-01-10 ui: Remove imgui sources
+5855f9a388 2020-05-25 ui: Hard import inih and imgui projects for now
+=== -S 'vkCmdClearColorImage' (--all, -- hw/xbox ui android)
+77c3b0e2c0 2026-02-24 add true fps unlock
+=== -S 'glClear' (--all, -- hw/xbox ui android)
+8428a60c16 2026-08-05 Add GPU properties determination for Vulkan renderer
+70aef9f9d3 2026-04-04 Better still needs work
+d726dbc780 2026-04-02 sloppy stuff
+7d285e9e51 2026-03-27 Revert "nv2a/gl: GLES performance optimizations (state cache, NEON expand)"
+9e62f34cad 2026-03-27 nv2a/gl: GLES performance optimizations (state cache, NEON expand)
+38b8f9e373 2026-03-27 nv2a/gl: port Android GLES renderer adaptations from x1_box
+7e56ff7b31 2026-03-13 cleanup and fix GL errors
+ddc32eaea4 2026-03-06 added opengl es option
+46b93ede3b 2026-02-10 nv2a: Drop now-unused winding test
+b75429b103 2026-02-06 Video working slow bad audio
+bcf5651331 2026-01-29 Add Android SDL2 scaffold and setup wizard
+36e4772996 2025-06-29 nv2a: Vertex reordering for flat shading in geometry shader
+f05e1a93f4 2025-05-11 ui/gtk-egl: Render guest content with padding in fixed-scale mode
+fdc09b028f 2025-05-11 ui/gtk-gl-area: Render guest content with padding in fixed-scale mode
+a5385803db 2024-07-26 nv2a: Add Vulkan renderer
+9c06980275 2022-05-03 ui: Redesign user interface
+1fa9334dcb 2021-01-10 ui: Remove imgui sources
+d6e52a02c4 2020-10-19 nv2a: Lazily synchronize surface data to/from RAM
+5855f9a388 2020-05-25 ui: Hard import inih and imgui projects for now
+ada87381c5 2020-03-12 ui: Add xemu UI shader helpers
+0b738f855e 2020-03-12 ui: Add new dedicated xemu SDL display
+3f557e6d45 2018-03-24 Add hw/xbox sources from XQEMU 1.x @ 4d9107e
+cd2bc889e5 2015-01-09 console-gl: add opengl rendering helper functions
+=== -S 'xemu_hud' (--all, -- hw/xbox ui android)
+9c79531bc8 2026-08-05 snapshots working again
+ddc32eaea4 2026-03-06 added opengl es option
+bca868acb5 2026-02-28 added snapshots/save states
+b75429b103 2026-02-06 Video working slow bad audio
+9c06980275 2022-05-03 ui: Redesign user interface
+7c05b7c6a7 2020-03-12 ui: Add primary xemu user interface
+0b738f855e 2020-03-12 ui: Add new dedicated xemu SDL display
+=== -S 'SDL_GL_SwapWindow' (--all, -- hw/xbox ui android)
+bcf5651331 2026-01-29 Add Android SDL2 scaffold and setup wizard
+754d9dc92a 2025-01-06 ui/xemu: Drop obsolete, dead code
+1fa9334dcb 2021-01-10 ui: Remove imgui sources
+5855f9a388 2020-05-25 ui: Hard import inih and imgui projects for now
+0b738f855e 2020-03-12 ui: Add new dedicated xemu SDL display
+d53f884ec1 2018-07-08 nv2a: Remove HACK HACK HACK code
+584dbda1d6 2018-06-26 Fix and refactor NV2A code
+cb47dc9ab9 2014-11-19 sdl2/opengl: add opengl context and scanout support
+0b71a5d5ca 2014-11-11 sdl2: add support for display rendering using opengl.
+=== -S 'eglSwapBuffers' (--all, -- hw/xbox ui android)
+4782aeb79f 2015-05-08 gtk/opengl: add opengl context and scanout support (egl)
+97edf3bd5e 2015-01-20 gtk: add opengl support, using egl
+=== -S 'surfaceCreated' (--all, -- hw/xbox ui android)
+bcf5651331 2026-01-29 Add Android SDL2 scaffold and setup wizard
+=== -S 'surfaceChanged' (--all, -- hw/xbox ui android)
+bcf5651331 2026-01-29 Add Android SDL2 scaffold and setup wizard
+=== -S 'setZOrderOnTop' (--all, -- hw/xbox ui android)
+=== -S 'pvideo' (--all, -- hw/xbox ui android)
+4fe77d5830 2026-09-25 nv2a/vk/display: #303 probe -- guest bytes behind the bound video sources
+5bd5b72bbd 2026-08-04 Add support for dynamic depth bias and improve Vulkan texture handling
+67fe8d7b2e 2026-07-28 Add Vulkan direct presentation support for Android
+1fb9e050a4 2025-09-16 nv2a: Ignore alpha when processing PVIDEO color keying
+d054b366f8 2024-08-01 nv2a/vk: Add pvideo support
+84dd112186 2024-07-26 nv2a/gl: Improve renderer teardown
+a5385803db 2024-07-26 nv2a: Add Vulkan renderer
+f29c2ff42c 2022-07-11 nv2a: Handle PVIDEO ds_dx and dt_dy registers
+9fd957d950 2022-07-08 nv2a: Add hack for NV_PVIDEO_SIZE_IN sentinel
+a675666051 2022-07-08 nv2a: Handle SIZE_IN > SIZE_OUT case
+be23a674f3 2022-01-31 nv2a: Start using tracing infrastructure for logging
+6b821d2062 2022-01-22 nv2a: Implement pvideo color keying
+364588f426 2021-06-30 nv2a: Better field render handling
+609aee0bbe 2021-04-18 build: Convert xemu Makefiles to meson
+48c1720da8 2021-03-01 nv2a: Support PVIDEO overlays again
+c69e58ee0f 2020-10-17 nv2a: Make files individually compilable
+60d3dc8ae1 2020-06-17 nv2a: Add VMStateDescription
+3d33d8101b 2018-09-26 cleanup nv2a
+f169ce4c26 2018-07-20 nv2a: Move some defs to nv2a.h and fix minor nits
+584dbda1d6 2018-06-26 Fix and refactor NV2A code
+3f557e6d45 2018-03-24 Add hw/xbox sources from XQEMU 1.x @ 4d9107e
+=== -S 'NV_PVIDEO' (--all, -- hw/xbox ui android)
+4fe77d5830 2026-09-25 nv2a/vk/display: #303 probe -- guest bytes behind the bound video sources
+1fb9e050a4 2025-09-16 nv2a: Ignore alpha when processing PVIDEO color keying
+a5385803db 2024-07-26 nv2a: Add Vulkan renderer
+f29c2ff42c 2022-07-11 nv2a: Handle PVIDEO ds_dx and dt_dy registers
+9fd957d950 2022-07-08 nv2a: Add hack for NV_PVIDEO_SIZE_IN sentinel
+a675666051 2022-07-08 nv2a: Handle SIZE_IN > SIZE_OUT case
+6b821d2062 2022-01-22 nv2a: Implement pvideo color keying
+48c1720da8 2021-03-01 nv2a: Support PVIDEO overlays again
+3d33d8101b 2018-09-26 cleanup nv2a
+584dbda1d6 2018-06-26 Fix and refactor NV2A code
+3f557e6d45 2018-03-24 Add hw/xbox sources from XQEMU 1.x @ 4d9107e
+=== -S 'boot_anim' (--all, -- hw/xbox ui android)
+3df6c56407 2026-04-12 Enhance cover art handling and emulation exit process
+d11866dbad 2026-04-12 custom bios fix
+e403eaf202 2026-04-07 better defaults on launch
+32a674ee4f 2026-04-07 added new performance toggles and fixed other toggles
+70aef9f9d3 2026-04-04 Better still needs work
+75c43fc1fb 2026-04-07 android: refactor SettingsActivity for consistency and maintainability
+08c0c8db3d 2026-04-01 android: add skip boot animation toggle, remove Simple VBLANK setting
+dca8a354df 2026-03-24 added per game settings
+bc3aae545d 2026-03-24 add setting to import or export emu files
+d94f73c88a 2026-03-04 added skip startup animation option
+b75429b103 2026-02-06 Video working slow bad audio
+9c06980275 2022-05-03 ui: Redesign user interface
+d14cdbc7ba 2022-04-22 config: Migrate to genconfig system
+=== -S 'skip_boot_anim' (--all, -- hw/xbox ui android)
+3df6c56407 2026-04-12 Enhance cover art handling and emulation exit process
+d11866dbad 2026-04-12 custom bios fix
+e403eaf202 2026-04-07 better defaults on launch
+32a674ee4f 2026-04-07 added new performance toggles and fixed other toggles
+70aef9f9d3 2026-04-04 Better still needs work
+75c43fc1fb 2026-04-07 android: refactor SettingsActivity for consistency and maintainability
+08c0c8db3d 2026-04-01 android: add skip boot animation toggle, remove Simple VBLANK setting
+dca8a354df 2026-03-24 added per game settings
+bc3aae545d 2026-03-24 add setting to import or export emu files
+d94f73c88a 2026-03-04 added skip startup animation option
+b75429b103 2026-02-06 Video working slow bad audio
+9c06980275 2022-05-03 ui: Redesign user interface
+d14cdbc7ba 2022-04-22 config: Migrate to genconfig system
+=== -S 'fast boot' (--all, -- hw/xbox ui android)
+=== -S 'display_ready' (--all, -- hw/xbox ui android)
+=== -S 'first_frame' (--all, -- hw/xbox ui android)
+b9ff4d1013 2026-04-07 nv2a/android: add texture dump and replacement infrastructure
+0a31c7cf28 2020-03-12 ui: Add stb_image.h for PNG image decompression
+=== -S 'frame_count' (--all, -- hw/xbox ui android)
+24587895b1 2026-10-16 perflog1016: run-time perflog switch in debug.h, host selftest (#433)
+ee62b4edb5 2026-10-11 lockwake1011: split the guest's pfifo.lock wait by site, as frametrace waits (#433)
+ff6c3adc47 2026-10-10 lane.drawrec1010: Addendum 1 probes, HAKUX_PROBE_NULLREC / HAKUX_PROBE_SNAPQ / HAKUX_PROBE_WAITS (default off, measurement only)
+b10dcdb737 2026-10-10 lane.drawrec1010: HAKUX_DRAWREC=1 (default off): owe the vertex sync's TLB walk, and consume shader_bindings_changed once a draw has used it
+521ea8a93e 2026-10-05 gpuclock: [gpuclk433] telemetry (GPU ms per frame always-on, kgsl clock and busy at 10 Hz); knobs and criteria in NOTES (#433)
+23f0ee233f 2026-09-28 lane.pacing: vk/draw.c render waits poll 30 us, then block on idle_event (#526)
+ecf5e05dd2 2026-09-27 profile: log shader/pipeline cache counters and deltas on hakuX-perf (#413)
+c9a66088b9 2026-09-27 lane.pacing: sleep the frame limiter to its deadline, request 60 Hz for the game surface (#526)
+b4fb2433c9 2026-09-25 nv2a/profile: hakuX-pace line, exact flips-per-VBLANK counts every 60 flips
+a8515c65f7 2026-09-19 nv2a/vk: the frame dump's per-frame image was a frame behind its own records
+9006d81764 2026-09-19 nv2a/vk: a marker-file-armed frame dump that does not serialize (#77)
+d4b31db08d 2026-09-13 perf: count what whole-page TB invalidation discards that a range test would keep [skip ci]
+5f98d1ee5a 2026-09-13 perf: count what whole-page TB invalidation discards that a range test would keep [skip ci]
+8443d87ebc 2026-09-12 test: state which binary a run is, on its first frame [skip ci]
+9e2f61dac5 2026-09-11 perf: the retranslation loop is one guest page
+33557e82ab 2026-09-11 perf: make the frame pacing measurable on a normal build
+488adb5992 2026-04-22 added JIT engine configuration option for improved audio processing.
+3df6c56407 2026-04-12 Enhance cover art handling and emulation exit process
+70aef9f9d3 2026-04-04 Better still needs work
+d726dbc780 2026-04-02 sloppy stuff
+c174c8bde8 2026-03-30 fix tier-1 recompilation stability and NV2A safety valves on Android
+cba0feec24 2026-03-07 vk: fix vertex explosions and dynamic depth/stencil crash
+0738e50881 2026-02-27 improvements to shader and texture handling
+2756881116 2026-02-25 add gpu context dump
+f8eab65c7d 2026-03-12 switched to linux env
+02bcd8dd17 2026-03-08 fix small window in bottom left bug. Mali Mediatek fixes
+ddc32eaea4 2026-03-06 added opengl es option
+5a38634498 2026-03-03 got rid of problematic fps counter option
+98544d2806 2026-03-02 minor improvements
+f53eb54a29 2026-02-28 added fps counter
+b75429b103 2026-02-06 Video working slow bad audio
+eb88acf4c0 2025-06-03 mcpx: Move some definitions to apu_int.h
+a5385803db 2024-07-26 nv2a: Add Vulkan renderer
+9c06980275 2022-05-03 ui: Redesign user interface
+4b6ee2c923 2021-02-11 ui: Render video frame stats
+7a08e93085 2021-02-11 nv2a: Add simple frame metrics
+416e12c3b3 2020-12-18 mcpx: Enable APU pipeline
+=== -S 'tex_id' (--all, -- hw/xbox ui android)
+c59b1a7ba7 2026-09-29 various fixes
+d726dbc780 2026-04-02 sloppy stuff
+c989586690 2026-03-21 vulkan stuff
+f851cd65eb 2025-06-16 ui/spice: Blit the scanout texture if its memory layout is not linear
+2f910eeacf 2024-08-01 nv2a/vk: Fixup unaligned attribute data in inline buffer
+a5385803db 2024-07-26 nv2a: Add Vulkan renderer
+cf283fb447 2023-06-06 ui/dbus: add some GL traces
+f43bf0a73b 2023-06-06 ui/dbus: add GL support on win32
+142ca628a7 2021-07-15 ui: add a D-Bus display backend
+1fa9334dcb 2021-01-10 ui: Remove imgui sources
+5855f9a388 2020-05-25 ui: Hard import inih and imgui projects for now
+a4f113fd69 2017-06-14 gtk: use framebuffer helper functions.
+371c4ef637 2017-06-14 sdl2: use framebuffer helper functions.
+46ffd0c031 2017-02-21 spice: add scanout_disable support
+4423184376 2016-09-23 spice/gl: render DisplaySurface via opengl
+474114b730 2015-10-13 spice: add opengl/virgl/dmabuf support
+1e3165980c 2015-10-12 egl-helpers: add functions for render nodes and dma-buf passing
+cb47dc9ab9 2014-11-19 sdl2/opengl: add opengl context and scanout support
+925a040002 2015-05-26 gtk/opengl: add opengl context and scanout support (GtkGLArea)
+4782aeb79f 2015-05-08 gtk/opengl: add opengl context and scanout support (egl)
+=== -S 'nv2a_get_framebuffer_surface' (--all, -- hw/xbox ui android)
+67fe8d7b2e 2026-07-28 Add Vulkan direct presentation support for Android
+ddc32eaea4 2026-03-06 added opengl es option
+b75429b103 2026-02-06 Video working slow bad audio
+a5385803db 2024-07-26 nv2a: Add Vulkan renderer
+9c06980275 2022-05-03 ui: Redesign user interface
+d6e52a02c4 2020-10-19 nv2a: Lazily synchronize surface data to/from RAM
