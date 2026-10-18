@@ -63,6 +63,9 @@ only after both of these pass for the version you are about to tag:
 1. Read every public doc start to finish and bump its date line to today,
    in Pacific time, with the version it now describes.
 2. `python3 docs/testing/docs_freshness.py --release X.Y.Z`
+3. `docs/releases/vX.Y.Z.md` links `docs/gpu-driver.md` (the one driver hakuX
+   is tested with). `docs_freshness.py` reports `NO-DRIVER-LINK` and
+   `release_build.sh` refuses (exit 10) when it does not.
 
 A doc the checker calls stale is a doc nobody has reviewed for this release;
 fix the doc, not the check.

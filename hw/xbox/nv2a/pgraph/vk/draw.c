@@ -3956,6 +3956,7 @@ static void begin_query(PGRAPHVkState *r)
         VK_QUERY_CONTROL_PRECISE_BIT : 0;
     vkCmdBeginQuery(r->command_buffer, r->query_pool, r->num_queries_in_flight,
                     query_flags);
+    r->query_serial_of[r->num_queries_in_flight] = ++r->query_serial;
 
     r->query_in_flight = true;
     r->new_query_needed = false;
