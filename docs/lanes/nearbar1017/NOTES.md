@@ -136,3 +136,90 @@ Verdict (`runs/n-4D4A0014-1017/verdict.json`): **pass: true**. gameplay_s
 borderline result the brief warned about for titles sitting at a 30 fps
 cap -- a handful of windows either side of the line would flip this. Worth
 saying plainly in the recommendation: this is a pass, not a comfortable one.
+
+## Run 3: Medal of Honor: Frontline -- MISS, but not an fps miss
+
+Staged from `D:\hakux-staging\shuffle-cache\4541001A-...iso` (3176333312 B,
+byte-verified on-device; `adb push` needed the Windows-style `D:\...` path,
+not the WSL `/mnt/d/...` mount -- `adb` here is `adb.exe` run through WSL
+interop (`/usr/local/bin/adb` is a symlink to `/mnt/c/platform-tools/adb.exe`),
+so it resolves paths on the Windows side, not the Linux side; the
+`/mnt/d/...` push failed with "cannot stat" even though the file exists and
+is readable from this shell). Hit the same R3 "already has a known path"
+stop as Aeon Flux on first launch; relaunched with `--no-record` to replay.
+Reached gameplay at 224.7 s via publisher_logo -> save_load_prompt -> submenu
+(x3) -> cutscene (the long scripted Omaha Beach landing-craft approach, 11
+steps, one accidental pause-menu open at 173.7 s recovered via CONTINUE) ->
+gameplay, confirmed genre shooter.
+
+The hold never reached 600 s: it stuck_abort'd at 274 s of hold-play (287.3 s
+total gameplay_s) after the scene stopped changing for 6 consecutive samples,
+with two unstick rungs tried (a camera "prompt look", then
+`STICK:left:2 RT:1`, then `STICK:right:2 RT:1`) and no recovery. The verdict's
+own `failing` field names it precisely: `"duration: 287 s of gameplay < 600 s
+confirmation"`, plus a static-window failure (55% of pixels never moved more
+than 10/255 from the first frame, bar 20%) and a position failure (5 of 6
+consecutive samples showed no picture change, bar 50%). **Crucially, this is
+not an fps-bar miss**: `fps_ok_share: 1.0` -- 100% of the 287 s actually
+played was at or above 30 fps, with fps_window_median 59.94 and
+fps_window_min 29.96 (a real improvement over the pre-0.5.2 run's min of
+15.9 fps, for what it's worth). `crash: false`, `hang: false` -- the hang
+detector doesn't fire because the picture is not fully frozen (FPS counter
+keeps incrementing, camera can still rotate), it just stops making positional
+progress.
+
+Frame review confirms a stuck-in-geometry read, not a crash or a freeze:
+`frames/042-hold.jpg` shows the player character aiming up and to the left at
+the sky next to a beach obstacle (one of the angled anti-landing-craft
+hedgehogs visible on the beach), ammo 4/92; by `frames/061-hold.jpg` (the
+last hold frame) the view is pinned almost straight up at featureless sky,
+ammo at 0/0 (fired out), compass now red. Read: the character walked into
+one of the beach obstacles, the recorded path's straight-`STICK:up` advance
+can't route around it, and the hold's own "prompt look" unstick heuristic
+rotated the camera upward without freeing the collision, so the view just
+climbed toward the sky while the character emptied its clip in place. This
+reads as a path-recording problem specific to this stretch of the Omaha
+Beach landing sequence (an obstacle the recorded route didn't account for),
+not an emulator defect and not a performance regression.
+
+Driver: `adb shell run-as com.jreinach.hakux.debug ls -la files/gpu_driver/`
+shows `vulkan.purple.so` again, parent dir mtime 2026-10-17 19:16, inside
+this run's window -- Turnip/PurpleVK, not stock.
+
+**No perflog telemetry hold for this title.** The brief's standing rule is a
+miss gets one telemetry hold decomposed with `near30`'s `decompose.py` to
+name the thread/cost bounding it -- that is the right tool when the miss is
+an fps deficit. This miss is not one: `fps_ok_share` is already 1.0 in the
+confirmation run itself, so a telemetry hold would re-measure fps that is
+already known to be clean and would not decide anything new (the "a cheap
+step goes first only when it decides something" rule, and the owner's
+balanced-not-cheap-first guidance, both point the same way: don't spend a
+device hold where the answer is already in hand and wouldn't change the
+recommendation). What would actually resolve this is fixing the recorded
+path at the beach-obstacle stretch (~224-280 s into the route) -- a
+`pathknow` route-editing task, not a telemetry one -- then re-running the
+confirmation once. Recommending that to lane.local rather than guessing at a
+patch myself (no emulator-code files are in scope for this lane).
+
+## Final table
+
+| Title | ID | Play seconds | Share at >=30fps | Median fps | Clear/miss | Bound if missed | Recommendation |
+|---|---|---|---|---|---|---|---|
+| Panzer Elite Action: Fields of Glory | 4A570009 | 627.3 s (held 629 s) | 1.0 (100%) | 62.5 | **Clear** | -- | File the ledger row (lane.local): `HAKUX_S2T_CVT` moved this title off its 30fps cap entirely (median 30.41 -> 62.5); one minor shader hitch (200.6 ms) and a mid-hold stuck-car episode (10.37% frozen) that resolved itself within the confirmation window, worth a frame-review footnote on the ledger row but not a blocker. |
+| Aeon Flux | 4D4A0014 | 602.5 s (held 604 s) | 0.936 (93.6%) | 29.96 | **Clear**, but close | -- | File the ledger row (lane.local), but flag it as a borderline pass: still capped at ~30 fps (unlike Panzer), mid-hold checkpoints read 86.8%/88.7% before the final share pulled up to 93.6% -- a jitter-sensitive result as the brief anticipated for 30fps-capped titles, worth a re-check on a future build to see if it holds. Also flag the path-recording process gap: this title's `pathknow` route (`paths/4D4A0014.json`) was never committed anywhere, found only as an untracked file in the `wt/pathfind` worktree -- worth committing properly so it isn't lost if that worktree is ever cleaned. |
+| Medal of Honor: Frontline (USA) | 4541001A | 287.3 s (held 289 s; stuck_abort before 600 s) | 1.0 (100% of the 287 s played) | 59.94 | **Inconclusive** (not an fps miss) | N/A -- fps already measured clean (fps_ok_share 1.0, min 29.96); the bound is the autoplay path itself, stuck against a beach obstacle in the Omaha Beach landing sequence (frame review: pinned looking at the sky, ammo spent, no crash/hang) | Do not re-run the same confirmation (no new fps data to get). Recommend a `pathknow` route fix for the beach-obstacle stretch (~224-280 s into the route) and one fresh confirmation attempt after that fix -- the fps data in hand (median 59.94, min 29.96, well above the pre-0.5.2 min of 15.9) is a good sign this title would also clear the bar on 0.5.2 if the route could complete. |
+
+## Recommendation to lane.local
+
+Two of three clear the Playable bar on 0.5.2 outright (Panzer convincingly,
+Aeon Flux narrowly); the third's run was inconclusive on the bar because the
+autoplay path got physically stuck, not because of fps -- its own partial
+data points the same direction (fps clean, well above its old floor). Given
+2-of-3 clearing and the third's fps data also reading clean, `HAKUX_S2T_CVT`
+looks like a real win for this whole near-the-cap cohort, not a coincidence
+limited to one title -- worth lane.local re-running more of the near-bar
+list (the titles that missed by a similar 85-90%-share, 30fps-cap margin
+pre-0.5.2) rather than treating these three as exhausting the opportunity.
+File Panzer and Aeon Flux's ledger rows; for MoH, file the fps numbers as
+supporting context on the issue/row but mark the Playable determination
+itself as pending a route fix, not a miss.
