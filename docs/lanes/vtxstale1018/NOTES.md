@@ -3,7 +3,9 @@
 Issue #1049 (GTA III drops into the teens while driving), part of #433. Brief: `briefs/vtxstale1018.md`.
 Source of the lever: `docs/lanes/gta3instr1018/FINDINGS.md` sections 2.2 and 4 (lever 2), on lane/gta3instr1018.
 
-[lane.vtxstale1018] status: Step 0 committed; implementing.
+[lane.vtxstale1018] waiting: dispatch request 1792342997-vtxstale1018-1009067 (GTA III on foot, perflog, ref
+54c0b3ee95 on lane/vtxstale1018-m, pinned to the Nova; queued 2026-10-18 17:03Z behind lane.local's owner-play hold).
+Resolved by its result.json landing; then read `[dipwin]` against 1792340293-gta3instr1018-503029 and the frames.
 
 ## 0. Already tried
 
@@ -65,6 +67,50 @@ which s differs from the current slot.
 
 Cost: the bitmap is `vram/4096` bits (32768 for 128 MB, 4 KB); a rotation scans it with `find_next_bit` /
 `find_next_zero_bit` and copies each run.
+
+## 4. Implementation (2173daadf2)
+
+- `vk/vtxstale.h` (new): `vtxstale_mark()` sets the pages `[offset, offset+size)` touches (both ends rounded out, empty
+  write marks nothing); `vtxstale_copy()` walks the set runs with `find_next_bit`/`find_next_zero_bit`, copies each run
+  clipped to the buffer size, clears it, and returns the bytes copied and the lowest/highest byte for the flush range.
+- `renderer.h`: `FrameStagingState.vertex_ram_stale_min/max` becomes `unsigned long *vertex_ram_stale`.
+- `buffer.c`: allocated with `r->bitmap_size` bits beside `uploaded_bitmap`, cleared; freed on the fail path and in finalize.
+- `vertex.c`: the widen-every-other-slot loop marks pages instead (with a build check that `TARGET_PAGE_SIZE` is 4096).
+- `draw.c`: the rotation's first-time whole copy clears the bitmap; otherwise `vtxstale_copy()` and, if it copied
+  anything, the flush range is its lowest/highest byte. The span reset is gone (the copy clears what it copied).
+
+NDK syntax check of draw.c, vertex.c, buffer.c against the gta3fps1017b-apk Release arm64 compile_commands, with and
+without `NV2A_PERF_LOG=1`: rc 0, no new warnings (target_page.h:57 and three draw.c TARGET_PAGE_MASK lines warn on master too).
+
+## 5. Test: selftest fragment 99-vtxstale-pages
+
+Builds a host harness from the real text: vertex.c's mark loop and draw.c's rotation block are cut out of the source
+and compiled against `vtxstale.h`, with the bitmap helpers written bit by bit (no qemu). 3 slots, 101 pages (so the
+bitmap ends inside a long and the last page is the buffer's end). An independent model tracks, per slot, the pages
+that differ from the current slot; every rotation compares the incoming slot byte for byte with the outgoing one and
+checks that the bytes copied equal exactly its stale pages.
+
+Directed cases: write inside one page, across pages 2-3, the last bytes of the buffer, an exact page, an empty write,
+far-apart writes, three pages, across the 64-bit word boundary of the bitmap, a no-op rotation, and slot 2 never made
+current (two active slots for a while, then three: the first-time whole copy). Then 3000 random rotations (LCG seed
+1049) with the active slot count toggled every 500.
+
+Result: rotations=3014 missed=0 count=0 flush=0; random part copied 118,468,608 bytes by page against 891,623,514 by
+the old span over the same writes (7.5x less, on uniformly scattered writes; the game's ratio is the device number).
+
+Six mutants each fail it: last page from the size alone, a copy loop that never reaches the last page, no clear,
+the old span rule, vertex.c marking only the next slot (#39 again), and the first-time copy not clearing.
+
+## 6. Measurement
+
+Request 1792342997-vtxstale1018-1009067: the before run's request (gta3instr1018 503029) with ref 54c0b3ee95.
+lane/vtxstale1018-m = this branch merged with lane/gta3instr1018 (the `[dipwin]` instrument). Its emulator code is
+the before ref 25915ae59e plus this change (25915ae59e to master differs only by the instrument's removal), with the
+`stale` timer wrapped round `vtxstale_copy()`. That timer now counts every initialized rotation where the old one
+counted only non-empty spans, so compare ms/flip and staleK, not n.
+
+The parked in-car scene the owner reported cannot be reached by dispatch: the route grammar has no Load verb
+(gta3instr1018 FINDINGS section 3). The number this lane can show is on foot.
 
 ## Stop rule
 
