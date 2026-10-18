@@ -392,6 +392,16 @@ static void android_blit_frame(GLuint tex, bool flip)
     glBindVertexArray(0);
     android_log_gl_error("blit-draw");
 }
+
+/* The window black, as the console's output is while the guest blanks it. */
+static void android_blank_frame(void)
+{
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    glDisable(GL_SCISSOR_TEST);
+    glClearColor(0, 0, 0, 0);
+    glClear(GL_COLOR_BUFFER_BIT);
+}
 #endif
 
 int xemu_is_fullscreen(void)
@@ -2565,6 +2575,8 @@ void sdl2_gl_refresh(DisplayChangeListener *dcl)
      * to the framebuffer, fall back to the VGA path.
      */
     GLuint tex = 0;
+    bool vga_read G_GNUC_UNUSED = false; /* the VGA view was read here */
+    bool vga_read_off G_GNUC_UNUSED = false; /* ... with the screen off */
     char boot1045_src = 'n';
 #ifdef __ANDROID__
     if (force_cpu_blit) {
@@ -2718,13 +2730,22 @@ void sdl2_gl_refresh(DisplayChangeListener *dcl)
     }
 #endif
     if (tex == 0) {
-#ifdef __ANDROID__
+        /*
+         * The VGA view is read from guest RAM before the upload, so the frame
+         * drawn is this refresh's. The desktop used to read it at the end of
+         * the refresh, after the draw, so each VGA frame it drew was one
+         * refresh old: at boot, the kernel turns the screen on and moves the
+         * scan-out in one refresh, and the present after it drew the image
+         * read from the old start (its low memory, as whole-screen static)
+         * with nothing to blank it (#1045).
+         */
         qemu_mutex_lock_main_loop();
         bql_lock();
         graphic_hw_update(scon->dcl.con);
+        vga_read_off = nv2a_get_screen_off();
         bql_unlock();
         qemu_mutex_unlock_main_loop();
-#endif
+        vga_read = true;
         // FIXME: Don't upload if notdirty
         xb_surface_gl_create_texture(scon->surface);
         if (boot1045.armed) {
@@ -2762,7 +2783,20 @@ void sdl2_gl_refresh(DisplayChangeListener *dcl)
     glClearColor(0, 0, 0, 0);
     glClear(GL_COLOR_BUFFER_BIT);
 #ifdef __ANDROID__
-    android_blit_frame(tex, flip_required);
+    /*
+     * The guest's VGA screen-off (SR01 bit 5) blanks the picture on the
+     * console, and the desktop honours it in RenderFramebuffer (upstream
+     * 129c48dd6e). This path never did. While the kernel sets its video mode
+     * at boot it holds the screen off with the scan-out at address 0, and the
+     * VGA view of its low memory showed as whole-screen static before the
+     * Xbox logo, on every title (#1045). A VGA image read while the screen
+     * was off stays blanked even if the guest turned it on since.
+     */
+    if (nv2a_get_screen_off() || vga_read_off) {
+        android_blank_frame();
+    } else {
+        android_blit_frame(tex, flip_required);
+    }
 #else
 #endif
 #ifdef __ANDROID__
@@ -2820,10 +2854,15 @@ void sdl2_gl_refresh(DisplayChangeListener *dcl)
         }
     }
 #else
-    /* VGA update for dirty-region tracking */
+    /*
+     * VGA update for dirty-region tracking, unless the fallback above has
+     * already made this refresh's.
+     */
     qemu_mutex_lock_main_loop();
     bql_lock();
-    graphic_hw_update(scon->dcl.con);
+    if (!vga_read) {
+        graphic_hw_update(scon->dcl.con);
+    }
     if (scon->updates && scon->surface) {
         scon->updates = 0;
     }
