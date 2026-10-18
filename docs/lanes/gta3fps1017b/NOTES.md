@@ -1,6 +1,12 @@
 # lane.gta3fps1017b -- GTA III fps: R2 and R3 written, default off, for the owner's driving session (#1049, #433)
 
-Status (10-17, attempt 1): Step 0 committed; code not yet written.
+Status (10-17, attempt 3): Step 0 committed; code being written.
+
+**Why attempts 1 and 2 did not finish.** Attempt 1 (session 05:55Z) committed Step 0 (b1828311f2) and the merge of
+`origin/lane/gta3fps1017` (a6680ef37e), then ended before any code. Attempt 2 (session 06:14Z) ended within four minutes,
+before attempt 3 started at 06:18Z: its session log is empty (0 bytes) and it left no commit, no worktree change and no
+PR comment, so there is no cause on record to name or to repeat. The two owner addenda (high-speed driving on GTA III +
+San Andreas; Blinx 2's island) arrived in the brief across these restarts. Nothing from either attempt is redone here.
 
 ## 0. Already tried (copied from `origin/lane/gta3fps1017` NOTES.md sections 0-3 and 5, extended)
 
