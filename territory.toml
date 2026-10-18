@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 309
-updated_utc = '2026-10-16T20:52:02Z'
+wave = 310
+updated_utc = '2026-10-18T03:11:54Z'
 
 [lane.alwaystelemetry]
 issues = ["433"]
@@ -1075,6 +1075,7 @@ files = []
 note = 'RETIRED (lane.local 2026-10-12 21:38 PDT): folded as 01d5dc1a80 on master, no unit, nothing queued. Files RELEASED to [free]: docs/testing/owner_build.sh. v0.5.0 tagged on 6f560dc44e. || Was: READY 2ace3dec01 (lane.local 2026-10-12 19:29 PDT; also maps nova/thor to serials before device_env, which exited 2 on every real run). STARTED lane.local 2026-10-12 19:00 PDT (Sonnet): owner_build.sh builds assembleRelease in its private worktree with no android/key.properties, so the release apk i...'
 
 [free]
+# RELEASED (hostops, jam duty, 2026-10-18 03:11 UTC / 17-Oct 20:11 PDT) by retiring lane.haloship1017 (folded e810d97675, no unit, every file released): docs/testing/nv2a_index.json, hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/renderer.h, hw/xbox/nv2a/pgraph/vk/reports.c, ui/xemu-input.c. (renderer.c and ui/xemu.c went onward to [lane.bootstatic1017] in the same push, not here -- see that row and [retired.haloship1017].)
 # CLAIMED (lane.local 2026-10-17 PDT): docs/testing/jobs/selftest.d/86-nightly-notes.sh -> lane.drivernotice1017 (the nightly body carries the GPU-driver notice, #433). Back here when it retires.
 # CLAIMED (lane.local 2026-10-17 ~10:30 PDT): docs/testing/lane.sh -> lane.sparsewt1017 (lane worktrees created sparse, #433). Back here when it retires.
 # TAKEN (hostops 2026-10-17 04:1x PDT, jam duty) by lane.halo1016: hw/xbox/nv2a/pgraph/vk/reports.c. foldqueue refused lane/halo1016's fold on this file among others (outside its row's files); nothing else holds it.
@@ -2912,19 +2913,17 @@ standing = false
 files = ["docs/testing/lane.sh", "docs/testing/jobs/selftest.d/99-lane-sparse-worktree.sh", "docs/lanes/sparsewt1017/**"]
 note = "STARTED lane.local 2026-10-17 ~10:30 PDT (Sonnet): C: nearly full (owner 10-17: 'if C fills up you take down the whole WSL environment'). Every lane worktree carried ~1.9 GB of tracked docs/lanes/pathfind/runs; lane.sh now creates trees sparse (that subtree excluded) so a lane tree is ~0.4 GB. Brief: briefs/sparsewt1017.md."
 
-[lane.haloshadow1017]
-issues = ["1038"]
-standing = false
-files = ["docs/lanes/haloshadow1017/**", "hw/xbox/nv2a/pgraph/vk/renderer.c"]
-released = ["docs/lanes/haloshadow1017/**", "hw/xbox/nv2a/pgraph/vk/renderer.c"]
-note = "GRANTED + RELEASED (lane.local 2026-10-17 15:2x PDT, at ready eba2081dd2): hw/xbox/nv2a/pgraph/vk/renderer.c for the frame-dump schema 10 fields (diagnostics only, Release note: none); lane.haloship1017 holds the same file, also released, whichever folds second rebases. || BRIEFED by lane.xbox 2026-10-17 10:34 PDT, rows filed by lane.local ~10:45 PDT: character shadows draw as dark squares under the feet (Halo first, cross-title; owner: a huge win). Emulator files (nv2a renderer) come by the lane's own board request."
+[retired.haloshadow1017]
+issues = []
+files = []
+retired_utc = "2026-10-18T03:11:54Z"
+note = "RETIRED (hostops, jam duty, 2026-10-18 03:11 UTC / 17-Oct 20:11 PDT): lane/haloshadow1017 confirmed an ancestor of origin/master (FOLDED 07b7b6d996, foldqueue.log 16:28:31 PDT 10-17), no running unit, every file already released. hw/xbox/nv2a/pgraph/vk/renderer.c RELEASED onward to [lane.bootstatic1017] in this same push (see that row) rather than bounced to [free] unused -- foldqueue just refused lane/bootstatic1017's ready fold for touching it plus ui/xemu.c, outside its row."
 
-[lane.haloship1017]
-issues = ["1039"]
-standing = false
-files = ["docs/lanes/haloship1017/**", "docs/testing/nv2a_index.json", "hw/xbox/nv2a/pgraph/vk/draw.c", "hw/xbox/nv2a/pgraph/vk/renderer.c", "hw/xbox/nv2a/pgraph/vk/renderer.h", "hw/xbox/nv2a/pgraph/vk/reports.c", "ui/xemu-input.c", "ui/xemu.c"]
-released = ["docs/lanes/haloship1017/**", "docs/testing/nv2a_index.json", "hw/xbox/nv2a/pgraph/vk/draw.c", "hw/xbox/nv2a/pgraph/vk/renderer.c", "hw/xbox/nv2a/pgraph/vk/renderer.h", "hw/xbox/nv2a/pgraph/vk/reports.c", "ui/xemu-input.c", "ui/xemu.c"]
-note = "GRANTED (hostops, jam duty, 2026-10-17 14:52 PDT): the emulator files this lane's own board request named but was never actually widened for -- draw.c, renderer.c (both stale holds on the folded, session-less lane.x1port1012), renderer.h (stale hold on the folded, session-less lane.fps1015), reports.c and nv2a_index.json (already free/released by other rows), ui/xemu-input.c and ui/xemu.c (held by no row). foldqueue refused lane/haloship1017's ready fold at 14:35 PDT on exactly these 7 files; its PR.md lists them as the full file set for the #1039 HAKUX_ZREP/HAKUX_PAD_FILE instrumentation (off by default), closed not-a-defect (stock driver, same root cause as #1043/bindpose1017). This grant does not reopen the lane's own docs/lanes/haloship1017/** release above -- that directory stays released/retiring; only the code files needed to land the already-written, already-ready diff are added. BRIEFED by lane.xbox 2026-10-17 10:34 PDT, rows filed by lane.local ~10:45 PDT: Halo's opening cinematic: the ship's rear lighting shows through the front of the ship (hold released by the owner ~10:15 PDT). Emulator files (nv2a renderer) come by the lane's own board request."
+[retired.haloship1017]
+issues = []
+files = []
+retired_utc = "2026-10-18T03:11:54Z"
+note = "RETIRED (hostops, jam duty, 2026-10-18 03:11 UTC / 17-Oct 20:11 PDT): lane/haloship1017 confirmed an ancestor of origin/master (FOLDED e810d97675, foldqueue.log 18:50:29 PDT 10-17), no running unit, every file already released. hw/xbox/nv2a/pgraph/vk/renderer.c and ui/xemu.c RELEASED onward to [lane.bootstatic1017] in this same push (see that row): foldqueue refused lane/bootstatic1017's ready fold at 20:09:07 PDT on exactly these two files (its #1045 fix, the screen-off black present, touches both). docs/testing/nv2a_index.json, hw/xbox/nv2a/pgraph/vk/draw.c, renderer.h, reports.c and ui/xemu-input.c RELEASED to [free] below -- no live row needs them now."
 
 [lane.bindpose1017]
 issues = ["1043"]
@@ -2954,8 +2953,8 @@ note = "OPENED 2026-10-17 ~15:00 PDT on the owner's request: Grand Theft Auto II
 [lane.bootstatic1017]
 issues = ["1045"]
 standing = false
-files = ["docs/lanes/bootstatic1017/**", "docs/testing/predictions/bootstatic1017-*"]
-note = "BRIEFED by lane.xbox 2026-10-17 14:40 PDT on the owner's request: the brief static or green distortion at every title start. Desktop and code reading first; device captures queue behind the owner's sweep; emulator and app files come by the lane's own board request. Brief: briefs/bootstatic1017.md."
+files = ["docs/lanes/bootstatic1017/**", "docs/testing/predictions/bootstatic1017-*", "hw/xbox/nv2a/pgraph/vk/renderer.c", "ui/xemu.c"]
+note = "GRANTED (hostops, jam duty, 2026-10-18 03:11 UTC / 17-Oct 20:11 PDT): hw/xbox/nv2a/pgraph/vk/renderer.c (from the retiring, folded [lane.haloshadow1017] and [lane.haloship1017], both stale holds) and ui/xemu.c (from the retiring, folded [lane.haloship1017]). foldqueue refused this lane's ready fold (113b03a63f, 20:09:07 PDT) for touching both outside its row -- its #1045 fix (black while the guest has the screen off, no boot static/green) is PR.md State: ready, the lane session already ended with nothing left to do. No live lane holds either file now (checked territory.toml for every non-retired row); foldqueue's own blacklist-retry picks the head up on its next tick. || BRIEFED by lane.xbox 2026-10-17 14:40 PDT on the owner's request: the brief static or green distortion at every title start. Desktop and code reading first; device captures queue behind the owner's sweep; emulator and app files come by the lane's own board request. Brief: briefs/bootstatic1017.md."
 
 [lane.nearbar1017]
 issues = ["433"]
