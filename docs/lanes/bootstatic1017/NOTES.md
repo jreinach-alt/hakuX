@@ -283,6 +283,19 @@ R1 and R2 are both chased: both are in `ui/xemu.c`, which the board request alre
 player with R1: the static becomes black, and so does any other window in which the guest has turned the screen off
 (after the logo while THPS4 loads, presents 260-1418). The desktop has shown black there since 2023, for every title.
 
+## Attempt 2 (resumed 10-17 ~17:10 PDT): why attempt 1 stopped
+
+Attempt 1 ran out of its 300-turn budget at ~15:48 PDT, after d2 and the remedy ranking were committed (`9b035c6a98`)
+and while it was writing the Nova instruments. Three of them were left uncommitted: `tools/judge_video.py` (the
+Nova video judge, against the probe log), `tools/judge_video_selftest.py`, and `tools/novatitles.py` (which
+candidate titles have an ISO on the Nova and pass the profile gate for a no-route soak). They were finished except
+for one thing: the self-test's case G (two bursts) failed. H1 asked that *every* probe present in the episode's
+window be `src=v`, and the window, widened by 4 frames each side, took in the title's `src=n` neighbours of a
+mid-game burst. H1 and H5 now read only the presents that drew or held the flash (window or texture class noise or
+green). Self-test: FAILS=0, all seven cases. Fixed before any Nova data exists, so the rule still precedes its data.
+
+Nothing else was lost: no Nova request had been queued, and no R1/R2 code had been written.
+
 ## Waiting / blocked
 
 Nothing outstanding. Next: queue the Nova "before" runs (probe on, video from before the launch, Turnip checked),
