@@ -103,6 +103,8 @@ Release note (none): test tooling only.
 
 ## 10-03 evening -- Black Stone and Dino Crisis 3 holds FAIL (#797, #795, #793); Panzer Dragoon Orta hold run 3 PASSED (counted Playable, ledger row 16); evidence runs/panzer-dragoon-hold3
 
+## 10-18 (cont.) -- finished the backlog's pass=true scan; 10th title banked (Lemony Snicket, 4156001F), remaining untriaged backlog down from ~280 to 141 directories (fails + no-verdict navigation runs, named in NOTES.md)
+
 ## 10-18 -- offline reconciliation of an unattended chain's uncommitted output (attempt 3); 9 new Playable, 2 caught false
 
 An unattended chain ran through at least 10-16 without anyone committing its output: by 10-18 the worktree held
