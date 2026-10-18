@@ -289,3 +289,186 @@ section later than the hand-off note could see (it was written from
 `git log`, which cannot show uncommitted tree state). Nothing here was
 reverted or is suspect; this session's job is to verify it (selftest,
 foreground, this turn) and commit it before moving on to Section 2.
+
+## Section 2 -- `dispatch_doctor.sh`, the Sonnet-model diagnosis step (done)
+
+The owner's complaint named this directly: "The dispatcher should have
+sonnet reasoning. It should troubleshoot and resolve launch failures. It
+should not be just a script." Section 1/1b/1c close the deterministic gaps
+a script CAN handle outright; this section is for the remainder -- a
+failure whose fix is a judgement call, not a lookup.
+
+`docs/testing/dispatch_doctor.sh` (new) sources `dispatcher.sh` the same
+way `98-dispatch-doctor.sh` already does for Section 1/1b/1c (`.
+dispatcher.sh dispatch-doctor-source-only`, an unmatched first argument
+that runs every top-level line and falls through the bottom `case` to a
+no-op, never `serve`/`worker`/`status`), so it gets every helper
+(`jq_get`, `battery_level`, `ensure_title_staged`, `ensure_route_attached`,
+`ensure_profile_restored`, `staging_roots`, `staging_find_tid`, `$D`) for
+free, with no logic duplicated.
+
+Contract (`classify`/`gate`/`cap` split out so the selftest, and the model
+itself through `fix`, can drive each independently; `diagnose` is the only
+one `dispatcher.sh` calls):
+
+- `classify <rdir>` matches `$rdir/ERROR`'s first line against the named
+  recoverable classes (`zero-captures-interop-exhausted`,
+  `title-not-on-device`, `install-failed`, `titles-disk-failed`,
+  `env-vars-failed`, `zero-captures-crash`, `zero-captures`), the last two
+  disambiguated by a `logcat.txt` grep for `FATAL EXCEPTION|ANR in` where
+  the ERROR text alone doesn't already carry the crash signature. Anything
+  else exits 1 with no output -- not a class, no model session billed.
+- `gate <label>` fails closed, in order, on: a `$D/hold/<label>` file
+  (doubles as the stand-in for a Halo-priority window, since no dedicated
+  mechanism for that exists anywhere in the codebase -- a limitation, not
+  an oversight); the owner playing (`adb shell ps -A -o NAME` naming
+  `com.jreinach.hakux:xemu`, the release package the dispatcher itself
+  never installs); an unreadable battery level; a level under
+  `battery_admit.py`'s own floor-plus-margin for that label (imported
+  read-only, never duplicated -- it is outside this lane's territory and
+  this is the one existing policy on when a device may be used).
+- `cap <id> <rdir>` enforces an hourly cap (`DISPATCH_DOCTOR_HOURLY_CAP`,
+  default 3, counted from `logs/dispatch-doctor.tsv`) and "one doctor
+  attempt per request" -- simpler than an earlier `retry_of`-chain design,
+  because the actual retry mechanism reuses the SAME request id (mirroring
+  the existing WSL-interop one-shot requeue), so a second TSV row for that
+  id never happens and a chain walk was dead code.
+- `fix push-iso|attach-route|restore-profile <rdir>` are thin wrappers
+  deriving `title`/`ttid`/`tstate` from `request.json` and calling
+  `ensure_title_staged`/`ensure_route_attached`/`ensure_profile_restored`
+  -- by construction the model has no path to adb, input injection,
+  force-stop, app-data-clear, uninstall, or anything Halo-priority-related.
+- `diagnose <id> <rdir>` runs classify -> gate -> cap (any refusal short-
+  circuits to a `give-up` verdict with NO TSV row and NO model call --
+  the cap counts sessions that actually ran, not every ERROR glanced at),
+  then builds a read-only `doctor-brief.md` snapshot (request, ERROR, log
+  tails, logcat tail, route/profile state, staging search results,
+  `titlestate.py suggest-route`/`backup-candidates` output) so the model
+  needs zero live adb access, resolves the model via `jobs/models.sh model
+  dispatchdoctor` (`[kinds.dispatchdoctor]` in `models.toml`: sonnet for
+  both tiers -- the owner asked for sonnet reasoning by name), and invokes
+  `claude -p` headlessly exactly on `run-claude-job.sh`'s pattern
+  (`--max-turns`, `--output-format json`, `--permission-mode acceptEdits`,
+  a narrow `--allowedTools` file, `--append-system-prompt-file` naming its
+  role). `window_limit_hit`/`window_note_limit` (sourced from
+  `jobs/window.sh`) catch a usage-window hit (exit 75) and give up on the
+  WINDOW, not the failure, without spending a cap slot's worth of blame on
+  it; `error_max_turns` is read the same way if the model wrote no verdict
+  line. The model's own `$rdir/doctor.md`, ending in exactly `retry` or
+  `give-up: <reason>`, is the verdict; either way one `logs/dispatch-
+  doctor.tsv` row and one `doctor-lessons.md` line are appended (by class
+  and verdict only, never by request id -- the lessons file is "what fix
+  works for this CLASS", not a request log, so a class that keeps needing
+  the same session-costing fix can be promoted into Section 1's
+  deterministic path later, per its own header comment).
+
+`jobs/allowed-tools.doctor` (new) deliberately excludes raw `Bash(adb:*)`,
+`git push`, `gh`, `rm`, and `Edit` (only `Write`, enough to create
+`doctor.md` fresh) -- the model's only levers are `fix` and reading the
+brief. `jobs/roles/dispatchdoctor.md` (new) is the role file: read the
+brief, pick at most one fix (or none), write `doctor.md` ending in
+`retry`/`give-up:`, never retry a no-progress run, never touch anything
+but `doctor.md`.
+
+`maybe_run_doctor <id> <rdir>` (new function in `dispatcher.sh`, right
+after `adb_error()`) is the one thing `dispatcher.sh` itself gained: called
+after `$rdir/ERROR` and `request.json` both exist, at exactly the 5
+ERROR sites that are real failures -- install-failed, env-vars-failed,
+title-not-on-device, titles-disk-failed (the `trc!=0` branch only), and
+the final 0-captures site (after the WSL-interop auto-requeue has already
+had its one chance). It is explicitly NOT called at the three deliberate
+`hdd.refused`/`profile.refused` safety-refusal sites (profile-gate, the
+titles-disk `trc=3` refusal, the profile-verify `trc=3` refusal) --
+calling the doctor on a safety stop would risk second-guessing a gate that
+exists on purpose, not troubleshooting a failure. On a `retry` verdict it
+requeues the SAME id (never minting a new one) by writing a
+`doctor_requeued` timestamp into `request.json`, moving it back to
+`queue/$id.req`, moving the current `rdir` aside to `rdir.doctor1`, and
+clearing the `running/$id.owner` marker -- mirroring the existing
+WSL-interop requeue code exactly, not a new mechanism.
+
+**A bug worth flagging for the next lane that touches this area**: the
+title-not-on-device call site sits inside the exact `local tpath ... fi`
+block that `jobs/selftest.d/99-iso-roots.sh` sed-extracts VERBATIM and
+runs with only `$title`/`$rdir`/`$req` bound (see the comment on
+`ensure_title_staged`, a Section-1-era note from this same lane that this
+session briefly violated). A bare `maybe_run_doctor "$id" "$rdir"` there
+reads an outer-scope `$id` the extracted snippet never binds, and fails
+under `set -u` with "id: unbound variable" -- caught by running the FULL
+unscoped selftest, not the scoped one, since `98-dispatch-doctor.sh` has
+no reason to exercise `99-iso-roots.sh`'s extraction. Fixed by deriving
+the id from `rdir` itself (`$(basename "$rdir")`, which is exactly `$id`
+since `rdir="$D/results/$id"` is set once at the top of the enclosing
+function and never reassigned) instead of referencing the outer variable
+by name. The lesson: a sed-extracted verbatim block's binding set is a
+real constraint on every line inside it, not just the lines that existed
+when the comment was written -- re-check it before adding a line, not
+after the selftest catches it.
+
+Deploy-snapshot closure (`97-dispatch-deploy.sh`, not territory, left
+unedited): `dispatch_doctor.sh` is a new sibling `dispatcher.sh` runs
+(`maybe_run_doctor` calls `bash "$HERE/dispatch_doctor.sh" ...`), and in a
+worker `$HERE` IS the snapshot directory, so anything not shipped there
+does not exist at runtime. Added `dispatch_doctor.sh` itself, plus
+`jobs/window.sh`, `jobs/models.sh`, `jobs/allowed-tools.doctor` and
+`jobs/roles/dispatchdoctor.md` (none previously shipped, because nothing
+inside the dispatcher-worker closure had ever called into `jobs/` before)
+to both `SCRIPT_DEPS` and `snapshot_scripts()`'s file list in
+`dispatcher.sh`. The automated closure checker's regex only recognises a
+literal `$HERE/`/`$SNAP/` reference to a `.sh`/`.py` sibling, so it would
+never have caught the `jobs/allowed-tools.doctor` (no `.sh`/`.py`
+extension) or `jobs/roles/dispatchdoctor.md` (`.md`) gaps on its own --
+those two were added by inspection, not by the checker going red. Worth
+knowing if a future lane adds another `$JOBS/*` reference inside
+`dispatch_doctor.sh`: the checker will not see it either.
+
+51 new selftest legs in `98-dispatch-doctor.sh` cover classify (all seven
+named classes plus two "not recognised" legs), gate (hold/owner-play/
+unreadable-battery/low-battery/clean-admit), cap (hourly, wider-hourly,
+one-shot-per-id), fix (push-iso success and a no-staging-root failure),
+and diagnose end to end (gate short-circuit with no model call and no TSV
+row, a full retry round-trip through a fake `claude` binary that actually
+runs `fix push-iso`, a model-chosen give-up, a simulated usage-window hit
+confirmed to write to a sandboxed `$HAKUX_WORK`, and a no-verdict-written
+session). A replay block re-classifies real historical `ERROR` files from
+`/home/justin/hakux-work/dispatch/results/*/ERROR` (read-only) for
+install-failed/titles-disk-failed/env-vars-failed/zero-captures; the one
+class whose message format this lane's own Section 1 changed
+(title-not-on-device) uses a synthetic example instead, documented as
+such rather than overclaiming replay coverage against history that cannot
+exist yet.
+
+Three real bugs were found and fixed by actually running the selftest,
+not by review alone: `classify` ran a needless logcat lookup on the
+already-self-describing `"0 captures: <crash>"` message (split into its
+own case arm); the selftest fixture's `DD_BATTERY_LEVEL="${DD_BATTERY_LEVEL:-90}"`
+used the wrong bash parameter-expansion operator (`:-` treats an
+intentionally-set empty string the same as unset, silently overriding the
+"unreadable battery" leg back to 90%, which then poisoned the next leg
+through `battery_level`'s 60-second cache file -- fixed to `-` without the
+colon, plus `BATTERY_CACHE_S=0` in the fixture so each independent gate
+leg always reads live rather than sharing one `$D`'s cache); and
+`dd_req_field` had its `(rdir, field)` arguments backwards from every one
+of its own call sites (fixed by swapping the body, not the callers).
+
+A full, unscoped selftest run (no `SELFTEST_ONLY`, all 148 fragments) is
+green end to end this session, polled in the foreground across several
+`timeout`-bounded windows: **3651 passed, 0 failed, all 148 fragments.**
+
+Two known, deliberate limitations, not blockers:
+
+- The "Halo priority window" gating is only the generic hold-file check
+  above -- there is no dedicated Halo-priority mechanism anywhere in the
+  codebase to integrate with. If one is ever added, `dd_gate` is the one
+  place to wire it in.
+- No live device was used to exercise this section (same as every prior
+  section) -- judged not worth the risk for a harness-only change the
+  selftest's fake-adb/fake-claude fixtures already cover end to end.
+  `Prediction: none` still stands.
+
+## Still to come
+
+Section 3 (richer ERROR text naming what the dispatcher/doctor tried and
+found; an hourly-report line via an OUTBOX request to lane.local -- never
+editing host-tools directly). PR stays in draft until that lands or a
+blocker is written up.

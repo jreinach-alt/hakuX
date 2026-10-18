@@ -91,7 +91,8 @@ affinity.py captures.py make_test_iso.py extract_results.py sweep_queue.sh \
 make_isolation_discs.py vsh_score.py thermal_state.py titles/route.sh perf/pad.sh \
 battery_admit.py titles/titlestate.py titles/saves.py titles/drive.py \
 titles/classify.py titles/waitfor_match.py titles/pathclass.py jobs/device_build.py \
-jobs/models.py jobs/models.toml"
+jobs/models.py jobs/models.toml dispatch_doctor.sh jobs/window.sh jobs/models.sh \
+jobs/allowed-tools.doctor jobs/roles/dispatchdoctor.md"
 # DATA A SHIPPED SCRIPT PICKS AT RUN TIME, shipped by glob, never by name.
 #
 # route.sh's `drive <profile>` step runs drive.py on
@@ -150,7 +151,9 @@ snapshot_scripts() {
              sweep_queue.sh make_isolation_discs.py vsh_score.py thermal_state.py \
              titles/route.sh perf/pad.sh battery_admit.py titles/titlestate.py \
              titles/saves.py titles/drive.py titles/classify.py titles/waitfor_match.py \
-             titles/pathclass.py jobs/device_build.py jobs/models.py jobs/models.toml; do
+             titles/pathclass.py jobs/device_build.py jobs/models.py jobs/models.toml \
+             dispatch_doctor.sh jobs/window.sh jobs/models.sh jobs/allowed-tools.doctor \
+             jobs/roles/dispatchdoctor.md; do
         snapshot_one "$f"
     done
     for g in $(snapshot_globbed); do
@@ -227,6 +230,43 @@ adb_error() {   # <what failed> -> the ERROR line, naming a hung call if any
     else
         echo "$1"
     fi
+}
+
+# dispatchdoctor1017 Section 2 (owner, 2026-10-17: "it should troubleshoot
+# and resolve launch failures ... not just be a script"). Called AFTER
+# $rdir/ERROR and $rdir/request.json are both written, at the small set of
+# ERROR sites below that are a real failure rather than a deliberate
+# hdd.refused/profile.refused safety stop (those keep going straight to
+# `return 0`, untouched -- lane.profilegate1011's gate in particular is not
+# this lane's to alter). dispatch_doctor.sh's own classify() is the real
+# filter: most of what reaches here is still not a class it recognises, and
+# it gives up with no model call at all in that case, so calling this at a
+# handful of sites costs nothing on the ones it declines.
+#
+# On a `retry` verdict, requeues the SAME id once, exactly the way the one
+# WSL-interop requeue below already does (never a new id): the claimed
+# result dir is moved aside so the retry gets a clean one, and the request
+# (now carrying doctor_requeued, so dispatch_doctor.sh's cap sees this id
+# already has a logs/dispatch-doctor.tsv row and never runs a second
+# session on it) goes back into $D/queue/$id.req for the main loop's next
+# claim to pick up.
+maybe_run_doctor() {   # <id> <rdir>
+    local id="$1" rdir="$2" ddt="$HERE/dispatch_doctor.sh" out verdict aside
+    [ -x "$ddt" ] || return 0
+    out=$(bash "$ddt" diagnose "$id" "$rdir" 2>>"$D/logs/dispatcher.log")
+    verdict=$(printf '%s\n' "$out" | sed -n 's/^VERDICT //p' | tail -1)
+    log "  DOCTOR: ${verdict:-no verdict}"
+    [ "$verdict" = retry ] || return 0
+    python3 -c 'import json, sys, time
+r = json.load(open(sys.argv[1]))
+r["doctor_requeued"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+json.dump(r, open(sys.argv[2], "w"), indent=2)' \
+        "$rdir/request.json" "$D/queue/$id.req" 2>>"$D/logs/dispatcher.log" || return 0
+    aside="$rdir.doctor1"
+    [ -e "$aside" ] && aside="$rdir.doctor1.$(date +%s)"
+    mv "$rdir" "$aside"
+    rm -f "$D/running/$id.owner"
+    log "  DOCTOR: fix applied, requeued once as $id (attempt kept at $aside)"
 }
 
 # Put the request's `env` into the app's environment for THIS RUN, and take it
@@ -2073,7 +2113,7 @@ serve_one() {
 p=sys.argv[1]; b=json.load(open(p)); b["t_device"]=time.time(); json.dump(b,open(p,"w"))' "$rdir/battery.json" 2>/dev/null
     adb_call "$ADB_INSTALL_TIMEOUT" "adb install -r" install -r "$apk" 2>&1 | grep -q Success || {
         adb_error "install failed" > "$rdir/ERROR"; log "  INSTALL FAILED: $(cat "$rdir/ERROR")"
-        mv "$req" "$rdir/request.json"; return 0
+        mv "$req" "$rdir/request.json"; maybe_run_doctor "$id" "$rdir"; return 0
     }
     if ! clear_shader_caches_on_apk_change "$sha"; then
         adb_error "could not clear the shader caches for a new apk; see dispatcher.log" > "$rdir/ERROR"
@@ -2089,7 +2129,7 @@ p=sys.argv[1]; b=json.load(open(p)); b["t_device"]=time.time(); json.dump(b,open
     if ! apply_env_pref "$req"; then
         adb_error "could not set the requested env_vars pref; see dispatcher.log" > "$rdir/ERROR"
         log "  ENV SETUP FAILED"
-        mv "$req" "$rdir/request.json"; return 0
+        mv "$req" "$rdir/request.json"; maybe_run_doctor "$id" "$rdir"; return 0
     fi
     req_env=$(python3 -c "import json,sys;print(json.dumps(json.load(open(sys.argv[1])).get('env') or []))" "$req" 2>/dev/null || echo "[]")
     # A title run that never reached titles_disk_after left hddPath on the
@@ -2149,7 +2189,12 @@ PYEOF
                 # with "searched <root>" by jobs/selftest.d/99-iso-roots.sh,
                 # which is not this lane's to edit.
                 adb_error "staging searched $(staging_roots | paste -sd, - | sed 's/,/, /g'), none had it; $(device_title_miss "$title")" > "$rdir/ERROR"
-                log "  TITLE NOT FOUND"; mv "$req" "$rdir/request.json"; return 0
+                log "  TITLE NOT FOUND"; mv "$req" "$rdir/request.json"
+                # $(basename "$rdir"), not a bare $id: this line is inside the
+                # soak block jobs/selftest.d/99-iso-roots.sh sed-extracts
+                # verbatim and runs with only $title/$rdir/$req bound: see
+                # ensure_title_staged's comment above, same constraint.
+                maybe_run_doctor "$(basename "$rdir")" "$rdir"; return 0
             fi
         fi
         # Before the titles disk, which edits the same file: a build from
@@ -2205,7 +2250,7 @@ except Exception: print("")' "$rdir/profile-backup.json" 2>/dev/null)
             adb_error "could not prepare the titles disk; see dispatcher.log" > "$rdir/ERROR"
             log "  TITLES DISK SETUP FAILED"
             restore_hdd_pref
-            mv "$req" "$rdir/request.json"; return 0
+            mv "$req" "$rdir/request.json"; maybe_run_doctor "$id" "$rdir"; return 0
         fi
         verify_profile_on_device "$ttid" "$tstate" "$rdir"; trc=$?
         if [ "$trc" = 3 ]; then
@@ -2843,6 +2888,7 @@ PYEOF
         fi
         adb_error "$msg" > "$rdir/ERROR"
         log "  FAILED: $(head -1 "$rdir/ERROR")"
+        maybe_run_doctor "$id" "$rdir"
         return 0
     fi
     rm -f "$D/running/$id.owner"

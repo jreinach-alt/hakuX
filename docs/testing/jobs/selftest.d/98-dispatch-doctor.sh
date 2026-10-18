@@ -65,6 +65,15 @@ case "$1" in
                             | awk '{s+=$1} END{print s+0}')
                      cap=$(cat "$DD_CAPACITY_BYTES" 2>/dev/null || echo 999999999999)
                      printf '/dev/x %s 1 %s 1%% /storage\n' $((cap/1024)) $(((cap-used)/1024)) ;;
+                 # dispatchdoctor1017 Section 2: dd_gate's own two live reads.
+                 # Unset DD_BATTERY_LEVEL simulates an unreadable level (the
+                 # generic fallback below would try to run a literal
+                 # `dumpsys` on the host and fail the same way, but naming it
+                 # here makes the "unreadable" leg's intent readable).
+                 dumpsys\ battery*)
+                     [ -n "${DD_BATTERY_LEVEL:-}" ] && printf 'level: %s\n' "$DD_BATTERY_LEVEL" ;;
+                 ps\ -A\ -o\ NAME*)
+                     printf '%s\n' "${DD_PS_OUTPUT:-}" ;;
                  *) sh -c "${cmd//\/storage\//$DD_FS/storage/}" | sed "s#$DD_FS##g" ;;
              esac ;;
 esac
@@ -444,3 +453,267 @@ if [ "$rc" = 0 ] && [ "$(pf_verify_field verified)" = None ] && [ ! -f "$PF/rdir
 else
     bad "1c verify nothing-loaded: rc=$rc verified=$(pf_verify_field verified) refused=$(cat "$PF/rdir/hdd.refused" 2>/dev/null)"
 fi
+
+echo "== dispatch doctor: Section 2, classify/gate/cap and the full diagnose contract"
+# dispatch_doctor.sh sources dispatcher.sh the same dummy-arg way pf_env/dd_run
+# already do, so it shares the fake adb above -- plus a fake `claude`, since
+# diagnose must never spend a real model call in a selftest. The fake claude
+# reads DD2_CLAUDE_CTL (set per-leg) off its own environment to decide what to
+# write to doctor.md and what JSON shape to emit; HAKUX_BRIEF (set by
+# dispatch_doctor.sh itself before invoking claude, same as run-claude-job.sh)
+# is how it finds the request's rdir with no argument parsing needed.
+DD2="$T/dispatchdoctor2"; rm -rf "$DD2"; mkdir -p "$DD2/stage" "$DD2/work"
+DOCTOR_SH="$DDT/dispatch_doctor.sh"
+
+cat > "$DD/bin/claude" <<'EOF'
+#!/usr/bin/env bash
+brief="${HAKUX_BRIEF:?}"; rdir="$(dirname "$brief")"
+case "${DD2_CLAUDE_CTL:-}" in
+    windowhit)
+        printf '{"type":"result","subtype":"error","is_error":true,"result":"Claude AI usage limit reached|9999999999"}\n'
+        exit 0 ;;
+    maxturns)
+        printf '{"type":"result","subtype":"error_max_turns","is_error":true,"result":"hit the cap"}\n'
+        exit 0 ;;
+    noverdict)
+        printf 'looked at it, made no decision\n' > "$rdir/doctor.md" ;;
+    retry:*)
+        action="${DD2_CLAUDE_CTL#retry:}"
+        bash "${DD2_DOCTOR_SH:?}" fix "$action" "$rdir" > "$rdir/fix-output.txt" 2>&1
+        printf 'ran fix %s; it reported success\nretry\n' "$action" > "$rdir/doctor.md" ;;
+    give-up:*)
+        printf 'looked at it, nothing applies\n%s\n' "${DD2_CLAUDE_CTL}" > "$rdir/doctor.md" ;;
+    *)
+        printf 'fixture default\ngive-up: no DD2_CLAUDE_CTL set for this leg\n' > "$rdir/doctor.md" ;;
+esac
+printf '{"type":"result","subtype":"success","is_error":false,"result":"ok","total_cost_usd":0.01}\n'
+EOF
+chmod +x "$DD/bin/claude"
+
+# dd2_env <subcommand + args...>: dispatch_doctor.sh itself, sandboxed --
+# DISPATCH_DIR and HAKUX_WORK both under $DD2 (HAKUX_WORK matters only for
+# window.sh's limits.tsv, so a windowhit leg never writes outside the
+# fixture), the fake adb+claude on PATH, SERIAL matching the fake device.
+dd2_env() {
+    ( export PATH="$DD/bin:$PATH" DD_FS="$DD2/fs" NOVA="$NOVA" \
+             DD_CAPACITY_BYTES="$DD/capacity.bytes" SERIAL=ee317437 \
+             DISPATCH_DIR="$DD2/dispatch" HAKUX_WORK="$DD2/work" \
+             HAKUX_STAGING_ROOTS="$DD2/stage" FREE_FLOOR_BYTES=10240 \
+             DD2_DOCTOR_SH="$DOCTOR_SH" DD2_CLAUDE_CTL="${DD2_CLAUDE_CTL:-}" \
+             DD_PS_OUTPUT="${DD_PS_OUTPUT:-}" DD_BATTERY_LEVEL="${DD_BATTERY_LEVEL-90}" \
+             BATTERY_CACHE_S=0 DOCTOR_TIMEOUT=30s DOCTOR_TURNS=4
+      bash "$DOCTOR_SH" "$@" )
+}
+dd2_reset() {
+    rm -rf "$DD2/dispatch" "$DD2/work" "$DD2/fs" "$DD2/rdir"
+    mkdir -p "$DD2/dispatch/queue" "$DD2/dispatch/running" "$DD2/dispatch/results" "$DD2/dispatch/logs" \
+             "$DD2/work" "$DD2/fs$NOVA" "$DD2/rdir"
+    echo 999999999999 > "$DD/capacity.bytes"
+}
+
+# --- classify: the brief's named recoverable classes, matched off ERROR's
+# first line (plus a logcat grep for the crash/ANR variant). One check per
+# class, and one ERROR text classify must NOT recognise (a build failure --
+# the doctor is never billed for a class nobody taught it). ---
+dd2_classify_is() {   # <want> <err text> [<logcat text>]
+    dd2_reset
+    printf '%s\n' "$2" > "$DD2/rdir/ERROR"
+    [ -n "${3:-}" ] && printf '%s\n' "$3" > "$DD2/rdir/logcat.txt"
+    out=$(dd2_env classify "$DD2/rdir"); rc=$?
+    if [ "$1" = NONE ]; then
+        [ "$rc" != 0 ] && [ -z "$out" ] \
+            && ok "classify: '$2' is not a recognised class (no model session billed on it)" \
+            || bad "classify: '$2' got rc=$rc out=[$out], wanted no class"
+    else
+        [ "$rc" = 0 ] && [ "$out" = "$1" ] \
+            && ok "classify: '$2' -> $1" \
+            || bad "classify: '$2' got rc=$rc out=[$out], wanted $1"
+    fi
+}
+dd2_classify_is title-not-on-device "staging searched sweep, xiso, none had it; title not on device: /storage/x/Some Game.iso"
+dd2_classify_is install-failed "install failed"
+dd2_classify_is titles-disk-failed "could not prepare the titles disk; see dispatcher.log"
+dd2_classify_is env-vars-failed "could not set the requested env_vars pref; see dispatcher.log"
+dd2_classify_is zero-captures "ran but produced 0 captures; see run1.log and captures1/"
+dd2_classify_is zero-captures-crash "0 captures: emulator started and CRASHED after 4s"
+dd2_classify_is zero-captures-crash "ran but produced 0 captures; see run1.log and captures1/" "FATAL EXCEPTION: main"
+dd2_classify_is zero-captures-interop-exhausted "adb interop failure: 0 captures, and run1.log carries the WSL UtilAcceptVsock signature -- the captures were lost between device and host, not unrendered; this was the one requeue, so it is final"
+dd2_classify_is NONE "build failed for ref a1b2c3d4"
+dd2_classify_is NONE "refusing to install: it reports applicationId com.jreinach.hakux (the release package)"
+
+# --- gate: a hold, the owner playing, an unreadable level, a level under
+# the admit floor, and a clean admit -- in that order, per dd_gate's own
+# priority. ---
+dd2_reset
+mkdir -p "$DD2/dispatch/hold"; echo "Halo work has priority" > "$DD2/dispatch/hold/nova.why"
+touch "$DD2/dispatch/hold/nova"
+out=$(DD_PS_OUTPUT="" DD_BATTERY_LEVEL=90 dd2_env gate nova)
+case "$out" in
+    "refuse: device held: Halo work has priority") ok "gate: a hold file refuses, naming its .why" ;;
+    *) bad "gate: hold -> [$out]" ;;
+esac
+rm -f "$DD2/dispatch/hold/nova" "$DD2/dispatch/hold/nova.why"
+
+out=$(DD_PS_OUTPUT="com.jreinach.hakux:xemu" DD_BATTERY_LEVEL=90 dd2_env gate nova)
+case "$out" in
+    refuse:*"owner is playing"*) ok "gate: the release package running refuses as owner-play" ;;
+    *) bad "gate: owner-play -> [$out]" ;;
+esac
+
+out=$(DD_PS_OUTPUT="" DD_BATTERY_LEVEL="" dd2_env gate nova)
+case "$out" in
+    refuse:*"unreadable"*) ok "gate: an unreadable battery level fails closed" ;;
+    *) bad "gate: unreadable battery -> [$out]" ;;
+esac
+
+out=$(DD_PS_OUTPUT="" DD_BATTERY_LEVEL=10 dd2_env gate nova)
+case "$out" in
+    refuse:*"below the admit floor"*) ok "gate: a level under the admit floor refuses" ;;
+    *) bad "gate: low battery -> [$out]" ;;
+esac
+
+out=$(DD_PS_OUTPUT="" DD_BATTERY_LEVEL=90 dd2_env gate nova)
+[ "$out" = admit ] && ok "gate: no hold, no owner-play, battery well above the floor -> admit" \
+    || bad "gate: clean admit -> [$out]"
+
+# --- cap: the hourly cap (rows this fixture writes itself, so no real
+# session needs to run to exercise it) and the per-id cap (an id that
+# already has a row gets no second session, even hours later). ---
+dd2_reset
+TSV2="$DD2/dispatch/logs/dispatch-doctor.tsv"; mkdir -p "$(dirname "$TSV2")"
+now=$(date +%s)
+for i in 1 2 3; do printf '%s\told-%s\tinstall-failed\tgive-up: x\t1\n' "$now" "$i" >> "$TSV2"; done
+out=$(DISPATCH_DOCTOR_HOURLY_CAP=3 dd2_env cap new-id "$DD2/rdir")
+case "$out" in
+    refuse:*"last hour"*) ok "cap: the hourly cap (3) refuses a 4th session in the trailing hour" ;;
+    *) bad "cap: hourly -> [$out]" ;;
+esac
+out=$(DISPATCH_DOCTOR_HOURLY_CAP=10 dd2_env cap new-id "$DD2/rdir")
+[ "$out" = ok ] && ok "cap: a wider hourly cap admits the same id" || bad "cap: wider hourly -> [$out]"
+old=$((now - 7200))
+printf '%s\told-4\tinstall-failed\tretry\t5\n' "$old" >> "$TSV2"
+out=$(DISPATCH_DOCTOR_HOURLY_CAP=10 dd2_env cap old-4 "$DD2/rdir")
+case "$out" in
+    refuse:*"one doctor attempt"*) ok "cap: a request that already has a row gets no second session, hours later" ;;
+    *) bad "cap: per-id -> [$out]" ;;
+esac
+
+# --- fix push-iso: the model's own narrow wrapper derives title/ttid from
+# request.json and calls through to the same ensure_title_staged this
+# lane's Section 1 already proved -- no duplicated staging logic. ---
+dd2_reset
+head -c 2048 /dev/zero > "$DD2/stage/BEEF2001-Some_Fixable_Game.xiso.iso"
+echo '{"title":"Some Fixable Game (USA).iso","title_id":"BEEF2001"}' > "$DD2/rdir/request.json"
+out=$(dd2_env fix push-iso "$DD2/rdir"); rc=$?
+pushed="$DD2/fs$NOVA/Some Fixable Game (USA).iso"
+if [ "$rc" = 0 ] && [ -f "$pushed" ]; then
+    ok "fix push-iso: derives the title from request.json and pushes it via ensure_title_staged"
+else
+    bad "fix push-iso: rc=$rc out=[$out] pushed=$([ -f "$pushed" ] && echo yes || echo no)"
+fi
+dd2_reset
+echo '{"title":"Nothing Staged Anywhere (USA).iso","title_id":"DEAD0000"}' > "$DD2/rdir/request.json"
+out=$(dd2_env fix push-iso "$DD2/rdir"); rc=$?
+[ "$rc" != 0 ] && ok "fix push-iso: a title on no staging root reports failure, not a false success" \
+    || bad "fix push-iso: wrongly reported success -- out=[$out]"
+
+# --- diagnose: the full contract, end to end. ---
+# gate/cap refusals short-circuit with no model call and no TSV row (the cap
+# counts sessions that actually ran, not every ERROR the doctor glanced at).
+dd2_reset
+mkdir -p "$DD2/dispatch/hold"; touch "$DD2/dispatch/hold/nova"
+printf 'install failed\n' > "$DD2/rdir/ERROR"
+echo '{"title":"X.iso"}' > "$DD2/rdir/request.json"
+out=$(DEVICE_LABEL=nova dd2_env diagnose req-gate "$DD2/rdir")
+if printf '%s' "$out" | grep -q '^VERDICT give-up: refuse: device held' \
+   && [ ! -s "$TSV2" -o "$(wc -l < "$TSV2" 2>/dev/null)" = 0 ]; then
+    ok "diagnose: a held device gives up with no model call and no TSV row"
+else
+    bad "diagnose: gate short-circuit -> [$out], tsv=$(cat "$TSV2" 2>/dev/null)"
+fi
+rm -f "$DD2/dispatch/hold/nova"
+
+# retry: the fake claude runs fix push-iso (the ERROR's title really is on
+# a staging root) and writes `retry`; diagnose logs one TSV row and one
+# doctor-lessons.md line.
+dd2_reset
+head -c 2048 /dev/zero > "$DD2/stage/CAFE3001-Retry_Game.xiso.iso"
+printf 'install failed\n' > "$DD2/rdir/ERROR"
+echo '{"title":"Retry Game (USA).iso","title_id":"CAFE3001"}' > "$DD2/rdir/request.json"
+out=$(DEVICE_LABEL=nova DD2_CLAUDE_CTL="retry:push-iso" dd2_env diagnose req-retry "$DD2/rdir")
+tsv_row=$(grep -F $'\treq-retry\t' "$DD2/dispatch/logs/dispatch-doctor.tsv" 2>/dev/null)
+if printf '%s' "$out" | grep -qx 'VERDICT retry' \
+   && [ -f "$DD2/fs$NOVA/Retry Game (USA).iso" ] \
+   && [ -n "$tsv_row" ] \
+   && grep -q "install-failed" <<< "$tsv_row" \
+   && grep -q "install-failed -> retry" "$DD2/dispatch/doctor-lessons.md" 2>/dev/null; then
+    ok "diagnose retry: the model's fix lands, VERDICT retry, one TSV row and lessons line"
+else
+    bad "diagnose retry: out=[$out] pushed=$([ -f "$DD2/fs$NOVA/Retry Game (USA).iso" ] && echo yes || echo no) tsv=[$tsv_row]"
+fi
+
+# give-up via the model: no fix applies, the model says so, still one row.
+dd2_reset
+printf 'could not prepare the titles disk; see dispatcher.log\n' > "$DD2/rdir/ERROR"
+echo '{"title":"No Fix Applies (USA).iso"}' > "$DD2/rdir/request.json"
+out=$(DEVICE_LABEL=nova DD2_CLAUDE_CTL="give-up: nothing in the inventory explains it" dd2_env diagnose req-giveup "$DD2/rdir")
+if printf '%s' "$out" | grep -qF 'VERDICT give-up: nothing in the inventory explains it' \
+   && grep -qF "req-giveup" "$DD2/dispatch/logs/dispatch-doctor.tsv" 2>/dev/null; then
+    ok "diagnose give-up: the model's own reason becomes the verdict, and still logs a row"
+else
+    bad "diagnose give-up: out=[$out]"
+fi
+
+# the account's usage window: exit-75 shaped JSON gives up on the WINDOW,
+# not the failure, records it the same way run-claude-job.sh does, and
+# never writes outside this fixture's own sandboxed HAKUX_WORK.
+dd2_reset
+printf 'install failed\n' > "$DD2/rdir/ERROR"
+echo '{"title":"X.iso"}' > "$DD2/rdir/request.json"
+out=$(DEVICE_LABEL=nova DD2_CLAUDE_CTL=windowhit dd2_env diagnose req-window "$DD2/rdir")
+if printf '%s' "$out" | grep -qF "VERDICT give-up: hit the account's usage window" \
+   && [ -s "$DD2/work/window/limits.tsv" ]; then
+    ok "diagnose window: an exit-75-shaped run gives up on the window, not the failure, and records it sandboxed"
+else
+    bad "diagnose window: out=[$out] limits.tsv=$(cat "$DD2/work/window/limits.tsv" 2>/dev/null)"
+fi
+
+# no verdict line at all: still a row, a readable reason, never silent.
+dd2_reset
+printf 'install failed\n' > "$DD2/rdir/ERROR"
+echo '{"title":"X.iso"}' > "$DD2/rdir/request.json"
+out=$(DEVICE_LABEL=nova DD2_CLAUDE_CTL=noverdict dd2_env diagnose req-noverdict "$DD2/rdir")
+printf '%s' "$out" | grep -qF "VERDICT give-up: the doctor session wrote no doctor.md verdict line" \
+    && ok "diagnose no-verdict: a session that wrote no retry/give-up line still ends in a readable give-up" \
+    || bad "diagnose no-verdict: out=[$out]"
+
+echo "== dispatch doctor: Section 2, classify replays real dispatch history (Done means #5)"
+# One real ERROR per still-current-format recoverable class, read-only, off
+# the live dispatch tree's own history -- never copied content is edited,
+# never a real result dir is touched. "title not on device" is the one
+# exception: Section 1 (this lane, earlier) changed that message from the
+# bare `device_title_miss` text history was built on to "staging searched
+# ...", so no real result on disk carries the new wording yet; that line
+# below is the first few words of the NEW format dd_classify actually
+# matches, not a copy of history.
+REALD="/home/justin/hakux-work/dispatch/results"
+dd2_replay() {   # <want class> <grep pattern>
+    local want="$1" pat="$2" f out
+    f=$(grep -lF "$pat" "$REALD"/*/ERROR 2>/dev/null | head -1)
+    if [ -z "$f" ]; then
+        ok "replay $want: no real result on disk currently carries '$pat' (nothing to replay, not a failure)"
+        return
+    fi
+    dd2_reset
+    cp "$f" "$DD2/rdir/ERROR"
+    [ -f "$(dirname "$f")/logcat.txt" ] && cp "$(dirname "$f")/logcat.txt" "$DD2/rdir/logcat.txt"
+    out=$(dd2_env classify "$DD2/rdir")
+    [ "$out" = "$want" ] \
+        && ok "replay $want: $f classifies correctly against the real ERROR text" \
+        || bad "replay $want: $f -> [$out], wanted $want ($(head -1 "$f"))"
+}
+dd2_replay install-failed "install failed"
+dd2_replay titles-disk-failed "could not prepare the titles disk"
+dd2_replay env-vars-failed "could not set the requested env_vars pref"
+dd2_replay zero-captures "ran but produced 0 captures"
+dd2_classify_is title-not-on-device "staging searched sweep, xiso, lanelocal-1, none had it; title not on device: /storage/388C-68F7/ROMS/xbox/Jet Set Radio Future (USA).xiso.iso"
