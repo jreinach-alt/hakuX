@@ -2,9 +2,14 @@
 
 Mortal Kombat: Deadly Alliance (4D57000C): arena floors and walls draw flat white.
 
-Status (10-18 10:55 PDT, attempt 2): the Step 1 Nova run is re-queued as
-`1792345978-mkdawhite1018-1601447` (section 7). It is the same request on the same ref, route
-and dump settings, and it waits behind lane.gta3car1018's Nova hold (to ~11:20 PDT).
+Status (10-18 11:10 PDT, attempt 2): **blocked on the harness at Step 1 again, on a second
+defect** (section 7.1). The re-queued run `1792345978-mkdawhite1018-1601447` failed at 11:05
+with `title not on device`. The first fix works: the disc now transfers and its sha matches.
+`dev_push` then requires the copy to be mode 660, a rule written for the read-write titles disk.
+The disc sits on the SD card, whose mount pins its mode at 770, so the check fails. The doctor's
+retry failed the same way, so by the stop rule I am not re-queuing. The lever, a read-only disc
+push in `ensure_title_staged`, is in 7.1. Once it is deployed, re-queue `1792345978` unchanged.
+Nothing about the white floors has been measured since 10-06.
 
 **Why attempt 1 did not finish:** it was blocked on the harness, not on this lane's work, and it
 ended with a WAITING marker on that block. The disc push (section 6) could not run until the
@@ -236,6 +241,81 @@ Request `1792345978-mkdawhite1018-1601447`, queued 10:55 PDT. It has the same fi
 `1792337550`: Nova pin, ref da6e8949dc, 420 s, route `mkda-arcade`,
 `XEMU_FRAME_DUMP=8,images,gd,after170,cap256`, `--pull 'framedump_*'`, and frames every 30 s.
 
+The dispatcher claimed it at 11:03:41 and it ended in ERROR at 11:05:18 with the same symptom as attempt 1, `title not on device`, from a
+**different cause**.
+
+### 7.1 The second push defect: the titles-disk mode rule applied to a disc on the SD card
+
+dispatcher.log, this request:
+
+```
+29387: 10-18 11:03:41 request 1792345978-mkdawhite1018-1601447 from mkdawhite1018: ...
+29392: 10-18 11:05:14   /storage/E6C6-D7AA/Games/XBox/4D57000C-Mortal_Kombat_Deadly_Alliance.xiso.iso.new: mode 770 after chmod 660; the app could not open it read-write
+29393: 10-18 11:05:18   stage: found /mnt/d/hakux-staging/sweep/4D57000C-...xiso.iso but the push to /storage/E6C6-D7AA/Games/XBox/4D57000C-...xiso.iso failed (dispatcher.log)
+29395: 10-18 11:06:51   /storage/E6C6-D7AA/Games/XBox/4D57000C-Mortal_Kombat_Deadly_Alliance.xiso.iso.new: mode 770 after chmod 660; the app could not open it read-write
+29396: 10-18 11:06:52   stage: found ... but the push ... failed (dispatcher.log)   <- the doctor's push-iso retry
+```
+
+- **The dispatchpush1018 fix works.** The push completed, and `dev_push`'s sha check passed:
+  `dev_make_660` runs only after that check (:1052-1053), and no `the device's copy does not match`
+  line was logged.
+- **The failure is `dev_make_660`.** `dev_push` (dispatcher.sh:1043-1056) checks the copy, then
+  calls `dev_make_660 "$dst.new"` (:1053). Its last line also requires
+  `dev_mode "$dst" = 660` (:1055). Both come from the titles disk's rule, "THE DISK MUST BE
+  MODE 660" (:801-812). That disk lives in the app's internal x1box directory, and xemu opens it
+  read-write.
+- **A disc on the SD card cannot meet that rule, and does not need to.** `DEVICE_ISO_ROOT` is
+  `/storage/E6C6-D7AA/Games/XBox`, the card. Android synthesizes the card's file modes from the
+  mount, so `chmod 660` has no effect and the mode reads back 770: the log line says exactly
+  that. The app opens a disc read-only. On 10-06 it booted this same disc from this same path
+  (pathfind `runs/deadly-alliance-1006/result.json:5`, `"iso": "/storage/E6C6-D7AA/Games/XBox/4D57000C-..."`).
+- **Both failures are one call site.** The claim and the doctor's `fix push-iso`
+  (dispatch_doctor.sh:181-189) both reach `dev_push` through `ensure_title_staged`
+  (dispatcher.sh:1249). Every title missing from the Nova is blocked, not only this one.
+- **Why the selftests passed:** `99-dev-push-wslpath.sh` and the three fixtures dispatchpush1018
+  fixed use a fake `adb` whose chmod works. No fixture models a mount that ignores chmod.
+
+**The lever** (harness, outside this lane's files): give `dev_push` a read-only mode for the
+disc push, which skips the 660 step and the final mode check but keeps the sha check:
+
+```
+dev_push() {
+    local src="$1" dst="$2" ro="${3:-}" want wsrc
+    ...
+    [ -n "$ro" ] || dev_make_660 "$dst.new" || { dev_push_drop "$dst"; return 1; }
+    adb_call ... "mv -f '$dst.new' '$dst'" ... || { dev_push_drop "$dst"; return 1; }
+    [ "$(dev_sha256 "$dst")" = "$want" ] && { [ -n "$ro" ] || [ "$(dev_mode "$dst")" = 660 ]; }
+}
+# ensure_title_staged, :1249:
+    if dev_push "$src" "$DEVICE_ISO_ROOT/$title" ro; then
+```
+
+The selftest fragment for it: a fake `adb` whose `chmod` is a no-op and whose `stat` reports 770.
+The disc push must succeed under it, and the titles-disk push must still fail. The titles disk
+and the hdd-guard push (:1669, :1802) keep the 660 rule unchanged.
+
+This cause has failed twice (the claim, then the doctor's retry 93 s later), so by the stop rule
+this lane does not re-queue until the fix is deployed. Then re-queue `1792345978` unchanged
+(request.json in its result dir).
+
+### 7.2 What remains open
+
+Nothing about the white floors has been measured on the 10-18 build. The desktop route is still
+closed: C: has 21 GB free (`df -h /mnt/c`, 11:09 PDT) against deskrun.py's 40 GB guard. Sections 1-4
+stand as written. The Step 2 reading is prepared: the `gd` dump's per-stage records carry
+`fmt`, `off`, `addr` (TEXADDRESS), `ctl0`, `fil`, `bv` (`z` means the dummy texture was bound),
+`gh`/`th` and `key` (the schema comment at renderer.c:1856-1901; the writer at :3539).
+`gdread.py DUMP draw F N` decodes the combiner stages and final combiner and prints each enabled
+texture stage (gdread.py:224-255), and `chain.py DUMP shader HASH psh` prints the fragment GLSL. Hypotheses 1 (dummy)
+and 2 (border) are one field each in that record.
+
+Upstream xemu's compatibility page lists this title with no reported issues (tested on 0.8.113,
+xemu.app/titles/4d57000c). That is a user report, not a measurement, but it points at fork code
+rather than at NV2A behaviour that upstream also lacks.
+
 ## Questions
 
 - (answered) Who takes the `dev_push` fix (6.2)? lane.dispatchpush1018 did; it folded as 127cf0f2c1.
+- (open, for lane.local) Who takes the second `dev_push` fix (7.1: the read-only disc push that
+  skips the 660 step on the SD card)? It is a harness file outside this lane's `Files:`. Every disc
+  staged to the Nova fails until it lands, not only this title.
