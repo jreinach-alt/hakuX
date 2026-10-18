@@ -8,7 +8,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `devpushro1018` | claude-sonnet-5 | 9 min |  |
+| `devpushro1018` | claude-sonnet-5 | 24 min |  |
 
 - **Handhelds:** 1 connected.
   - Nova: free for the queue
@@ -138,4 +138,4 @@ No branch is being worked right now.
 - 2026-10-18 Fable and Blinx 2: decompose the gameplay dips, find what the frame spends its time on
 - 2026-10-18 pathfind: a screen-reading agent that drives a title from boot into gameplay
 
-_Updated 2026-10-18 16:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 16:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
