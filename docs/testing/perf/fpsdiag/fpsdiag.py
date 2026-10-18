@@ -345,8 +345,15 @@ def mark_refused(windows, cap):
             w.gameplay, w.refuse_reason = False, 'save-state load in window'
             continue
         pace_rows = w.fields.get('pace')
-        if pace_rows and all((r.get('max') or 0) == 0 and (r.get('ms') or 0) == 0 for r in pace_rows):
-            w.gameplay, w.refuse_reason = False, 'zero flip advance (frozen/black)'
+        if pace_rows:
+            # between(t0, t1) is inclusive of t0, which is the *previous*
+            # window's own terminal pace row -- so pace_rows can carry that
+            # trailing non-zero row alongside this window's own. The window
+            # is defined by its own row (the last one, at t1); that is the
+            # one flip-advance event this window actually reports.
+            own = pace_rows[-1]
+            if (own.get('max') or 0) == 0 and (own.get('ms') or 0) == 0:
+                w.gameplay, w.refuse_reason = False, 'zero flip advance (frozen/black)'
 
 
 # --------------------------------------------------------------------------
@@ -466,7 +473,7 @@ def check_redo_shc_volume(windows, bar):
 
 def check_art_gc(windows, bar):
     dip, good = _dip_good(windows, bar)
-    if not dip and not good:
+    if not _need(dip, good):
         return 'not measured', 'insufficient windows (need >=%d of each class)' % MIN_WINDOWS
     hit = sum(1 for w in dip if w.fields.get('gc'))
     if hit:

@@ -39,11 +39,29 @@ lane; each step below had a capture or a source file to read.
    `system/cpus.c`, `accel/tcg/cputlb.c`, `accel/tcg/cpu-exec.c`) to fix the exact field names and which tags are
    unconditional vs perflog-only vs `NV2A_PERF_LOG`-only, so the tool's parser matches what a real capture can
    contain rather than what an older write-up's shorthand implied.
-3. Wrote FINDINGS.md (Known / Not / Could be) -- done, this commit.
-4. Building `docs/testing/perf/fpsdiag/fpsdiag.py` (`capture`/`analyze`/`gaps`) -- next.
-5. Will run `analyze` against every capture on disk for these three titles (see FINDINGS.md section 4) and the
-   synthetic selftest fixtures.
-6. Will write `docs/testing/jobs/selftest.d/99-fpsdiag.sh` and `CAPTURE.md`.
+3. Wrote FINDINGS.md (Known / Not / Could be) -- done.
+4. Wrote `docs/testing/perf/fpsdiag/fpsdiag.py` (`capture`/`analyze`/`gaps`) -- done.
+5. Ran `analyze`/`gaps` against all four real captures on disk for these three titles and wrote up the results
+   (FINDINGS.md section 4). Surfaced and documented one open, unresolved tension (GPU-saturation "supported" in
+   `gta3car1018/c1-A1` vs. the existing flat-and-refuted finding) rather than resolving it unverified -- the
+   capture mixes a parked and a driving segment in one file and the tool has no `--since`/`--until` to split it.
+6. Wrote `docs/testing/jobs/selftest.d/99-fpsdiag.sh` (synthetic logcat fixtures; a planted cause reads
+   "supported", a small measured effect reads "refuted", a data-less candidate reads "not measured", swapping the
+   plant's class flips the verdict, a missing tag never reads "refuted", and a boot-marker/save-state-load/
+   zero-flip window is excluded from both classes) -- done, 21/21 pass. Writing this fragment found two real bugs
+   in `fpsdiag.py` itself, both fixed in the same commit (see section 2):
+   - `check_art_gc` did not enforce the `MIN_WINDOWS` floor every sibling check enforces, contradicting both the
+     brief and the module's own docstring. Fixed to use the shared `_need(dip, good)` gate. Re-ran all four real
+     captures afterward -- the fix changes nothing there (all four already clear 3+ good windows), so FINDINGS.md
+     section 2 item 8's conclusion stands unchanged.
+   - `mark_refused`'s zero-flip-advance check read `all()` over every pace row `between()` a window's bounds, but
+     that range is inclusive of `t0` -- the *previous* window's own terminal pace row. A single isolated frozen
+     tick was therefore never flagged (the inherited non-zero neighbour row broke the `all()`), only a streak of
+     two or more consecutive frozen ticks was. Fixed to check only the window's own row (the last one in the
+     range, i.e. the one that actually defines this window). Re-ran all four real captures afterward -- same
+     total/scored/refused counts in every one (none of them has an isolated single-tick freeze), so no scope
+     change to anything already written.
+7. `CAPTURE.md` and the `PR.md` body/ready-state: next.
 
 ## 2. What the next lane should not repeat
 
