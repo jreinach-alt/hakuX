@@ -1,2 +1,6 @@
 # Learned by pathfind: the inputs that reached confirmed gameplay, one line per title
 - Turok Evolution (41430004, nova, pathfind 2026-10-07): gameplay in 1.9 min via publisher_logo START -> publisher_logo START A -> title_screen START -> main_menu A -> submenu A -> publisher_logo START A -> cutscene START A
+- ATV Quad Power Racing 2 (4143000A, nova, pathfind 2026-10-13): gameplay in 5.0 min via publisher_logo START -> profile_creation A -> submenu A -> name_entry A -> main_menu DOWN A -> submenu A
+- Alias (41430016, nova, pathfind 2026-10-14): gameplay in 2.5 min via publisher_logo A -> title_screen START -> main_menu A -> cutscene A
+- Legends of Wrestling USA (41430003, nova, pathfind 2026-10-14): gameplay in 6.8 min via publisher_logo START -> title_screen START -> main_menu A -> submenu A -> submenu START -> submenu A -> submenu START -> submenu A -> cutscene START -> cutscene A
+- Legends of Wrestling II USA (4143000F, nova, pathfind 2026-10-14): gameplay in 9.7 min via publisher_logo START -> main_menu START -> submenu A -> submenu LEFT A -> submenu A -> submenu START A -> cutscene A -> cutscene START -> main_menu A -> submenu A -> submenu LEFT A -> submenu A -> submenu START -> submenu A -> cutscene START -> cutscene A

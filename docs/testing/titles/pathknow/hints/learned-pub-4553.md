@@ -1,3 +1,6 @@
 # Learned by pathfind: the inputs that reached confirmed gameplay, one line per title
 - LEGO Star Wars The Video Game (4553001D, nova, pathfind 2026-10-05): gameplay in 2.6 min via publisher_logo A -> title_screen A -> cutscene START -> cutscene STICK:up:1.5
 - Legacy of Kain Defiance USA (4553000F, nova, pathfind 2026-10-07): gameplay in 1.1 min via publisher_logo START A
+- 25 to Life (45530018, nova, pathfind 2026-10-13): gameplay in 5.4 min via publisher_logo A -> cutscene START -> title_screen A -> profile_creation A -> save_load_prompt A -> main_menu A -> submenu A -> cutscene START -> loading A
+- TimeSplitters 2 (4553000A, nova, pathfind 2026-10-13): gameplay in 4.8 min via publisher_logo A -> controller_prompt Y -> controller_prompt A -> submenu A -> name_entry A -> save_load_prompt A -> main_menu A -> cutscene START -> submenu A -> cutscene A -> cutscene START
+- Backyard Wrestling 2 There Goes the Neighborhood USA (45530016, nova, pathfind 2026-10-14): gameplay in 18.7 min via publisher_logo A -> intro_video A -> cutscene START -> title_screen START -> main_menu A -> submenu A -> name_entry B -> profile_creation A -> name_entry RIGHT A -> name_entry A -> submenu DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN -> submenu A -> save_load_prompt A -> cutscene START -> submenu DOWN DOWN DOWN A -> submenu A -> cutscene START

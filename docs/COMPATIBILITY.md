@@ -1,10 +1,10 @@
 # Compatibility
 
-_Last updated 2026-10-17, for version 0.5.0._
+_Last updated 2026-10-18, for version 0.5.0._
 
 This lists Xbox titles tried on this project's test devices, split into three groups: titles that clear the **Playable** bar, titles that run but fall short of 30 fps, and titles that do not yet play. It is not a full compatibility list: plenty of other titles have simply not been tried yet. See [`KNOWN_ISSUES.md`](../KNOWN_ISSUES.md) and the [issue tracker](https://github.com/jreinach-alt/hakuX/issues) for what is tracked about titles not on this page.
 
-91 Playable · 19 run below 30 fps · 11 not playable
+95 Playable · 18 run below 30 fps · 11 not playable
 
 ## What "Playable" means
 
@@ -65,6 +65,7 @@ with another Turnip build, may differ.
 | Call of Duty 3 | ? | Nova | 29.4 | 100% | 2026-10-06 |  |
 | Capcom vs. SNK 2 EO | ? | Nova | 59.8 | 100% | 2026-10-07 |  |
 | Castlevania: Curse of Darkness | ? | Nova | 59.9 | 100% | 2026-10-03 |  |
+| Cel Damage | ? | Nova | 29.9 | 98% | 2026-10-07 |  |
 | Conan (Europe) | Europe | Nova | 30.0 | 100% | 2026-10-12 |  |
 | Conspiracy: Weapons of Mass Destruction | Europe | Nova | 59.9 | 100% | 2026-10-14 |  |
 | Crimson Skies: High Road to Revenge | USA | Nova | 30.0 | 95% | 2026-09-30 |  |
@@ -94,16 +95,19 @@ with another Turnip build, may differ.
 | Knockout Kings 2002 | USA | Nova | 59.8 | 100% | 2026-10-16 |  |
 | KOF: Maximum Impact – Maniax | USA | Nova | 52.4 | 99% | 2026-09-29 |  |
 | Legacy of Kain: Defiance | USA | Nova | 47.6 | 97% | 2026-10-07 |  |
+| Lemony Snicket's A Series of Unfortunate Events (USA) | USA | Nova | 59.9 | 100% | 2026-10-11 |  |
 | Manhunt | USA | Nova | 59.0 |  | 2026-10-14 |  |
 | Marvel Nemesis: Rise of the Imperfects | ? | Nova | 30.0 | 99% | 2026-10-06 |  |
 | Mat Hoffman's Pro BMX 2 | USA | Nova | 30.0 | 100% | 2026-10-14 |  |
 | Max Payne | USA | Nova | 51.3 | 100% | 2026-10-14 |  |
 | Max Payne 2: The Fall of Max Payne | USA | Nova | 59.9 | 100% | 2026-10-08 |  |
 | Mercenaries: Playground of Destruction | USA, Europe | Nova | 53.3 | 100% | 2026-10-12 |  |
+| Micro Machines (Europe) | Europe | Nova | 59.9 | 100% | 2026-10-14 |  |
 | MLB SlugFest - Loaded | USA | Nova | 58.9 | 100% | 2026-10-05 |  |
 | MLB SlugFest 2003 | USA | Nova | 59.9 | 100% | 2026-10-05 |  |
 | MLB SlugFest 2004 | USA | Nova | 44.4 | 100% | 2026-10-05 |  |
 | Mortal Kombat: Armageddon | ? | Nova | 59.2 | 100% | 2026-10-06 |  |
+| Mortal Kombat: Shaolin Monks | ? | Nova | 39.9 | 100% | 2026-10-06 |  |
 | MTV Celebrity Deathmatch | ? | Nova | 57.2 | 99% | 2026-10-04 |  |
 | MVP Baseball 2003 | USA | Nova | 59.9 | 100% | 2026-10-16 |  |
 | NBA 2K2 | USA | Nova | 57.0 | 100% | 2026-10-05 |  |
@@ -143,11 +147,10 @@ with another Turnip build, may differ.
 | Title | Region | Device | Median fps | Time at bar | Tested | Notes |
 |---|---|---|---|---|---|---|
 | Aeon Flux | ? | Nova | 30.0 | 85% | 2026-10-13 |  |
-| Amped 2 | USA | Nova | 28.4 | 44% | 2026-10-05 |  |
 | Arctic Thunder | USA | Nova | 30.2 | 64% | 2026-09-30 |  |
 | Area 51 | USA | Nova | 30.0 | 73% | 2026-10-09 |  |
+| Buffy the Vampire Slayer | ? | Nova | 29.7 | 74% | 2026-10-18 |  |
 | Burnout 3: Takedown | ? | Nova | 30.8 | 85% | 2026-10-14 |  |
-| Forza Motorsport | ? | Nova | 29.0 | 45% | 2026-10-01 |  |
 | Half-Life 2 | ? | Nova | 29.8 | 74% | 2026-10-13 |  |
 | Medal of Honor: Frontline | USA | Nova | 59.9 | 86% | 2026-10-08 |  |
 | NBA 2K7 | ? | Nova | 57.2 | 75% | 2026-10-16 |  |
