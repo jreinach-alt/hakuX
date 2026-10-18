@@ -8,15 +8,13 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `gta3car1018` | claude-opus-5-5 | 48 min | gta3car1018: GTA III in the car -- the render passes are a feedback-loop copy per draw (#1049) |
-| `holdcap1018` | claude-sonnet-5 | 4h 0m | holdcap1018: an owner-play hold starts a host logcat capture |
-| `homeroot1018` | claude-sonnet-5 | 2 min |  |
-| `ralli2audio1018` | claude-opus-5-5 | 48 min | ralli2audio1018: RalliSport Challenge 2 audio dropouts and early-race freezes |
+| `homeroot1018` | claude-sonnet-5 | 17 min |  |
+| `ralli2audio1018` | claude-opus-5-5 | 0 min | ralli2audio1018: RalliSport Challenge 2 audio dropouts: producer timing, and the audio threads at audio priori |
 
 - **Handhelds:** 2 connected.
-  - Nova: held by `lane.gta3car1018`
+  - Nova: held by `lane.local`
   - Thor: held by `lanelocal-offline`
-- **Device queue:** 0 waiting, 0 running.
+- **Device queue:** 1 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -126,9 +124,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/gta3car1018` | gta3car1018: GTA III in the car -- the render passes are a feedback-loop copy per draw (#1049) | `1a68e4853b` | 2026-10-18 11:18 |
-| `lane/holdcap1018` | holdcap1018: an owner-play hold starts a host logcat capture | `6a009e01b6` | 2026-10-18 07:38 |
-| `lane/ralli2audio1018` | ralli2audio1018: RalliSport Challenge 2 audio dropouts and early-race freezes | `52443b301b` | 2026-10-18 10:49 |
+| `lane/ralli2audio1018` | ralli2audio1018: RalliSport Challenge 2 audio dropouts: producer timing, and the audio threads at audio priority | `cbf6a72ed0` | 2026-10-18 11:32 |
 
 ## Recently landed on master
 
@@ -145,4 +141,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-18 fpstel1018: Forza and Buffy missed the bar -- decompose the frame, name the lever
 - 2026-10-18 compat1018: the compatibility page catches up to the 95-row Playable ledger
 
-_Updated 2026-10-18 11:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 11:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
