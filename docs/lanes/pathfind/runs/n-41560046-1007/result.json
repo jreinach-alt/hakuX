@@ -1,0 +1,24 @@
+{
+ "title_id": "41560046",
+ "name": "X Men The Official Game Europe",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/41560046-X_Men_The_Official_Game_Europe.xiso.iso",
+ "result": "gave-up",
+ "tool": "3624b0a01d",
+ "started": "2026-10-08 08:31:11 PDT",
+ "reason": "budget 40 min",
+ "last_state": "unknown",
+ "model_calls": 541,
+ "calls_by_model": {
+  "claude-sonnet-5": 541
+ },
+ "steps": 541,
+ "seconds": 2402.6,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-41560046-1007/frames/541-unknown.jpg",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-41560046-1007/strip.jpg"
+}

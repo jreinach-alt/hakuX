@@ -1,0 +1,79 @@
+{
+ "title_id": "454D0002",
+ "name": "Big Mutha Truckers USA",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/454D0002-Big_Mutha_Truckers_USA.xiso.iso",
+ "result": "gameplay",
+ "tool": "920a61de3c",
+ "started": "2026-10-14 09:34:53 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454D0002-1014d/frames/021-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454D0002-1014d/frames/021-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454D0002-1014d/frames/021-probe-c.jpg"
+ ],
+ "minutes": 5.61,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454D0002-1014d/frames/020-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454D0002-1014d/frames/022-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454D0002-1014d/frames/023-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454D0002-1014d/frames/024-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454D0002-1014d/frames/025-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454D0002-1014d/frames/026-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454D0002-1014d/frames/027-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454D0002-1014d/frames/028-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454D0002-1014d/frames/029-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-454D.md"
+ ],
+ "hold": {
+  "genre": "drive",
+  "why": "A truck navigating through a road course with steering control, fuel management, damage tracking, and earnings display.",
+  "gas": "RT",
+  "ok": false,
+  "play_s": 275.4,
+  "need_s": 630.0,
+  "hold_s": 499.4,
+  "model_navs": 9,
+  "frames": 12,
+  "still_windows": 0,
+  "shed": [],
+  "reversals": 0,
+  "reason": "off play 240 s of a 499 s scored window cannot drop to 10% with 903 s of budget left: no amount of further play can pass",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 132,
+    "median": 44.0,
+    "share": 0.886,
+    "at_s": 189.7,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 222,
+    "median": 45.0,
+    "share": 0.932,
+    "at_s": 300.6,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "stuck_abort": false,
+  "verdict": "VERDICT Big Mutha Truckers USA ? FAIL(duration: 499 s of gameplay < 600 s confirmation) gameplay=499.4s fps_ok=0.891 crash=False hang=False audio_short=0.0 hitches=1/0.137pm worst_ms=203.1 static_frac=0.0 play_share=0.5182 fps_excluded=242.6s"
+ },
+ "model_calls": 30,
+ "calls_by_model": {
+  "claude-haiku-4-5-20251001": 30
+ },
+ "steps": 21,
+ "seconds": 890.4,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454D0002-1014d/frames/069-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 2,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454D0002-1014d/strip.jpg"
+}

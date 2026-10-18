@@ -1,0 +1,172 @@
+{
+  "title": "Dead or Alive 1 Ultimate",
+  "title_id": null,
+  "name": null,
+  "device": "",
+  "ref": null,
+  "apk_sha": null,
+  "request_id": "doaultimate-1006b",
+  "route": null,
+  "surface_scale": null,
+  "adb_failures": null,
+  "thermal": {
+    "measured": false,
+    "samples": 0,
+    "unread": 0,
+    "pauses": [],
+    "in_window": false,
+    "window_covered": null,
+    "gap": null,
+    "first_pause_s": null,
+    "regimen": null,
+    "failed_sustained": null,
+    "still_heating": null
+  },
+  "human_review": "",
+  "booted": true,
+  "reached_gameplay": true,
+  "gameplay_by": "route",
+  "crash": false,
+  "crash_detail": [],
+  "crash_warnings": 0,
+  "gameplay_s": 838.2,
+  "timeline": {
+    "play_s": 614.9,
+    "scored_s": 838.2,
+    "play_share": 0.7336,
+    "by_state": {
+      "play": 614.9,
+      "menu": 140.8,
+      "still": 38.2,
+      "pause": 22.9,
+      "period_break": 21.3,
+      "no-timeline": 0.2
+    },
+    "play_spans": 6,
+    "changes": 14,
+    "fps_excluded_s": 224.7,
+    "fps_excluded_windows": 190
+  },
+  "capture_gaps_s": [],
+  "capture_lost_s": 0,
+  "capture_truncated": false,
+  "capture_truncated_s": null,
+  "hang": false,
+  "hang_gaps_s": [],
+  "fps_windows": 427,
+  "fps_bar": 30.0,
+  "fps_ok_share": 1.0,
+  "fps_ok_window_share": 1.0,
+  "fps_window_median": 40.38,
+  "fps_window_min": 32.72,
+  "g_fps_mean_reported_not_judged": 42.94,
+  "target_fps": 30.0,
+  "own_target_share": 1.0,
+  "confirmation_need_s": 600.0,
+  "below_own_target": false,
+  "power": {
+    "measured": false,
+    "samples": 0,
+    "sign": "battery_w: + discharging, - charging; net_w = battery_w + usb_w",
+    "battery_w": null,
+    "usb_w": null,
+    "usb_from": null,
+    "usb_bound": null,
+    "net_w": null,
+    "sign_suspect": 0,
+    "thermal_status_max": null,
+    "scored_s": 615.1,
+    "flips": 25620,
+    "j_per_frame": null,
+    "j_per_frame_battery": null
+  },
+  "audio_measured": true,
+  "audio_starve_share": 0.0,
+  "audio_empty_calls": 0,
+  "pace": {
+    "lines": 618,
+    "nominal_vblanks": 2,
+    "late_per_100": 0.59,
+    "worst_stall": 415.0,
+    "last": "f=110700 v0=1 v1=29 v2=29 v3=0 v4=1 vb=92 max=63.9 ms=1677.7"
+  },
+  "hitches": {
+    "n": 4,
+    "n_after_warmup": 3,
+    "per_min_after_warmup": 0.231,
+    "worst_ms": 415.0,
+    "n_big_after_warmup": 0,
+    "classification": {
+      "shader": 4,
+      "texture": 0,
+      "both": 0,
+      "unexplained": 0
+    },
+    "worst5": [
+      {
+        "off_s": 136.3,
+        "max_ms": 415.0,
+        "dsm": 69,
+        "dpc_ms": 25.0,
+        "shader_stage_ms": 22.6,
+        "tex_us": 1911,
+        "cls": "shader"
+      },
+      {
+        "off_s": 57.4,
+        "max_ms": 180.8,
+        "dsm": 30,
+        "dpc_ms": 12.9,
+        "shader_stage_ms": 11.9,
+        "tex_us": 2225,
+        "cls": "shader"
+      },
+      {
+        "off_s": 231.8,
+        "max_ms": 152.3,
+        "dsm": 19,
+        "dpc_ms": 0.5,
+        "shader_stage_ms": 0.0,
+        "tex_us": 9990,
+        "cls": "shader"
+      },
+      {
+        "off_s": 138.9,
+        "max_ms": 115.6,
+        "dsm": 83,
+        "dpc_ms": 2.9,
+        "shader_stage_ms": 0.0,
+        "tex_us": 1311,
+        "cls": "shader"
+      }
+    ]
+  },
+  "hitch_allowance": null,
+  "static_window": {
+    "measured": true,
+    "frozen_frac": 0.0,
+    "n": 22,
+    "source": "route-frames"
+  },
+  "position": {
+    "measured": true,
+    "reason": null,
+    "source": "route-frames",
+    "samples": 22,
+    "pairs": 21,
+    "still": 0,
+    "still_frac": 0.0,
+    "first_last": 0.7688,
+    "bar": 0.025
+  },
+  "pass_kind": "confirmation",
+  "void": null,
+  "pass": false,
+  "failing": "menu time: 73.4% of the scored window in `play` (bar 90%; play 615 s, menu 141 s, still 38 s, pause 23 s)",
+  "failures": [
+    "menu time: 73.4% of the scored window in `play` (bar 90%; play 615 s, menu 141 s, still 38 s, pause 23 s)"
+  ],
+  "rating_candidate": null,
+  "contact_sheet": "contact.png",
+  "judged_utc": "2026-10-07T08:32:17Z"
+}

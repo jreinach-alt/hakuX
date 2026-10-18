@@ -1,0 +1,84 @@
+{
+ "title_id": "4541002D",
+ "name": "MVP Baseball 2003 USA",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/4541002D-MVP_Baseball_2003_USA.xiso.iso",
+ "result": "gameplay",
+ "tool": "920a61de3c",
+ "started": "2026-10-16 01:24:36 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4541002D-1015n/frames/017-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4541002D-1015n/frames/017-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4541002D-1015n/frames/017-probe-c.jpg"
+ ],
+ "minutes": 2.78,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4541002D-1015n/frames/016-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4541002D-1015n/frames/018-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4541002D-1015n/frames/019-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4541002D-1015n/frames/020-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4541002D-1015n/frames/021-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4541002D-1015n/frames/022-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4541002D-1015n/frames/023-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4541002D-1015n/frames/024-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4541002D-1015n/frames/025-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-4541.md"
+ ],
+ "hold": {
+  "genre": "team",
+  "why": "Baseball batting view with field, pitcher, and pitch-type menu - a team sport on a field",
+  "sports": {
+   "clock": "none",
+   "period": "1 (top, SLD icon showing inning 1)",
+   "human_controlled": true,
+   "why": "Batting UI with pitch-type selector (SLD/CRV/2FB/4FB/CHG) and swing cursor indicates the human is controlling the ANA batter at the plate"
+  },
+  "ok": false,
+  "play_s": 631.3,
+  "need_s": 630.0,
+  "hold_s": 647.1,
+  "model_navs": 1,
+  "frames": 17,
+  "still_windows": 0,
+  "shed": [],
+  "reversals": 0,
+  "reason": "verdict stops the hold: fps_ok 1.0, crash False, hang False",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 186,
+    "median": 59.0,
+    "share": 1.0,
+    "at_s": 187.7,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 308,
+    "median": 59.0,
+    "share": 1.0,
+    "at_s": 311.3,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "stuck_abort": false,
+  "verdict": "VERDICT MVP Baseball 2003 USA ? PASS None gameplay=646.9s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=2/0.204pm worst_ms=276.8 static_frac=0.0002 play_share=0.9775 fps_excluded=16.1s"
+ },
+ "model_calls": 27,
+ "calls_by_model": {
+  "claude-sonnet-5": 27
+ },
+ "steps": 17,
+ "seconds": 859.9,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4541002D-1015n/frames/076-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4541002D-1015n/strip.jpg"
+}

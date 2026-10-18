@@ -1,0 +1,36 @@
+pathfind: Big Mutha Truckers USA (454D0002) on nova: /storage/E6C6-D7AA/Games/XBox/454D0002-Big_Mutha_Truckers_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 454D0002 any, loaded none
+[  15.3s] #  1 publisher_logo    fast    A                        Geometric logo on a clean background at boot; typical publisher intro. Skip with A.
+[  19.5s] #  2 black             black   wait                     black frame
+[  29.4s] #  3 publisher_logo    fast    A                        Empire Interactive publisher logo; another in sequence after the first logo. Skip with A p
+[  42.0s] #  4 cutscene          fast    START                    Intro cinematic after publisher logos, before menu or gameplay; letterbox bars and stylize
+[  46.1s] #  5 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[  49.8s] #  6 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[  60.9s] #  7 loading           fast    wait                     Loading bar is animating; the screen is progressing, not stuck. Wait for the bar to comple
+[  73.8s] #  8 loading           fast    wait                     Loading bar is animating and progressing; the screen changed 0.42 in the last step. Let it
+[  85.1s] #  9 loading           fast    wait                     Progress bar is clearly animating and advancing; no user input needed during loading; bar 
+[  98.2s] # 10 main_menu         fast    A                        Two menu choices visible; NEW GAME is the top option, leads to gameplay fastest with defau
+[ 110.6s] # 11 submenu           fast    A                        Character selection screen with a default character (Earl Jackson) highlighted and ready t
+[ 124.3s] # 12 main_menu         fast    A                        Main menu with MISSION MODE highlighted as the top option; it is the fastest path to gamep
+[ 139.6s] # 13 cutscene          fast    A                        A story scene with a character and a 'Continue' prompt visible, not yet active gameplay. T
+[ 191.1s] # 14 submenu           fast    DOWN DOWN A              In-game mission start menu blocks player input. DONE is the third option; navigate DOWN tw
+[ 232.8s] # 15 main_menu         fast    A                        Main menu with TRIAL BY TRUCKIN' as the first/default option; arcade mode reaches gameplay
+[ 250.0s] # 16 submenu           fast    DOWN DOWN A              In-game menu is blocking player input. DONE is the third option (fastest path to dismiss a
+[ 254.5s] # 17 black             black   wait                     black frame
+[ 290.9s] # 18 gameplay          fast    wait                     Character model positioned in game world after loading screen; no cutscene bars, subtitles
+[ 306.8s] # 19 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 control 0.089, under input 0.007
+[ 320.8s] # 20 gameplay          fast    wait                     A playable truck in the game world with a full racing HUD (speedometer, fuel, damage, mone
+[ 336.7s] # 21 probe             probe   RT:1.5                   control 0.047, under input 0.088
+hold-play: genre drive, need 630 s of play
+hold-play: gas probe RT: band change 0.120 (confirmed)
+hold-play: drive gas confirmed RT (tried ['RT'])
+hold-play: fps at 190 s: median 44.0, share>=30 0.886 over 132 samples
+hold-play: fps at 301 s: median 45.0, share>=30 0.932 over 222 samples
+hold-play: off play 240 s of a 499 s scored window cannot drop to 10% with 903 s of budget left: no amount of further play can pass
+hold-play: not held 275/630 s of play; off play 240 s of a 499 s scored window cannot drop to 10% with 903 s of budget left: no amount of further play can pass
+held Big Mutha Truckers USA for 501s
+VERDICT Big Mutha Truckers USA ? FAIL(duration: 499 s of gameplay < 600 s confirmation) gameplay=499.4s fps_ok=0.891 crash=False hang=False audio_short=0.0 hitches=1/0.137pm worst_ms=203.1 static_frac=0.0 play_share=0.5182 fps_excluded=242.6s
+{"name": "Big Mutha Truckers USA", "device": "nova", "result": "gameplay", "minutes": 5.61, "model_calls": 30, "steps": 21, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454D0002-1014d/frames/020-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

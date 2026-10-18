@@ -1,0 +1,100 @@
+taken: nova by lane.pathfind
+idle: nova is held and runs nothing
+held at 20:20:00
+pathfind: Conker: Live & Reloaded (4D530051) on nova: /storage/E6C6-D7AA/Games/XBox/Conker Live & Reloaded.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4D530051 any, loaded golden d18aa0a71b74
+[   5.8s] #  1 publisher_logo    replay  START A                  replay step 0: Green star-like geometric logo animation on white background (likely Rare l
+[  15.4s] #  2 publisher_logo    fast    A                        Splash logo, not a title menu or gameplay, so skip it with A and re-read. The last START A
+[  25.1s] #  3 publisher_logo    fast    A                        Publisher logo, not a title or gameplay. Skip with A per the logo guidance; the last START
+[  34.7s] #  4 gameplay          fast    wait                     A live multiplayer match with a counting timer, a HUD, and a player-controlled character i
+[  49.7s] #  5 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.849, under input 0.625
+[  58.5s] #  6 gameplay          fast    wait                     Timer, kill feed, and player HUD are all up over a playfield with the player's character; 
+[  75.7s] #  7 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.386, under input 0.832
+[  85.4s] #  8 gameplay          fast    wait                     Earlier steps show a live multiplayer match with a timer and HUD; this frame shows a first
+[ 102.5s] #  9 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.321, under input 0.523
+[ 107.1s] # 10 submenu           fast    A                        A save-data error box; the only offered action is A to repair, so A is the single safe cho
+[ 115.5s] # 11 main_menu         fast    B                        This is a main menu, with 'Options' as the highlighted item in the title-style banner. Opt
+[ 127.9s] # 12 main_menu         fast    DOWN                     Still on the main menu with 'Options' highlighted; Options is the wrong branch, so I step 
+[ 135.9s] # 13 main_menu         fast    DOWN                     Still on the main menu with 'Options' highlighted, which is the wrong branch. The previous
+[ 144.0s] # 14 main_menu         fast    UP                       Options is the wrong branch and B/DOWN/DOWN did not change the highlight. Try UP, which mo
+[ 152.1s] # 15 main_menu         fast    STICK:down:0.5           Still on the main menu. Options is the wrong branch, and the D-pad (B/DOWN/DOWN/UP) has no
+[ 162.6s] # 16 main_menu         fast    RIGHT                    Options is still the wrong branch, and UP/DOWN/stick have not moved the highlight. Trying 
+[ 171.9s] # 17 main_menu         fast    A                        This is the in-engine bar hub, and the 'Chapters' sign is the lit, brightest item, so it i
+[ 181.2s] # 18 main_menu         fast    A                        Still a menu, not gameplay. 'Chapters' is the only available, lit option; 'Hungover' is No
+[ 189.8s] # 19 main_menu         fast    A                        Still a menu, not gameplay. 'Chapters' is the only available, brightest item; 'Hungover' i
+[ 202.1s] # 20 main_menu         fast    STICK:up:0.5             Chapters is the only available option and A on it has twice returned here, so pressing A a
+[ 211.7s] # 21 main_menu         fast    START                    A on Chapters and UP have both returned to this screen, so I'm changing the input. Trying 
+[ 222.4s] # 22 main_menu         fast    B                        Chapters has returned here after A three times, and UP and START did nothing. Hungover is 
+[ 233.4s] # 23 main_menu         fast    DOWN A                   Still the bar hub menu, not gameplay. A on Chapters and UP/START have all failed to change
+[ 244.7s] # 24 main_menu         fast    RIGHT A                  Still the bar hub menu. Chapters is the only lit option and A/UP/START/B/DOWN+A have all r
+[ 255.6s] # 25 main_menu         fast    LEFT                     A, UP, START, B, DOWN+A and RIGHT+A all returned to this same screen, and 'Chapters' is th
+[ 265.9s] # 26 main_menu         fast    STICK:down:0.5           A, UP, START, B, DOWN+A, RIGHT+A and LEFT have all returned to this screen. Chapters is th
+[ 276.2s] # 27 main_menu         fast    HOLD:A:1                 Chapters is the only lit option. A, UP, START, B, DOWN+A, RIGHT+A, LEFT and STICK down hav
+[ 287.3s] # 28 main_menu         fast    Y X                      A, UP, START, B, DOWN+A, RIGHT+A, LEFT and STICK down have all returned here, and 'Chapter
+[ 299.8s] # 29 main_menu         fast    BACK                     Chapters is the only lit item and A, UP, START, B, D-pad combos, LEFT, stick down, and Y/X
+[ 309.0s] # 30 submenu           fast    B                        This is the Xbox Live sign-in selector, a wrong submenu that hints say loops or leaves the
+[ 319.9s] # 31 submenu           fast    A                        Chapters submenu, not gameplay. The previous step backed out of the Xbox Live selector. 'H
+[ 333.1s] # 32 submenu           fast    A                        Chapters submenu, not gameplay. 'Hungover' is the brightest and top-most chapter entry, so
+[ 345.8s] # 33 submenu           fast    DOWN DOWN A              Same chapter list as the last several steps, and A on Hungover keeps returning here. Not A
+[ 358.4s] # 34 submenu           fast    B                        A on Hungover has looped back here many times, and the recorded attempts (A, DOWN DOWN A, 
+[ 368.8s] # 35 submenu           fast    DOWN A                   Chapters submenu, not gameplay. A on the top chapter (Hungover) has looped back here many 
+[ 380.9s] # 36 submenu           fast    UP A                     Chapters submenu is a dead end: A on the chapter has looped back here many times, and the 
+[ 392.5s] # 37 submenu           fast    B                        Chapters is a dead end: A on Hungover has looped back here many times, and DOWN, UP, Y X, 
+[ 403.0s] # 38 cutscene          fast    A                        The chapter submenu loop has ended and an in-engine scene is running. It is a dialogue cut
+[ 413.2s] # 39 submenu           fast    B                        Chapters submenu is a dead end: Hungover keeps looping here and the only other row is 'Not
+[ 423.6s] # 40 submenu           fast    START                    Still on the Chapters screen. A and DOWN/UP/B have all looped back here, so I'm trying STA
+[ 435.8s] # 41 cutscene          fast    A                        No menu rows or highlight are visible, only a 3D bar scene with the 'Chapters' title, so t
+[ 445.5s] # 42 submenu           fast    RIGHT A                  Still the Chapters dead end; A, B, UP, DOWN and START have all looped here. Hungover looks
+[ 456.5s] # 43 submenu           fast    STICK:up:0.5 A           Chapters is a dead end on the rows tried so far. 'Windy' looks like the lit row, and I hav
+[ 469.3s] # 44 submenu           fast    LEFT A                   Chapters has looped on A, B, UP, DOWN, RIGHT and START. Untried so far: LEFT. Trying LEFT 
+[ 479.6s] # 45 submenu           fast    B                        Chapters is a dead end: A, B, UP, DOWN, LEFT, RIGHT and START have all looped here, and th
+[ 489.9s] # 46 submenu           fast    Y A                      Chapters has looped on A, B, START, the d-pad and the stick. X, Y and the shoulder buttons
+[ 502.2s] # 47 submenu           fast    BACK                     Chapters is a dead end: A, B, START, the d-pad and the stick have all looped here, and the
+[ 511.0s] # 48 submenu           fast    B                        This is an Xbox Live account picker. New Account leads off the game and loops, so I'm not 
+[ 521.8s] # 49 submenu           fast    R1 A                     Chapters has looped on A, B, UP, DOWN, LEFT, RIGHT, START, stick, Y and BACK, so none of t
+[ 534.5s] # 50 submenu           fast    UP A                     Chapters is a dead end and every input so far has looped. The lit row is Chapters, and the
+[ 543.8s] # 51 submenu           fast    HOLD:A:1                 Chapters and Hangover have both looped or read Not Available across many inputs. Untried s
+[ 555.2s] # 52 submenu           fast    X                        Chapters is still the lit row and the earlier inputs looped. X is one of the few buttons n
+[ 564.7s] # 53 submenu           fast    L1                       Chapters is still the lit row and every input tried so far has looped. L1 has not been tri
+[ 575.9s] # 54 submenu           fast    STICK:down:1 A           Chapters and Hangover have looped or read Not Available for many inputs, and the lit row i
+[ 588.0s] # 55 submenu           fast    L3                       Still the Conker chapter-select submenu with Chapters lit and Hangover marked Not Availabl
+[ 596.6s] # 56 submenu           fast    R1                       Chapters is still the lit row, and Hangover reads Not Available. Earlier inputs (A, B, X, 
+[ 608.0s] # 57 submenu           fast    Y RIGHT A                Chapters is lit and every input tried so far has looped. Y and the triggers have not been 
+[ 619.6s] # 58 submenu           fast    UP A                     Earlier inputs looped on Chapters, and Hangover reads Not Available. Windy is the other ch
+[ 630.0s] # 59 submenu           fast    B                        Chapters and Windy/Hangover have looped on every input tried, so this path is a dead end. 
+[ 642.3s] # 60 submenu           fast    STICK:right:1.5          Still in the Chapters area, which has looped on every menu input tried. This is a 3D hub, 
+[ 654.0s] # 61 submenu           fast    A                        A 3D tavern hub with a 'Game 1' slot title, not gameplay. The 'Game 1' slot is the default
+[ 663.8s] # 62 submenu           fast    A                        This is the save-slot/start menu over the 3D tavern hub, and the 'New Game' item is the hi
+[ 672.0s] # 63 black             black   wait                     black frame
+[ 678.5s] # 64 publisher_logo    fast    A                        Microsoft publisher logo is still animating; per hints, skip with A, one press then re-rea
+[ 682.8s] # 65 publisher_logo    repeat  A                        repeat A: it advanced the publisher_logo
+[ 687.2s] # 66 publisher_logo    repeat  A                        repeat A: it advanced the publisher_logo
+[ 691.5s] # 67 black             black   wait                     black frame
+[ 697.9s] # 68 black             fast    wait                     Opening credit card fading in/out on black; not interactive and not a menu. Per hints, wai
+[ 704.3s] # 69 black             black   wait                     black frame
+[ 712.8s] # 70 title_screen      fast    START                    Static character presentation on a red throne with no menu text or HUD; likely the title o
+[ 722.2s] # 71 title_screen      fast    START                    Static character presentation on the throne with no menu or HUD, most likely the title scr
+[ 730.7s] # 72 title_screen      fast    A                        Static title-style presentation with no visible prompt. START did nothing here, so I'm swi
+[ 741.8s] # 73 title_screen      fast    wait                     Static character presentation on the throne with no visible prompt. START and A were both 
+[ 751.9s] # 74 title_screen      fast    HOLD:START:0.6           Static title-style presentation; START and A have each been tried with no change. Switchin
+[ 762.5s] # 75 title_screen      fast    HOLD:A:0.6 START         Title-style presentation with no visible prompt. START, A and HOLD:START have been tried w
+[ 777.1s] # 76 title_screen      fast    BACK                     Static presentation; START, A and held START/A have all failed with no prompt visible. The
+[ 789.3s] # 77 title_screen      fast    STICK:down:1             Still a static presentation with no prompt after START, A, held START/A and BACK. The scre
+[ 799.8s] # 78 title_screen      fast    Y                        Static door presentation after START, A, held START/A, BACK and a stick nudge all changed 
+[ 811.9s] # 79 cutscene          fast    START A                  Static in-world camera shot with no HUD, no menu and no prompt; the last step changed the 
+[ 825.3s] # 80 cutscene          fast    A                        A posed character in an in-world room with no HUD or control evidence. It could be a scrip
+[ 834.3s] # 81 cutscene          fast    A                        In-world answering-machine dialogue with no HUD or control evidence, so not gameplay. A ad
+[ 845.2s] # 82 cutscene          fast    A                        In-world dialogue/cutscene with a phone prop close-up and no HUD or control evidence; not 
+[ 853.9s] # 83 cutscene          fast    A                        Scripted in-world dialogue with no HUD or control evidence, so not gameplay. A advances th
+[ 862.8s] # 84 cutscene          fast    A                        Scripted in-world phone dialogue with no HUD or control evidence, so not gameplay. A advan
+[ 872.0s] # 85 cutscene          fast    A                        Scripted in-world dialogue with subtitles and no HUD or control evidence, so not gameplay.
+[ 882.6s] # 86 cutscene          fast    A                        Scripted in-world dialogue with a speech bubble and no HUD or control evidence, so not gam
+[ 890.5s] # 87 cutscene          fast    A                        Scripted in-world dialogue with a speech bubble and no HUD; not gameplay. Advancing the li
+[ 899.7s] # 88 cutscene          fast    START A                  Scripted in-world cutscene with no HUD or control evidence, so not gameplay. Prior dialogu
+{"name": "Conker: Live & Reloaded", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 83, "steps": 88, "replayed": 1, "reason": "budget 15 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256
+pathfind rc=1 at 20:35:22
+released: nova by lane.pathfind
+released rc=0

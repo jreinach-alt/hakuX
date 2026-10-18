@@ -1,0 +1,20 @@
+pathfind: RalliSport Challenge (4D53000F) on nova: /storage/E6C6-D7AA/Games/XBox/4D53000F-RalliSport_Challenge.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4D53000F returning, loaded golden cc9b4ced4a0f
+[   6.7s] #  1 publisher_logo    replay  A                        replay step 0: A publisher logo is animating in (no text or menu yet). Per hints, skip log
+[  14.8s] #  2 publisher_logo    fast    A                        Microsoft publisher logo; skip with A and re-read. Cursor not applicable.
+[  19.6s] #  3 publisher_logo    replay  A                        replay step 2: This is an intro logo/title animation with no menu or prompt yet; per hints
+[  25.4s] #  4 title_screen      replay  A                        replay step 3: Main title menu is up with Start Game highlighted (cursor on top item). Per
+[  30.1s] #  5 submenu           replay  A                        replay step 4: Profile select on a fresh disk; the only entry is <Create new profile>, whi
+[  34.8s] #  6 main_menu         replay  RIGHT A                  replay step 8: Profile exists; Career is lit. Single Race is one step right and is the fas
+[  40.2s] #  7 submenu           replay  A                        replay step 9: Race type submenu; Rally is the lit default and the fastest route to a race
+[  44.9s] #  8 submenu           replay  A                        replay step 10: Single race track select; SAFARI SS1 is highlighted by default. Accept the
+[  50.6s] #  9 main_menu         replay  A                        replay step 11: Car select is a menu step before the race. Accepting the default lit car (
+[  60.4s] # 10 loading           fast    wait                     Race is loading after the car-select step; no input is needed, so wait for the race to loa
+[  67.3s] # 11 submenu           replay  A                        replay step 13: Race options submenu with 'start race' already highlighted by default; A c
+[  79.7s] # 12 gameplay          fast    wait                     Player-controlled rally car with live race HUD on the grid at 0 mph, clock not yet running
+[  97.9s] # 13 probe             probe   RT:1.5 RT+left:1.2 RT+right:1.2 control 0.546, under input 0.419
+[ 104.8s] # 14 gameplay          fast    LT+left:3                Live race HUD with a running race clock, and the car is pinned against a wall at low speed
+[ 123.6s] # 15 probe             probe   LT+left:3 RT+right:1.5   control 0.036, under input 0.587
+hold-play: genre drive, need 600 s of play

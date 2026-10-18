@@ -1,0 +1,156 @@
+{
+  "title": "Top Spin",
+  "title_id": null,
+  "name": null,
+  "device": "",
+  "ref": null,
+  "apk_sha": null,
+  "request_id": "4D530035-1014-1417-23868",
+  "route": null,
+  "surface_scale": null,
+  "adb_failures": null,
+  "thermal": {
+    "measured": false,
+    "samples": 0,
+    "unread": 0,
+    "pauses": [],
+    "in_window": false,
+    "window_covered": null,
+    "gap": null,
+    "first_pause_s": null,
+    "regimen": null,
+    "failed_sustained": null,
+    "still_heating": null
+  },
+  "human_review": "",
+  "build": null,
+  "env": null,
+  "booted": true,
+  "reached_gameplay": true,
+  "gameplay_by": "route",
+  "crash": false,
+  "crash_detail": [],
+  "crash_warnings": 0,
+  "gameplay_s": 120.3,
+  "timeline": {
+    "play_s": 120.1,
+    "scored_s": 120.3,
+    "play_share": 0.998,
+    "by_state": {
+      "play": 120.1,
+      "no-timeline": 0.2
+    },
+    "play_spans": 1,
+    "changes": 1,
+    "fps_excluded_s": 0.0,
+    "fps_excluded_windows": 0
+  },
+  "capture_gaps_s": [],
+  "capture_lost_s": 0,
+  "capture_truncated": false,
+  "capture_truncated_s": null,
+  "hang": true,
+  "hang_gaps_s": [
+    12.7
+  ],
+  "fps_windows": 53,
+  "fps_bar": 30.0,
+  "fps_ok_share": 0.8326,
+  "fps_ok_window_share": 0.8491,
+  "fps_window_median": 30.29,
+  "fps_window_min": 26.48,
+  "g_fps_mean_reported_not_judged": 30.98,
+  "target_fps": 30.0,
+  "own_target_share": 0.8326,
+  "confirmation_need_s": 600.0,
+  "below_own_target": false,
+  "power": {
+    "measured": false,
+    "samples": 0,
+    "sign": "battery_w: + discharging, - charging; net_w = battery_w + usb_w",
+    "battery_w": null,
+    "usb_w": null,
+    "usb_from": null,
+    "usb_bound": null,
+    "net_w": null,
+    "sign_suspect": 0,
+    "thermal_status_max": null,
+    "scored_s": 103.7,
+    "flips": 3180,
+    "j_per_frame": null,
+    "j_per_frame_battery": null
+  },
+  "audio_measured": true,
+  "audio_starve_share": 0.0,
+  "audio_empty_calls": 0,
+  "pace": {
+    "lines": 54,
+    "nominal_vblanks": 2,
+    "late_per_100": 7.47,
+    "worst_stall": 288.5,
+    "last": "f=7260 v0=0 v1=1 v2=54 v3=5 v4=0 vb=124 max=48.2 ms=2068.0"
+  },
+  "hitches": {
+    "n": 2,
+    "n_after_warmup": 0,
+    "per_min_after_warmup": 0.0,
+    "worst_ms": 288.5,
+    "n_big_after_warmup": 0,
+    "classification": {
+      "shader": 1,
+      "texture": 0,
+      "both": 1,
+      "unexplained": 0
+    },
+    "worst5": [
+      {
+        "off_s": 3.9,
+        "max_ms": 288.5,
+        "dsm": 27,
+        "dpc_ms": 0.8,
+        "shader_stage_ms": 0.0,
+        "tex_us": 48874,
+        "cls": "both"
+      },
+      {
+        "off_s": 10.1,
+        "max_ms": 125.6,
+        "dsm": 7,
+        "dpc_ms": 9.4,
+        "shader_stage_ms": 9.2,
+        "tex_us": 3532,
+        "cls": "shader"
+      }
+    ]
+  },
+  "hitch_allowance": null,
+  "static_window": {
+    "measured": true,
+    "frozen_frac": 0.0,
+    "n": 17,
+    "source": "route-frames"
+  },
+  "position": {
+    "measured": true,
+    "reason": null,
+    "source": "route-frames",
+    "samples": 17,
+    "pairs": 16,
+    "still": 0,
+    "still_frac": 0.0,
+    "first_last": 0.8854,
+    "bar": 0.025
+  },
+  "pass_kind": "confirmation",
+  "void": null,
+  "pass": false,
+  "failing": "hang: 12.7 s without 60 guest flips after the mark",
+  "failures": [
+    "hang: 12.7 s without 60 guest flips after the mark",
+    "duration: 120 s of gameplay < 600 s confirmation",
+    "fps: 83.3% of gameplay at >= 30 fps (bar 90%)"
+  ],
+  "rating_candidate": null,
+  "contact_sheet": "contact.png",
+  "judged_utc": "2026-10-14T21:21:16Z"
+}

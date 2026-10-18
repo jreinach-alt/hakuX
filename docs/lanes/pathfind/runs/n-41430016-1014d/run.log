@@ -1,0 +1,26 @@
+pathfind: Alias (41430016) on nova: /storage/E6C6-D7AA/Games/XBox/41430016-Alias_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 41430016 any, loaded golden 5db249c6ee24
+[  14.5s] #  1 publisher_logo    fast    A                        Acclaim logo appears at the start of the game; skip with A per the standard intro sequence
+[  27.9s] #  2 publisher_logo    fast    A                        Publisher logo (Acclaim) that follows the previous Dolby logo; skip with A per standard in
+[  41.0s] #  3 title_screen      fast    START                    Title screen with 'PRESS START' prompt visible; requires START per standard rules and lear
+[  57.2s] #  4 main_menu         fast    A                        NEW GAME is lit/highlighted. Per the learned Alias path (pub-4143.md), select it with A to
+[  81.1s] #  5 cutscene          fast    A                        This is the briefing cutscene that precedes gameplay in Alias (per pub-4143.md: 'briefing 
+[  85.3s] #  6 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[  89.7s] #  7 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 134.2s] #  8 gameplay          fast    wait                     Sydney is on the casino floor in a 3D game environment after advancing through the briefin
+[ 149.5s] #  9 probe             probe   STICK:up:1.5             control 0.019, under input 0.456
+hold-play: genre other, need 630 s of play
+hold-play: fps at 194 s: median 29.0, share>=30 0.913 over 103 samples
+hold-play: fps at 305 s: median 29.0, share>=30 0.924 over 158 samples
+hold-play: validity check share 135 s (hold 639 s of play, verdict 636.8)
+hold-play: verdict short on share by 135 s; holding on (budget 679 s left)
+hold-play: validity check share 70 s (hold 705 s of play, verdict 702.8)
+hold-play: verdict short on share by 70 s; holding on (budget 612 s left)
+hold-play: validity check stop 0 s (hold 774 s of play, verdict 773.3)
+hold-play: not held 774/630 s of play; verdict stops the hold: fps_ok 1.0, crash False, hang False
+held Alias for 861s
+VERDICT Alias ? PASS None gameplay=859.7s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0608 play_share=0.9001 fps_excluded=88.1s
+{"name": "Alias", "device": "nova", "result": "gameplay", "minutes": 2.49, "model_calls": 20, "steps": 9, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-41430016-1014d/frames/008-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

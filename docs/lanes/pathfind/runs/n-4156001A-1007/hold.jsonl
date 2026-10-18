@@ -1,0 +1,333 @@
+{"n": 32, "hold_s": 0.8, "play_s": 0.8, "changed": null, "off": false, "src": "genre", "action": [], "kept": true}
+{"n": 33, "hold_s": 1.7, "play_s": 5.8, "changed": 0.0038, "off": false, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Player character HUD, health bars, and on-rails view of game world are active, no menu/pause overlay", "action": [], "kept": false}
+{"n": 34, "hold_s": 6.6, "play_s": 10.4, "changed": 0.0087, "off": false, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Player character (Thing) on screen moving through space station environment with HUD visible", "action": [], "kept": false}
+{"n": 35, "hold_s": 11.2, "play_s": 11.5, "changed": 0.0139, "off": false, "shift_look": 0.0, "src": "genre", "action": [], "kept": false}
+{"n": 36, "hold_s": 12.3, "play_s": 16.2, "changed": 0.0058, "off": false, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Thing is piloting/aiming in an on-rails space station sequence with HUD health/shield visible", "action": [], "kept": false}
+{"n": 37, "hold_s": 17.0, "play_s": 17.2, "changed": 0.0108, "off": false, "shift_look": 0.0, "src": "genre", "action": [], "kept": false}
+{"n": 38, "hold_s": 18.1, "play_s": 18.3, "changed": 0.0131, "off": false, "shift_look": 0.0, "src": "genre", "action": [], "kept": false}
+{"n": 39, "hold_s": 19.0, "play_s": 19.3, "changed": 0.0127, "off": false, "shift_look": 0.0, "src": "genre", "action": [], "kept": false}
+{"n": 40, "hold_s": 20.1, "play_s": 23.9, "changed": 0.006, "off": false, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Thing is on screen in the game world with HUD (health, icon count) visible, flying through space station", "action": [], "kept": false}
+{"n": 41, "hold_s": 24.8, "play_s": 28.8, "changed": 0.0099, "off": false, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Thing standing in Von Doom station environment with HUD (health, lives, portrait) visible, no menu/cutscene overlay", "action": [], "kept": false}
+{"n": 42, "hold_s": 29.6, "play_s": 29.9, "changed": 0.0133, "off": false, "shift_look": 0.0, "src": "genre", "action": [], "kept": false}
+{"n": 43, "hold_s": 30.7, "play_s": 34.8, "changed": 0.0071, "off": false, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Player character HUD, health bars, and score visible over active 3D space station environment", "action": [], "kept": false}
+{"n": 44, "hold_s": 35.7, "play_s": 39.6, "changed": 0.0091, "off": false, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "On-rails shooter view with HUD (health, score, character icon) over active 3D game world, no menu/pause/cutscene indicators", "action": [], "window": 0.0179, "kept": true}
+{"n": 45, "hold_s": 40.5, "play_s": 39.6, "changed": 0.0107, "off": false, "shift_look": 0.0, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 46, "hold_s": 48.5, "play_s": 39.6, "changed": 0.7114, "off": false, "shift_look": 8.94, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 47, "hold_s": 56.6, "play_s": 39.6, "changed": 0.6767, "off": false, "shift_look": 0.0, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 48, "hold_s": 64.7, "play_s": 39.6, "changed": 0.6593, "off": false, "shift_look": 1.41, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 49, "hold_s": 72.2, "play_s": 39.6, "changed": 0.7843, "off": false, "shift_look": 15.03, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.8208, "kept": true}
+{"n": 50, "hold_s": 79.9, "play_s": 39.6, "changed": 0.0, "off": false, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Game Over screen with Restart/Quit options", "action": ["A"], "kept": false}
+{"n": 51, "hold_s": 85.9, "play_s": 39.6, "changed": 0.5926, "off": true, "shift_look": 36.35, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 52, "hold_s": 88.4, "play_s": 39.6, "changed": 0.0301, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 53, "hold_s": 90.9, "play_s": 39.6, "changed": 0.4206, "off": true, "shift_look": 26.08, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 54, "hold_s": 93.5, "play_s": 39.6, "changed": 0.2207, "off": true, "shift_look": 0.0, "src": "check", "state": "cutscene", "why": "Cinematic camera through character's fingers showing city skyline and two figures walking, no HUD or control context", "action": ["START"], "kept": false}
+{"n": 55, "hold_s": 100.6, "play_s": 39.6, "changed": 0.3393, "off": true, "shift_look": 22.02, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 56, "hold_s": 104.3, "play_s": 39.6, "changed": 0.4468, "off": true, "shift_look": 23.6, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": true}
+{"n": 57, "hold_s": 107.7, "play_s": 39.6, "changed": 0.4607, "off": true, "shift_look": 23.6, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 58, "hold_s": 111.2, "play_s": 39.6, "changed": 0.3793, "off": true, "shift_look": 17.46, "src": "check", "state": "cutscene", "why": "Character floating/falling through a dark tube-like structure, appears to be a scripted cutscene sequence", "action": ["START"], "kept": false}
+{"n": 59, "hold_s": 118.7, "play_s": 39.6, "changed": 0.3736, "off": true, "shift_look": 17.46, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 60, "hold_s": 122.5, "play_s": 39.6, "changed": 0.4025, "off": true, "shift_look": 36.62, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 61, "hold_s": 126.0, "play_s": 39.6, "changed": 0.4025, "off": true, "shift_look": 36.62, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 62, "hold_s": 129.7, "play_s": 39.6, "changed": 0.4008, "off": true, "shift_look": 36.62, "src": "check", "state": "cutscene", "why": "Dialogue prompt screen with 'Press A to continue' during cutscene", "action": ["A"], "kept": false}
+{"n": 63, "hold_s": 135.4, "play_s": 39.6, "changed": 0.3109, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": true}
+{"n": 64, "hold_s": 138.0, "play_s": 39.6, "changed": 0.337, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 65, "hold_s": 140.7, "play_s": 39.6, "changed": 0.4004, "off": true, "shift_look": 4.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 66, "hold_s": 143.4, "play_s": 39.6, "changed": 0.4142, "off": true, "shift_look": 5.0, "src": "check", "state": "cutscene", "why": "Cutscene/QTE prompt overlay 'Press A to continue' with tutorial text, not live gameplay", "action": ["A"], "kept": false}
+{"n": 67, "hold_s": 149.9, "play_s": 39.6, "changed": 0.7991, "off": true, "shift_look": 25.08, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 68, "hold_s": 152.8, "play_s": 39.6, "changed": 0.0483, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 69, "hold_s": 155.7, "play_s": 39.6, "changed": 0.0474, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 70, "hold_s": 158.7, "play_s": 51.2, "changed": 0.0635, "off": true, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "On-rails flight sequence, character HUD visible, flying through structure", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 71, "hold_s": 170.0, "play_s": 59.1, "changed": 0.7636, "off": false, "shift_look": 10.77, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.6681, "kept": true}
+{"n": 72, "hold_s": 177.9, "play_s": 66.7, "changed": 0.8495, "off": false, "shift_look": 21.4, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 73, "hold_s": 185.6, "play_s": 74.5, "changed": 0.7336, "off": false, "shift_look": 10.77, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 74, "hold_s": 193.3, "play_s": 74.5, "changed": 0.0, "off": false, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Game Over screen with Restart/Quit options", "action": ["A"], "kept": false}
+{"n": 75, "hold_s": 199.2, "play_s": 74.5, "changed": 0.5928, "off": true, "shift_look": 36.35, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 76, "hold_s": 201.6, "play_s": 74.5, "changed": 0.0304, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 77, "hold_s": 204.2, "play_s": 74.5, "changed": 0.4213, "off": true, "shift_look": 11.7, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 78, "hold_s": 206.7, "play_s": 74.5, "changed": 0.2223, "off": true, "shift_look": 0.0, "src": "check", "state": "cutscene", "why": "Cinematic shot with foreground hand/fingers framing and characters walking on rooftop at night, no HUD", "action": ["START"], "kept": false}
+{"n": 79, "hold_s": 214.0, "play_s": 74.5, "changed": 0.3422, "off": true, "shift_look": 22.02, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 80, "hold_s": 217.6, "play_s": 74.5, "changed": 0.447, "off": true, "shift_look": 21.95, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 81, "hold_s": 221.1, "play_s": 74.5, "changed": 0.4608, "off": true, "shift_look": 21.95, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 82, "hold_s": 224.6, "play_s": 74.5, "changed": 0.3781, "off": true, "shift_look": 42.38, "src": "check", "state": "cutscene", "why": "Cinematic shot of character floating in a dark corridor, letterboxed with black bars indicating cutscene", "action": ["START"], "kept": false}
+{"n": 83, "hold_s": 232.3, "play_s": 74.5, "changed": 0.4132, "off": true, "shift_look": 42.38, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": true}
+{"n": 84, "hold_s": 236.0, "play_s": 74.5, "changed": 0.4556, "off": true, "shift_look": 36.62, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 85, "hold_s": 239.4, "play_s": 74.5, "changed": 0.4555, "off": true, "shift_look": 36.62, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 86, "hold_s": 243.1, "play_s": 74.5, "changed": 0.4538, "off": true, "shift_look": 36.62, "src": "check", "state": "cutscene", "why": "Dialogue cutscene with 'Press A to continue' prompt, not gameplay", "action": ["A"], "kept": false}
+{"n": 87, "hold_s": 249.5, "play_s": 74.5, "changed": 0.3123, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 88, "hold_s": 252.1, "play_s": 74.5, "changed": 0.3432, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 89, "hold_s": 254.9, "play_s": 74.5, "changed": 0.4018, "off": true, "shift_look": 17.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 90, "hold_s": 257.5, "play_s": 74.5, "changed": 0.415, "off": true, "shift_look": 5.0, "src": "check", "state": "cutscene", "why": "Tutorial/prompt screen with 'Press A to continue' over a cutscene-style camera, not active gameplay", "action": ["A"], "kept": false}
+{"n": 91, "hold_s": 264.2, "play_s": 74.5, "changed": 0.7999, "off": true, "shift_look": 22.83, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": true}
+{"n": 92, "hold_s": 267.1, "play_s": 74.5, "changed": 0.0207, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 93, "hold_s": 270.0, "play_s": 74.5, "changed": 0.0589, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 94, "hold_s": 272.8, "play_s": 86.9, "changed": 0.0529, "off": true, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Character is airborne climbing a tower structure with HUD visible, actively controlled on-rails flight", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 95, "hold_s": 285.1, "play_s": 94.8, "changed": 0.7472, "off": false, "shift_look": 15.0, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 96, "hold_s": 292.9, "play_s": 102.6, "changed": 0.7467, "off": false, "shift_look": 5.0, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 97, "hold_s": 300.5, "play_s": 109.8, "changed": 0.594, "off": false, "shift_look": 10.3, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.7693, "kept": true}
+{"n": 98, "hold_s": 307.7, "play_s": 109.8, "changed": 0.0019, "off": false, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Game Over screen with Restart/Quit options shown, not live gameplay", "action": ["A"], "kept": false}
+{"n": 99, "hold_s": 314.4, "play_s": 109.8, "changed": 0.5892, "off": true, "shift_look": 32.14, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 100, "hold_s": 317.9, "play_s": 109.8, "changed": 0.413, "off": true, "shift_look": 21.1, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 101, "hold_s": 321.4, "play_s": 109.8, "changed": 0.2203, "off": true, "shift_look": 1.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 102, "hold_s": 325.0, "play_s": 121.0, "changed": 0.2548, "off": true, "shift_look": 43.68, "src": "check", "state": "gameplay", "why": "Astronaut character floating in space view, game world rendered, no menu/pause/cutscene UI", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 103, "hold_s": 336.1, "play_s": 128.4, "changed": 0.4157, "off": false, "shift_look": 12.53, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.5812, "kept": true}
+{"n": 104, "hold_s": 343.6, "play_s": 136.0, "changed": 0.4298, "off": false, "shift_look": 44.41, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 105, "hold_s": 351.3, "play_s": 136.0, "changed": 0.0, "off": false, "shift_look": 0.0, "src": "check", "state": "cutscene", "why": "Dialogue prompt 'Press A to continue' during cutscene", "action": ["A"], "kept": false}
+{"n": 106, "hold_s": 357.0, "play_s": 136.0, "changed": 0.3431, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 107, "hold_s": 359.7, "play_s": 136.0, "changed": 0.4024, "off": true, "shift_look": 4.12, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 108, "hold_s": 362.3, "play_s": 136.0, "changed": 0.4158, "off": true, "shift_look": 5.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 109, "hold_s": 365.0, "play_s": 146.7, "changed": 0.7993, "off": true, "shift_look": 22.83, "src": "check", "state": "gameplay", "why": "Character flying through structure in-world with HUD visible, just a tip overlay", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 110, "hold_s": 375.6, "play_s": 154.5, "changed": 0.7623, "off": false, "shift_look": 25.08, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.7178, "kept": true}
+{"n": 111, "hold_s": 383.3, "play_s": 162.1, "changed": 0.8269, "off": false, "shift_look": 13.45, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 112, "hold_s": 390.6, "play_s": 169.4, "changed": 0.7308, "off": false, "shift_look": 11.7, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 113, "hold_s": 398.1, "play_s": 169.4, "changed": 0.0, "off": false, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Game Over screen with Restart/Quit buttons shown", "action": ["A"], "kept": false}
+{"n": 114, "hold_s": 404.6, "play_s": 169.4, "changed": 0.5924, "off": true, "shift_look": 36.35, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 115, "hold_s": 406.9, "play_s": 169.4, "changed": 0.0305, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 116, "hold_s": 409.4, "play_s": 169.4, "changed": 0.4191, "off": true, "shift_look": 8.94, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 117, "hold_s": 411.9, "play_s": 169.4, "changed": 0.204, "off": true, "shift_look": 0.0, "src": "check", "state": "cutscene", "why": "Cinematic close-up of a hand with cityscape and NPC, no HUD or player control indicators", "action": ["START"], "kept": false}
+{"n": 118, "hold_s": 419.0, "play_s": 169.4, "changed": 0.3726, "off": true, "shift_look": 23.85, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 119, "hold_s": 422.5, "play_s": 169.4, "changed": 0.46, "off": true, "shift_look": 15.23, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 120, "hold_s": 425.8, "play_s": 169.4, "changed": 0.4388, "off": true, "shift_look": 15.23, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 121, "hold_s": 429.3, "play_s": 169.4, "changed": 0.3903, "off": true, "shift_look": 8.54, "src": "check", "state": "loading", "why": "Character floating in a tunnel with no HUD, letterboxed cinematic transition, not interactive gameplay", "action": [], "kept": false}
+{"n": 122, "hold_s": 437.1, "play_s": 169.4, "changed": 0.2829, "off": true, "shift_look": 36.14, "src": "check", "state": "cutscene", "why": "Dialogue cutscene with 'Press A to continue' prompt, not gameplay", "action": ["A"], "kept": true}
+{"n": 123, "hold_s": 442.9, "play_s": 169.4, "changed": 0.3124, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 124, "hold_s": 445.7, "play_s": 169.4, "changed": 0.3437, "off": true, "shift_look": 17.03, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 125, "hold_s": 448.4, "play_s": 169.4, "changed": 0.4015, "off": true, "shift_look": 7.07, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 126, "hold_s": 451.0, "play_s": 169.4, "changed": 0.4167, "off": true, "shift_look": 10.0, "src": "check", "state": "cutscene", "why": "Tutorial/prompt overlay with 'Press A to continue' and tip text over a cutscene-like view, not active control", "action": ["A"], "kept": false}
+{"n": 127, "hold_s": 457.3, "play_s": 169.4, "changed": 0.8011, "off": true, "shift_look": 22.2, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 128, "hold_s": 460.2, "play_s": 169.4, "changed": 0.0272, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 129, "hold_s": 463.1, "play_s": 169.4, "changed": 0.0381, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 130, "hold_s": 466.0, "play_s": 181.1, "changed": 0.0783, "off": true, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Character on-screen climbing/falling through structure, HUD visible, no menu/pause/cutscene elements", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 131, "hold_s": 477.6, "play_s": 189.2, "changed": 0.7541, "off": false, "shift_look": 13.89, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.7177, "kept": true}
+{"n": 132, "hold_s": 485.6, "play_s": 197.0, "changed": 0.7317, "off": false, "shift_look": 17.0, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 133, "hold_s": 493.2, "play_s": 204.0, "changed": 0.603, "off": false, "shift_look": 5.0, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 134, "hold_s": 500.2, "play_s": 204.0, "changed": 0.0006, "off": false, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Game Over screen with Restart/Quit options shown", "action": ["A"], "kept": false}
+{"n": 135, "hold_s": 506.1, "play_s": 204.0, "changed": 0.5928, "off": true, "shift_look": 36.35, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 136, "hold_s": 508.6, "play_s": 204.0, "changed": 0.0306, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 137, "hold_s": 511.2, "play_s": 204.0, "changed": 0.4197, "off": true, "shift_look": 11.7, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 138, "hold_s": 513.7, "play_s": 204.0, "changed": 0.2233, "off": true, "shift_look": 0.0, "src": "check", "state": "cutscene", "why": "Cinematic close-up on a hand with characters walking in background, no HUD or player control indicated", "action": ["START"], "kept": false}
+{"n": 139, "hold_s": 520.7, "play_s": 204.0, "changed": 0.3439, "off": true, "shift_look": 19.92, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 140, "hold_s": 524.3, "play_s": 204.0, "changed": 0.4446, "off": true, "shift_look": 25.0, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 141, "hold_s": 527.6, "play_s": 204.0, "changed": 0.4616, "off": true, "shift_look": 25.0, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 142, "hold_s": 531.0, "play_s": 204.0, "changed": 0.4125, "off": true, "shift_look": 1.0, "src": "check", "state": "cutscene", "why": "Character shown falling through a shaft in a cinematic framed shot with no HUD", "action": ["START"], "kept": false}
+{"n": 143, "hold_s": 538.1, "play_s": 204.0, "changed": 0.41, "off": true, "shift_look": 25.32, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 144, "hold_s": 540.8, "play_s": 204.0, "changed": 0.4404, "off": true, "shift_look": 29.97, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": true}
+{"n": 145, "hold_s": 543.4, "play_s": 204.0, "changed": 0.4404, "off": true, "shift_look": 29.97, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 146, "hold_s": 546.1, "play_s": 204.0, "changed": 0.4401, "off": true, "shift_look": 29.97, "src": "check", "state": "cutscene", "why": "Dialogue cutscene with 'Press A to continue' prompt, not gameplay", "action": ["A"], "kept": false}
+{"n": 147, "hold_s": 552.1, "play_s": 204.0, "changed": 0.3123, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 148, "hold_s": 554.8, "play_s": 204.0, "changed": 0.3347, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 149, "hold_s": 557.6, "play_s": 204.0, "changed": 0.401, "off": true, "shift_look": 19.92, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 150, "hold_s": 560.2, "play_s": 204.0, "changed": 0.4172, "off": true, "shift_look": 5.0, "src": "check", "state": "other", "why": "QTE prompt 'Press A to continue' over cutscene-style scene, not live gameplay", "action": ["A"], "kept": false}
+{"n": 151, "hold_s": 566.7, "play_s": 215.7, "changed": 0.802, "off": true, "shift_look": 20.88, "src": "check", "state": "gameplay", "why": "Player character on screen with HUD, health, shield counter; a tip tooltip overlays but game world is active", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 152, "hold_s": 578.1, "play_s": 223.4, "changed": 0.7594, "off": false, "shift_look": 7.62, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.7013, "kept": true}
+{"n": 153, "hold_s": 585.8, "play_s": 231.1, "changed": 0.8338, "off": false, "shift_look": 13.45, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 154, "hold_s": 593.4, "play_s": 238.5, "changed": 0.7317, "off": false, "shift_look": 15.62, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 155, "hold_s": 600.8, "play_s": 238.5, "changed": 0.0, "off": false, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Game Over screen with Restart/Quit options shown", "action": ["A"], "kept": false}
+{"n": 156, "hold_s": 606.8, "play_s": 238.5, "changed": 0.5911, "off": true, "shift_look": 36.35, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 157, "hold_s": 609.2, "play_s": 238.5, "changed": 0.0296, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 158, "hold_s": 611.7, "play_s": 238.5, "changed": 0.422, "off": true, "shift_look": 26.08, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 159, "hold_s": 614.3, "play_s": 238.5, "changed": 0.2234, "off": true, "shift_look": 0.0, "src": "check", "state": "cutscene", "why": "Close-up cinematic shot of a hand with characters walking in background, no HUD elements visible", "action": ["START"], "kept": false}
+{"n": 160, "hold_s": 621.3, "play_s": 238.5, "changed": 0.3424, "off": true, "shift_look": 22.02, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 161, "hold_s": 624.9, "play_s": 238.5, "changed": 0.4465, "off": true, "shift_look": 14.76, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 162, "hold_s": 628.3, "play_s": 238.5, "changed": 0.4425, "off": true, "shift_look": 14.76, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 163, "hold_s": 631.8, "play_s": 238.5, "changed": 0.374, "off": true, "shift_look": 21.1, "src": "check", "state": "cutscene", "why": "Character floating/falling through tunnel, no HUD, appears to be cutscene or transition sequence", "action": ["START"], "kept": false}
+{"n": 164, "hold_s": 639.1, "play_s": 238.5, "changed": 0.5839, "off": true, "shift_look": 31.3, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 165, "hold_s": 642.7, "play_s": 238.5, "changed": 0.6326, "off": true, "shift_look": 36.62, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": true}
+{"n": 166, "hold_s": 646.2, "play_s": 238.5, "changed": 0.6326, "off": true, "shift_look": 36.62, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 167, "hold_s": 649.8, "play_s": 238.5, "changed": 0.6329, "off": true, "shift_look": 36.62, "src": "check", "state": "cutscene", "why": "Dialogue prompt 'Press A to continue' over a static observation window scene", "action": ["A"], "kept": false}
+{"n": 168, "hold_s": 655.9, "play_s": 238.5, "changed": 0.3097, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 169, "hold_s": 658.5, "play_s": 238.5, "changed": 0.3423, "off": true, "shift_look": 5.1, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 170, "hold_s": 661.1, "play_s": 238.5, "changed": 0.4028, "off": true, "shift_look": 28.64, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 171, "hold_s": 663.7, "play_s": 238.5, "changed": 0.4169, "off": true, "shift_look": 5.0, "src": "check", "state": "other", "why": "Tutorial/QTE prompt overlay telling player to press A to continue, not live gameplay control", "action": ["A"], "kept": false}
+{"n": 172, "hold_s": 669.6, "play_s": 250.3, "changed": 0.7972, "off": true, "shift_look": 26.48, "src": "check", "state": "gameplay", "why": "On-rails flight through space station corridor, HUD visible with health and item icons", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 173, "hold_s": 681.3, "play_s": 258.0, "changed": 0.7503, "off": false, "shift_look": 36.22, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.7652, "kept": true}
+{"n": 174, "hold_s": 688.9, "play_s": 265.5, "changed": 0.7771, "off": false, "shift_look": 6.71, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 175, "hold_s": 696.1, "play_s": 272.7, "changed": 0.595, "off": false, "shift_look": 25.5, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 176, "hold_s": 703.3, "play_s": 272.7, "changed": 0.0045, "off": false, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Game Over screen with Restart/Quit buttons", "action": ["A"], "kept": false}
+{"n": 177, "hold_s": 710.4, "play_s": 272.7, "changed": 0.5892, "off": true, "shift_look": 32.14, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 178, "hold_s": 713.9, "play_s": 272.7, "changed": 0.4114, "off": true, "shift_look": 23.09, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 179, "hold_s": 717.3, "play_s": 272.7, "changed": 0.2508, "off": true, "shift_look": 14.42, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 180, "hold_s": 720.8, "play_s": 283.9, "changed": 0.2604, "off": true, "shift_look": 33.12, "src": "check", "state": "gameplay", "why": "Character floating in-world viewed through a window/portal, no menu or overlay elements present", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 181, "hold_s": 732.1, "play_s": 291.6, "changed": 0.4141, "off": false, "shift_look": 10.44, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 182, "hold_s": 739.8, "play_s": 299.1, "changed": 0.4302, "off": false, "shift_look": 44.28, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 183, "hold_s": 747.4, "play_s": 299.1, "changed": 0.001, "off": false, "shift_look": 0.0, "src": "check", "state": "cutscene", "why": "Dialogue cutscene with 'Press A to continue' prompt, not live gameplay", "action": ["A"], "kept": true}
+{"n": 184, "hold_s": 754.4, "play_s": 299.1, "changed": 0.3459, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 185, "hold_s": 757.0, "play_s": 299.1, "changed": 0.4019, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 186, "hold_s": 759.6, "play_s": 299.1, "changed": 0.418, "off": true, "shift_look": 11.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 187, "hold_s": 762.3, "play_s": 310.7, "changed": 0.8037, "off": true, "shift_look": 11.7, "src": "check", "state": "gameplay", "why": "Character flying in-world with HUD visible; a tip banner overlays but gameplay continues", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 188, "hold_s": 773.8, "play_s": 318.3, "changed": 0.7468, "off": false, "shift_look": 51.79, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 189, "hold_s": 781.3, "play_s": 325.6, "changed": 0.789, "off": false, "shift_look": 26.17, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.4309, "kept": true}
+{"n": 190, "hold_s": 788.5, "play_s": 332.8, "changed": 0.6094, "off": false, "shift_look": 28.28, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 191, "hold_s": 795.7, "play_s": 332.8, "changed": 0.0053, "off": false, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Game Over screen with Restart/Quit options", "action": ["A"], "kept": false}
+{"n": 192, "hold_s": 802.1, "play_s": 332.8, "changed": 0.5924, "off": true, "shift_look": 36.35, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 193, "hold_s": 804.4, "play_s": 332.8, "changed": 0.0305, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 194, "hold_s": 806.9, "play_s": 332.8, "changed": 0.4184, "off": true, "shift_look": 26.02, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 195, "hold_s": 809.4, "play_s": 332.8, "changed": 0.2109, "off": true, "shift_look": 0.0, "src": "check", "state": "cutscene", "why": "Cinematic shot of hand and character silhouette against city skyline, no HUD elements present", "action": ["START"], "kept": false}
+{"n": 196, "hold_s": 816.4, "play_s": 332.8, "changed": 0.5491, "off": true, "shift_look": 10.05, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": true}
+{"n": 197, "hold_s": 820.0, "play_s": 332.8, "changed": 0.6512, "off": true, "shift_look": 20.1, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 198, "hold_s": 823.4, "play_s": 332.8, "changed": 0.6459, "off": true, "shift_look": 20.1, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 199, "hold_s": 826.8, "play_s": 332.8, "changed": 0.6, "off": true, "shift_look": 1.0, "src": "check", "state": "cutscene", "why": "Character hanging/falling in cinematic framing, no HUD, likely scripted sequence", "action": ["A"], "kept": false}
+{"n": 200, "hold_s": 834.1, "play_s": 332.8, "changed": 0.2759, "off": true, "shift_look": 42.76, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 201, "hold_s": 837.7, "play_s": 332.8, "changed": 0.3128, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 202, "hold_s": 841.2, "play_s": 332.8, "changed": 0.3387, "off": true, "shift_look": 17.49, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 203, "hold_s": 844.8, "play_s": 332.8, "changed": 0.4022, "off": true, "shift_look": 22.83, "src": "check", "state": "other", "why": "Interaction prompt overlay pausing action, waiting for player to press A to continue", "action": ["A"], "kept": false}
+{"n": 204, "hold_s": 851.1, "play_s": 332.8, "changed": 0.4165, "off": true, "shift_look": 8.94, "src": "check", "state": "cutscene", "why": "Tutorial-style prompt 'Press A to continue' overlaying a cutscene/hint screen, not active gameplay", "action": ["A"], "kept": true}
+{"n": 205, "hold_s": 857.4, "play_s": 332.8, "changed": 0.8017, "off": true, "shift_look": 21.4, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 206, "hold_s": 860.1, "play_s": 332.8, "changed": 0.0086, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 207, "hold_s": 863.0, "play_s": 332.8, "changed": 0.0156, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 208, "hold_s": 865.9, "play_s": 344.3, "changed": 0.0681, "off": true, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Flying through space tower structure, HUD shows health/ability icons, character on rails mid-level", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 209, "hold_s": 877.2, "play_s": 351.9, "changed": 0.7518, "off": false, "shift_look": 24.08, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 210, "hold_s": 884.7, "play_s": 359.3, "changed": 0.7721, "off": false, "shift_look": 33.94, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.4654, "kept": true}
+{"n": 211, "hold_s": 892.0, "play_s": 366.8, "changed": 0.5659, "off": false, "shift_look": 31.76, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 212, "hold_s": 899.6, "play_s": 366.8, "changed": 0.0, "off": false, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Game Over screen with Restart/Quit options", "action": ["A"], "kept": false}
+{"n": 213, "hold_s": 905.5, "play_s": 366.8, "changed": 0.5871, "off": true, "shift_look": 36.35, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 214, "hold_s": 907.9, "play_s": 366.8, "changed": 0.029, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 215, "hold_s": 910.5, "play_s": 366.8, "changed": 0.4224, "off": true, "shift_look": 27.07, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 216, "hold_s": 913.1, "play_s": 366.8, "changed": 0.3314, "off": true, "shift_look": 5.39, "src": "check", "state": "cutscene", "why": "Close-up cinematic shot of character's face in spacesuit, no HUD or player control indicators visible", "action": ["START"], "kept": false}
+{"n": 217, "hold_s": 920.9, "play_s": 366.8, "changed": 0.4316, "off": true, "shift_look": 32.02, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": true}
+{"n": 218, "hold_s": 924.5, "play_s": 366.8, "changed": 0.4267, "off": true, "shift_look": 23.19, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 219, "hold_s": 927.9, "play_s": 366.8, "changed": 0.423, "off": true, "shift_look": 23.19, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 220, "hold_s": 931.5, "play_s": 366.8, "changed": 0.4636, "off": true, "shift_look": 14.87, "src": "check", "state": "cutscene", "why": "Letterboxed close-up of an astronaut figure through a porthole, no HUD, looks like a non-interactive cutscene", "action": ["START"], "kept": false}
+{"n": 221, "hold_s": 939.9, "play_s": 366.8, "changed": 0.6659, "off": true, "shift_look": 14.87, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 222, "hold_s": 943.6, "play_s": 366.8, "changed": 0.6772, "off": true, "shift_look": 36.62, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 223, "hold_s": 947.1, "play_s": 366.8, "changed": 0.6758, "off": true, "shift_look": 36.62, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 224, "hold_s": 950.9, "play_s": 366.8, "changed": 0.6761, "off": true, "shift_look": 36.62, "src": "check", "state": "cutscene", "why": "Dialogue prompt 'Press A to continue' over a cutscene/exposition screen, not live gameplay", "action": ["A"], "kept": false}
+{"n": 225, "hold_s": 956.7, "play_s": 366.8, "changed": 0.3109, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": true}
+{"n": 226, "hold_s": 959.3, "play_s": 366.8, "changed": 0.3376, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 227, "hold_s": 962.1, "play_s": 366.8, "changed": 0.3988, "off": true, "shift_look": 4.12, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 228, "hold_s": 964.7, "play_s": 366.8, "changed": 0.4176, "off": true, "shift_look": 36.0, "src": "check", "state": "other", "why": "Prompt screen with 'Press A to continue' and tutorial text, not live gameplay", "action": ["A"], "kept": false}
+{"n": 229, "hold_s": 971.3, "play_s": 378.7, "changed": 0.8015, "off": true, "shift_look": 34.13, "src": "check", "state": "gameplay", "why": "Character flying through structure with HUD visible and a tip overlay, not a pause menu", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 230, "hold_s": 983.2, "play_s": 386.9, "changed": 0.7538, "off": false, "shift_look": 12.08, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 231, "hold_s": 991.3, "play_s": 394.8, "changed": 0.7422, "off": false, "shift_look": 14.14, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.3133, "kept": true}
+{"n": 232, "hold_s": 999.0, "play_s": 402.2, "changed": 0.5645, "off": false, "shift_look": 14.21, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 233, "hold_s": 1006.4, "play_s": 402.2, "changed": 0.0, "off": false, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Game Over screen with Restart/Quit options, not gameplay", "action": ["A"], "kept": false}
+{"n": 234, "hold_s": 1012.6, "play_s": 402.2, "changed": 0.5908, "off": true, "shift_look": 36.35, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 235, "hold_s": 1015.0, "play_s": 402.2, "changed": 0.0291, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 236, "hold_s": 1017.6, "play_s": 402.2, "changed": 0.4218, "off": true, "shift_look": 27.07, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 237, "hold_s": 1020.1, "play_s": 402.2, "changed": 0.2296, "off": true, "shift_look": 1.41, "src": "check", "state": "cutscene", "why": "Close-up cinematic shot of a hand reaching forward with characters silhouetted in background city skyline, no HUD", "action": ["START"], "kept": false}
+{"n": 238, "hold_s": 1026.8, "play_s": 402.2, "changed": 0.3639, "off": true, "shift_look": 22.8, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": true}
+{"n": 239, "hold_s": 1030.4, "play_s": 402.2, "changed": 0.4526, "off": true, "shift_look": 22.02, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 240, "hold_s": 1033.8, "play_s": 402.2, "changed": 0.4381, "off": true, "shift_look": 22.02, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 241, "hold_s": 1037.3, "play_s": 402.2, "changed": 0.3883, "off": true, "shift_look": 23.35, "src": "check", "state": "cutscene", "why": "Character floating/falling in a corridor, no HUD, appears to be a scripted sequence", "action": ["A"], "kept": false}
+{"n": 242, "hold_s": 1044.4, "play_s": 402.2, "changed": 0.2827, "off": true, "shift_look": 39.12, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 243, "hold_s": 1048.1, "play_s": 402.2, "changed": 0.3112, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 244, "hold_s": 1051.7, "play_s": 402.2, "changed": 0.3398, "off": true, "shift_look": 12.04, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 245, "hold_s": 1055.4, "play_s": 402.2, "changed": 0.4019, "off": true, "shift_look": 4.24, "src": "check", "state": "cutscene", "why": "Instruction prompt 'Press A to continue' overlays the scene, not live control", "action": ["A"], "kept": false}
+{"n": 246, "hold_s": 1061.4, "play_s": 402.2, "changed": 0.4165, "off": true, "shift_look": 2.83, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": true}
+{"n": 247, "hold_s": 1064.2, "play_s": 402.2, "changed": 0.8018, "off": true, "shift_look": 21.4, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 248, "hold_s": 1067.0, "play_s": 402.2, "changed": 0.0161, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 249, "hold_s": 1069.9, "play_s": 414.2, "changed": 0.0422, "off": true, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Character on-screen with HUD, health bar, and tip overlay during active game world rendering", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 250, "hold_s": 1081.8, "play_s": 422.4, "changed": 0.7529, "off": false, "shift_look": 22.47, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 251, "hold_s": 1089.8, "play_s": 430.1, "changed": 0.7194, "off": false, "shift_look": 40.16, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 252, "hold_s": 1097.4, "play_s": 437.7, "changed": 0.6042, "off": false, "shift_look": 33.0, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.6099, "kept": true}
+{"n": 253, "hold_s": 1105.0, "play_s": 437.7, "changed": 0.0045, "off": false, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Game Over screen with Restart/Quit options", "action": ["A"], "kept": false}
+{"n": 254, "hold_s": 1111.1, "play_s": 437.7, "changed": 0.5865, "off": true, "shift_look": 36.35, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 255, "hold_s": 1113.5, "play_s": 437.7, "changed": 0.0293, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 256, "hold_s": 1115.9, "play_s": 437.7, "changed": 0.422, "off": true, "shift_look": 26.08, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 257, "hold_s": 1118.6, "play_s": 437.7, "changed": 0.2208, "off": true, "shift_look": 0.0, "src": "check", "state": "cutscene", "why": "First-person hand reaching toward camera with characters in background, cinematic framing indicates a cutscene", "action": ["START"], "kept": false}
+{"n": 258, "hold_s": 1125.4, "play_s": 437.7, "changed": 0.5382, "off": true, "shift_look": 27.73, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 259, "hold_s": 1129.1, "play_s": 437.7, "changed": 0.6234, "off": true, "shift_look": 20.1, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": true}
+{"n": 260, "hold_s": 1132.7, "play_s": 437.7, "changed": 0.6603, "off": true, "shift_look": 20.1, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 261, "hold_s": 1136.3, "play_s": 437.7, "changed": 0.6217, "off": true, "shift_look": 28.18, "src": "check", "state": "cutscene", "why": "Cinematic shot of a character falling/floating through a shaft, no HUD elements present", "action": ["START"], "kept": false}
+{"n": 262, "hold_s": 1143.3, "play_s": 437.7, "changed": 0.5068, "off": true, "shift_look": 30.59, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 263, "hold_s": 1147.0, "play_s": 437.7, "changed": 0.4615, "off": true, "shift_look": 36.62, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 264, "hold_s": 1150.5, "play_s": 437.7, "changed": 0.4706, "off": true, "shift_look": 36.62, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 265, "hold_s": 1154.2, "play_s": 437.7, "changed": 0.4726, "off": true, "shift_look": 36.62, "src": "check", "state": "cutscene", "why": "Dialogue cutscene with 'Press A to continue' prompt, not gameplay", "action": ["A"], "kept": false}
+{"n": 266, "hold_s": 1160.4, "play_s": 437.7, "changed": 0.3101, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": true}
+{"n": 267, "hold_s": 1163.1, "play_s": 437.7, "changed": 0.341, "off": true, "shift_look": 9.22, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 268, "hold_s": 1165.9, "play_s": 437.7, "changed": 0.4023, "off": true, "shift_look": 25.02, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 269, "hold_s": 1168.5, "play_s": 437.7, "changed": 0.4176, "off": true, "shift_look": 5.0, "src": "check", "state": "cutscene", "why": "Tutorial/dialogue prompt overlay, not live gameplay", "action": ["A"], "kept": false}
+{"n": 270, "hold_s": 1174.3, "play_s": 437.7, "changed": 0.8002, "off": true, "shift_look": 29.12, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 271, "hold_s": 1177.2, "play_s": 437.7, "changed": 0.0403, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 272, "hold_s": 1180.1, "play_s": 437.7, "changed": 0.0398, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 273, "hold_s": 1183.1, "play_s": 449.5, "changed": 0.0583, "off": true, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Character running/climbing through structure in-world, HUD visible, no menu/pause/cutscene overlay", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 274, "hold_s": 1194.8, "play_s": 457.4, "changed": 0.7503, "off": false, "shift_look": 24.17, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.6753, "kept": true}
+{"n": 275, "hold_s": 1202.6, "play_s": 465.2, "changed": 0.7518, "off": false, "shift_look": 14.32, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 276, "hold_s": 1210.2, "play_s": 472.8, "changed": 0.6047, "off": false, "shift_look": 30.41, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 277, "hold_s": 1217.8, "play_s": 472.8, "changed": 0.0011, "off": false, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Game Over screen with Restart/Quit options", "action": ["A"], "kept": false}
+{"n": 278, "hold_s": 1224.0, "play_s": 472.8, "changed": 0.5926, "off": true, "shift_look": 36.35, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 279, "hold_s": 1226.5, "play_s": 472.8, "changed": 0.03, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 280, "hold_s": 1229.1, "play_s": 472.8, "changed": 0.4218, "off": true, "shift_look": 27.07, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 281, "hold_s": 1231.5, "play_s": 472.8, "changed": 0.3344, "off": true, "shift_look": 32.02, "src": "check", "state": "cutscene", "why": "Dark close-up shot of a character in a spacesuit, no HUD, appears to be a cinematic/dialogue scene", "action": ["START"], "kept": false}
+{"n": 282, "hold_s": 1239.8, "play_s": 472.8, "changed": 0.4108, "off": true, "shift_look": 16.4, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 283, "hold_s": 1244.4, "play_s": 472.8, "changed": 0.4126, "off": true, "shift_look": 1.0, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 284, "hold_s": 1248.9, "play_s": 472.8, "changed": 0.41, "off": true, "shift_look": 1.0, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 285, "hold_s": 1253.6, "play_s": 472.8, "changed": 0.6185, "off": true, "shift_look": 27.51, "src": "check", "state": "cutscene", "why": "In-engine cutscene showing a character in a spaceship interior, no HUD or player control indicators", "action": ["START"], "kept": false}
+{"n": 286, "hold_s": 1262.8, "play_s": 472.8, "changed": 0.6202, "off": true, "shift_look": 12.04, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": true}
+{"n": 287, "hold_s": 1266.5, "play_s": 472.8, "changed": 0.4965, "off": true, "shift_look": 36.62, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 288, "hold_s": 1270.1, "play_s": 472.8, "changed": 0.527, "off": true, "shift_look": 36.62, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 289, "hold_s": 1273.7, "play_s": 472.8, "changed": 0.5271, "off": true, "shift_look": 36.62, "src": "check", "state": "cutscene", "why": "Dialogue cutscene with 'Press A to continue' prompt over a non-interactive scene", "action": ["A"], "kept": false}
+{"n": 290, "hold_s": 1280.1, "play_s": 472.8, "changed": 0.3108, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 291, "hold_s": 1282.7, "play_s": 472.8, "changed": 0.339, "off": true, "shift_look": 9.43, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 292, "hold_s": 1285.4, "play_s": 472.8, "changed": 0.3993, "off": true, "shift_look": 4.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 293, "hold_s": 1288.1, "play_s": 472.8, "changed": 0.4141, "off": true, "shift_look": 10.0, "src": "check", "state": "cutscene", "why": "Dialogue/tutorial prompt screen with 'Press A to continue' over cutscene art, not live gameplay", "action": ["A"], "kept": false}
+{"n": 294, "hold_s": 1294.8, "play_s": 472.8, "changed": 0.8026, "off": true, "shift_look": 29.12, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": true}
+{"n": 295, "hold_s": 1297.7, "play_s": 472.8, "changed": 0.044, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 296, "hold_s": 1300.7, "play_s": 472.8, "changed": 0.0407, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 297, "hold_s": 1303.6, "play_s": 484.5, "changed": 0.0559, "off": true, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Character climbing structure in-world with HUD visible (health, charge icon)", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 298, "hold_s": 1315.2, "play_s": 492.2, "changed": 0.7516, "off": false, "shift_look": 8.25, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 299, "hold_s": 1322.7, "play_s": 500.0, "changed": 0.7573, "off": false, "shift_look": 26.93, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 300, "hold_s": 1330.5, "play_s": 507.8, "changed": 0.5959, "off": false, "shift_look": 26.0, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.7693, "kept": true}
+{"n": 301, "hold_s": 1338.3, "play_s": 507.8, "changed": 0.0, "off": false, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Game Over screen with Restart/Quit options shown", "action": ["A"], "kept": false}
+{"n": 302, "hold_s": 1344.8, "play_s": 507.8, "changed": 0.5908, "off": true, "shift_look": 36.35, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 303, "hold_s": 1347.3, "play_s": 507.8, "changed": 0.0284, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 304, "hold_s": 1349.9, "play_s": 507.8, "changed": 0.4214, "off": true, "shift_look": 27.02, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 305, "hold_s": 1352.4, "play_s": 507.8, "changed": 0.3369, "off": true, "shift_look": 17.12, "src": "check", "state": "cutscene", "why": "Close-up cinematic shot of a character in a spacesuit, no HUD or gameplay elements visible", "action": ["START"], "kept": false}
+{"n": 306, "hold_s": 1360.1, "play_s": 507.8, "changed": 0.7284, "off": true, "shift_look": 17.03, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 307, "hold_s": 1363.7, "play_s": 507.8, "changed": 0.6054, "off": true, "shift_look": 19.24, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": true}
+{"n": 308, "hold_s": 1367.2, "play_s": 507.8, "changed": 0.6139, "off": true, "shift_look": 19.24, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 309, "hold_s": 1370.7, "play_s": 507.8, "changed": 0.6817, "off": true, "shift_look": 9.0, "src": "check", "state": "cutscene", "why": "Letterboxed non-interactive scene of astronaut character, no HUD", "action": ["START"], "kept": false}
+{"n": 310, "hold_s": 1377.9, "play_s": 507.8, "changed": 0.4182, "off": true, "shift_look": 19.7, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 311, "hold_s": 1381.6, "play_s": 507.8, "changed": 0.4008, "off": true, "shift_look": 36.62, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 312, "hold_s": 1385.1, "play_s": 507.8, "changed": 0.4129, "off": true, "shift_look": 36.62, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 313, "hold_s": 1388.8, "play_s": 507.8, "changed": 0.4141, "off": true, "shift_look": 36.62, "src": "check", "state": "cutscene", "why": "Dialogue cutscene with 'Press A to continue' prompt, not live gameplay", "action": ["A"], "kept": false}
+{"n": 314, "hold_s": 1395.1, "play_s": 507.8, "changed": 0.3105, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": true}
+{"n": 315, "hold_s": 1397.7, "play_s": 507.8, "changed": 0.3393, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 316, "hold_s": 1400.4, "play_s": 507.8, "changed": 0.4008, "off": true, "shift_look": 7.62, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 317, "hold_s": 1403.2, "play_s": 507.8, "changed": 0.4137, "off": true, "shift_look": 5.0, "src": "check", "state": "cutscene", "why": "Dialogue/tutorial slide with 'Press A to continue' prompt over a cutscene scene", "action": ["A"], "kept": false}
+{"n": 318, "hold_s": 1410.1, "play_s": 507.8, "changed": 0.799, "off": true, "shift_look": 36.01, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 319, "hold_s": 1413.0, "play_s": 507.8, "changed": 0.0145, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 320, "hold_s": 1416.0, "play_s": 507.8, "changed": 0.0551, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 321, "hold_s": 1419.0, "play_s": 520.0, "changed": 0.0779, "off": true, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "On-rails flight through structure with HUD (health, score, character icon) visible, character actively moving forward", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 322, "hold_s": 1431.1, "play_s": 528.0, "changed": 0.751, "off": false, "shift_look": 20.1, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.6864, "kept": true}
+{"n": 323, "hold_s": 1439.0, "play_s": 535.8, "changed": 0.7188, "off": false, "shift_look": 21.93, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 324, "hold_s": 1446.7, "play_s": 543.5, "changed": 0.5603, "off": false, "shift_look": 17.89, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 325, "hold_s": 1454.2, "play_s": 543.5, "changed": 0.0005, "off": false, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Game Over screen with Restart/Quit options", "action": ["A"], "kept": false}
+{"n": 326, "hold_s": 1460.3, "play_s": 543.5, "changed": 0.5924, "off": true, "shift_look": 36.35, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 327, "hold_s": 1462.7, "play_s": 543.5, "changed": 0.0299, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 328, "hold_s": 1465.1, "play_s": 543.5, "changed": 0.4185, "off": true, "shift_look": 26.08, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 329, "hold_s": 1467.7, "play_s": 543.5, "changed": 0.2134, "off": true, "shift_look": 0.0, "src": "check", "state": "cutscene", "why": "Cinematic shot of a hand reaching toward camera with characters in background, no HUD, scripted camera angle", "action": ["START"], "kept": false}
+{"n": 330, "hold_s": 1475.5, "play_s": 543.5, "changed": 0.5955, "off": true, "shift_look": 27.73, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 331, "hold_s": 1479.2, "play_s": 543.5, "changed": 0.6525, "off": true, "shift_look": 21.95, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 332, "hold_s": 1482.7, "play_s": 543.5, "changed": 0.6305, "off": true, "shift_look": 21.95, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 333, "hold_s": 1486.3, "play_s": 543.5, "changed": 0.6022, "off": true, "shift_look": 45.4, "src": "check", "state": "cutscene", "why": "Non-interactive view of astronaut figure floating in a cutscene framed by letterbox bars", "action": ["START"], "kept": false}
+{"n": 334, "hold_s": 1493.5, "play_s": 543.5, "changed": 0.3869, "off": true, "shift_look": 15.62, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": true}
+{"n": 335, "hold_s": 1497.2, "play_s": 543.5, "changed": 0.4144, "off": true, "shift_look": 36.62, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 336, "hold_s": 1500.6, "play_s": 543.5, "changed": 0.4024, "off": true, "shift_look": 36.62, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 337, "hold_s": 1504.2, "play_s": 543.5, "changed": 0.4008, "off": true, "shift_look": 36.62, "src": "check", "state": "cutscene", "why": "Dialogue prompt 'Press A to continue' over cutscene view, not active player control", "action": ["A"], "kept": false}
+{"n": 338, "hold_s": 1510.4, "play_s": 543.5, "changed": 0.3126, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 339, "hold_s": 1513.5, "play_s": 543.5, "changed": 0.3361, "off": true, "shift_look": 12.04, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 340, "hold_s": 1516.7, "play_s": 543.5, "changed": 0.4, "off": true, "shift_look": 14.04, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 341, "hold_s": 1519.9, "play_s": 543.5, "changed": 0.4131, "off": true, "shift_look": 5.0, "src": "check", "state": "cutscene", "why": "Prompt-driven cutscene/QTE tutorial text with 'Press A to continue', no character control", "action": ["A"], "kept": false}
+{"n": 342, "hold_s": 1526.4, "play_s": 543.5, "changed": 0.7977, "off": true, "shift_look": 33.53, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": true}
+{"n": 343, "hold_s": 1529.3, "play_s": 543.5, "changed": 0.027, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 344, "hold_s": 1532.2, "play_s": 543.5, "changed": 0.0549, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 345, "hold_s": 1535.1, "play_s": 555.4, "changed": 0.0738, "off": true, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Character flying through structure with HUD visible (health, Fantastic 4 icon, score)", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 346, "hold_s": 1546.8, "play_s": 563.4, "changed": 0.7633, "off": false, "shift_look": 6.4, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 347, "hold_s": 1554.7, "play_s": 571.2, "changed": 0.8542, "off": false, "shift_look": 13.45, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 348, "hold_s": 1562.5, "play_s": 579.1, "changed": 0.734, "off": false, "shift_look": 37.48, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.7683, "kept": true}
+{"n": 349, "hold_s": 1570.2, "play_s": 579.1, "changed": 0.0, "off": false, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Game Over screen with Restart/Quit options", "action": ["A"], "kept": false}
+{"n": 350, "hold_s": 1576.9, "play_s": 579.1, "changed": 0.5871, "off": true, "shift_look": 36.35, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 351, "hold_s": 1579.4, "play_s": 579.1, "changed": 0.029, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 352, "hold_s": 1582.0, "play_s": 579.1, "changed": 0.4212, "off": true, "shift_look": 26.08, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 353, "hold_s": 1584.4, "play_s": 579.1, "changed": 0.3321, "off": true, "shift_look": 12.53, "src": "check", "state": "cutscene", "why": "Close-up shot of character's face in spacesuit, no HUD, appears to be a cinematic moment", "action": ["START"], "kept": false}
+{"n": 354, "hold_s": 1598.6, "play_s": 579.1, "changed": 0.7406, "off": true, "shift_look": 22.36, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": true}
+{"n": 355, "hold_s": 1602.4, "play_s": 579.1, "changed": 0.6077, "off": true, "shift_look": 19.0, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 356, "hold_s": 1606.0, "play_s": 579.1, "changed": 0.6311, "off": true, "shift_look": 9.49, "src": "repeat", "state": "cutscene", "action": ["START"], "kept": false}
+{"n": 357, "hold_s": 1609.7, "play_s": 579.1, "changed": 0.6586, "off": true, "shift_look": 29.97, "src": "check", "state": "cutscene", "why": "Dialogue cutscene with 'Press A to continue' prompt, not gameplay", "action": ["A"], "kept": false}
+{"n": 358, "hold_s": 1638.9, "play_s": 579.1, "changed": 0.3433, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": true}
+{"n": 359, "hold_s": 1641.5, "play_s": 579.1, "changed": 0.4027, "off": true, "shift_look": 2.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 360, "hold_s": 1644.0, "play_s": 579.1, "changed": 0.417, "off": true, "shift_look": 5.0, "src": "repeat", "state": "cutscene", "action": ["A"], "kept": false}
+{"n": 361, "hold_s": 1646.8, "play_s": 591.6, "changed": 0.8003, "off": true, "shift_look": 22.83, "src": "check", "state": "gameplay", "why": "Player character (Thing) on screen in game world with HUD visible; tip text overlay but not paused", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 362, "hold_s": 1659.3, "play_s": 599.5, "changed": 0.7633, "off": false, "shift_look": 13.04, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 363, "hold_s": 1666.8, "play_s": 607.0, "changed": 0.8487, "off": false, "shift_look": 14.56, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"check": "stop", "short_s": 0.0, "hold_play_s": 607.0, "verdict_play_s": 599.6, "gameplay_s": 1673.9}

@@ -1,0 +1,54 @@
+taken: nova by lane.pathfind
+NOT IDLE: nova is held but busy -- do not touch it yet:
+dispatcher pid 518495 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+run: hold.sh wait-idle nova <timeout_s>, and touch the device only on exit 0
+waiting for nova: dispatcher pid 518495 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+idle: nova is held and runs nothing
+held at 18:42:22
+pathfind: NHL 2K3 (None) on nova: /storage/E6C6-D7AA/Games/XBox/NHL_2K3.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: - any, loaded all goldens (title not identified)
+[   9.4s] #  1 loading           fast    wait                     A logo/loading-style splash with no menu or HUD; the screen is still transitioning, so not
+[  17.3s] #  2 publisher_logo    fast    START                    SEGA logo with a loading bar filling; a publisher splash, not a menu or gameplay. Nothing 
+[  27.0s] #  3 publisher_logo    fast    START                    A publisher logo animation with no menu or HUD; skip it with START per the logo rule, then
+[  35.0s] #  4 title_screen      fast    START                    Title screen with a 'Press START button' prompt; per title hints START is the right input 
+[  44.1s] #  5 profile_creation  fast    A                        Informational profile prompt with one button, OK, highlighted. Pressing A on OK accepts it
+[  53.0s] #  6 profile_creation  fast    A                        No user profiles exist, so the list is empty. Per the hints, pick Create/New with A on the
+[  62.3s] #  7 name_entry        fast    START                    Name entry with a default name already filled in. Per the hints, START usually jumps to Ac
+[  69.3s] #  8 main_menu         fast    A                        Quick Game is highlighted and leads fastest to a playable match; the cursor is already on 
+[  79.3s] #  9 submenu           fast    RIGHT START              Team select with controller 1 in the middle column, unassigned. Per the run goal, one RIGH
+[  88.4s] # 10 submenu           fast    RIGHT START              Team select with controller 1 unassigned in the middle column. Per the run goal, one RIGHT
+[  98.0s] # 11 cutscene          fast    START                    This is a broadcast-style intro card over the arena, not player control or a menu, so no i
+[ 107.4s] # 12 pause             fast    START                    The game is already live in the 1st period at 20:00, so this pause was opened by my earlie
+[ 127.5s] # 13 cutscene          fast    A                        Arena broadcast camera with the 1st-period scoreboard but no visible skaters or player con
+[ 138.8s] # 14 pause             fast    B                        A line-change overlay is open over the live game, not player control. B backs out of it wi
+[ 147.4s] # 15 gameplay          fast    wait                     Live 1st-period game with HUD and clock counting down (20:00 to 19:45); the skaters are in
+[ 164.8s] # 16 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.255, under input 0.035
+[ 178.2s] # 17 cutscene          fast    A                        The stats card and faceoff setup are a stoppage overlay, not player control, and the last 
+[ 188.6s] # 18 pause             fast    B                        The Forward Lines line-change overlay is a menu over the live game, not player control (sa
+[ 197.0s] # 19 gameplay          fast    wait                     HUD and clock are up with skaters in play on the ice and no menu or overlay; the previous 
+[ 221.0s] # 20 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.357, under input 0.373
+[ 236.0s] # 21 gameplay          fast    wait                     HUD and clock are running in the 1st period, a live game, but the 'PUCK FROZEN' banner mea
+[ 254.3s] # 22 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.617, under input 0.050
+[ 268.5s] # 23 gameplay          fast    wait                     HUD, clock and scoreboard are up in the 1st period with skaters on the ice, but PUCK FROZE
+[ 281.1s] # 24 probe             probe   HOLD:A:3                 control 0.054, under input 0.357
+[ 288.4s] # 25 gameplay          fast    wait                     HUD and clock are up with skaters on the ice, but the PUCK FROZEN banner means a stoppage,
+[ 303.4s] # 26 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.245, under input 0.210
+[ 309.9s] # 27 submenu           fast    B                        A Forward Lines line-change menu is open over the live game, so this is not play. Its high
+[ 318.9s] # 28 gameplay          fast    wait                     HUD and clock are up, the scene is live with no menu or stoppage banner, and the Forward L
+[ 335.7s] # 29 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.718, under input 0.795
+[ 349.3s] # 30 gameplay          fast    wait                     HUD and clock are up, but the PUCK FROZEN banner marks a stoppage, so the last probes were
+[ 374.1s] # 31 probe             probe   RT:3 RT+left:1.2 RT+right:1.2 control 0.516, under input 0.271
+hold-play: sports look {'clock': '15:14', 'period': '1st', 'human_controlled': False, 'why': 'Scoreboard shows COL 1, TB 0, 1ST, 15:14 with PUCK FROZEN; no controller icon under either team and no marked player on the ice.'}
+hold-play: genre team, need 600 s of play
+hold-play: fps at 186 s: median 37.0, share>=30 0.794 over 107 samples
+hold-play: fps at 306 s: median 36.0, share>=30 0.763 over 173 samples
+hold-play: HELD 605/600 s of play; 
+held NHL 2K3 for 614s
+VERDICT NHL 2K3 ? FAIL(fps: 69.4% of gameplay at >= 30 fps (bar 90%)) gameplay=611.9s fps_ok=0.6937 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.025 play_share=0.9886 fps_excluded=9.4s
+{"name": "NHL 2K3", "device": "nova", "result": "gameplay", "minutes": 6.23, "model_calls": 46, "steps": 31, "replayed": 0, "reason": "four probes refused", "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nhl-2k3/hold3/frames/030-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256
+pathfind rc=0 at 18:59:38
+released: nova by lane.pathfind
+released rc=0

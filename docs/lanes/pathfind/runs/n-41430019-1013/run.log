@@ -1,0 +1,92 @@
+pathfind: Burnout 2 Point of Impact USA (41430019) on nova: /storage/E6C6-D7AA/Games/XBox/41430019-Burnout_2_Point_of_Impact_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 41430019 any, loaded none
+[  30.3s] #  1 loading           fast    A                        Very early boot (0.1 min from cold start); screen appears to be transitioning or loading c
+[  44.6s] #  2 publisher_logo    fast    START                    Audio codec publisher logo during early boot; new screen after loading transition
+[  59.4s] #  3 save_load_prompt  fast    DOWN A                   Save/load decision screen. 'Load' is highlighted but shows 'empty'. Per Burnout series hin
+[ 102.3s] #  4 profile_creation  fast    A                        Profile name PROFILE1 is set and displayed. END button visible to finalize profile creatio
+[ 115.3s] #  5 save_load_prompt  fast    A                        Save confirmation screen; 'continue' button is ready. This follows the profile creation st
+[ 169.5s] #  6 save_load_prompt  fast    START                    Save confirmation screen after successful profile creation; continue button shown but prio
+[ 184.6s] #  7 submenu           fast    A                        Menu screen selecting from single-player game modes; 'Offensive Driving 101' is highlighte
+[ 213.0s] #  8 submenu           fast    B                        Looping in a training lesson selection menu. Hints say avoid training modes. Previous atte
+[ 232.6s] #  9 submenu           fast    LEFT                     Menu screen with navigation options. 'Offensive Driving 101' is a training mode (to avoid 
+[ 253.7s] # 10 loading           fast    wait                     Loading screen cannot be skipped; game is loading after mode selection. Wait for completio
+[ 271.0s] # 11 title_screen      fast    START                    Title screen prompt 'Press START' appears after loading; this is the attract/title screen 
+[ 287.5s] # 12 submenu           fast    RIGHT                    Menu screen for game mode selection. 'Offensive Driving 101' is training (to avoid per hin
+[ 302.7s] # 13 submenu           fast    LEFT                     This is an OPTIONS submenu, which hints say to avoid to reach gameplay fastest. Need to go
+[ 316.5s] # 14 submenu           fast    RIGHT                    Training mode (Offensive Driving 101) is highlighted but should be avoided per hints. Need
+[ 335.3s] # 15 submenu           fast    BACK                     Stuck in OPTIONS submenu (hints say avoid Options to reach gameplay fastest). Cycling RIGH
+[ 351.8s] # 16 submenu           fast    LEFT                     In OPTIONS submenu which hints say to avoid for fastest gameplay. BACK did not work; need 
+[ 364.6s] # 17 title_screen      fast    START                    Title screen with 'Press START' prompt. Per hints, START is the correct input for this typ
+[ 394.9s] # 18 submenu           fast    RIGHT                    Menu screen with navigable options. Offensive Driving 101 is training (hints say avoid); n
+[ 406.1s] # 19 loading           fast    wait                     Active progress bar indicates the game is initializing content. Wait for loading to comple
+[ 426.0s] # 20 title_screen      fast    START                    Game title visible with the standard 'Press START' prompt; this is the title screen, not a
+[ 439.6s] # 21 submenu           fast    RIGHT                    Navigable menu screen. Offensive Driving 101 is training, which hints say to avoid. Need t
+[ 456.4s] # 22 submenu           fast    LEFT A                   I'm stuck in the OPTIONS submenu after looping through LEFT/RIGHT/START inputs. The bottom
+[ 471.6s] # 23 submenu           fast    BACK                     This is a lesson selection screen within the Offensive Driving 101 training module. Hints 
+[ 487.6s] # 24 submenu           fast    BACK                     This is a training/lesson menu (Offensive Driving 101), which hints explicitly say to avoi
+[ 500.2s] # 25 submenu           fast    LEFT                     Stuck in training carousel. The arrows at the bottom indicate other options exist left/rig
+[ 547.3s] # 26 submenu           fast    DOWN A                   Still in a submenu, but stuck on training. Hints say to avoid Training. The 'Single' butto
+[ 562.1s] # 27 title_screen      fast    START                    Title screen with 'Press START' prompt; this is the entry point before menus. START advanc
+[ 635.7s] # 28 submenu           fast    DOWN                     Cursor is on the training mode. Hints explicitly say to avoid Training. The 'Single' butto
+[ 696.1s] # 29 title_screen      fast    A                        Title screen with 'Press START' prompt; prior attempts with START led to a training menu t
+[ 707.3s] # 30 loading           fast    wait                     The 'LOADING' and 'Please Wait' with progress bar indicate the game is loading into gamepl
+[ 778.7s] # 31 title_screen      fast    START                    This is the title screen with an explicit 'Press START' prompt. Previous attempts sent STA
+[ 853.8s] # 32 submenu           fast    LEFT                     In a Single Player submenu. 'Offensive Driving 101' is training (hints say avoid Training)
+[ 921.7s] # 33 title_screen      fast    START STICK:down:0.3 A   The on-screen prompt says 'Press START', and the global hints confirm 'Press START' wants 
+[ 936.1s] # 34 submenu           fast    B                        This is a training lesson selection screen. Hints explicitly say to avoid Training modes t
+[ 960.8s] # 35 submenu           fast    LEFT                     This is a lesson/mode selection menu within Single Player. Hints explicitly say to avoid T
+[ 976.3s] # 36 submenu           fast    LEFT                     Offensive Driving 101 is training; hints say avoid Training. Navigate left/right to find a
+[ 988.4s] # 37 submenu           fast    RIGHT                    Training lesson selected; history shows repeated LEFT loops back here. Try RIGHT to browse
+[ 999.9s] # 38 submenu           fast    B                        OPTIONS is explicitly listed in hints as a path to avoid. Need to back out and find the ac
+[1036.6s] # 39 submenu           fast    B                        Currently in OPTIONS menu which hints explicitly say to avoid. History shows repeated loop
+[1050.7s] # 40 title_screen      fast    START                    Title screen with explicit 'Press START' prompt. Attract demo showing racing cars, not pla
+[1117.2s] # 41 submenu           fast    UP                       Offensive Driving 101 is a training lesson; hints explicitly say avoid Training. Previous 
+[1126.5s] # 42 loading           fast    wait                     Loading screen with active progress bar; do not input, let it load.
+[1180.9s] # 43 title_screen      fast    A                        The explicit 'Press START' prompt is visible on a rendered title scene. History shows pres
+[1202.3s] # 44 title_screen      fast    START                    Title screen with explicit 'Press START' prompt visible. The prompt requests START input. 
+[1218.0s] # 45 submenu           fast    LEFT                     Offensive Driving 101 is training; hints explicitly avoid Training modes. Must navigate to
+[1228.8s] # 46 submenu           fast    RIGHT                    Submenu showing training mode; hints say avoid Training. Need to scroll right to find a ra
+[1242.2s] # 47 submenu           fast    B                        OPTIONS is an avoid menu; need to exit and find race modes (Championship, Quick Play, Exhi
+[1261.5s] # 48 submenu           fast    B                        Still in OPTIONS settings submenu; hints say avoid Options entirely. The 'Single' tab at b
+[1273.5s] # 49 title_screen      fast    START                    The explicit 'Press START' prompt is visible on the title screen. The history shows prior 
+[1311.1s] # 50 submenu           fast    DOWN                     Stuck cycling: B and START loop back. Tried LEFT/RIGHT but ended up in Options then back t
+[1323.3s] # 51 title_screen      fast    START                    Title screen with explicit 'Press START' prompt; guidelines say read the prompt and press 
+[1338.8s] # 52 submenu           fast    RIGHT                    Training mode (Offensive Driving 101) is highlighted; hints say avoid Training. Need to na
+[1355.6s] # 53 submenu           fast    LEFT                     OPTIONS is an avoid menu per hints. But the tab structure suggests 'Single' tab contains S
+[1373.4s] # 54 submenu           fast    DOWN                     Still in Single Player mode selection. Training is marked avoid. Need to find actual race 
+[1384.7s] # 55 submenu           fast    DOWN                     Still in Single Player mode selection. Offensive Driving 101 is training (marked avoid in 
+[1402.6s] # 56 submenu           fast    RIGHT                    Stuck on training; need to navigate away from Offensive Driving 101 to find actual race mo
+[1424.8s] # 57 submenu           fast    LEFT A                   In OPTIONS submenu which hints say to avoid. The tabs show Single and Options; I need to s
+[1440.2s] # 58 submenu           fast    B                        Still in training lessons (marked avoid in hints). Need to back out and find a real race m
+[1478.5s] # 59 submenu           fast    UP                       Stuck cycling through training modes (marked avoid in hints). Recent attempts DOWN/RIGHT/B
+[1490.6s] # 60 title_screen      fast    START                    Clear 'Press START' prompt on the title screen. This is the attract/title screen showing t
+[1552.3s] # 61 submenu           fast    RIGHT                    Still in game mode selection. Training (Offensive Driving 101) is highlighted but must be 
+[1591.5s] # 62 title_screen      fast    A                        Title screen with 'Press START' prompt; previous START attempts led to submenus and cycled
+[1603.2s] # 63 loading           fast    wait                     Progress bar with 'Please Wait' indicates the game is loading. Wait for it to complete rat
+[1655.9s] # 64 title_screen      fast    START                    Explicit 'Press START' prompt on the title screen; standard action for progressing past th
+[1670.2s] # 65 submenu           fast    LEFT                     Still in game mode selection. Offensive Driving 101 is a training mode marked to avoid in 
+[1690.1s] # 66 submenu           fast    RIGHT                    Game mode selection carousel. Offensive Driving 101 is training—must avoid per hints. Navi
+[1709.5s] # 67 submenu           fast    LEFT                     In OPTIONS submenu but need Single Player mode. 'Options' button is lit; must move LEFT to
+[1749.7s] # 68 submenu           fast    B                        This is a game mode carousel. Offensive Driving 101 is training and must be avoided per hi
+[1792.3s] # 69 title_screen      fast    START                    Explicit 'Press START' prompt visible; this is the standard title screen requiring START t
+[1849.3s] # 70 submenu           fast    RIGHT                    Game mode selection submenu; need to navigate away from training mode 'Offensive Driving 1
+[1947.9s] # 71 title_screen      fast    START                    Explicit 'Press START' prompt requires START. Previous attempts sent START but looped back
+[1963.5s] # 72 submenu           fast    RIGHT                    Game mode carousel stuck on training mode. Must navigate left or right through modes to fi
+[1978.2s] # 73 submenu           fast    LEFT A                   In OPTIONS submenu but need to exit to Single Player game mode. The 'Options' button is cu
+[1992.2s] # 74 submenu           fast    B                        This is a lesson selection screen within the training/tutorial section. The history shows 
+[2058.6s] # 75 submenu           fast    DOWN A                   Still on training mode selection carousel. The loop shows LEFT/RIGHT navigate carousel les
+[2072.2s] # 76 title_screen      fast    START                    Explicit 'Press START' prompt visible; this is the title screen checkpoint requiring START
+[2088.5s] # 77 submenu           fast    RIGHT                    Game mode carousel. 'Offensive Driving 101' is a training mode, not gameplay. The left/rig
+[2101.0s] # 78 submenu           fast    LEFT A                   We're stuck in the OPTIONS menu after 7 attempts with navigation. The 'Single' button at b
+[2116.5s] # 79 submenu           fast    B                        Still in training/lesson selection, not gameplay. The history shows 6+ steps stuck in menu
+[2175.2s] # 80 submenu           fast    B                        This is a game-mode carousel showing only training lessons, not gameplay. The history show
+[2212.8s] # 81 title_screen      fast    A                        Explicit 'Press START' visible. History shows pressing START led to training mode menus th
+[2236.9s] # 82 title_screen      fast    START                    Explicit 'Press START' prompt visible. Previous A input had no effect. Standard title scre
+[2285.5s] # 83 submenu           fast    LEFT                     Game mode carousel stuck on training mode after 7+ steps. 'Offensive Driving 101' is a les
+[2339.6s] # 84 title_screen      fast    START                    Explicit 'Press START' prompt on title screen. Standard title screen protocol: the screen 
+[2344.0s] # 85 black             black   wait                     black frame
+[2400.2s] # 86 title_screen      fast    START                    Explicit 'Press START' instruction on title screen. History shows cycling back to this scr
+{"name": "Burnout 2 Point of Impact USA", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 85, "steps": 86, "replayed": 0, "reason": "budget 40 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41430019": "696010b86fcb", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "4253

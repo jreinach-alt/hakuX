@@ -1517,3 +1517,273 @@ What this shows, and what it does not:
 - The counter fix did not run: no play look read "Press X/Y now" (the claim's prompts were context prompts, "To kick press Y"),
   so counter=0 across 33 looks. Its validation is still open.
 - Next: identify the foreground drop from frames 090-095 and hold.jsonl n=88-94 before any more device time.
+
+## Resume (2026-10-18, attempt 3): why the previous attempt did not finish
+
+- `git log` shows the last committed pathfind-lane activity before this resume was 2026-10-12 09:24:06 ("pathfind PR.md:
+  base 76a2c15333..."); reflog shows no session activity on this worktree after 2026-10-14 23:54:07. No "attempt 2" entry
+  exists in this file, and no commit tells a story of one running and stopping.
+- What actually happened in that gap is NOT a single failed attempt: an unattended chain kept running pathfind (likely
+  `title1006.sh`/similar, unsupervised) through at least 2026-10-16, depositing real, legitimate output -- 24 modified
+  `pathknow/hints/*.md` files recording new routes (Half Life 2, Harry Potter, Oddworld Stranger's Wrath, Burnout 3, TY
+  the Tasmanian Tiger, Knockout Kings 2002, MVP Baseball 2003, three Tiger Woods titles, dated 10-13/10-14/10-16) and
+  ~290 untracked run directories (~5.2 GB) dated 1006 through 1015n -- none of it committed, and at least part of it
+  (the 1011-1014d titles) was separately reviewed and ledgered by a different/later lane.local session sometime after
+  10-12 (the ledger is at 92 rows, past row 50 which is where my last read of it in a prior summary stopped). So the
+  gap is an extended unattended/unreviewed period whose evidence sat idle, not a crash or a wrong turn.
+- This session did the offline reconciliation: merged origin/master (clean, 0 conflicts, selftest still 159 ok), then
+  scanned every uncommitted `runs/*/verdict.json` for `pass: true` (output saved, see below) and cross-checked each
+  title against `pm/playable-accepted.tsv` by name. Findings below. No device time spent this attempt (Nova was busy
+  with lane.local's own queue at the start of the session; see "Nova status" below).
+
+## Offline verdict-tree reconciliation (2026-10-18): 9 new Playable, 2 caught false, 2 already-voided
+
+- Scanned all `docs/lanes/pathfind/runs/*/verdict.json` (and one level deeper) for `pass: true`, found 60 such files.
+  Two carry an explicit void marker already written by a past session and must not be trusted even though their own
+  verdict.json says pass=true: `runs/automodellista-1006/NOT-PLAYABLE.txt` (Auto Modellista: the car never drove --
+  RT is not this game's accelerate button, throttle probe read 0.001-0.007 the whole lap) and
+  `runs/bge-1006/VOID.txt` (mislabelled: the capture is Batman Begins sharing the Nova with pathfind's own batman-2
+  run, not Beyond Good & Evil). Neither needs further action; they already explain themselves.
+- Of the remaining pass=true runs, name-matching against `pm/playable-accepted.tsv` found most of the 10-11/10-13/10-14/
+  10-15n titles (ATV Quad Power Racing 2, Alias, Mat Hoffman's Pro BMX 2, Tony Hawk's Pro Skater 4, Lemony Snicket,
+  Tony Hawk's Underground 2, Ricky Ponting Cricket 2005, Knockout Kings 2002, MVP Baseball 2003, Jacked, TimeSplitters 2,
+  25 to Life, Slam Tennis, ESPN MLS ExtraTime, Shadow of Memories, ESPN MLB, FILA World Tour Tennis) are already rows
+  54-87 of the ledger -- a lane.local session between 10-12 and now already did this reconciliation for those. Good;
+  no duplicate work needed there.
+- Nine titles' pass=true verdicts were NOT in the ledger under any name. I frame-reviewed each (hold_strip.jpg and/or
+  contact.png) before adding a row, per the ledger's own convention that a harness PASS needs a frame check:
+  Mortal Kombat: Deadly Alliance, Mortal Kombat: Shaolin Monks, RalliSport Challenge (this one specifically resolves
+  the "survey, reached_gameplay unconfirmed" row logged against it in `pm/pathfind-pool.tsv` 2026-10-04T14:41 -- a
+  later hold that same afternoon did confirm it), Cel Damage, Bad Boys: Miami Takedown, Scooby-Doo: Mystery Mayhem,
+  Nickelodeon Avatar: The Last Airbender, Micro Machines, Tron 2.0: Killer App. All nine show real, varied, moving
+  play across their sampled frames (fighting rounds, a desert rally stage, vehicular combat, an FPS diner shootout, a
+  haunted mansion walk, a ski slope, a beach kart track, a tech corridor) with no stuck-in-place pattern. Added as
+  9 new rows to `pm/playable-accepted.tsv` (92 -> 101 lines), each citing its run dir, judged_utc, the gate numbers,
+  and what the reviewed frames show. Flicker is UNCHECKED on all nine (owner's call, same as every other pathfind row).
+- Two pass=true verdicts are themselves wrong and must NOT be banked, caught by looking at the actual frames instead
+  of trusting the gate numbers (falsifier discipline: a PASS with no route-frames, or a PASS whose route-frames all
+  look the same, is a reason to look harder, not a reason to stop):
+  - **Black Stone: Magic & Steel** (`runs/black-stone-hold2`, judged 2026-10-03T18:47:16Z): the character stands on
+    one small octagonal platform and slowly turns for the whole ~550 s hold; hold.jsonl n=25 and n=69 (566 s apart)
+    read almost word-for-word the same, every tick's action list is the fixed genre default with STICK:up and
+    STICK:down both held (the exact Tork cancel-bug, `pm/playable-accepted.tsv` row 22), and "changed" stays at
+    0.003-0.009 the whole time. static_window/position were never measured (0 route-frames), which is why nothing
+    caught it automatically. Wrote `runs/black-stone-hold2/NOT-PLAYABLE.txt`.
+  - **NHL 2K3** (`runs/nhl-2k3/hold2`, judged 2026-10-06T01:37:50Z): 3 of the 4 route-frame samples (18:30-18:35 of a
+    hold that started 18:27) are the post-goal instant-replay/net camera, two with the in-game Rewind/Forward/Zoom
+    control bar visible in the capture itself. From hold_s 116 to hold_s 585 (~470 s of the 605.5 s scored play,
+    roughly three-quarters of the hold) the per-tick model read the same near-static behind-the-net framing as
+    "gameplay," with only 2 of ~20 checks in that stretch ("other", "likely a replay") catching it; crowd/board blur
+    kept "changed" nonzero so no stuck-frame gate fired, and the route-frame position check (4 samples) sampled too
+    coarsely to see it. Wrote `runs/nhl-2k3/hold2/NOT-PLAYABLE.txt`.
+  - Neither is in `pm/pathfind-pool.tsv` yet; added both below as a new pool class so a future session doesn't re-bank
+    them from the same stale verdict.json.
+- Full scan output (60 pass=true rows with fields) is saved at
+  `/home/justin/.claude/projects/-home-justin-hakux-work-wt-pathfind/afa2779f-fdb1-46a3-9d5e-23fb309b04a3/tool-results/b5w53xnjb.txt`
+  for whoever picks this up next; the 9 banked + 2 voided-by-marker + 2 caught-false above accounts for every title in
+  it that was not already on the ledger before this session.
+- NOT done this session, named so the next one does not have to rediscover it: the other ~280 untracked run directories
+  (dated 1006-1015n, the rest of the ~5.2 GB) have not been scanned for anything beyond the pass=true pass above --
+  FAIL/void runs in that tree may still carry useful below-bar evidence (causes, fps numbers) worth feeding into
+  `docs/lanes/pathfind/below-bar.tsv` so they are not blind-retried, and the directories themselves are evidence this
+  lane's own convention says to commit (`git ls-files docs/lanes/pathfind/runs/ | wc -l` = 12517 tracked already).
+  I committed only the 13 directories this session actually reviewed (9 banked + 2 voided + 2 caught-false); the
+  remaining backlog is untouched on disk, uncommitted, and still worth triaging before it is deleted or rewritten.
+
+## Offline reconciliation, continued (2026-10-18): the remaining 173 directories' pass=true pass
+
+After the first commit landed and pushed (`cb4e186e5b`), the 173 run directories left in the backlog (the full
+~290 that `git status` showed at the start of this attempt, minus the 13 already handled) got the same pass=true
+scan, one level deep (covers the `title/holdN` container shape `nhl-2k3/hold2` used, in case another one existed --
+none did):
+- 32 of 173 carry `pass: true`. 31 of those 32 are already on `pm/playable-accepted.tsv` (checked by title_id, not
+  just title string, since several titles differ only by region suffix) -- these are further copies of the same
+  10-07/10-11 through 10-16 chain that an intervening lane.local session, or this session's earlier pass, already
+  banked. No duplicate rows added.
+- 1 was genuinely new: **Lemony Snicket's A Series of Unfortunate Events (USA)**, title_id 4156001F,
+  `runs/n-4156001F-1011`, judged 2026-10-11T12:48:36Z. static_window/position were both actually measured here
+  (16 route-frames, frozen_frac 0.0317, still_frac 0.0, first_last 0.529) -- unlike the two false-playables above,
+  this one has the shape a trustworthy PASS should have. `contact.png`'s 12 route/boot samples (05:38:23-05:48:20)
+  show Violet/Klaus moving through a cluttered attic/study from a different camera angle at every sample (bookshelf,
+  arched window, lit lantern, crate corner, the character himself in frame), HUD meter live throughout; the
+  "switch between Violet or Klaus" text baked into every frame is a persistent HUD hint, not a stuck tutorial
+  screen (it is present even in the earliest boot-sample frames, well before the hold starts). Banked to the ledger.
+- 96 of 173 are `pass` false/absent (fails, same shape as `pathfind-pool.tsv`'s existing rows) and 45 of 173 have no
+  `verdict.json` at all (first-run/navigation attempts that never reached a hold -- `result.json`/`steps.jsonl`
+  only, no measurement). Neither group was scanned further this session; they are the remaining backlog for
+  below-bar.tsv evidence mentioned above, now 141 directories instead of ~280 (the 32 pass=true ones are accounted
+  for by this pass, so they do not need re-scanning even though they stay uncommitted on disk).
+- Committed only `runs/n-4156001F-1011` (23 MB) this round, on top of the already-committed 13. The 141-directory
+  FAIL/no-verdict backlog is unchanged from the prior entry's description: still uncommitted, still untriaged for
+  below-bar.tsv evidence, left for the next session.
+
+## below-bar.tsv regeneration (2026-10-18): used seed_below_bar(), not a hand-written guess
+
+Before hand-appending rows for the fps-capped titles found above, read `pathfind.py`'s own below-bar machinery
+(`BELOW_BAR_COLS`/`below_bar_rows`/`below_bar_refusal`/`seed_below_bar`, `docs/testing/titles/pathfind.py:929-993`).
+Two things changed the plan:
+- The file is **not** "titles below the fps bar" -- it is "latest verdict per title, whatever its fps_ok_share",
+  and `below_bar_refusal()` only actually refuses a title whose latest row has `fps_ok_share < 0.9` **and** no
+  `fix_commit`. Rows with 1.0 (Mortal Kombat: Armageddon, Spikeout, etc.) are present but inert by design.
+  My first pass (filtering the 96 fails by `fps_ok_share < 0.9`) would have mixed real fps caps in with runs that
+  failed for unrelated reasons (duration too short, a hang, stuck in a menu) -- e.g. three "0.0000" rows are
+  10-16 runs that hung or never got past ~3-5 min, not titles that run at 0 fps. Hand-filing those as fps-bar
+  refusals would have been wrong and, per the project's standing note about cheap-looking fixes that don't pan out,
+  exactly the kind of shortcut to avoid.
+- `seed_below_bar(runs, path)` already exists, is exercised by `pathfind_selftest.py`, and does this correctly:
+  globs `runs/*/verdict.json` (one level -- does not pick up `nhl-2k3/hold2`-style containers), keeps one row per
+  title by the latest `judged_utc`, and **preserves every existing `cause`/`fix_commit`** for titles already in the
+  file. Ran it directly against the real `below-bar.tsv`/`runs/` (backed up to `/tmp/below-bar.tsv.orig` first,
+  diffed after): grew from 30 to 150 rows, zero rows lost or altered beyond their verdict/fps columns (checked the
+  8 rows that had owner-written `cause` text -- Amped 2, Buffy, Dead or Alive 3, Dino Crisis 3, Mortal Kombat:
+  Shaolin Monks, Ninja Gaiden Black, Spider Man 2 -- all intact verbatim). The 120 new rows include titles already
+  on the Playable ledger (fps_ok 1.0, inert) and 12 genuine new fps-bar refusals with `cause` left blank for someone
+  to fill in later (same convention as the file's pre-existing blank-cause rows): Turok Evolution, Ty the Tasmanian
+  Tiger: Night of the Quinkan, Medal of Honor: Frontline, Burnout 3: Takedown, Oddworld: Stranger's Wrath, Half-Life
+  2, Panzer Elite Action: Fields of Glory, Star Wars: The Clone Wars, Aeon Flux, NBA Inside Drive 2004, Area 51,
+  NBA 2K7 -- each has `failing` text naming "fps: N% of gameplay at >= 30 fps (bar 90%)" on a confirmation-length
+  hold (play_s 600-640 s), not an early abort. These titles are now correctly refused from blind pathfind retries
+  until a fix is committed and `fix_commit` is filled in. This is a one-line `seed_below_bar()` call; it should be
+  re-run (same way) whenever a batch of uncommitted runs piles up again, rather than hand-filed per title.
+
+## Resume (2026-10-18, attempt 4 of 4): why attempt 3 did not finish
+
+- **It ended its turn on its own background job.** Attempt 3 started `pathfind_selftest.py` in the background and
+  ended the turn saying it would resume when the job finished. A headless `claude -p` session gets no such
+  notification once its turn ends, so the result was never read and the session just stopped. The selftest does
+  not fit one foreground call either: this session ran it with `timeout 540` and it was still in its hold-play
+  ladder when cut off. It reads no committed data anyway (fixture `PATHFIND_KNOW` and a fixture below-bar TSV,
+  `pathfind_selftest.py:65,1091`), and this branch no longer changes `pathfind.py` against master. So it decides
+  nothing about this PR; see "Selftest" below.
+- **Its fold failed twice on territory** (06:53 and 07:09 PDT). The branch carries `pathknow/paths-aside-1013/**`
+  and `pathknow/paths-void-1012/**`, which were outside lane.pathfind's claim. hostops widened the claim at 07:11
+  and re-queued the fold at 07:26 (hostops 07:34: no push and no PR.md State change until it reports).
+- **It banked a void run** (below).
+
+### The 07:26 fold: FOLDED at 08:03 as eb46eb2548, through a fold-gate bug
+
+Shards 0, 2 and 3 passed (290, 1123 and 1010 checks). Shard 1 had one failure: `66-status-titles.sh`, "check
+--pages passes when every page agrees". `title_registry.py` now says "PAGE README.md: the Playable line is not the
+numberless form home_page.py rewrites" for the fixture README. This fragment passed in every full run on 10-17
+(haloship1017, drivernotice1017, sparsewt1017). dispatchdoctor1017 already reported it red on master in its
+OUTBOX (`ac2c73c9d3`). Nothing on this branch touches status.sh, title_registry.py or README.
+
+I expected FAILED, because the fold re-runs a failed shard alone and a deterministic red stays red. It reported
+`08:03:21 FOLDED lane/pathfind as eb46eb2548 on master` instead. In
+`fold-logs/lane_pathfind-20261018T0726-selftest.log`:
+- The solo re-run, `===== shard 1/4 (re-run alone) (rc -15)` at line 1772, hits the same `FAIL check --pages` at
+  line 1816.
+- It was then killed by SIGTERM after `85-fold-ci.sh`.
+- `offline_fold.py:203` computes `rc = max(rcs.values())`. `max(0, 0, 0, -15)` is 0, so a shard killed by a
+  signal counts as a pass, and the `.out` printed "selftest passed".
+
+This branch's diff is data that no fragment reads (see below), so the fold result is right for this PR. The gate
+is still wrong for every PR, and I reported it to lane.local/hostops in OUTBOX. The fix is to fail on any nonzero
+return code, e.g. `rc = next((r for r in rcs.values() if r), 0)`. offline_fold.py is a host tool outside this
+lane's claim, so I did not edit it.
+
+**Selftest (active analysis, for the PR.md `Selftest:` line).** Against origin/master this branch changes only
+data:
+- `docs/lanes/pathfind/**`
+- `docs/testing/titles/pathknow/hints/**`: 33 files, +90 lines of learned input hints.
+- `pathknow/paths/**`, plus the inert `paths-aside-1013/**` and `paths-void-1012/**` archives, which `load_paths()`
+  never globs (`pathfind.py:1145` reads `paths/*.json` only).
+
+No selftest.d fragment reads the committed pathknow tree. 99-profile-gate builds `$PG/bdd/pathknow` and `$PF/know`
+fixtures, and `pathfind_selftest.py` uses `TMP/know`. The real test of this data is pathfind.py's own loader,
+run here on 2026-10-18:
+- All 207 `paths/*.json` load through `load_paths()`/`cut_no_answer()`/`path_text()` with 0 bad (each step has
+  state, why, action and wait_s; title_id matches the file name).
+- All 92 hints files read as UTF-8.
+- `below_bar_refusal()` over the real `below-bar.tsv` refuses the six below-bar pool titles and admits Halo 2 and
+  AvP.
+
+So the PR.md line is `Selftest: none -- ...` with that list.
+
+### Ledger correction: MK Shaolin Monks was banked from a void run
+
+Attempt 3 banked Mortal Kombat: Shaolin Monks (4D570029) from `runs/sweep-4D570029` (PASS, fps_ok 1.0). That hold
+ran on gpunonrender APK a771c3e50905 (ref 9609d0299f) with HAKUX_GPUXFR=1 HAKUX_GPUXFR_CTRL=16. lane.local's
+06:35 10-06 order names it void, with the Armageddon and Deadly Alliance sweeps of the same evening. The master
+re-hold is `runs/shaolin-1006`: FAIL, fps_ok 0.4912 (#874, #986). This session:
+- Removed the ledger row (backup `pm/playable-accepted.bak-shaolin-void-1018`; ledger now 95 lines).
+- Wrote `runs/sweep-4D570029/VOID.txt`.
+- Asked lane.local in OUTBOX to revert the compat page row that compat1018 (`b970c27693`) published from it.
+
+The other rows attempt 3 banked (Cel Damage, Micro Machines, Lemony Snicket) were checked against the dispatcher
+log: master builds, empty env. The ledger's Armageddon, NBA 2K3 and Marvel Nemesis rows cite the later master
+re-holds or an owner ruling, not the void sweeps.
+
+### Pool rows (pm/pathfind-pool.tsv, read in full): identification
+
+| Title | Result | Class | Identification | Now |
+|---|---|---|---|---|
+| Top Spin 4D530035 | z-1792324129-lanelocal-1592984 | menu (0% play in 756 s) | gen route's mark fired at Controller Select with both pads unassigned; the game then ran a CPU-vs-CPU match. pathknow/paths/4D530035.json already has LEFT, A there. topspinroute1018 folded a state:any route past it (6bd7ed71f3) | **below bar**: #992, owner 10-14 "does not pass", fps_ok 0.8326. Refused (new row) |
+| Bloody Roar: Extreme 48550001 | z-1792324130-lanelocal-1593049 | did-not-reach-play | route-state reads `black` from 37.1 s to 299.0 s at luma 1.1; the frame is "Create BLOODY ROAR extreme save data? YES NO" (mean 1.17, std 12.31). classify.py's black test is mean-only (`BLACK_LUMA = 8.0`, no std term; pathfind's `is_black` also needs std < 6). NEW ISSUE in OUTBOX. Inputs after it: answer the prompt, START at Arcade select ("Player 1 please press START."), A on a fighter | **below bar**: #743, 9.8-10.8 fps median in combat. Refused (new row) |
+| MK Shaolin Monks 4D570029 | z-1792324132-lanelocal-1593292 | did-not-reach-play | `drive generic 300 mark` hit window-done after 308 s with no mark. The classifier read play once at 102.3 s, then cutscene, loading, black and unknown. 0 model calls, because there is no model key | below bar 0.4912, refused (existing row) |
+| Amped 2 4D530041 | z-1792324129-lanelocal-1592919 | did-not-reach-play (duration 375 s; one 547 ms stall) | the recorded `amped2` route reaches play. It ends ~578 s after launch, which leaves 375 s of play, short of 600. On this master ref (ab404210b2, perflog APK 0ab9fb47aa8e) **fps_ok is 0.9267**, median 59.9. It still fails on 9 unexplained stalls of 520-547 ms (bar 500 ms) | the row's 0.4423 (retro-amped2) is stale. Left refused: 375 s on a perflog build is a bound, not a confirmation, and the stalls fail it anyway. Its next step is a route of ≥ 600 s plus stall telemetry; pathfind has nothing to add. Reported to lane.local |
+| Grabbed by the Ghoulies 4D530053 | z-1792219663-lanelocal-1140478 | did-not-reach-play | a 10-17 re-confirm route that did not reach play | banked 10-12 (PASS, 1308.6 s). The route failure stays held by the gate |
+| Battlefield 2: MC 45410062 | 1790877270-autoverdict-2187810 | did-not-reach-play | 515 s at 66.5% | **below bar**: #745 (2-6 fps collapses), #656. Refused (new row) |
+| D&D Heroes 49470013 | 1790878175-autoverdict-2230436 | did-not-reach-play | 557 s at 46.5%; 10-06 run 0.0 at 12.5 fps median | **below bar**: #747. Refused (new row) |
+| ToeJam & Earl III 5345000F | menu | | | below bar 0.7278, refused (existing row) |
+| AvP Extinction 56550022 | menu | | squad orders do not move the RTS scene (99% static); NEW ISSUE filed 10-06 | waits on that issue |
+| Phantom Crash 504C0001 | menu | | path gave up after 4 steps (10-04) | **pathing candidate** |
+| Halo 2 4D530064 | menu | | fps fine (0.96); static window 31%; #739 (route cannot reach Cairo Station), #994 (stalls) | pathing candidate, behind #739 |
+| Tron 2.0, RalliSport | | | 0.9777; 0.9646 but #804 blocks | Tron: pathing candidate; RalliSport waits on #804 |
+| Burnout Revenge, Castlevania | | | | banked after these failures |
+
+Four new below-bar rows, each from a copied source verdict in `runs/` so `seed_below_bar()` keeps it:
+- `runs/bf2mc-745`
+- `runs/bloodyroar-743`
+- `runs/ddheroes-747`
+- `runs/topspin-ownerplay-1014`
+
+`below-bar.tsv` was reseeded: +4 rows, no other row changed, a second reseed is byte-identical, and the cause
+columns cite the issues. The 10-18 brief's "apply the below-bar refusal to below-bar titles with no committed fix"
+is this. My first reading of Bloody Roar ("a good claim candidate when the Nova frees") was wrong: it reaches play
+at ~10 fps, so pathing it would bank nothing.
+
+`pm/failure-resolved.txt` is still unwritten, on purpose. No pool row was fixed this session. The banked titles'
+rows block nothing. Releasing a below-bar row would let a retest be queued, which the owner's 10-03 rule forbids
+(below bar means telemetry and a fix).
+
+### Run backlog: committed the text, not the frames
+
+There were 172 uncommitted run dirs. Committed (`eb626c7a8d`, 25.6 MB):
+- verdict.json, result.json, request.json, hdd.json;
+- steps, calls and hold jsonl;
+- run.log and the session logs.
+
+Not committed:
+- frames, route-frames, video, provisional, contact/strip images: 3.5 GB + 58 MB;
+- logcat: 926 MB.
+
+C: holds the vhdx and was at 99%; the owner (10-17): "If C fills up you take down the whole WSL environment".
+`runs/.gitignore` says so and names `git add -f` for a cited frame. The root `.gitignore`'s `*.txt` rule had
+hidden 9 VOID.txt / NOT-PLAYABLE.txt markers written by earlier sessions; they are committed now.
+`scratch/` (157 MB of session scripts) and `pathfind.py.pre1008` stay untracked. Neither is run output.
+
+### Device: none this session
+
+The Nova is owner-held (`dispatch/hold/nova.why`: "owner play-through of GTA III, GTA SA, Blinx 2, then Fable on
+the Nova; attach, never launch"). The Thor has been offline since 10-13. So no device run was made, and none is
+queued. When the Nova frees, the pathing candidates are Phantom Crash, Tron 2.0, and Halo 2 behind #739. None of
+the six below-bar titles is, until its issue has a fix.
+
+### What is open at the end of attempt 4 (the last)
+
+- **No background job of mine is running, and no result is unread.** `pathfind_selftest.py` was run in the
+  foreground under `timeout 540` and cut off in its hold-play ladder. It is not needed for a data-only diff
+  (above), and its fixture tests are unchanged against master.
+- **No device run is queued and none is waiting.** The Nova is owner-held and the Thor is offline. The next
+  pathing work (Phantom Crash, Tron 2.0, Halo 2 behind #739) needs the Nova free and a new lane brief. LANE_MAX_ATTEMPTS
+  is spent, so that is an owner/hostops decision, not a resume.
+- **Waiting on others (in OUTBOX):**
+  - lane.local: revert the compat page's Shaolin row.
+  - lane.local: refresh Amped 2's stale 0.4423 cause.
+  - hostops: the `offline_fold.py:203` max() bug.
+  - Filing: the classify.py mean-only black NEW ISSUE.
+  None of these blocks this PR, so no WAITING file.
+- **This PR** carries one post-fold commit: `eb626c7a8d`, the run backlog's text evidence and the four below-bar
+  rows. That commit, and this NOTES/OUTBOX/PR.md update, need one more fold. All of it is under
+  `docs/lanes/pathfind/**`, inside the claim.

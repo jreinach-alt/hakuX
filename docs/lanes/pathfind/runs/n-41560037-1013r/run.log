@@ -1,0 +1,26 @@
+pathfind: Shrek 2 (41560037) on nova: /storage/E6C6-D7AA/Games/XBox/41560037-Shrek_2.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 41560037 any, loaded none
+[  15.6s] #  1 publisher_logo    fast    A                        DreamWorks splash at cold boot of Activision 4156xxxx title; skip with A
+[  40.7s] #  2 publisher_logo    fast    START                    Activision 4156xxxx publisher/legal screen after DreamWorks splash; skip with START as in 
+[  85.1s] #  3 save_load_prompt  fast    A                        Save-creation prompt for a new game, with 'Save' option highlighted. Per instructions, pro
+[ 100.2s] #  4 save_load_prompt  fast    A                        Save-creation prompt for a new game. 'Continue' is highlighted (has the box); the instruct
+[ 113.4s] #  5 save_load_prompt  fast    A                        Save creation completed successfully; OK button is highlighted (green box) and needs confi
+[ 184.2s] #  6 submenu           fast    B                        Game slot selection for new save. Two prior A inputs on this screen did not advance. Since
+[ 199.0s] #  7 main_menu         fast    A                        New Game is already highlighted in a box on the main menu. Pressing A will confirm and pro
+[ 221.0s] #  8 save_load_prompt  fast    DOWN A                   We tried Save three times; it led to a slot selection screen that couldn't advance, then B
+[ 234.3s] #  9 cutscene          fast    A                        Storybook narrative with illustrated pages and text; not interactive gameplay. Following s
+[ 249.3s] # 10 cutscene          fast    START                    Intro cinematic showing the game world after the storybook sequence; no interactive HUD or
+[ 295.3s] # 11 submenu           fast    A                        Character/player select screen blocking gameplay. Per instructions: never START on select 
+[ 327.6s] # 12 gameplay          fast    wait                     Playfield visible with HUD up and level progress counter (0/18) indicating active level st
+[ 344.9s] # 13 probe             probe   STICK:up:1.5             control 0.032, under input 0.172
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 180 s: median 29.0, share>=30 0.933 over 90 samples
+hold-play: fps at 366 s: median 29.0, share>=30 0.912 over 182 samples
+hold-play: validity check share 2628 s (hold 611 s of play, verdict 613.4)
+hold-play: not held 611/600 s of play; share short by 2628 s with no budget left
+held Shrek 2 for 975s
+VERDICT Shrek 2 ? FAIL(menu time: 62.9% of the scored window in `play` (bar 90%; play 613 s, still 361 s, no-timeline 0 s)) gameplay=974.3s fps_ok=0.9246 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=169.8 static_frac=0.0025 play_share=0.6295 fps_excluded=362.4s
+{"name": "Shrek 2", "device": "nova", "result": "gameplay", "minutes": 5.75, "model_calls": 24, "steps": 13, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-41560037-1013r/frames/012-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "41560037": "e4b44a3a06a2", "4156005D": "a1647bf6ddb4", "4253

@@ -1,0 +1,37 @@
+taken: nova by lane.pathfind
+NOT IDLE: nova is held but busy -- do not touch it yet:
+dispatcher pid 518495 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+running: 1-1791212327-lane.belowbar1005-2091528 on nova
+run: hold.sh wait-idle nova <timeout_s>, and touch the device only on exit 0
+waiting for nova: dispatcher pid 518495 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+running: 1-1791212327-lane.belowbar1005-2091528 on nova
+idle: nova is held and runs nothing
+held at 08:51:19
+pathfind: Guilty Gear XX Reload The Midnight Carnival (53410002) on nova: /storage/E6C6-D7AA/Games/XBox/53410002-Guilty_Gear_XX_Reload_The_Midnight_Carnival.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 53410002 any, loaded golden 6f0d8fc26eb7
+[   5.9s] #  1 publisher_logo    replay  A                        replay step 0: replay step 0: replay step 0: Early boot (0.1 min) showing a logo animation
+[  10.2s] #  2 black             black   wait                     black frame
+[  17.3s] #  3 publisher_logo    fast    A                        Publisher logo still up; per hints one A press to skip, then re-read. Previous A changed t
+[  21.6s] #  4 black             black   wait                     black frame
+[  25.2s] #  5 black             black   wait                     black frame
+[  29.0s] #  6 cutscene          replay  START                    replay step 4: Opening art/animated sequence with rain and no prompt or menu, after the pu
+[  34.0s] #  7 title_screen      replay  START                    replay step 5: Title screen with a PRESS START prompt; the recorded path and hints say STA
+[  38.9s] #  8 main_menu         replay  A                        replay step 6: Main menu with ARCADE highlighted in the center; Arcade is the fastest rout
+[  43.6s] #  9 submenu           replay  A                        replay step 7: Character select is a menu, not gameplay. The recorded path and hints say a
+[  48.3s] # 10 title_screen      replay  START                    replay step 8: Title with a PRESS START prompt; the recorded path and hints say START is t
+[  57.8s] # 11 submenu           fast    A                        This is a character select, not a title or gameplay. Per the hints, START is not used on s
+[  67.7s] # 12 gameplay          fast    wait                     HUD and a counting timer with no banner or menu means a live round. The PRESS START is a 2
+[  88.8s] # 13 probe             probe   STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.643, under input 0.681
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 181 s: median 59.0, share>=30 1.0 over 182 samples
+hold-play: fps at 307 s: median 59.0, share>=30 1.0 over 309 samples
+hold-play: HELD 607/600 s of play; 
+held Guilty Gear XX Reload The Midnight Carnival for 750s
+VERDICT Guilty Gear XX Reload The Midnight Carnival ? FAIL(menu time: 80.9% of the scored window in `play` (bar 90%; play 606 s, menu 90 s, game_over 38 s, other 14 s)) gameplay=748.4s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0 play_share=0.809 fps_excluded=144.2s
+{"name": "Guilty Gear XX Reload The Midnight Carnival", "device": "nova", "result": "gameplay", "minutes": 1.48, "model_calls": 31, "steps": 13, "replayed": 6, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/gg-rerun6/frames/012-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256
+pathfind rc=0 at 09:06:05
+released: nova by lane.pathfind
+released rc=0

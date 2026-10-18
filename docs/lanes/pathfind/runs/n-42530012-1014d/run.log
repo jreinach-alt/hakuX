@@ -1,0 +1,34 @@
+pathfind: Breeders Cup World Thoroughbred Championships USA En Fr De Es (42530012) on nova: /storage/E6C6-D7AA/Games/XBox/42530012-Breeders_Cup_World_Thoroughbred_Championships_USA_En_Fr_De_Es.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 42530012 any, loaded none
+[  13.9s] #  1 publisher_logo    fast    A                        This is a publisher or game splash screen with an animated geometric logo, appearing short
+[  26.9s] #  2 publisher_logo    fast    A                        Legal/credits splash screen with dark background and text, part of intro sequence before t
+[  30.5s] #  3 publisher_logo    repeat  A                        repeat A: it advanced the publisher_logo
+[  34.4s] #  4 publisher_logo    repeat  A                        repeat A: it advanced the publisher_logo
+[  50.2s] #  5 publisher_logo    fast    A                        This is the game's own title logo splash, part of the intro sequence. No prompt text visib
+[  61.9s] #  6 main_menu         fast    A                        Main menu after splash screens; Quick Race is highlighted and leads to fastest gameplay.
+[ 130.0s] #  7 submenu           fast    RIGHT A                  Configuration menu for Quick Race. Moving right to NEXT button and confirming to advance t
+[ 156.6s] #  8 submenu           fast    A                        Configuration screen with default race parameters displayed. The NEXT button should procee
+[ 180.8s] #  9 submenu           fast    DOWN                     Configuration menu for Quick Race. Previous inputs A and RIGHT A did not change the screen
+[ 254.2s] # 10 submenu           fast    DOWN A                   Configuration screen for Quick Race. Defaults are set correctly. Previous attempts with RI
+[ 279.0s] # 11 submenu           fast    A                        Still on the Quick Race configuration menu. The race parameters are set to defaults. NEXT 
+[ 335.3s] # 12 submenu           fast    START                    Configuration menu stuck after repeated A attempts. Trying START, which works to select on
+[ 447.7s] # 13 submenu           fast    RIGHT RIGHT A            Menu stuck after START and A failed in previous steps. RIGHT A was tried in step 7. Naviga
+[ 513.4s] # 14 submenu           fast    DOWN A                   Configuration menu for Quick Race. Previous attempts with A, START, and RIGHT-based inputs
+[ 534.2s] # 15 submenu           fast    BACK                     Stuck on configuration menu after 8 failed attempts (A, START, RIGHT/DOWN combinations all
+[ 604.2s] # 16 submenu           fast    Y                        Configuration screen stuck after 9 failed attempts with A, START, and D-pad directions (RI
+[ 621.6s] # 17 submenu           fast    X                        Still on the Quick Race configuration screen after 16 failed attempts. The NEXT button on 
+[ 681.7s] # 18 submenu           fast    UP A                     Configuration screen for Quick Race still visible; cursor position unknown. Previous attem
+[ 760.2s] # 19 submenu           fast    DOWN RIGHT RIGHT A       Configuration menu for Quick Race setup. Cursor is on the parameter selection area (UP A i
+[ 818.2s] # 20 submenu           fast    START                    All configuration parameters are pre-selected (defaults). Previous D-pad and button attemp
+[ 857.3s] # 21 submenu           fast    A A                      Configuration screen with defaults set. Previous attempts stuck here; need to advance past
+[ 953.5s] # 22 submenu           fast    RIGHT RIGHT X            Still on the configuration screen after attempts with A, START, D-pad, and simple button p
+[1011.2s] # 23 submenu           fast    DOWN A                   Still stuck on the Quick Race configuration screen. Previous attempts used RIGHT, A, and S
+[1039.5s] # 24 submenu           fast    RIGHT A                  Still in race configuration setup. Parameters are already set to defaults. Previous button
+[1091.9s] # 25 submenu           fast    Y                        Still on the Quick Race configuration setup menu. Parameters already set to defaults. NEXT
+[1161.4s] # 26 submenu           fast    STICK:right:0.5 A        Configuration review screen for Quick Race mode with pre-set defaults. Buttons at bottom, 
+[1194.7s] # 27 submenu           fast    UP                       Still on the configuration screen. Need to try a new input that hasn't been attempted yet 
+[1235.1s] # 28 submenu           fast    DOWN RIGHT A             Still on the Quick Race setup menu. The configuration defaults are already set. Previous a
+{"name": "Breeders Cup World Thoroughbred Championships USA En Fr De Es", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 26, "steps": 28, "replayed": 0, "reason": "budget 20 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4253

@@ -1,0 +1,54 @@
+pathfind: Max Payne 2 The Fall of Max Payne USA (5454000C) on nova: /storage/E6C6-D7AA/Games/XBox/5454000C-Max_Payne_2_The_Fall_of_Max_Payne_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 5454000C any, loaded none
+[   9.9s] #  1 publisher_logo    fast    A                        Minimal graphic with no text or menu, consistent with an early logo/boot screen for a Rock
+[  17.4s] #  2 publisher_logo    fast    A                        Standard Rockstar Games publisher logo screen during boot sequence; skip with A as per Roc
+[  24.7s] #  3 publisher_logo    fast    A                        Standard legal/trademark disclaimer screen during boot sequence, skip with A
+[  33.9s] #  4 loading           fast    A                        This is a controls/tutorial info screen shown during boot, not yet a title screen or menu;
+[  41.6s] #  5 main_menu         fast    DOWN DOWN A              Main menu with How to Play currently highlighted; need to move down to New Game to start f
+[  51.1s] #  6 cutscene          fast    A                        This is the game's comic-panel narration intro sequence (signature Max Payne style); advan
+[  58.1s] #  7 main_menu         fast    UP UP A                  Need to move cursor UP twice from Previously to New Game, then confirm with A.
+[  69.4s] #  8 loading           fast    A                        This is an informational controls screen before gameplay starts, not yet in-game; advance 
+[  77.1s] #  9 main_menu         fast    A                        New Game is currently highlighted; confirm with A to start a fresh game.
+[  85.2s] # 10 loading           fast    A                        This is a controls reference screen shown before gameplay begins, not yet interactive; adv
+[  92.9s] # 11 main_menu         fast    A                        New Game is already highlighted (brightest item); confirm with A to start a fresh game.
+[ 103.5s] # 12 loading           fast    A                        This is the same controls reference screen shown repeatedly; it's an informational screen 
+[ 128.4s] # 13 main_menu         fast    DOWN DOWN A              Repeated A presses from here have been looping into a How to Play controls screen and back
+[ 135.2s] # 14 black             black   wait                     black frame
+[ 143.1s] # 15 cutscene          fast    START A                  This is the narrated graphic-novel-style intro cutscene for Max Payne 2, not gameplay; ski
+[ 151.7s] # 16 cutscene          fast    START A                  Graphic-novel narrated intro cutscene continuing from the previous skip attempt; try START
+[ 160.4s] # 17 cutscene          fast    A                        This is a new/changed panel of the graphic-novel intro cutscene (different from the previo
+[ 170.6s] # 18 main_menu         fast    UP UP UP A               Main menu is showing with 'Previously' currently highlighted in bold white; need to move U
+[ 182.3s] # 19 publisher_logo    fast    START A                  This is a developer credits/studio splash screen (Remedy Development Team), not gameplay; 
+[ 190.8s] # 20 publisher_logo    fast    START A                  This is a studio credits/splash screen continuing from the previous skip attempt; try STAR
+[ 200.5s] # 21 publisher_logo    fast    A                        Still a studio credits splash after two START A attempts did nothing; try A alone this tim
+[ 210.9s] # 22 main_menu         fast    UP UP UP UP UP A         Credits is highlighted at the bottom; need to move up 5 rows to reach New Game and confirm
+[ 221.6s] # 23 publisher_logo    fast    A                        Developer credits splash still playing; try A to skip since START A loop hasn't worked
+[ 230.6s] # 24 main_menu         fast    UP UP UP UP UP A         Credits is highlighted; New Game is 5 rows up, so move UP five times then confirm with A
+[ 243.1s] # 25 publisher_logo    fast    START                    This is a credits splash, not the title or menu; previous START A and A attempts looped ba
+[ 263.4s] # 26 main_menu         fast    UP UP UP                 Credits is highlighted at the bottom of an 8-item list; previous attempts combining 5x UP 
+[ 271.7s] # 27 main_menu         fast    A                        New Game is clearly highlighted (bold white) third item from top; confirm directly with A.
+[ 280.6s] # 28 submenu           fast    A                        Detective difficulty is highlighted at top of list, which is the default/easiest mode; con
+[ 289.7s] # 29 loading           fast    wait                     Loading bar is actively filling; just wait for the level to load
+[ 301.8s] # 30 cutscene          fast    START A                  This is Max Payne 2's signature graphic-novel cutscene narration sequence following the lo
+[ 306.9s] # 31 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 312.1s] # 32 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 317.3s] # 33 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 325.4s] # 34 cutscene          fast    START A                  Title card text on black background, part of the graphic-novel cutscene sequence; continui
+[ 330.5s] # 35 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 337.1s] # 36 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 342.3s] # 37 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 350.3s] # 38 cutscene          fast    START A                  Dark transition frame in the ongoing graphic-novel cutscene sequence; continuing to advanc
+[ 359.1s] # 39 loading           fast    wait                     A loading screen with a progress bar; no input needed, just wait for it to finish
+[ 370.2s] # 40 gameplay          fast    STICK:up:1.5             Player character is controllable in a 3D hospital environment with HUD visible, not a cuts
+[ 380.2s] # 41 probe             probe   STICK:up:1.5 STICK:up:1.5 control 0.001, under input 0.588
+hold-play: genre shooter, need 600 s of play
+hold-play: fps at 188 s: median 59.0, share>=30 1.0 over 187 samples
+hold-play: fps at 307 s: median 59.0, share>=30 1.0 over 307 samples
+hold-play: validity check stop 0 s (hold 603 s of play, verdict 602.0)
+hold-play: not held 603/600 s of play; verdict stops the hold: fps_ok 1.0, crash False, hang False
+held Max Payne 2 The Fall of Max Payne USA for 605s
+VERDICT Max Payne 2 The Fall of Max Payne USA ? PASS None gameplay=603.4s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0035 play_share=0.9998 fps_excluded=2.0s
+{"name": "Max Payne 2 The Fall of Max Payne USA", "device": "nova", "result": "gameplay", "minutes": 6.34, "model_calls": 42, "steps": 41, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5454000C-1007/frames/040-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

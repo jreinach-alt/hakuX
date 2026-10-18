@@ -1,0 +1,28 @@
+{
+ "title_id": "544B0004",
+ "disk_title_id": "544B0004",
+ "state": "any",
+ "save": "ed7d0165f40b",
+ "loaded": "golden",
+ "golden_status": "golden",
+ "goldens": 94,
+ "save_override": false,
+ "path": "/storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2",
+ "sha256_at_start": "f80f0b9facd1bd2995106375426a371b35f7ca1d0485f466c2f4bef973a186ec",
+ "bytes_at_start": 19333120,
+ "plans": [
+  {
+   "action": "build",
+   "reason": "the titles disk is not on the device"
+  },
+  {
+   "action": "keep",
+   "reason": "the disk is the composed goldens, untouched since its push"
+  }
+ ],
+ "mode_found": "660",
+ "mode": "660",
+ "split": "on",
+ "split_from": "held",
+ "run": "held-nova-20261013T121214"
+}

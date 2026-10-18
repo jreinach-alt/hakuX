@@ -1,0 +1,33 @@
+pathfind: Need for Speed Most Wanted (4541007B) on nova: /storage/E6C6-D7AA/Games/XBox/4541007B-Need_for_Speed_Most_Wanted.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4541007B any, loaded none
+[   9.3s] #  1 publisher_logo    fast    START                    This is an early boot logo animation (green polygon emblem on white), before any title or 
+[  21.0s] #  2 intro_video       fast    START A                  The previous step was a publisher logo, and this is a cinematic-style showcase with no men
+[  32.8s] #  3 intro_video       fast    START                    Static EA title art with a copyright line and no menu or prompt yet, so it is not gameplay
+[  40.3s] #  4 save_load_prompt  fast    DOWN A                   Save/alias prompt; per the hints, prompts that create a save: Yes is fine and reaches play
+[  49.5s] #  5 save_load_prompt  fast    A                        Autosave notice with only an OK button highlighted; no Yes/No choice, so A confirms it and
+[  57.5s] #  6 save_load_prompt  fast    A                        Autosave notice with only an OK button; no Yes/No choice. A confirms it and returns to the
+[  69.2s] #  7 name_entry        fast    DOWN DOWN DOWN DOWN RIGHT RIGHT A Previous DOWN A and A presses only typed letters and returned here. The cursor is on the l
+[  85.1s] #  8 save_load_prompt  fast    A                        Save prompt with No highlighted. Earlier DOWN A (choosing Yes) looped back to the name key
+[  92.8s] #  9 save_load_prompt  fast    B                        Only an OK button is shown, the same autosave notice seen before. Earlier A presses on thi
+[ 102.5s] # 10 save_load_prompt  fast    START                    Only one button (OK) exists, so there is no Yes/No choice. B did nothing on this unchanged
+[ 109.4s] # 11 save_load_prompt  fast    A                        Only one button (OK) exists, so this is a notice with no Yes/No choice. START and B alread
+[ 130.7s] # 12 main_menu         fast    A                        Main menu with Career highlighted; the earlier name keyboard and save notice are behind us
+[ 139.2s] # 13 submenu           fast    A                        Career main menu with Start Career highlighted; A accepts it, the fastest route into the c
+[ 148.8s] # 14 loading           fast    wait                     Game is in a loading screen after the save notice and Career start; nothing to press, so w
+[ 160.5s] # 15 cutscene          fast    START                    A car is on screen with no HUD, so this looks like an intro or story scene after the loadi
+[ 168.8s] # 16 cutscene          fast    START                    This is a pre-race/pursuit briefing FMV-style police cam sequence after the loading screen
+[ 181.6s] # 17 gameplay          fast    wait                     Player-controlled car in the open-world street, chase camera, no cutscene bars or menu; th
+[ 200.0s] # 18 probe             probe   RT:2 RT+left:1.2 RT+right:1.2 control 0.717, under input 0.737
+[ 212.8s] # 19 unknown           fast    wait                     No HUD or control evidence, and the previous probe was refused. The frame could be gamepla
+[ 222.4s] # 20 gameplay          fast    wait                     Race HUD (position, timer, progress bar, minimap, speedometer) over a player-controlled ca
+[ 234.8s] # 21 probe             probe   RT:2                     control 0.025, under input 0.311
+hold-play: genre drive, need 600 s of play
+hold-play: fps at 185 s: median 26.0, share>=30 0.143 over 77 samples
+hold-play: fps at 307 s: median 26.0, share>=30 0.205 over 127 samples -> STOP (not on course)
+hold-play: not held 305/600 s of play; fps gate at 5:06: median 26 < 27, 20% of 127 samples at >= 28.5
+held Need for Speed Most Wanted for 308s
+VERDICT Need for Speed Most Wanted ? FAIL(duration: 306 s of gameplay < 600 s confirmation) gameplay=306.4s fps_ok=0.1937 crash=False hang=False audio_short=0.0 hitches=1/0.244pm worst_ms=108.9 static_frac=0.0302 play_share=0.9994 fps_excluded=0.0s
+{"name": "Need for Speed Most Wanted", "device": "nova", "result": "gameplay", "minutes": 3.91, "model_calls": 27, "steps": 21, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541007B/frames/020-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

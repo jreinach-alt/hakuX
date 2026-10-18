@@ -1,0 +1,49 @@
+pathfind: Blowout (4D4A0008) on nova: /storage/E6C6-D7AA/Games/XBox/4D4A0008-Blowout.xiso.iso
+titlestate: titles disk: harvest (the device's disk changed since its last harvest)
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4D4A0008 any, loaded none
+[  11.6s] #  1 publisher_logo    fast    A                        Publisher/developer logo still animating after cold boot; per hints, skip with A, and if n
+[  16.0s] #  2 title_screen      replay  START                    replay step 1: Title screen with 'Press START' prompt; START advances past it per the titl
+[  26.2s] #  3 submenu           fast    UP A                     Confirmation dialog for New Game, the fastest route to play. Yes is the upper option, so U
+[  32.1s] #  4 main_menu         replay  A                        replay step 4: Game's main menu; 'Next Mission' is the top, highlighted item and is the fa
+[  38.4s] #  5 main_menu         replay  A                        replay step 5: Start Mission is the highlighted item and leads straight into play; Options
+[  49.0s] #  6 gameplay          fast    wait                     A player-style character stands in the 3D world with no menu, title or letterbox bars, and
+[  64.8s] #  7 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.209, under input 0.120
+[  69.8s] #  8 gameplay          fast    wait                     HUD (ammo and health panels) is up over a 3D playfield with the player's character standin
+[  82.0s] #  9 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 control 0.039, under input 0.038
+[  89.0s] # 10 gameplay          fast    wait                     HUD is up over a 3D playfield with the player's character in the world, and the history sh
+[ 100.7s] # 11 probe             probe   RSTICK:left:1.5 RSTICK:left:1.5 RSTICK:left:1.5 control 0.023, under input 0.028
+[ 105.6s] # 12 gameplay          fast    wait                     HUD is up over a 3D playfield with the player's character in the world, and earlier stick 
+[ 118.0s] # 13 probe             probe   HOLD:A:3 HOLD:A:3 HOLD:A:3 control 0.028, under input 0.025
+[ 126.5s] # 14 gameplay          fast    wait                     HUD and ammo/health panels are up over a 3D playfield with the player's character in the w
+[ 135.1s] # 15 probe             probe   STICK:right:1.5          control 0.019, under input 0.207
+hold-play: genre shooter, need 600 s of play
+hold-play: fps at 192 s: median 29.0, share>=30 1.0 over 96 samples
+hold-play: fps at 307 s: median 29.0, share>=30 1.0 over 153 samples
+hold-play: validity check share 590 s (hold 613 s of play, verdict 613.7)
+hold-play: verdict short on share by 590 s; holding on (budget 1477 s left)
+hold-play: validity check share 528 s (hold 676 s of play, verdict 676.3)
+hold-play: verdict short on share by 528 s; holding on (budget 1414 s left)
+hold-play: validity check share 459 s (hold 743 s of play, verdict 744.0)
+hold-play: verdict short on share by 459 s; holding on (budget 1347 s left)
+hold-play: validity check share 490 s (hold 793 s of play, verdict 794.8)
+hold-play: verdict short on share by 490 s; holding on (budget 1286 s left)
+hold-play: validity check share 626 s (hold 843 s of play, verdict 843.8)
+hold-play: verdict short on share by 626 s; holding on (budget 1217 s left)
+hold-play: validity check share 563 s (hold 905 s of play, verdict 906.3)
+hold-play: verdict short on share by 563 s; holding on (budget 1154 s left)
+hold-play: validity check share 800 s (hold 939 s of play, verdict 939.2)
+hold-play: verdict short on share by 800 s; holding on (budget 1092 s left)
+hold-play: validity check share 734 s (hold 1004 s of play, verdict 1005.2)
+hold-play: verdict short on share by 734 s; holding on (budget 1026 s left)
+hold-play: validity check share 674 s (hold 1066 s of play, verdict 1066.0)
+hold-play: verdict short on share by 674 s; holding on (budget 965 s left)
+hold-play: validity check share 608 s (hold 1130 s of play, verdict 1130.8)
+hold-play: verdict short on share by 608 s; holding on (budget 900 s left)
+hold-play: validity check share 964 s (hold 1159 s of play, verdict 1160.1)
+hold-play: not held 1159/600 s of play; share short by 964 s with no budget left
+held Blowout for 1398s
+VERDICT Blowout ? FAIL(menu time: 83.1% of the scored window in `play` (bar 90%; play 1161 s, still 236 s, no-timeline 0 s)) gameplay=1396.9s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.134 play_share=0.831 fps_excluded=238.2s
+{"name": "Blowout", "device": "nova", "result": "gameplay", "minutes": 2.25, "model_calls": 35, "steps": 15, "replayed": 3, "reason": "four probes refused", "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/blowout-1006/frames/014-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

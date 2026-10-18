@@ -1,0 +1,24 @@
+pathfind: 4x4 Evo 2 (54540001) on nova: /storage/E6C6-D7AA/Games/XBox/54540001-4x4_Evo_2.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 54540001 any, loaded none
+[  23.2s] #  1 publisher_logo    fast    A                        Early boot (0.2 min), publisher branding visible; standard skip is A
+[  36.5s] #  2 title_screen      fast    START                    Classic title screen with 'Press START' prompt; START is the standard input here.
+[  51.4s] #  3 main_menu         fast    A                        Mode selection screen with Quick Race highlighted—fastest path to gameplay according to hi
+[  81.5s] #  4 submenu           fast    A                        Quick Race configuration screen with defaults displayed (Egypt, 3 laps, clear weather, mid
+[ 109.0s] #  5 submenu           fast    UP A                     This is the race configuration menu; Vehicle Selection is highlighted but defaults are alr
+[ 183.5s] #  6 loading           fast    wait                     Race countdown (2 seconds remaining) - race configuration complete and awaiting auto-start
+[ 199.7s] #  7 gameplay          fast    wait                     HUD fully up (speedometer, compass, lap info), player in vehicle on racetrack at start pos
+[ 223.5s] #  8 probe             probe   RT:1.5                   control 0.011, under input 0.146
+hold-play: genre drive, need 600 s of play
+hold-play: fps at 183 s: median 55.0, share>=30 1.0 over 168 samples
+hold-play: fps at 329 s: median 54.0, share>=30 1.0 over 298 samples
+hold-play: stuck (scene unchanged for 4 consecutive samples (genre drive)): unstick LT+left:3 RT+right:3 at 536 s
+hold-play: 3 still looks: walk reversed (back) at 575 s
+hold-play: stuck (scene unchanged for 5 consecutive samples (genre drive)): unstick LT+right:3 RT+left:3 at 575 s
+hold-play: stuck_abort: scene unchanged for 6 consecutive samples (genre drive); 2 unstick rung(s) tried, still stuck
+hold-play: not held 511/600 s of play; stuck_abort: scene unchanged for 6 consecutive samples (genre drive); 2 unstick rung(s) tried, still stuck
+held 4x4 Evo 2 for 627s
+VERDICT 4x4 Evo 2 ? FAIL(menu time: 82.1% of the scored window in `play` (bar 90%; play 513 s, still 112 s, no-timeline 0 s)) gameplay=625.5s fps_ok=0.9956 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0064 play_share=0.8207 fps_excluded=112.0s
+{"name": "4x4 Evo 2", "device": "nova", "result": "gameplay", "minutes": 3.72, "model_calls": 18, "steps": 8, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-54540001-1013r/frames/007-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

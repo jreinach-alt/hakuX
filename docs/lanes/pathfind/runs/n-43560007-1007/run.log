@@ -1,0 +1,29 @@
+pathfind: Future Tactics The Uprising (43560007) on nova: /storage/E6C6-D7AA/Games/XBox/43560007-Future_Tactics_The_Uprising.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 43560007 any, loaded none
+[  10.6s] #  1 loading           fast    wait                     This looks like an early loading/branding screen (green logo) right after cold boot, befor
+[  16.2s] #  2 black             black   wait                     black frame
+[  24.5s] #  3 publisher_logo    fast    START A                  Developer logo screen before title; skip it to progress faster.
+[  35.0s] #  4 main_menu         fast    A                        This is a save-slot selection screen with no existing saves; slot 1 (top-left, highlighted
+[  45.0s] #  5 main_menu         fast    A                        This is a pre-game prompt offering to read the diary (lore/intro) or start playing; choosi
+[  57.7s] #  6 cutscene          fast    START A                  No HUD or player control indicators are visible; this looks like an intro cinematic after 
+[  68.4s] #  7 loading           fast    A                        This is an objective/level-intro splash screen with a 'Next A' prompt, not yet player cont
+[  78.6s] #  8 gameplay          fast    A                        Turn-based tactics battle with HUD showing player units, enemy units, and 'Player turn' in
+[  91.0s] #  9 probe             probe   A HOLD:A:1.5             control 0.011, under input 0.746
+[ 125.2s] # 18 retracted         probe   wait                     retracted after 30 s: letterboxed
+[ 132.3s] # 19 gameplay          fast    A                        This is an in-game tutorial hint overlay during a tactics mission; dismiss it with A to co
+[ 140.0s] # 20 probe             probe   A STICK:up:1.5           control 0.002, under input 0.001
+[ 150.3s] # 21 gameplay          fast    STICK:up:1.5             Full tactics HUD with movement pad control and unit portraits is in-game player control, n
+[ 170.4s] # 22 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 control 0.018, under input 0.025
+[ 176.4s] # 23 gameplay          fast    STICK:up:1.5             Full tactics HUD with movement controls and unit portraits over a 3D playfield is active p
+[ 191.1s] # 24 probe             probe   STICK:up:1.5 HOLD:A:3    control 0.009, under input 0.668
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 188 s: median 59.0, share>=30 1.0 over 189 samples
+hold-play: fps at 310 s: median 59.0, share>=30 1.0 over 311 samples
+hold-play: validity check stop 0 s (hold 607 s of play, verdict 607.6)
+hold-play: not held 607/600 s of play; verdict stops the hold: fps_ok 1.0, crash False, hang False
+held Future Tactics The Uprising for 666s
+VERDICT Future Tactics The Uprising ? PASS None gameplay=664.8s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=2/0.198pm worst_ms=381.0 static_frac=0.0 play_share=0.9146 fps_excluded=57.3s
+{"name": "Future Tactics The Uprising", "device": "nova", "result": "gameplay", "minutes": 3.18, "model_calls": 23, "steps": 16, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-43560007-1007/frames/023-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

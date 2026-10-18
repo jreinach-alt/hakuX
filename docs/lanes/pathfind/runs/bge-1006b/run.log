@@ -1,0 +1,96 @@
+pathfind: Beyond Good Evil (55530018) on nova: /storage/E6C6-D7AA/Games/XBox/55530018-Beyond_Good_Evil.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 55530018 any, loaded none
+[   5.4s] #  1 publisher_logo    replay  A                        replay step 0: A publisher logo is animating; per the hints, skip with A first, then START
+[  12.3s] #  2 publisher_logo    fast    A                        Ubisoft publisher logo is still up; per the hints, skip with A first and re-read rather th
+[  15.7s] #  3 cutscene          replay  START                    replay step 2: repeat START: it advanced the cutscene
+[  20.1s] #  4 cutscene          replay  START                    replay step 3: repeat START: it advanced the cutscene
+[  28.1s] #  5 cutscene          fast    START                    This is an in-engine HTV news broadcast cutscene with a caption bar, not gameplay; the rec
+[  34.5s] #  6 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[  39.0s] #  7 cutscene          replay  START                    replay step 7: repeat START: it advanced the cutscene
+[  46.8s] #  8 cutscene          fast    START                    Letterboxed in-engine cinematic after the publisher logo with no HUD or player control; pe
+[  54.2s] #  9 cutscene          fast    START                    Letterboxed in-engine cinematic with no HUD or player control; not gameplay. Prior START p
+[  58.4s] # 10 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[  62.8s] # 11 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[  69.3s] # 12 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[  73.6s] # 13 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[  78.0s] # 14 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[  82.3s] # 15 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[  90.1s] # 16 cutscene          fast    START                    Still a cutscene (letterbox bars, no HUD or player control). Per the recorded path, START 
+[  94.6s] # 17 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 104.9s] # 18 cutscene          fast    START                    Opening cinematic title card with letterbox bars and no player control, so not gameplay. R
+[ 109.3s] # 19 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 113.5s] # 20 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 117.9s] # 21 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 122.3s] # 22 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 126.7s] # 23 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 131.2s] # 24 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 142.1s] # 25 cutscene          fast    START                    Letterboxed scene with no HUD or menu, so not gameplay. The recorded path shows START adva
+[ 146.4s] # 26 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 150.8s] # 27 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 155.1s] # 28 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 159.7s] # 29 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 164.1s] # 30 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 170.5s] # 31 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 180.4s] # 32 gameplay          fast    wait                     Player character is in the game world with the HUD up (hearts, contextual A Fight prompt) 
+[ 184.3s] # 33 probe             probe   STICK:up:1.5             control 0.260, under input 0.376
+[ 191.1s] # 34 gameplay          fast    wait                     HUD (portrait, Eat counter, A Fight prompt) and a player-controlled character in the world
+[ 194.9s] # 35 probe             probe   STICK:up:1.5             control 0.720, under input 0.707
+[ 203.9s] # 36 gameplay          fast    wait                     HUD (hearts, Eat counter, A Fight prompt) and a player-controlled character are in the wor
+[ 207.9s] # 37 probe             probe   STICK:left:1.5           control 0.307, under input 0.323
+claim: 3 live reads with self-moving refused probes: entering the hold
+[ 244.3s] # 46 retracted         probe   wait                     retracted after 30 s: letterboxed
+[ 250.8s] # 47 gameplay          fast    wait                     The HUD (hearts, Eat counter, A Fight prompt) and a player-controlled character are in the
+[ 254.4s] # 48 probe             probe   HOLD:A:3                 control 0.539, under input 0.071
+[ 259.6s] # 49 gameplay          fast    wait                     The HUD (hearts, Eat counter, A Fight prompt) is up and a player-controlled character is i
+[ 263.6s] # 50 probe             probe   HOLD:A:3                 control 0.211, under input 0.206
+[ 268.4s] # 51 cutscene          fast    START                    Black letterbox bars and a context-sensitive 'A Fight' prompt over a scene; the prior prob
+[ 275.1s] # 52 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 284.2s] # 53 submenu           fast    B                        This is an in-game inventory/photo menu, not gameplay. START did nothing here. The footer 
+[ 291.5s] # 54 cutscene          fast    START                    Black letterbox bars with a context prompt 'A Fight' over a scene. Earlier probes under in
+[ 295.8s] # 55 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 304.5s] # 56 submenu           fast    B                        Inventory/photo submenu, not gameplay; START did nothing here. The footer says B = Back, a
+[ 315.4s] # 57 gameplay          fast    wait                     HUD and context prompts are up, no letterbox or menu, and the player character stands in t
+[ 319.6s] # 58 probe             probe   RT:3                     control 0.127, under input 0.218
+[ 326.7s] # 59 gameplay          fast    wait                     The game HUD (portrait, hearts, gauge) and the 'A Fight' context prompt are up, and the pl
+[ 330.6s] # 60 probe             probe   RT:3                     control 0.205, under input 0.313
+claim: 3 live reads with self-moving refused probes: entering the hold
+[ 367.0s] # 69 retracted         probe   wait                     retracted after 30 s: letterboxed
+[ 376.0s] # 70 gameplay          fast    wait                     The HUD is up with the 'A Fight' context prompt, and the player character stands in the wo
+[ 380.1s] # 71 probe             probe   HOLD:X:3                 control 0.256, under input 0.152
+[ 385.7s] # 72 gameplay          fast    wait                     The HUD (portrait, hearts, gauge, Eat counter) and the A Fight context prompt are up with 
+[ 389.7s] # 73 probe             probe   HOLD:X:3                 control 0.303, under input 0.360
+[ 396.8s] # 74 gameplay          fast    wait                     The HUD is up with the Fight prompt and the player character stands in the world, not a me
+[ 400.9s] # 75 probe             probe   LT:2                     control 0.147, under input 0.282
+[ 410.4s] # 76 gameplay          fast    wait                     The in-game HUD (portrait, hearts, gauge, Eat counter) and the A Fight context prompt are 
+[ 414.5s] # 77 probe             probe   LT:2                     control 0.108, under input 0.345
+[ 421.1s] # 78 gameplay          fast    wait                     The HUD is up with the Fight prompt and the player character is in the world. Nothing is h
+[ 424.8s] # 79 probe             probe   STICK:left:1.5           control 0.570, under input 0.641
+claim: 3 live reads with self-moving refused probes: entering the hold
+[ 460.8s] # 88 retracted         probe   wait                     retracted after 30 s: letterboxed
+[ 474.1s] # 89 cutscene          fast    START                    Letterbox bars mean a cutscene-style frame, not gameplay, even with the HUD up. Prior prob
+[ 480.5s] # 90 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 489.4s] # 91 submenu           fast    B                        A ring menu with a Back footer is a submenu, not gameplay. START did nothing here. B backs
+[ 501.3s] # 92 gameplay          fast    wait                     The HUD is up with the player character in the world and a context Fight prompt on A. The 
+[ 505.3s] # 93 probe             probe   HOLD:B:3                 control 0.263, under input 0.286
+[ 514.9s] # 94 gameplay          fast    wait                     The HUD is up with health, a context prompt, and the player character in the world, and th
+[ 518.7s] # 95 probe             probe   HOLD:B:3                 control 0.598, under input 0.521
+[ 528.5s] # 96 unknown           fast    wait                     Dim fade over a map-like overlay with scanlines, not clearly a menu or playfield; the earl
+[ 537.9s] # 97 gameplay          fast    wait                     HUD is up with health, a Fight context prompt, and the player character in the world. Not 
+[ 541.9s] # 98 probe             probe   STICK:up:1.5             control 0.177, under input 0.302
+claim: 3 live reads with self-moving refused probes: entering the hold
+[ 577.9s] #107 retracted         probe   wait                     retracted after 30 s: letterboxed
+[ 586.2s] #108 gameplay          fast    wait                     The HUD (health hearts, context prompts) is up and Jade is in the world with no letterboxi
+[ 590.2s] #109 probe             probe   STICK:up:1.5             control 0.135, under input 0.361
+[ 597.4s] #110 gameplay          fast    wait                     The HUD (health, Eat counter, A Fight context prompt) is up and Jade stands in the world n
+[ 601.4s] #111 probe             probe   STICK:up:1.5             control 0.707, under input 0.466
+[ 608.6s] #112 gameplay          fast    wait                     HUD (hearts, Eat counter, A Fight prompt) is up and Jade is in the world next to an enemy;
+[ 612.6s] #113 probe             probe   STICK:up:1.5             control 0.198, under input 0.261
+[ 622.2s] #114 gameplay          fast    wait                     HUD is up with Jade in the world and the A Fight context prompt, which is live play; the e
+[ 626.1s] #115 probe             probe   STICK:up:1.5             control 0.305, under input 0.231
+claim: 3 live reads with self-moving refused probes: entering the hold
+[ 662.2s] #124 retracted         probe   wait                     retracted after 30 s: letterboxed
+[ 662.8s] #125 diverged          diverged wait                     replay diverged at recorded step 8 (cutscene: This is a cinematic space shot with no HUD o
+{"name": "Beyond Good Evil", "device": "nova", "result": "diverged", "minutes": 11.05, "model_calls": 40, "steps": 85, "replayed": 4, "reason": "replay diverged at recorded step 8 (cutscene: This is a cinematic space shot with no HUD or player-controlled element, so it is not gameplay. Prior history shows STAR)", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

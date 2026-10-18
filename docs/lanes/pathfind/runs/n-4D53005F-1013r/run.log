@@ -1,0 +1,96 @@
+pathfind: Voodoo Vince (4D53005F) on nova: /storage/E6C6-D7AA/Games/XBox/4D53005F-Voodoo_Vince.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4D53005F any, loaded none
+[  22.6s] #  1 publisher_logo    fast    A                        Geometric logo animation on a plain background at the very start of boot, typical of a pub
+[  35.4s] #  2 loading           fast    wait                     Active loading screen with animated character and progress bar; do not interrupt, wait for
+[  63.2s] #  3 intro_video       fast    A                        Title logo reveal after loading screen; no press prompt yet; typical intro video that need
+[  82.0s] #  4 main_menu         fast    A                        Menu screen with 'Start new game' as the highlighted selectable option; no gameplay yet, s
+[  96.0s] #  5 cutscene          fast    START                    Intro cinematic with dialogue subtitles and storybook narration about the voodoo shop; not
+[ 142.5s] #  6 pause             fast    A                        Resume option present indicates gameplay is paused; HUD and environment behind the menu co
+[ 164.1s] #  7 pause             fast    START                    Pause menu is open; previous A did not work. The Resume option displays START as the mappe
+[ 182.0s] #  8 cutscene          fast    START                    Narrative text at the bottom (subtitle) identifies this as an intro cinematic. The game wo
+[ 214.5s] #  9 pause             fast    START                    Pause menu is open with Resume mapped to START. Game world and HUD are visible behind it b
+[ 227.6s] # 10 cutscene          fast    A                        Subtitle text and narrative dialogue identify this as an intro cinematic. Previous START a
+[ 232.4s] # 11 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 237.7s] # 12 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 242.6s] # 13 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 247.4s] # 14 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 252.3s] # 15 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 257.3s] # 16 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 270.5s] # 17 cutscene          fast    A                        Subtitled dialogue in a narrative scene; still advancing through the intro sequence per th
+[ 282.7s] # 18 cutscene          fast    A                        Subtitled narrative scene with letterboxing and 3D characters; continuing the intro sequen
+[ 295.8s] # 19 cutscene          fast    A                        Subtitled dialogue in a narrative scene with 3D characters and letterboxing; this is the i
+[ 298.7s] # 20 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 302.1s] # 21 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 304.9s] # 22 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 307.7s] # 23 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 310.5s] # 24 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 313.4s] # 25 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 325.2s] # 26 cutscene          fast    A                        In-engine cinematic with letterbox bars and non-controllable character; A has advanced the
+[ 338.4s] # 27 cutscene          fast    A                        Letterbox bars frame the scene, narrative dialogue with subtitles, character is non-contro
+[ 342.1s] # 28 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 345.8s] # 29 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 349.5s] # 30 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 353.2s] # 31 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 357.0s] # 32 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 360.7s] # 33 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 373.2s] # 34 cutscene          fast    A                        This is a story sequence with narration; the character is rendered in the game world but t
+[ 392.7s] # 35 loading           fast    wait                     The screen displays the game's loading sequence with the level name and a progress indicat
+[ 431.2s] # 36 gameplay          fast    wait                     After the loading screen (step 35), the game world is now rendered and the player characte
+[ 436.7s] # 37 probe             probe   STICK:up:1.5             control 0.000, under input 0.000
+[ 462.0s] # 38 gameplay          fast    wait                     The game world is fully loaded and the player character is visible in the environment. How
+[ 467.4s] # 39 probe             probe   STICK:up:2               control 0.000, under input 0.000
+[ 502.0s] # 40 cutscene          fast    START                    The character is fully visible in a rendered game world, but previous probes (steps 37, 39
+[ 521.5s] # 41 cutscene          fast    A                        The environment is a rendered game world with the player character visible, but it is non-
+[ 539.1s] # 42 cutscene          fast    B                        The in-engine scene with the character is non-interactive: stick inputs and START/A produc
+[ 573.4s] # 43 cutscene          fast    Y                        The scene is rendered and the character is present, but it is non-interactive to stick and
+[ 618.4s] # 44 cutscene          fast    X                        Character is visible in the game world but there is no HUD, and previous inputs (STICK:up:
+[ 645.2s] # 45 cutscene          fast    STICK:right:1.5          In-engine scene with player character present but no interactive HUD and multiple button i
+[ 675.3s] # 46 cutscene          fast    BACK                     In-engine rendered scene with player character visible but completely non-responsive to si
+[ 726.3s] # 47 cutscene          fast    STICK:up:1.5             In-engine scene with player character visible but unresponsive to six different previous i
+[ 752.4s] # 48 cutscene          fast    RT:1.5                   In-engine scene with character present but no HUD and eight previous inputs (STICK, BACK, 
+[ 775.2s] # 49 cutscene          fast    L1                       The character is present and the scene is fully rendered in-engine, but nine different inp
+[ 809.6s] # 50 cutscene          fast    DOWN                     In-engine cutscene with character visible but no HUD and no response to START, A, B, BACK,
+[ 885.9s] # 51 cutscene          fast    UP                       In-engine scene with player character present but unresponsive to 10+ previous inputs (STA
+[ 948.9s] # 52 cutscene          fast    RIGHT                    In-engine rendered scene with character present but no HUD; 12 inputs already tried (UP, D
+[ 986.5s] # 53 cutscene          fast    LEFT                     In-engine scene with character visible but no HUD; yellow instruction panel on left sugges
+[1002.2s] # 54 cutscene          fast    LT:1.5                   In-engine scene with character present but no HUD; 14 inputs already tried (D-pad, face bu
+[1023.7s] # 55 cutscene          fast    R3                       In-engine scene with character present, fully rendered, but no HUD and unresponsive to all
+[1038.8s] # 56 cutscene          fast    Y                        Tutorial/instruction screen with character visible but no HUD or gameplay response. Yellow
+[1062.5s] # 57 cutscene          fast    L3                       In-engine scene with character present and a tutorial overlay visible, but the character i
+[1114.9s] # 58 cutscene          fast    STICK:down:1.5           Tutorial instruction panel visible (yellow border) but character unresponsive to 19+ exhau
+[1153.8s] # 59 cutscene          fast    RSTICK:right:1.5         Tutorial instruction panel (yellow border) indicates an unskippable sequence waiting for i
+[1201.5s] # 60 cutscene          fast    STICK:left:1.5           In-engine scene with tutorial overlay (yellow-bordered instruction panels) but character u
+[1252.9s] # 61 cutscene          fast    HOLD:A:2                 Tutorial instruction panel remains visible with character unresponsive to 20+ attempted in
+[1292.8s] # 62 cutscene          fast    wait                     Tutorial overlay visible but character unresponsive to 21+ exhaustive input attempts acros
+[1390.4s] # 63 cutscene          fast    RSTICK:up:1.5            Tutorial panel with yellow border is still active, character unresponsive to exhaustive pr
+[1452.4s] # 64 cutscene          fast    HOLD:A:4                 Tutorial overlay active with character visible but unresponsive; previous 2-second A hold 
+[1521.7s] # 65 cutscene          fast    RSTICK:down:1.5          Tutorial overlay with yellow instruction panel persists across 6+ steps; despite interacti
+[1571.6s] # 66 cutscene          fast    RSTICK:left:1.5          In-engine tutorial overlay persists; character unresponsive to every basic input, stick di
+[1636.1s] # 67 gameplay          fast    STICK:left:3             The character is visible and in-engine, standing in an interactive environment. This appea
+[1646.6s] # 68 probe             probe   X STICK:left:3 STICK:left:1.5 control 0.000, under input 0.000
+[1692.2s] # 69 cutscene          fast    A                        Character is in-engine but previous stick movement (STICK:left:1.5) produced no visible mo
+[1737.1s] # 70 cutscene          fast    Y                        Character is in-engine but unresponsive to all movement inputs (stick, d-pad, A) and right
+[1758.9s] # 71 cutscene          fast    B                        Character is in-engine but surrounded by a persistent yellow tutorial panel and has been u
+[1775.7s] # 72 cutscene          fast    START                    The character is present but unresponsive to movement inputs (STICK and d-pad confirmed no
+[1797.1s] # 73 cutscene          fast    DOWN                     Character unresponsive to START, A, B, Y, and STICK inputs across 5 steps. Yellow tutorial
+[1812.7s] # 74 cutscene          fast    X                        Character is in-game but unresponsive; yellow tutorial panel present suggests a tutorial s
+[1829.3s] # 75 cutscene          fast    RIGHT                    Character is in-game but unresponsive to movement and action buttons. Yellow tutorial pane
+[1872.8s] # 76 cutscene          fast    LEFT                     Character is in-engine but unresponsive across 7 different button inputs (A, B, X, Y, STAR
+[1914.8s] # 77 cutscene          fast    STICK:up:1.5             Tutorial panel suggests guided sequence; all 8 button inputs tested (A, B, X, Y, START, LE
+[1934.7s] # 78 cutscene          fast    L1                       Character visible in game world but unresponsive to movement and standard action buttons; 
+[1972.4s] # 79 cutscene          fast    UP                       Character visible in game world with tutorial panel present, but unresponsive to many stan
+[1988.8s] # 80 cutscene          fast    RT:1.5                   Tutorial panel present; character locked in place despite many button inputs tested. Attem
+[2014.8s] # 81 cutscene          fast    BACK                     Character in game world but locked in place with tutorial panel present; tried A, B, X, Y,
+[2062.9s] # 82 cutscene          fast    RSTICK:up:1.5            Character and environment fully rendered but unresponsive to 13 tested inputs (A, B, X, Y,
+[2115.8s] # 83 cutscene          fast    R1                       Tutorial panel present; character locked despite 14 tested inputs (A, B, X, Y, START, BACK
+[2209.0s] # 84 cutscene          fast    LT:1.5                   Tutorial panel has advanced/cleared but character unresponsive to 15 inputs while panel wa
+[2234.6s] # 85 gameplay          fast    L3                       Character is in the game world with full 3D rendering and HUD (tutorial panel visible). Th
+[2243.7s] # 86 probe             probe   B L3 STICK:down:1.5      control 0.000, under input 0.000
+[2290.6s] # 87 cutscene          fast    STICK:up:1.5             Character visible in game world with full rendering, but unresponsive to STICK:down, L3, L
+[2368.0s] # 88 cutscene          fast    RSTICK:down:1.5          Character is in-world and rendered with HUD visible (yellow panel), but is unresponsive to
+[2386.6s] # 89 cutscene          fast    A                        Character in-world but unresponsive to stick and trigger inputs. Yellow tutorial panel on 
+[2420.7s] # 90 cutscene          fast    START                    Tutorial/instruction overlay blocking interactivity; character in-world but frozen despite
+{"name": "Voodoo Vince", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 69, "steps": 90, "replayed": 0, "reason": "budget 40 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

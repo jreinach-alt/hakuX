@@ -1,0 +1,89 @@
+{
+ "title_id": "5443000E",
+ "name": "Tecmo Classic Arcade",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/5443000E-Tecmo_Classic_Arcade.xiso.iso",
+ "result": "gameplay",
+ "tool": "e812c5e325",
+ "started": "2026-10-06 17:03:17 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/tecmo-1006/frames/020-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/tecmo-1006/frames/020-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/tecmo-1006/frames/020-probe-c.jpg"
+ ],
+ "minutes": 3.18,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/tecmo-1006/frames/019-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/tecmo-1006/frames/021-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/tecmo-1006/frames/022-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/tecmo-1006/frames/023-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/tecmo-1006/frames/024-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/tecmo-1006/frames/025-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/tecmo-1006/frames/026-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/tecmo-1006/frames/027-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/tecmo-1006/frames/028-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-5443.md"
+ ],
+ "hold": {
+  "genre": "team",
+  "why": "Players in red and blue kits chase a ball on a green field with penalty-box markings, a soccer match with a COM/RED scoreboard.",
+  "sports": {
+   "clock": "0:06",
+   "period": "none",
+   "human_controlled": false,
+   "why": "Right-side TIME box reads 0:06 with no quarter/half indicator; the lone soccer-style pitch has no controller icon or marked player, so no human-controlled team "
+  },
+  "ok": false,
+  "play_s": 743.0,
+  "need_s": 600.0,
+  "hold_s": 825.4,
+  "model_navs": 12,
+  "frames": 24,
+  "still_windows": 0,
+  "shed": [
+   "B",
+   "X",
+   "Y"
+  ],
+  "reversals": 0,
+  "reason": "verdict stops the hold: fps_ok 1.0, crash False, hang False",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 192,
+    "median": 59.0,
+    "share": 1.0,
+    "at_s": 191.8,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 303,
+    "median": 59.0,
+    "share": 1.0,
+    "at_s": 302.6,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "verdict": "VERDICT Tecmo Classic Arcade ? FAIL(static window: 23% of pixels never moved more than 10/255 from the window's first frame, over 23 sampled frames from route-frames (bar 20%)) gameplay=826.3s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.2296 play_share=0.9025 fps_excluded=82.1s"
+ },
+ "model_calls": 40,
+ "calls_by_model": {
+  "claude-sonnet-5": 40
+ },
+ "steps": 20,
+ "seconds": 1062.7,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/tecmo-1006/frames/109-hold.jpg",
+ "last_state": "probe",
+ "replayed": 2,
+ "sib_replayed": 0,
+ "guide": [
+  "5443000E"
+ ],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/tecmo-1006/strip.jpg"
+}

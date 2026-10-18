@@ -1,0 +1,137 @@
+pathfind: Dead or Alive 1 Ultimate (54430006) on nova: /storage/E6C6-D7AA/Games/XBox/54430006-Dead_or_Alive_1_Ultimate.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 54430006 any, loaded golden 3b8e57389755
+[  11.3s] #  1 publisher_logo    fast    START A                  This looks like an early loading/logo animation screen right after boot, no title or menu 
+[  22.5s] #  2 publisher_logo    fast    START A                  This is a legal/copyright warning screen per Tecmo boot hints, which takes time and may no
+[  32.8s] #  3 publisher_logo    fast    START A                  This is the copyright/legal warning scroll noted in Tecmo boot hints (DOA titles show this
+[  44.2s] #  4 publisher_logo    fast    START A                  This is the same legal/copyright warning scroll noted in Tecmo boot hints for DOA titles; 
+[  55.8s] #  5 publisher_logo    fast    START A                  This is the Tecmo/DOA copyright legal warning scroll noted in the hints, which does not re
+[  67.1s] #  6 cutscene          fast    START A                  No HUD, prompt, or title text visible yet; still appears to be part of the pre-title cinem
+[  78.4s] #  7 title_screen      fast    START                    Title screen with PRESS START prompt; per DOA hints START is the input that passes this pr
+[  88.7s] #  8 submenu           fast    A                        Profile selection screen; PLAYER1 appears to be an existing highlighted profile, selecting
+[  99.4s] #  9 save_load_prompt  fast    A                        The selected PLAYER1 profile is damaged; per hints, pressing A only dismisses this warning
+[ 109.0s] # 10 save_load_prompt  fast    A                        The prior profile was flagged damaged; per hints a damaged profile never loads, so deletin
+[ 120.5s] # 11 submenu           fast    A                        Damaged profile was deleted; now only CREATE NEW PROFILE is shown and appears highlighted 
+[ 134.0s] # 12 name_entry        fast    START A                  Nickname keyboard with Done highlighted; per hints START jumps to Done/Accept on keyboards
+[ 147.0s] # 13 submenu           fast    A                        DOA2 STORY icon is highlighted (red, enlarged) with matching caption; confirming with A ta
+[ 157.6s] # 14 submenu           fast    A                        This is a character select screen, not gameplay yet; Kasumi is already highlighted as the 
+[ 167.7s] # 15 submenu           fast    A                        Character select screen, Kasumi already highlighted as default pick; per select-screen rul
+[ 179.4s] # 16 cutscene          fast    A                        Subtitled dialogue scene with no HUD/health bars means this is a pre-fight story cutscene,
+[ 192.2s] # 17 gameplay          fast    STICK:up:1.5             HUD with health bars and a running timer is present; Kasumi is down but the round is still
+[ 210.6s] # 18 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.385, under input 0.173
+[ 245.7s] # 26 retracted         probe   wait                     retracted after 30 s: Title screen showing 'DEAD OR ALIVE 2 ULTIMATE' logo with PRESS STAR
+[ 251.6s] # 27 title_screen      fast    START                    Title screen with PRESS START prompt visible; per DOA hints START is the input that passes
+[ 265.8s] # 28 submenu           fast    A                        Mode select with DOA2 STORY centered and highlighted (brightest, matching the subtitle des
+[ 295.3s] # 29 submenu           fast    A                        Character select grid with cursor box on Kasumi (default pick); per the select-screen rule
+[ 341.7s] # 30 submenu           fast    DOWN UP A                Character select grid; three prior A presses on the same screen didn't advance, so trying 
+[ 352.3s] # 31 cutscene          fast    A                        This is a dialogue/story scene with subtitles and no HUD or fight interface; per DOA hints
+[ 362.6s] # 32 gameplay          fast    STICK:left:1.5           Live round with HUD, health bars and a running timer visible; a fighter is down but the ro
+[ 382.3s] # 33 probe             probe   STICK:left:1.5 STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.575, under input 0.567
+[ 388.2s] # 34 gameplay          fast    STICK:left:1.5           HUD with health bars and timer is up, the round is in progress with Kasumi knocked down; p
+[ 405.9s] # 35 probe             probe   STICK:left:1.5 STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.685, under input 0.643
+[ 412.2s] # 36 game_over         fast    START                    YOU LOSE banner with no HUD means the round has ended; per DOA hints the game-over/continu
+[ 421.3s] # 37 cutscene          fast    A                        Subtitled dialogue line with no HUD/health bars/timer is a story scene, not a live round; 
+[ 432.7s] # 38 gameplay          fast    STICK:left:1.5           HUD, health bars and a running timer are all visible with fighters actively engaged in the
+[ 450.2s] # 39 probe             probe   STICK:left:1.5 HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.672, under input 0.567
+claim: 3 live reads with self-moving refused probes: entering the hold
+[ 485.8s] # 47 retracted         probe   wait                     retracted after 30 s: Character is slumped/KO'd with a 'CONTINUE? 0 / PRESS START TO CONTI
+[ 490.9s] # 48 title_screen      fast    START                    A title screen with PRESS START prompt; per hints only START passes DOA title prompts, not
+[ 501.3s] # 49 submenu           fast    A                        Mode select with DOA/2 STORY highlighted center and its description shown; confirming with
+[ 511.4s] # 50 submenu           fast    A                        A character select screen with Kasumi already highlighted/boxed as the default pick; per t
+[ 520.5s] # 51 submenu           fast    A                        Character select screen; Kasumi is already the highlighted default pick (boxed portrait, p
+[ 529.8s] # 52 cutscene          fast    A                        This is a story cutscene with dialogue subtitles and no HUD/health bars, not a live fight;
+[ 540.8s] # 53 gameplay          fast    STICK:left:1.5           Round in progress with HUD, health bars and timer visible, opponent downed but round not o
+[ 559.4s] # 54 probe             probe   STICK:left:1.5 HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.685, under input 0.676
+[ 566.4s] # 55 gameplay          fast    STICK:right:1.5          HUD, health bars and combo counter are up, round in progress with no KO/victory banner; op
+[ 583.7s] # 56 probe             probe   STICK:right:1.5 STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.581, under input 0.691
+[ 588.8s] # 57 continue          fast    START                    This is a continue countdown after a lost round; per the guidance, press START once to adv
+[ 599.4s] # 58 cutscene          fast    A                        Subtitled dialogue line with no HUD/health bars indicates a scripted story cutscene, not a
+[ 610.3s] # 59 gameplay          fast    STICK:left:1.5           Live round with HUD, health bars and running timer, both fighters actively mid-combo; this
+[ 627.6s] # 60 probe             probe   STICK:left:1.5 STICK:up:2 STICK:left:1.2 STICK:right:1.2 control 0.462, under input 0.513
+claim: 3 live reads with self-moving refused probes: entering the hold
+[ 663.3s] # 68 retracted         probe   wait                     retracted after 30 s: Title screen showing game logo and 'PRESS START' prompt, not actual 
+[ 668.6s] # 69 title_screen      fast    START                    Title screen with PRESS START prompt; per rule, START is the only input that passes this.
+[ 679.6s] # 70 submenu           fast    A                        Mode select menu with DOA2 STORY centered and brightest, matching the caption text about s
+[ 690.2s] # 71 submenu           fast    A                        This is a character select screen with Kasumi highlighted by default; per the select-scree
+[ 701.8s] # 72 submenu           fast    A                        Character select screen with Kasumi as the displayed default pick for Player-1; per the se
+[ 712.7s] # 73 cutscene          fast    A                        No HUD or fight UI present, just a scenic character shot typical of a pre-fight story cuts
+[ 723.4s] # 74 gameplay          fast    STICK:left:1.5           Live round with HUD, health bars, and running stage timer; one fighter down but round is a
+[ 750.9s] # 75 probe             probe   STICK:left:1.5 RT:3 RT+left:1.2 RT+right:1.2 control 0.647, under input 0.663
+[ 786.0s] # 83 retracted         probe   wait                     retracted after 30 s: This is the 'CONTINUE? 0 / PRESS START TO CONTINUE' post-match scree
+[ 791.6s] # 84 title_screen      fast    START                    A 'PRESS START' prompt on the title screen with no menu cursor visible; START is the corre
+[ 804.1s] # 85 main_menu         fast    A                        DOA2 STORY icon is centered and highlighted with glowing text and its description shown be
+[ 841.6s] # 86 submenu           fast    A A                      Character select screen with Kasumi highlighted; prior single A presses looped back here, 
+[ 855.1s] # 87 cutscene          fast    A                        No HUD/health bars/timer present, just a scripted character pose/gesture in an environment
+[ 866.3s] # 88 gameplay          fast    STICK:left:1.5           Live round with HUD, health bars, and running timer visible, both fighters in a ready stan
+[ 890.2s] # 89 probe             probe   STICK:left:1.5 RT:3 RT+left:1.2 RT+right:1.2 control 0.553, under input 0.611
+[ 896.5s] # 90 cutscene          fast    A                        The 'REPLAY' text marks this as a post-action replay cutscene, not live player control; no
+[ 906.0s] # 91 continue          fast    START                    This is a continue countdown after a lost round/failure; per guidance send one START to co
+[ 916.3s] # 92 cutscene          fast    A                        No HUD/health bars/timer present, just a subtitled scripted line and pose - this is a stor
+[ 927.1s] # 93 gameplay          fast    STICK:left:1.5           HUD with health bars and a running countdown timer, both fighters actively engaged in a gr
+[ 945.3s] # 94 probe             probe   STICK:left:1.5 HOLD:X:3 STICK:left:1.2 STICK:right:1.2 control 0.279, under input 0.597
+[ 958.8s] # 95 cutscene          fast    STICK:up:1.5             No combat HUD (health bars/timer) and no opponent are visible, unlike the prior live round
+[ 968.4s] # 96 continue          fast    START                    Continue countdown after a loss, per guidance send one START to continue rather than waiti
+[ 977.1s] # 97 title_screen      fast    START                    Title screen reads PRESS START with no cursor/highlight visible; START is the correct inpu
+[ 990.1s] # 98 main_menu         fast    A                        Mode select menu; Story icon appears highlighted (caption matches it) and Story is the fas
+[1000.3s] # 99 submenu           fast    A                        Character select screen with Kasumi already highlighted/selected as default; per select-sc
+[1010.6s] #100 submenu           fast    A                        Character select screen with Kasumi as the default highlighted pick; per select-screen rul
+[1022.6s] #101 cutscene          fast    A                        Subtitled dialogue line with no combat HUD (no health bars/timer) indicates a pre-fight cu
+[1032.9s] #102 gameplay          fast    wait                     HUD with health bars and countdown timer visible, combo text actively updating mid-fight; 
+[1052.0s] #103 probe             probe   HOLD:X:3 STICK:left:1.2 STICK:right:1.2 control 0.614, under input 0.453
+claim: 3 live reads with self-moving refused probes: entering the hold
+[1087.0s] #111 retracted         probe   wait                     retracted after 30 s: Title screen showing game logo and 'PRESS START' prompt, not actual 
+[1094.9s] #112 title_screen      fast    START                    Title screen showing PRESS START prompt; prior gameplay/probe was apparently reverted to t
+[1106.4s] #113 submenu           fast    A                        Mode select menu with Story mode centered/highlighted as the default; confirming with A ta
+[1146.5s] #114 submenu           fast    A                        This is the Story-mode character select screen with Kasumi highlighted by the blue box; pe
+[1170.8s] #115 submenu           fast    DOWN A                   Same character-select screen as before; pressing A three times in a row did not advance (d
+[1182.1s] #116 cutscene          fast    A                        A subtitled dialogue line over a cinematic shot with no HUD or health bars is a scripted s
+[1193.0s] #117 gameplay          fast    STICK:left:1.5           HUD with health bars and a running timer over an active fight animation (opponent lifting 
+[1213.5s] #118 probe             probe   STICK:left:1.5 LT:2 LT+left:1.2 LT+right:1.2 control 0.463, under input 0.321
+[1220.3s] #119 cutscene          fast    A                        A large KO graphic is displayed over the fight scene, indicating the round has ended in a 
+[1231.4s] #120 cutscene          fast    A                        Subtitled taunt line over a cinematic shot with no HUD is a scripted story beat following 
+[1240.9s] #121 continue          fast    START                    A continue countdown after a lost round; per rule, send one START, not A, to avoid running
+[1250.9s] #122 title_screen      fast    START                    Title screen with PRESS START prompt visible; per hints START is the input that passes DOA
+[1263.9s] #123 main_menu         fast    A                        Mode select with DOA2 STORY centered and enlarged/highlighted as the active selection; Sto
+[1274.1s] #124 submenu           fast    A                        Character select screen with Kasumi already highlighted as default pick; per select-screen
+[1316.2s] #125 submenu           fast    RIGHT A                  Same character-select screen as before; prior A presses looped back here with almost no ch
+[1331.7s] #126 cutscene          fast    A                        No HUD elements (health bars/timer) or menu cursor are visible, just a character posed in 
+[1341.3s] #127 gameplay          fast    STICK:left:1.5           HUD with health bars and running timer is up, a fighter is down but the round is active; p
+[1355.9s] #128 probe             probe   STICK:left:1.5 LT:2      control 0.108, under input 0.178
+[1391.0s] #136 retracted         probe   wait                     retracted after 30 s: Fight has ended and shows a 'CONTINUE ? 2 / PRESS START TO CONTINUE'
+[1401.7s] #137 cutscene          fast    START A                  No HUD or live timer is visible and the fighter is shown collapsed on the ground with no o
+[1413.4s] #138 main_menu         fast    A                        DOA2 STORY icon is centered and enlarged with matching description text beneath it, indica
+[1423.5s] #139 submenu           fast    A                        Character select screen with Kasumi highlighted by the cursor box; per the select-screen r
+[1452.5s] #140 submenu           fast    A                        Character select; Kasumi is the highlighted pick in the roster and COS.1 (costume) is high
+[1465.0s] #141 cutscene          fast    START                    Round-start intro line 'Here we go!' with no HUD (no health bars/timer) indicates a pre-fi
+[1473.7s] #142 pause             fast    A                        The round was paused (prior START likely opened this), CONTINUE is already highlighted, so
+[1483.4s] #143 gameplay          fast    STICK:left:1.5           Full fighting HUD with health bars and running clock, both fighters active in the arena mi
+[1502.8s] #144 probe             probe   STICK:left:1.5 HOLD:B:3 STICK:left:1.2 STICK:right:1.2 control 0.593, under input 0.560
+[1508.2s] #145 cutscene          fast    A                        REPLAY banner indicates a post-round replay cutscene, not live play; no HUD/health bars pr
+[1517.3s] #146 continue          fast    START                    This is a CONTINUE countdown after a lost round; per hints, one START then A if it stays, 
+[1527.2s] #147 cutscene          fast    A                        Subtitled dialogue line with no fighting HUD (no health bars/timer) indicates a scripted s
+[1538.0s] #148 gameplay          fast    STICK:left:1.5           Live round HUD with health bars and stage indicator, both fighters present in the arena, o
+[1562.1s] #149 probe             probe   STICK:left:1.5 HOLD:B:3 STICK:left:1.2 STICK:right:1.2 control 0.618, under input 0.561
+claim: 3 live reads with self-moving refused probes: entering the hold
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 189 s: median 59.0, share>=30 0.97 over 165 samples
+hold-play: fps at 306 s: median 59.0, share>=30 0.957 over 255 samples
+hold-play: validity check share 425 s (hold 604 s of play, verdict 604.1)
+hold-play: verdict short on share by 425 s; holding on (budget 631 s left)
+hold-play: validity check share 362 s (hold 668 s of play, verdict 668.5)
+hold-play: verdict short on share by 362 s; holding on (budget 567 s left)
+hold-play: validity check share 286 s (hold 744 s of play, verdict 744.3)
+hold-play: verdict short on share by 286 s; holding on (budget 491 s left)
+hold-play: validity check share 226 s (hold 804 s of play, verdict 804.6)
+hold-play: verdict short on share by 226 s; holding on (budget 430 s left)
+hold-play: validity check share 161 s (hold 868 s of play, verdict 869.7)
+hold-play: verdict short on share by 161 s; holding on (budget 365 s left)
+hold-play: validity check share 99 s (hold 928 s of play, verdict 930.1)
+hold-play: verdict short on share by 99 s; holding on (budget 305 s left)
+hold-play: validity check share 39 s (hold 996 s of play, verdict 991.8)
+hold-play: verdict short on share by 39 s; holding on (budget 235 s left)
+hold-play: not held 996/600 s of play; hakuX left the foreground during the hold
+held Dead or Alive 1 Ultimate for 1117s
+VERDICT Dead or Alive 1 Ultimate ? FAIL(menu time: 89.7% of the scored window in `play` (bar 90%; play 1001 s, still 40 s, menu 33 s, cutscene 20 s)) gameplay=1115.8s fps_ok=0.953 crash=False hang=False audio_short=0.0 hitches=22/1.25pm worst_ms=491.7 static_frac=0.0 play_share=0.8974 fps_excluded=112.6s
+{"name": "Dead or Alive 1 Ultimate", "device": "nova", "result": "gameplay", "minutes": 26.03, "model_calls": 128, "steps": 107, "replayed": 0, "reason": "four probes refused", "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/doaultimate-1006/frames/148-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

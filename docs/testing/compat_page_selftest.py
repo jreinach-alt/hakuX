@@ -131,6 +131,27 @@ class BuildBelowBarRows(unittest.TestCase):
         with self.assertRaises(SystemExit):
             cp.build_below_bar_rows(registry_rows, set(), notes_rows)
 
+    def test_gta_hold_override_qualifies_with_no_failing_all(self):
+        # GTA III/VC (#433/#1049): a BELOW_BAR status from an owner hold, not
+        # from the scored window's own failing_all tag -- the real BELOW_BAR_OVERRIDES
+        # table must carry both title_ids, or the generator would raise "stale".
+        self.assertIn("5454000E", cp.BELOW_BAR_OVERRIDES)
+        self.assertIn("5454000F", cp.BELOW_BAR_OVERRIDES)
+        registry_rows = [registry_row(title_id="5454000E", name="Grand Theft Auto III",
+                                       status="BELOW_BAR", status_rule="hold gta3-driving-below-bar",
+                                       failing_all="")]
+        notes_rows = [notes_row("below_bar", "5454000E", "Grand Theft Auto III", tested="2026-10-12")]
+        out = cp.build_below_bar_rows(registry_rows, set(), notes_rows)
+        self.assertEqual(len(out), 1)
+
+    def test_unoverridden_hold_with_no_failing_all_is_left_off(self):
+        registry_rows = [registry_row(title_id="FFFF0006", name="Some Held Game",
+                                       status="BELOW_BAR", status_rule="hold some-hold",
+                                       failing_all="")]
+        notes_rows = [notes_row("below_bar", "FFFF0006", "Some Held Game", tested="2026-10-06")]
+        with self.assertRaises(SystemExit):
+            cp.build_below_bar_rows(registry_rows, set(), notes_rows)
+
 
 class NfsOverride(unittest.TestCase):
     def test_nfs_notes_row_renders_with_hardcoded_figures(self):

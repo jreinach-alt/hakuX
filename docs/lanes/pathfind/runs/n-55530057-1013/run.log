@@ -1,0 +1,106 @@
+pathfind: Blazing Angels Squadrons of WWII USA Europe En Fr De Es It (55530057) on nova: /storage/E6C6-D7AA/Games/XBox/55530057-Blazing_Angels_Squadrons_of_WWII_USA_Europe_En_Fr_De_Es_It.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 55530057 any, loaded none
+[  51.3s] #  1 publisher_logo    fast    START                    Ubisoft publisher logo at boot; skip with START.
+[  63.2s] #  2 loading           fast    wait                     The 'loading...' text indicates the game is loading after the publisher logo. Standard pra
+[  70.2s] #  3 loading           static  wait                     load still on screen (barely changed)
+[  75.0s] #  4 loading           static  wait                     load still on screen (barely changed)
+[  79.9s] #  5 loading           static  wait                     load still on screen (barely changed)
+[  84.7s] #  6 loading           static  wait                     load still on screen (barely changed)
+[  99.0s] #  7 cutscene          fast    START                    Intro cinematic right after loading and publisher logo; in-engine scene with no HUD or gam
+[ 102.7s] #  8 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 113.3s] #  9 profile_creation  fast    A                        No profiles exist; must create one. The 'new' option is highlighted and ready to select.
+[ 130.0s] # 10 profile_creation  fast    Y                        The 'new' profile option is highlighted with an on-screen Y button prompt; pressing Y will
+[ 153.6s] # 11 name_entry        fast    START                    Profile creation: keyboard interface waiting for a player name to be entered; START often 
+[ 184.7s] # 12 name_entry        fast    DOWN                     Profile creation keyboard; START failed to jump to Done in the previous step. Need to navi
+[ 236.3s] # 13 name_entry        fast    A                        Profile creation keyboard waiting for name input. The 'a' is highlighted; pressing A will 
+[ 299.8s] # 14 name_entry        fast    RIGHT                    This is a profile name entry keyboard screen. Previous attempts with A, DOWN, and START pr
+[ 331.5s] # 15 name_entry        fast    UP                       Profile name entry keyboard; D-pad inputs (DOWN, RIGHT) and A/START have all failed. The s
+[ 350.7s] # 16 name_entry        fast    Y                        This is a profile name entry keyboard screen. D-pad and START failed; the on-screen 'Y val
+[ 393.4s] # 17 submenu           fast    A                        Post-name-entry profile selection screen; A to select/activate the profile just created
+[ 407.5s] # 18 submenu           fast    A                        Post-profile main menu. Campaign is highlighted (yellow, top). Campaign is the fastest rou
+[ 430.9s] # 19 cutscene          fast    A                        Training Day intro scene with sign-in notification overlay; A to accept the message and pr
+[ 435.6s] # 20 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 449.3s] # 21 cutscene          fast    A                        This is an instructional overlay / training tutorial screen, not interactive gameplay. The
+[ 463.1s] # 22 cutscene          fast    A                        Training mission briefing showing the target airfield from above; the 'A continue' prompt 
+[ 467.9s] # 23 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 472.5s] # 24 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 521.2s] # 25 cutscene          fast    RSTICK:right:2           Training mission tutorial screen with explicit input instruction to start the engine; not 
+[ 527.9s] # 26 cutscene          repeat  RSTICK:right:2           repeat RSTICK:right:2: it advanced the cutscene
+[ 534.5s] # 27 cutscene          repeat  RSTICK:right:2           repeat RSTICK:right:2: it advanced the cutscene
+[ 541.2s] # 28 cutscene          repeat  RSTICK:right:2           repeat RSTICK:right:2: it advanced the cutscene
+[ 582.2s] # 29 cutscene          fast    A                        Tutorial instruction screen with explicit input prompt and engine-start icon. The repeated
+[ 586.1s] # 30 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 589.8s] # 31 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 593.7s] # 32 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 622.3s] # 33 cutscene          fast    A                        Previous 5 steps advanced through cutscenes with A; aircraft is stationary on ground, scen
+[ 635.9s] # 34 cutscene          fast    START                    The aircraft is stationary on the ground in an engine view. A has stopped advancing the se
+[ 676.9s] # 35 pause             fast    B                        Pause menu opened after START during cutscene. Aircraft stationary on ground. Press B to r
+[ 724.4s] # 36 cutscene          fast    START                    In-engine tutorial instruction scene; previous attempts (RSTICK:right:2, A, A, START) loop
+[ 740.9s] # 37 pause             fast    B                        Pause menu appeared during mission. B resume button is ready. Need to resume to reach game
+[ 755.3s] # 38 cutscene          fast    R1                       The stationary aircraft with an 'R' button prompt suggests an interactive briefing or miss
+[ 760.3s] # 39 cutscene          repeat  R1                       repeat R1: it advanced the cutscene
+[ 765.1s] # 40 cutscene          repeat  R1                       repeat R1: it advanced the cutscene
+[ 769.9s] # 41 cutscene          repeat  R1                       repeat R1: it advanced the cutscene
+[ 812.3s] # 42 cutscene          fast    RSTICK:up:1 RSTICK:right:1 RSTICK:down:1 RSTICK:left:1 Interactive instruction cutscene. The instructor explicitly tells the player to start the 
+[ 860.5s] # 43 cutscene          fast    R1                       The NPC is instructing to rotate the right thumbstick to start the engine. Previous stick-
+[ 865.3s] # 44 cutscene          repeat  R1                       repeat R1: it advanced the cutscene
+[ 925.9s] # 45 cutscene          fast    RSTICK:up:1 RSTICK:right:1 RSTICK:down:1 RSTICK:left:1 Interactive instruction cutscene explicitly directing to rotate the right thumbstick to st
+[ 961.5s] # 46 cutscene          fast    B                        Interactive instruction cutscene stuck in a loop. Previous attempts with R1 and RSTICK rot
+[ 966.3s] # 47 cutscene          repeat  B                        repeat B: it advanced the cutscene
+[ 971.2s] # 48 cutscene          repeat  B                        repeat B: it advanced the cutscene
+[ 976.0s] # 49 cutscene          repeat  B                        repeat B: it advanced the cutscene
+[1021.1s] # 50 cutscene          fast    START                    Looping interactive instruction; B advanced but returned here (steps 46-49 showed progress
+[1041.6s] # 51 pause             fast    B                        This is a pause menu that interrupted gameplay. The UI shows B resumes directly, which is 
+[1090.4s] # 52 cutscene          fast    Y                        Interactive instruction cutscene stuck in a loop. Prior RSTICK rotations and button presse
+[1095.1s] # 53 cutscene          repeat  Y                        repeat Y: it advanced the cutscene
+[1127.5s] # 54 cutscene          fast    RSTICK:up:1 RSTICK:right:1 RSTICK:down:1 RSTICK:left:1 On-screen instruction explicitly asks to rotate the right thumbstick to start the engine. 
+[1155.9s] # 55 cutscene          fast    A                        On-screen instruction asking to rotate right thumbstick, but RSTICK rotations in all direc
+[1189.4s] # 56 cutscene          fast    START                    Interactive tutorial instruction overlay; the on-screen prompt explicitly asks to rotate t
+[1241.8s] # 57 pause             fast    B                        Pause menu appeared during gameplay (step 51). The current screen shows a game menu with r
+[1265.1s] # 58 cutscene          fast    RSTICK:right:3           On-screen instruction explicitly asks to rotate the right thumbstick to start the engine; 
+[1272.9s] # 59 cutscene          repeat  RSTICK:right:3           repeat RSTICK:right:3: it advanced the cutscene
+[1315.4s] # 60 cutscene          fast    START                    Interactive tutorial overlay asking to rotate the right thumbstick. Previous RSTICK comman
+[1411.9s] # 61 pause             fast    B RSTICK:right:1 RSTICK:up:1 RSTICK:left:1 RSTICK:down:1 Stuck in loop: pressing B returns to the stuck tutorial asking to rotate right thumbstick;
+[1488.2s] # 62 cutscene          fast    X                        The screen shows an interactive tutorial instruction overlay asking to rotate the right th
+[1492.1s] # 63 cutscene          repeat  X                        repeat X: it advanced the cutscene
+[1495.9s] # 64 cutscene          repeat  X                        repeat X: it advanced the cutscene
+[1499.8s] # 65 cutscene          repeat  X                        repeat X: it advanced the cutscene
+[1520.3s] # 66 cutscene          fast    A                        Interactive tutorial overlay during a cutscene showing gameplay environment. X ceased work
+[1535.4s] # 67 cutscene          fast    RSTICK:up:0.5 RSTICK:right:0.5 RSTICK:down:0.5 RSTICK:left:0.5 Interactive tutorial overlay during an in-engine cutscene. The instruction and icon clearl
+[1576.2s] # 68 cutscene          fast    START                    The tutorial overlay persists; previous attempts with RSTICK rotation (0.5s each direction
+[1589.2s] # 69 pause             fast    B                        In-game pause menu; B resume is the fastest path back to gameplay
+[1658.0s] # 70 gameplay          fast    RT:1.5                   Aircraft on runway with targeting reticle (game HUD element); pause menu closed by B press
+[1684.5s] # 71 probe             probe   RT:1.5 RT:1.5            control 0.001, under input 0.514
+[1708.6s] # 72 cutscene          fast    RSTICK:up:1.5 RSTICK:right:1.5 RSTICK:down:1.5 RSTICK:left:1.5 Interactive tutorial overlay requiring right stick rotation to start the engine. Previous 
+[1749.5s] # 73 cutscene          fast    RSTICK:up:1 RSTICK:right:1 RSTICK:down:1 RSTICK:left:1 Interactive tutorial overlay with clear instruction to rotate the right stick to start the
+[1775.6s] # 74 cutscene          fast    RSTICK:up:1.5 RSTICK:right:1.5 RSTICK:down:1.5 RSTICK:left:1.5 Interactive tutorial overlay with explicit instruction to rotate right stick; aircraft sta
+[1844.7s] # 75 cutscene          fast    STICK:up:1.5             Interactive tutorial overlay requiring input to progress. Previous right-stick rotations (
+[1850.8s] # 76 cutscene          repeat  STICK:up:1.5             repeat STICK:up:1.5: it advanced the cutscene
+[1857.0s] # 77 cutscene          repeat  STICK:up:1.5             repeat STICK:up:1.5: it advanced the cutscene
+[1863.1s] # 78 cutscene          repeat  STICK:up:1.5             repeat STICK:up:1.5: it advanced the cutscene
+[1933.5s] # 79 cutscene          fast    RSTICK:up:1 RSTICK:left:1 RSTICK:down:1 RSTICK:right:1 Tutorial cutscene with explicit instruction to rotate the right thumbstick. Previous attem
+[1986.5s] # 80 cutscene          fast    A                        Interactive tutorial overlay with explicit instruction to rotate right stick, but previous
+[1990.3s] # 81 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[1994.2s] # 82 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[1998.2s] # 83 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[2044.1s] # 84 cutscene          fast    RSTICK:up:1.5 RSTICK:right:1.5 RSTICK:down:1.5 RSTICK:left:1.5 Interactive tutorial cutscene showing explicit instruction to rotate right stick to start 
+[2105.3s] # 85 cutscene          fast    START                    Tutorial cutscene with an explicit instruction to rotate the right stick. Previous attempt
+[2125.9s] # 86 pause             fast    B                        In-mission pause menu appeared after the tutorial cutscene sequence ended with START. B bu
+[2153.4s] # 87 cutscene          fast    A                        Tutorial instruction text visible with game scene; previous START (step 85) showed 0.82 sc
+[2158.1s] # 88 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[2162.9s] # 89 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[2167.5s] # 90 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[2277.0s] # 91 gameplay          fast    RT:1.5                   Game environment is fully rendered with the player's aircraft positioned at the airfield a
+[2294.0s] # 92 probe             probe   RT:1.5 RT:1.5            control 0.029, under input 0.515
+hold-play: genre shooter, need 600 s of play
+hold-play: stuck (scene unchanged for 4 consecutive samples (genre shooter)): unstick STICK:left:2 RT:1 at 155 s
+hold-play: fps at 183 s: median 29.0, share>=30 1.0 over 92 samples
+hold-play: stuck (scene unchanged for 5 consecutive samples (genre shooter)): unstick STICK:right:2 RT:1 at 195 s
+hold-play: stuck_abort: scene unchanged for 6 consecutive samples (genre shooter); 2 unstick rung(s) tried, still stuck
+hold-play: not held 170/600 s of play; stuck_abort: scene unchanged for 6 consecutive samples (genre shooter); 2 unstick rung(s) tried, still stuck
+held Blazing Angels Squadrons of WWII USA Europe En Fr De Es It for 246s
+VERDICT Blazing Angels Squadrons of WWII USA Europe En Fr De Es It ? FAIL(duration: 245 s of gameplay < 600 s confirmation) gameplay=245.0s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.8899 play_share=0.805 fps_excluded=50.1s
+{"name": "Blazing Angels Squadrons of WWII USA Europe En Fr De Es It", "device": "nova", "result": "gameplay", "minutes": 38.23, "model_calls": 63, "steps": 92, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-55530057-1013/frames/091-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

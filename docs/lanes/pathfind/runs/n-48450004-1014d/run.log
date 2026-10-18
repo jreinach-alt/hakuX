@@ -1,0 +1,46 @@
+pathfind: Frankie Dettori Racing Australia (48450004) on nova: /storage/E6C6-D7AA/Games/XBox/48450004-Frankie_Dettori_Racing_Australia.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 48450004 any, loaded none
+[  16.5s] #  1 publisher_logo    fast    A                        Early boot (~6 sec), simple clean logo screen typical of publisher/developer splash. Geome
+[  27.6s] #  2 publisher_logo    fast    A                        New publisher logo after the first one; part of intro splash sequence
+[  40.9s] #  3 publisher_logo    fast    A                        New logo in intro splash sequence; third distinct publisher/studio logo after the geometri
+[  60.8s] #  4 submenu           fast    A                        Tutorial/welcome dialog blocking menu flow; DONE button is highlighted and ready to dismis
+[  74.6s] #  5 submenu           fast    A                        Tutorial/tips dialog blocking the actual profile creation flow. DONE button is highlighted
+[ 128.0s] #  6 profile_creation  fast    START A                  Profile creation screen with all settings filled with defaults (NAME=PLAYER, CURRENCY=GBP 
+[ 227.6s] #  7 name_entry        fast    DOWN DOWN RIGHT RIGHT RIGHT RIGHT RIGHT RIGHT I'm on a name entry keyboard with the cursor on the '1' button. I need to navigate to the 
+[ 351.2s] #  8 name_entry        fast    DOWN DOWN RIGHT RIGHT RIGHT RIGHT RIGHT RIGHT Cursor is on '2' (leftmost of row 1). Done button is at far right of row 3. Need to move d
+[ 433.1s] #  9 name_entry        fast    B                        Still stuck in the name entry keyboard after two failed navigation attempts (the same DOWN
+[ 477.9s] # 10 profile_creation  fast    DOWN DOWN DOWN DOWN DOWN A Profile configured with defaults; need to navigate to DONE button to confirm and proceed. 
+[ 498.0s] # 11 loading           fast    wait                     A profile save operation is in progress; the blocking dialog must complete before proceedi
+[ 514.1s] # 12 submenu           fast    A                        This is a help/tips overlay blocking the main menu. Must dismiss it to access menu options
+[ 527.4s] # 13 main_menu         fast    A                        Main menu with JOCKEY MODE already highlighted; this is the fastest path to single-player 
+[ 541.2s] # 14 submenu           fast    A                        submenu opened from main menu; 'Single Race' is the fastest path to single-player gameplay
+[ 554.5s] # 15 submenu           fast    A                        Track selection menu; Ascot is the default highlighted choice. Accepting with A proceeds t
+[ 568.0s] # 16 submenu           fast    A                        This is a race configuration/setup menu, not yet gameplay. DONE button is ready to proceed
+[ 595.1s] # 17 submenu           fast    A                        Horse/stall selection within the race setup; slot 12 is highlighted as the default choice 
+[ 654.0s] # 18 submenu           fast    RIGHT A                  Stuck in a loop: pressing A on DONE from the race setup went to horse select, A on slot 12
+[ 664.8s] # 19 loading           fast    wait                     Loading Game message and progress bar; waiting for the race scene to fully load before gam
+[ 682.7s] # 20 submenu           fast    A                        This is a pre-race briefing screen, not yet gameplay. The CONTINUE button is highlighted a
+[ 707.3s] # 21 submenu           fast    A                        Still in pre-race setup: horse selection menu with horse 9 ready. The Select button is hig
+[ 719.2s] # 22 submenu           fast    A                        Tutorial/tips dialog blocking progress; DONE button highlighted and ready to dismiss this 
+[ 736.2s] # 23 submenu           fast    A                        Pre-race briefing screen with UI prompt to continue; player not yet controlling the horse 
+[ 793.5s] # 24 submenu           fast    A                        Pre-race parade presentation. We've transitioned from the menu screens to the track enviro
+[ 824.5s] # 25 gameplay          fast    wait                     Live active race with full HUD metrics, player-controlled jockey on horse competing in rea
+[ 881.6s] # 26 probe             probe   RT:1.5 RT+left:1.2 RT+right:1.2 control 0.163, under input 0.439
+[ 895.8s] # 27 results           fast    A                        Race has concluded; this is the final standings/results screen, not gameplay. The CONTINUE
+[ 929.9s] # 28 submenu           fast    A                        Post-race menu screen after the horse race gameplay concluded. Restart is highlighted and 
+[ 944.5s] # 29 submenu           fast    A                        This is a race information briefing screen before the race starts. The player has not yet 
+[ 967.2s] # 30 submenu           fast    A                        Horse selection menu before the race. Splendid Star is the default/highlighted option. Pre
+[ 984.9s] # 31 submenu           fast    A                        Tutorial/tips screen overlaying the race scene; DONE button is highlighted and ready. This
+[1000.1s] # 32 submenu           fast    A                        Pre-race transition screen with a CONTINUE button waiting to proceed to the actual race. T
+[1063.9s] # 33 gameplay          fast    wait                     Jockey is positioned in the game world at the start line; 'START TROT' is an instruction l
+[1098.6s] # 34 probe             probe   RT:1.5 RT+left:1.2 RT+right:1.2 control 0.372, under input 0.517
+[1135.0s] # 42 retracted         probe   wait                     retracted after 30 s: Race results screen showing final race results table with continue p
+[1146.0s] # 43 results           fast    A                        Race completed and results are displayed with a CONTINUE prompt ready; this is the post-ra
+[1162.2s] # 44 results           fast    A                        Post-race results menu with Restart highlighted; the race has ended and the game is offeri
+[1178.6s] # 45 submenu           fast    A                        Pre-race information screen with the CONTINUE button highlighted and ready. This is a tran
+[1194.5s] # 46 submenu           fast    A                        Horse selection screen in a menu state; the horse is already highlighted and ready to be c
+[1206.2s] # 47 submenu           fast    A                        Tutorial tips dialog overlay with a DONE button ready; this is a menu prompt, not gameplay
+{"name": "Frankie Dettori Racing Australia", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 40, "steps": 40, "replayed": 0, "reason": "budget 20 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

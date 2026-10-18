@@ -1,0 +1,36 @@
+pathfind: Mortal Kombat Deadly Alliance (4D57000C) on nova: /storage/E6C6-D7AA/Games/XBox/4D57000C-Mortal_Kombat_Deadly_Alliance.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4D57000C any, loaded none
+[   5.7s] #  1 publisher_logo    sibreplay A                        sibling 4D570034 step 0: Early boot logo-style splash with no title or menu yet; per the h
+[  14.0s] #  2 publisher_logo    fast    A                        Title logo and copyright notice are a publisher-style splash before the title screen; not 
+[  21.9s] #  3 save_load_prompt  fast    START                    Storage status screen with no memory unit; the hint says 'no storage device / continue wit
+[  30.4s] #  4 publisher_logo    fast    A                        Publisher logo before the title; skip with A per hints, then re-read. Cursor not applicabl
+[  38.4s] #  5 title_screen      fast    START                    Title screen with a 'PRESS START' prompt; the hint for Midway titles and the hints say STA
+[  47.2s] #  6 main_menu         fast    A                        Previous step pressed START on the title and we landed on the main menu with ARCADE alread
+[  55.4s] #  7 main_menu         fast    A                        This is a select screen, not gameplay. Per the select-screen rule, START is not used here 
+[  59.9s] #  8 black             black   wait                     black frame
+[  73.2s] #  9 cutscene          fast    START                    This is the pre-fight stage/opponent intro card in Arcade, not a live round: no health bar
+[  81.7s] # 10 pause             fast    A                        A pause menu opened over a live round (the previous START pressed in the cutscene/intro ca
+[  90.0s] # 11 gameplay          fast    wait                     Live round with HUD and a counting timer (60), fighters in the arena. The previous step op
+[ 111.0s] # 12 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.418, under input 0.318
+[ 115.5s] # 13 gameplay          fast    wait                     Live round with HUD, health bars and a ticking timer; the fighters are in the arena and no
+[ 134.6s] # 14 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.464, under input 0.505
+[ 138.6s] # 15 gameplay          fast    wait                     HUD with health bars and a ticking timer over the arena, fighters standing in the world; n
+[ 162.0s] # 16 probe             probe   STICK:left:1.5 STICK:right:1.2 STICK:left:1.2 STICK:right:1.2 control 0.344, under input 0.360
+[ 168.4s] # 17 gameplay          fast    wait                     Live round with HUD, health bars and counting timer (22), fighters in the arena, no menu o
+[ 193.7s] # 18 probe             probe   STICK:left:2 STICK:right:2 STICK:left:1.2 STICK:right:1.2 control 0.507, under input 0.512
+[ 199.5s] # 19 gameplay          fast    wait                     Live fight with HUD and round timer; no menu open. Prior stick probes were refused (contro
+[ 216.3s] # 20 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.478, under input 0.471
+[ 221.2s] # 21 gameplay          fast    wait                     The round has already ended with a flawless victory banner and the timer reads 00, so the 
+[ 236.7s] # 22 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.355, under input 0.302
+[ 243.2s] # 23 gameplay          fast    wait                     Round is live with HUD, health bars and a counting timer, and no menu or round banner is u
+[ 266.5s] # 24 probe             probe   LEFT LEFT HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.328, under input 0.382
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 185 s: median 30.0, share>=30 0.945 over 110 samples
+hold-play: fps at 307 s: median 30.0, share>=30 0.918 over 170 samples
+hold-play: HELD 602/600 s of play; 
+held Mortal Kombat Deadly Alliance for 659s
+VERDICT Mortal Kombat Deadly Alliance ? PASS None gameplay=656.9s fps_ok=0.9964 crash=False hang=False audio_short=0.0 hitches=2/0.201pm worst_ms=155.5 static_frac=0.0 play_share=0.9149 fps_excluded=56.6s
+{"name": "Mortal Kombat Deadly Alliance", "device": "nova", "result": "gameplay", "minutes": 4.44, "model_calls": 39, "steps": 24, "replayed": 0, "reason": "four probes refused", "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4D57000C/frames/023-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

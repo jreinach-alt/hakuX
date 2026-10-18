@@ -1,0 +1,59 @@
+pathfind: Batman Begins (45410389) on nova: /storage/E6C6-D7AA/Games/XBox/45410389-Batman_Begins.xiso.iso
+titlestate: titles disk: harvest (the device's disk changed since its last harvest)
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 45410389 any, loaded none
+[   8.3s] #  1 publisher_logo    replay  A                        replay step 0: replay step 0: Early boot splash with a logo still animating in; not a titl
+[  12.4s] #  2 black             black   wait                     black frame
+[  19.6s] #  3 loading           fast    wait                     Game is loading after the logos; no title prompt or menu yet, and the progress bar is stil
+[  27.9s] #  4 publisher_logo    fast    A                        Publisher logo still on screen with no title prompt or menu; the recorded path and hints s
+[  35.9s] #  5 publisher_logo    fast    A                        Still an animating logo/splash with no title or menu; per the hints, A skips logos. The sc
+[  46.1s] #  6 publisher_logo    fast    A                        Still a logo splash with no title prompt or menu. Recorded path and hints say skip logos w
+[  53.8s] #  7 publisher_logo    fast    A                        Still an intro splash with the Batman Begins logo, not a title prompt or menu yet; the scr
+[  61.5s] #  8 title_screen      fast    START                    Title with a 'PRESS START' prompt; hints and the recorded path say START. No cursor to mov
+[  71.0s] #  9 main_menu         fast    A                        Main menu; NEW GAME is the highlighted default and the fastest route to play, LOAD CHECKPO
+[  80.6s] # 10 submenu           fast    A                        Difficulty select after New Game; NORMAL is the highlighted default, and the recorded path
+[  88.1s] # 11 loading           fast    wait                     A save-in-progress dialog after choosing New Game and Normal; it has no input to answer an
+[  97.3s] # 12 loading           fast    wait                     A loading bar is filling after New Game and Normal were chosen; no input is needed, so wai
+[ 102.7s] # 13 black             black   wait                     black frame
+[ 111.1s] # 14 cutscene          fast    START                    Dark letterboxed cinematic with no HUD or menu, so not gameplay and no prompt to answer; t
+[ 116.5s] # 15 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 121.6s] # 16 black             black   wait                     black frame
+[ 125.1s] # 17 black             black   wait                     black frame
+[ 128.7s] # 18 black             black   wait                     black frame
+[ 138.9s] # 19 cutscene          fast    START                    A scripted-looking scene with no HUD or control prompt, so it is not confirmed player cont
+[ 151.9s] # 20 cutscene          fast    START                    Scripted-looking fall or transition with no HUD and no confirmed player control; not gamep
+[ 160.9s] # 21 cutscene          fast    START                    Scripted fall with no HUD and no confirmed player control, so not gameplay. Earlier cutsce
+[ 169.9s] # 22 gameplay          fast    X                        Live combat with HUD, enemy health bar and the player's Batman in the world, no letterbox 
+[ 183.4s] # 23 probe             probe   X STICK:left:1.5         control 0.008, under input 0.033
+[ 188.1s] # 24 gameplay          fast    Y                        HUD and enemy health bar are up, Batman is in the world, and the tutorial asks for Y. Pres
+[ 206.1s] # 25 probe             probe   Y STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.645, under input 0.642
+[ 214.6s] # 26 gameplay          fast    wait                     Live third-person combat with HUD, enemy health bar and Batman in the world, no letterbox,
+[ 231.8s] # 27 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.361, under input 0.625
+[ 267.5s] # 36 retracted         probe   wait                     retracted after 30 s: Close-up of a bald man in a jacket with his hand raised to his head,
+[ 272.7s] # 37 cutscene          fast    START                    A tight, scripted close-up of a thug with no control prompt and no confirmed player contro
+[ 283.3s] # 38 cutscene          fast    START                    Scripted close-up with no HUD and no confirmed player control. The recent steps show START
+[ 292.6s] # 39 gameplay          fast    wait                     Live third-person Batman with HUD and an enemy target in the world, no letterbox, pause pa
+[ 307.1s] # 40 probe             probe   HOLD:A:3 HOLD:A:3 HOLD:A:3 control 0.128, under input 0.007
+[ 316.1s] # 41 gameplay          fast    Y                        Live combat with HUD, enemy health bar and a context prompt in the world, not a menu, paus
+[ 334.5s] # 42 probe             probe   Y STICK:up:2 STICK:left:1.2 STICK:right:1.2 control 0.668, under input 0.702
+[ 340.3s] # 43 gameplay          fast    wait                     The HUD is up, an enemy health bar is showing, Batman is under control in the world, and n
+[ 351.6s] # 44 probe             probe   STICK:up:2               control 0.109, under input 0.839
+[ 356.4s] # 45 game_over         fast    A                        Game Over menu with CONTINUE LAST CHECKPOINT lit as the top item; A selects it to return t
+[ 365.5s] # 46 loading           fast    wait                     A location title card over a dark scene, not a menu or player-controlled play yet; wait fo
+[ 374.8s] # 47 cutscene          fast    START                    Scripted close-up with no HUD and no confirmed player control, so not gameplay. The previo
+[ 386.8s] # 48 cutscene          fast    START                    A scripted close-up of another character with no player-controlled view or control prompt.
+[ 396.0s] # 49 cutscene          fast    START                    Scripted close-up with no HUD and no confirmed player control, so not gameplay. Earlier cu
+[ 403.8s] # 50 gameplay          fast    X                        Live combat with HUD, enemy health bar and a tutorial prompt; the scene is under player co
+[ 423.0s] # 51 probe             probe   X X RT:3 RT:3 RT:3       control 0.014, under input 0.001
+[ 429.3s] # 52 gameplay          fast    Y                        The HUD shows an enemy health bar and a live fight with a tutorial prompt asking for Y. Th
+[ 451.9s] # 53 probe             probe   Y Y RT:3 RT+left:1.2 RT+right:1.2 control 0.706, under input 0.664
+claim: 3 live reads with self-moving refused probes: entering the hold
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 183 s: median 29.0, share>=30 0.89 over 91 samples
+hold-play: fps at 302 s: median 29.0, share>=30 0.907 over 150 samples
+hold-play: not held 320/600 s of play; hakuX left the foreground during the hold
+held Batman Begins for 365s
+VERDICT Batman Begins ? FAIL(duration: 365 s of gameplay < 600 s confirmation) gameplay=364.9s fps_ok=0.9457 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0063 play_share=0.8868 fps_excluded=40.4s
+{"name": "Batman Begins", "device": "nova", "result": "gameplay", "minutes": 7.53, "model_calls": 41, "steps": 45, "replayed": 1, "reason": "four probes refused", "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batman-2/frames/052-gameplay.jpg"}
+titlestate: released nova: {"harvested": null, "hddPath": "/storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/hdd.img"}

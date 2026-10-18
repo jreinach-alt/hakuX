@@ -1,0 +1,24 @@
+{
+ "title_id": "4D490004",
+ "name": "Knight s Apprentice Memorick s Adventures USA Europe En Fr De Es It",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/4D490004-Knight_s_Apprentice_Memorick_s_Adventures_USA_Europe_En_Fr_De_Es_It.xiso.iso",
+ "result": "title-error",
+ "tool": "920a61de3c",
+ "started": "2026-10-14 23:54:10 PDT",
+ "reason": "This is the fatal disc error from the spec: 'there is a problem with the disc / dirty or damaged'. No input clears this screen; it is unrecoverable.",
+ "model_calls": 6,
+ "calls_by_model": {
+  "claude-haiku-4-5-20251001": 6
+ },
+ "steps": 6,
+ "seconds": 108.0,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D490004-1014d/frames/006-fatal_error.jpg",
+ "last_state": "fatal_error",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D490004-1014d/strip.jpg"
+}

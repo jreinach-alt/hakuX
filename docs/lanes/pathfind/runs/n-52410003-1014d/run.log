@@ -1,0 +1,62 @@
+pathfind: David Beckham Soccer Europe En Fr De Es It (52410003) on nova: /storage/E6C6-D7AA/Games/XBox/52410003-David_Beckham_Soccer_Europe_En_Fr_De_Es_It.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 52410003 any, loaded none
+[  15.3s] #  1 publisher_logo    fast    START                    Distinctive publisher logo at cold boot (0.1 min); skip to reach title screen
+[  29.6s] #  2 intro_video       fast    A                        Animated intro sequence after the publisher logo; no title screen, menu, or gameplay HUD v
+[  46.0s] #  3 intro_video       fast    A                        Continuation of the intro sequence with animated graphics and partial title text; not yet 
+[  55.1s] #  4 title_screen      fast    START                    Explicit 'PRESS START' prompt on the title screen; awaiting START to proceed
+[  71.0s] #  5 main_menu         fast    A                        Main menu after title screen START. Friendly is highlighted; it's the fastest path to play
+[ 143.1s] #  6 submenu           fast    A                        Team select submenu after choosing Friendly match; default teams (England/Argentina) are p
+[ 164.0s] #  7 submenu           fast    START                    Team select confirmation screen with default teams (England vs Argentina) already assigned
+[ 179.0s] #  8 submenu           fast    RIGHT                    Pre-game options screen for a soccer friendly match. Per owner rule (10-05), must set Matc
+[ 252.8s] #  9 submenu           fast    RIGHT                    Must increase Match Length from 5 Minutes to the longest available value per owner rule (1
+[ 264.4s] # 10 submenu           fast    RIGHT                    Pre-game options menu. Match Length is highlighted at 5 Minutes. Per owner rule (10-05), m
+[ 304.4s] # 11 submenu           fast    A                        Pre-game options menu; Match Length field is highlighted at 5 Minutes and must be set to t
+[ 333.6s] # 12 submenu           fast    DOWN                     Pre-game options menu with Match Length dropdown open. Down arrow below '5 Minutes' indica
+[ 344.9s] # 13 submenu           fast    DOWN                     Pre-game options menu with Match Length dropdown open. Per owner rule (10-05), must find a
+[ 356.6s] # 14 submenu           fast    DOWN                     Pre-game options menu with Match Length dropdown open. Per owner rule (10-05), must find t
+[ 420.8s] # 15 submenu           fast    DOWN                     Match Length dropdown is open with '20 Minutes' highlighted. Per owner rule (10-05), must 
+[ 479.9s] # 16 submenu           fast    A START                  Pre-game options menu with Match Length dropdown open; 20 Minutes is the longest visible o
+[ 510.5s] # 17 submenu           fast    START                    Menu screen between pre-game setup and match start. Series Statistics is selected but we s
+[ 578.3s] # 18 submenu           fast    UP RIGHT A START         Pre-game controller assignment screen. Cursor is on slot 2 (blue highlight). Following spo
+[ 648.5s] # 19 submenu           fast    A                        Final pre-match setup screen after controller assignment. Team preview is displayed with a
+[ 668.8s] # 20 submenu           fast    START                    Pre-match team/formation preview screen, not yet gameplay. The 'Play Game START' prompt at
+[ 717.7s] # 21 submenu           fast    START                    Pre-match setup confirmation screen, not yet gameplay. The 'Play Game START' prompt at bot
+[ 730.8s] # 22 submenu           fast    START                    Pre-match team lineup and formation review screen, not yet live gameplay. The 'Play Game S
+[ 776.4s] # 23 submenu           fast    START                    'Play Game START' prompt with START indicator at bottom right; this is the final pre-match
+[ 829.4s] # 24 submenu           fast    START                    Pre-match setup screen showing formations and lineups, not yet active gameplay. The 'Play 
+[ 850.4s] # 25 submenu           fast    START                    This is a pre-match setup screen showing final team lineups and formations, not yet active
+[ 866.4s] # 26 submenu           fast    START                    Pre-match lineup and formation confirmation screen. 'Play Game START' prompt visible botto
+[ 887.2s] # 27 submenu           fast    START                    Pre-match team lineup and formation confirmation screen; 'Play Game START' prompt at botto
+[ 902.0s] # 28 submenu           fast    START                    Still on the pre-match confirmation screen with lineup/formation display. 'Play Game START
+[ 955.3s] # 29 submenu           fast    RIGHT RIGHT A            This is a team/formation select screen, not gameplay. The instruction states 'Never START 
+[ 994.1s] # 30 submenu           fast    START                    Pre-match confirmation screen showing teams and formations ready. On-screen instruction 'P
+[1006.9s] # 31 loading           fast    wait                     Game is loading the match after START on pre-match confirmation. Wait for transition to ga
+[1056.3s] # 32 submenu           fast    A                        Pre-kickoff team formation screen; players are lined up but not yet in active play. Accord
+[1078.3s] # 33 gameplay          fast    wait                     Active soccer match with running timer (0:05), score HUD, and players positioned in play. 
+[1096.3s] # 34 probe             probe   STICK:up:1.5             control 0.005, under input 0.110
+hold-play: sports look {'clock': '1:05', 'period': '1SE (First Half)', 'human_controlled': True, 'why': "Player 'Eyalar' is marked with a red highlight at bottom, indicating active player control; ball is blue triangle near controlled player"}
+hold-play: genre team, need 630 s of play
+hold-play: fps at 184 s: median 59.0, share>=30 0.989 over 177 samples
+hold-play: fps at 309 s: median 59.0, share>=30 0.987 over 297 samples
+hold-play: play disagrees: hold 656.0 s, verdict 625.9 s (verdict trusted)
+hold-play: validity check share 389 s (hold 656 s of play, verdict 625.9)
+hold-play: verdict short on share by 389 s; holding on (budget 664 s left)
+hold-play: play disagrees: hold 693.8 s, verdict 699.5 s (verdict trusted)
+hold-play: validity check share 337 s (hold 694 s of play, verdict 699.5)
+hold-play: verdict short on share by 337 s; holding on (budget 588 s left)
+hold-play: validity check share 367 s (hold 766 s of play, verdict 761.8)
+hold-play: verdict short on share by 367 s; holding on (budget 515 s left)
+hold-play: validity check share 294 s (hold 838 s of play, verdict 834.1)
+hold-play: verdict short on share by 294 s; holding on (budget 443 s left)
+hold-play: validity check share 224 s (hold 908 s of play, verdict 904.2)
+hold-play: verdict short on share by 224 s; holding on (budget 373 s left)
+hold-play: validity check share 153 s (hold 979 s of play, verdict 975.7)
+hold-play: verdict short on share by 153 s; holding on (budget 301 s left)
+hold-play: validity check share 316 s (hold 1027 s of play, verdict 1022.5)
+hold-play: not held 1027/630 s of play; share short by 316 s with no budget left
+held David Beckham Soccer Europe En Fr De Es It for 1173s
+VERDICT David Beckham Soccer Europe En Fr De Es It ? FAIL(menu time: 87.3% of the scored window in `play` (bar 90%; play 1023 s, period_break 113 s, pause 27 s, continue 9 s)) gameplay=1172.0s fps_ok=0.9979 crash=False hang=False audio_short=0.000949 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0 play_share=0.8732 fps_excluded=150.5s
+{"name": "David Beckham Soccer Europe En Fr De Es It", "device": "nova", "result": "gameplay", "minutes": 18.27, "model_calls": 57, "steps": 34, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-52410003-1014d/frames/033-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256
