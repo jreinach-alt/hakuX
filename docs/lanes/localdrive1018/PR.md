@@ -4,11 +4,11 @@ State: draft
 
 Lane: localdrive1018            Issue: #433 (0.5)
 Base: master @ e34f8ffa77
-Files: docs/testing/titles/drive.py, docs/testing/titles/classify.py, docs/testing/titles/pathclass.py,
-docs/testing/titles/classify_selftest.py, docs/testing/titles/pathclass_selftest.py,
-docs/testing/titles/drive-profiles/generic.toml, docs/testing/titles/drive-profiles/gta3.toml,
-docs/testing/titles/routes/gta3-drive.route, docs/testing/titles/pathknow/learned/**,
-docs/testing/jobs/models.toml, docs/lanes/localdrive1018/**
+Files: docs/testing/titles/drive.py, docs/testing/titles/pathclass.py,
+docs/testing/titles/pathclass_selftest.py, docs/testing/titles/drive-profiles/generic.toml,
+docs/testing/titles/pathknow/learned.py, docs/lanes/localdrive1018/**
+Release note (none): offline test-harness/tooling under docs/testing/titles/, not emulator code; nothing
+a player sees.
 Prediction: none: analysis-only so far (no device arm; Nova/Thor out per brief)
 Needs device: no (this lane; the GTA III proof run is lane.local's, by hand, on the Thor)
 Needs NDK: no
@@ -20,6 +20,55 @@ Fix: remove the key path entirely, replace idle-on-unknown with an act-observe l
 table so repeated screens get smarter, and fix GTA III's opening cutscene being scored `gameplay` at
 0.716 as the proof.
 
-Still in Step 0 / early implementation; this PR will carry the real numbers (reach-play fraction,
-second-pass learned-table hit rate, held-out false-gameplay) once A+B+C land. See
-docs/lanes/localdrive1018/NOTES.md for the Already-tried table and plan.
+## Done (A+B+C, this lane)
+
+- **A** -- `ask_model()`, `MODEL`, the `models` import, `model_calls_max`, `unknown_before_model`, the
+  model-call cache, and every `ANTHROPIC_API_KEY` reference are gone from `drive.py`. No API key path,
+  no `claude -p`, no network call, anywhere in this loop.
+- **B** -- an `unknown` screen is never idle-waited to `Fail` any more. `act()`'s unknown branch now:
+  resolves whatever press is still pending from the last capture (`advanced`/`regressed` in `enter()`
+  on leaving `unknown`, `changed`/`none` in `act()` via frame motion or pathclass-embedding cosine if
+  motion didn't run), gives one free capture before pressing anything on a *fresh* entry into `unknown`
+  (`explore_fresh`), then presses the learned table's best non-vetoed answer for this screen or the next
+  untried rung of `EXPLORE_LADDER` (wrapping forever). The route's own wall-clock budget in `run()` is
+  the only thing that can end a run stuck here; the branch itself never raises `Fail`.
+  - The `explore_fresh` grace period exists because the AvP Extinction selftest fixture regressed
+    without it: a one-frame low-confidence blip (`publisher_logo` at 0.395, between `intro_video` and
+    `title`) got an exploratory press, which pushed `last_press_t` late enough that the real `title`
+    screen one capture later fell inside `menu_gap_s` and missed its START press entirely (the real
+    recorded run has no 11th frame to recover on). Justified by the fixture's own data: 2 of its 3
+    `unknown` frames resolve for free one capture later with no input at all.
+- **C** -- `pathclass.py`'s `classify_image()` now stashes its pooled, L2-normalized embedding
+  (`self._last_embedding`), and `classify()` attaches it (rounded 4dp) to the answer dict -- zero other
+  plumbing changes, `Client`/`serve()` already pass the dict through verbatim. `pathknow/learned.py` is
+  a new module: one JSONL record per explore-press outcome
+  (`{title, key, embedding, button, outcome, t, run}`), two files per record (`<title>.jsonl` and
+  `_global.jsonl`), matched by embedding cosine (`SIM_BAR=0.90`, explicitly untuned -- Part D's job) or
+  exact `key` when either side has no embedding, grouped by button, `regressed` outcomes veto that
+  button for that screen forever, otherwise the highest-ranked (`advanced` > `changed` > `none`)
+  untried, non-vetoed button wins.
+- Three new `pathclass_selftest.py` mutants, all passing: a button that `advanced` a screen is
+  suggested first next time; a button that ever `regressed` a screen is never suggested again even as
+  the only record for it; an `unknown` screen that never resolves across a full 8-rung ladder wrap ends
+  on the route's wall-clock budget (`result="window-done", rc=0`), never `Fail`.
+- Found and fixed before anything was committed: `learned.py`'s `DIR`/`GLOBAL_PATH` are fixed, real
+  repo-tree paths with no test isolation -- every existing selftest scenario that reaches `unknown`
+  already wrote real JSONL records to `pathknow/learned/` on disk, polluting the same file a live
+  `--profile generic` run reads and making test order non-reproducible (one debug run suggested a
+  stale-record button first). Fixed by monkeypatching `learned.DIR`/`learned.GLOBAL_PATH` to a
+  `tempfile.mkdtemp()` path at the top of `pathclass_selftest.py`'s `main()`; verified by running the
+  selftest twice and diffing byte-identical output. The polluted, untracked, never-committed directory
+  this produced while debugging was moved aside with `mv` (`/tmp/claude-1000/localdrive1018-cleanup/
+  learned-polluted-by-testing`), not deleted, and contains no fabricated bootstrap outcomes.
+- `pathclass_selftest.py` and `classify_selftest.py`: 0 failures, re-run repeatedly through every edit.
+
+Full writeup, the Already-tried table, and the open questions: `docs/lanes/localdrive1018/NOTES.md`.
+
+## Not done
+
+- **D** (GTA III `drive-profiles/gta3.toml`, pathclass head extension, `routes/gta3-drive.route`, the
+  held-out false-gameplay number) is blocked: it needs device/frame access (Nova and Thor are both
+  unavailable to this lane right now) to collect and label GTA III frames. Nothing under `gta3.toml` /
+  `routes/gta3-drive.route` exists yet; this PR does not claim the opening-cutscene misclassification is
+  fixed.
+- **E**: `docs/testing/jobs/selftest.sh` is running now; this PR goes to `State: ready` once it's green.
