@@ -1041,9 +1041,14 @@ dev_push_drop() {
     adb_call "$ADB_QUICK_TIMEOUT" "rm $1.new" shell "rm -f '$1.new'" >/dev/null 2>&1
 }
 dev_push() {
-    local src="$1" dst="$2" want
+    local src="$1" dst="$2" want wsrc
     want=$(sha256sum "$src" | cut -d' ' -f1)
-    adb_call 600 "push $dst" push "$src" "$dst.new" >/dev/null 2>&1 || { dev_push_drop "$dst"; return 1; }
+    # adb is Windows adb.exe; it cannot stat /mnt/... or a bare /home/... path
+    # (AGENTS.md, "Disc images live on D:"). wslpath -w turns a /mnt/d source
+    # into D:\... and a /home source into the \\wsl.localhost\... form adb.exe
+    # already resolves, so this covers both without a source-path branch.
+    wsrc=$(wslpath -w "$src")
+    adb_call 600 "push $dst" push "$wsrc" "$dst.new" >/dev/null 2>&1 || { dev_push_drop "$dst"; return 1; }
     [ "$(dev_sha256 "$dst.new")" = "$want" ] || { log "  push $dst: the device's copy does not match"; dev_push_drop "$dst"; return 1; }
     dev_make_660 "$dst.new" || { dev_push_drop "$dst"; return 1; }
     adb_call "$ADB_QUICK_TIMEOUT" "mv $dst" shell "mv -f '$dst.new' '$dst'" >/dev/null 2>&1 || { dev_push_drop "$dst"; return 1; }
