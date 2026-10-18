@@ -1,0 +1,21 @@
+pathfind: Tiger Woods PGA Tour 2003 USA (45410021) on nova: /storage/E6C6-D7AA/Games/XBox/45410021-Tiger_Woods_PGA_Tour_2003_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 45410021 any, loaded none
+[  10.8s] #  1 loading           fast    wait                     This appears to be a pre-emulator loading screen (possibly the emulator app itself startin
+[  20.2s] #  2 intro_video       fast    START A                  This is a live-action or in-engine intro cinematic (golfer talking head) before any title 
+[  30.5s] #  3 cutscene          fast    START A                  This is the intro cinematic continuing (golfer walking, no HUD) matching the Tiger Woods 2
+[  39.7s] #  4 title_screen      fast    START                    Title screen explicitly says PRESS START; pressing START to advance to main menu
+[  48.7s] #  5 submenu           fast    A                        ACCEPT is highlighted with the A icon; confirming takes the default bonus and continues to
+[  56.3s] #  6 main_menu         fast    A                        Play Now is highlighted at top of menu list, which is the fastest route to actual gameplay
+[  67.5s] #  7 cutscene          fast    START A                  This is a pre-shot hole flyover/establishing shot with no player-controlled golfer or swin
+[  84.3s] #  8 cutscene          fast    START A                  No gameplay HUD (club/wind/distance/meter) is present, so this looks like a pre-shot cinem
+[  99.4s] #  9 gameplay          fast    STICK:right:1.5          Golfer is positioned at the ball ready to swing on the course - this is the actual shot-ta
+[ 111.7s] # 10 probe             probe   STICK:right:1.5 STICK:right:1.5 control 0.048, under input 0.203
+hold-play: genre other, need 630 s of play
+hold-play: fps at 186 s: median 20.0, share>=30 0.0 over 64 samples -> STOP (not on course)
+hold-play: not held 185/630 s of play; fps gate at 3:06: median 20 < 22, 0% of 64 samples at >= 28.5
+held Tiger Woods PGA Tour 2003 USA for 188s
+VERDICT Tiger Woods PGA Tour 2003 USA ? FAIL(duration: 188 s of gameplay < 600 s confirmation) gameplay=187.6s fps_ok=0.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.399 play_share=0.9985 fps_excluded=2.9s
+{"name": "Tiger Woods PGA Tour 2003 USA", "device": "nova", "result": "gameplay", "minutes": 1.86, "model_calls": 13, "steps": 10, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45410021-1015n/frames/009-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

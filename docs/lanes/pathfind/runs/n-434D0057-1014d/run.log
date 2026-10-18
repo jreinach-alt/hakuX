@@ -1,0 +1,48 @@
+pathfind: Ricky Ponting International Cricket 2005 Australia (434D0057) on nova: /storage/E6C6-D7AA/Games/XBox/434D0057-Ricky_Ponting_International_Cricket_2005_Australia.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 434D0057 any, loaded none
+[   6.6s] #  1 publisher_logo    sibreplay START                    sibling 434D004E step 0: Green animated logo at 0.1 min from cold boot; likely a publisher
+[  11.1s] #  2 black             black   wait                     black frame
+[  27.6s] #  3 publisher_logo    fast    A                        Still in the publisher/intro sequence; copyright text screen following the earlier animate
+[  41.0s] #  4 publisher_logo    fast    START                    Still in the publisher/intro logo sequence; this is a new animated logo animation (differe
+[  45.7s] #  5 publisher_logo    plan    A                        plan: publisher_logo (from the guide)
+[  79.2s] #  6 publisher_logo    fast    START                    Continuation of the publisher/intro sequence from step 5; this is a branded splash screen 
+[  92.7s] #  7 title_screen      fast    START                    Explicit 'PRESS START TO BEGIN' prompt on the main title screen; the next step from publis
+[ 111.8s] #  8 loading           fast    wait                     Automatic save-checking screen; the game is verifying existing save data and will proceed 
+[ 127.6s] #  9 main_menu         fast    A                        Exhibition Match is already highlighted (brightest item in green); this is the fastest pat
+[ 142.2s] # 10 submenu           fast    A                        Match type selection screen with One Day International already highlighted in green. This 
+[ 210.9s] # 11 submenu           fast    DOWN RIGHT A             Match configuration submenu. Match Length shows 10 Overs; need to change to 50 Overs (ODI 
+[ 241.8s] # 12 submenu           fast    LEFT A                   Pre-match controller assignment screen. Owner rule (10-05) requires assigning a human cont
+[ 290.0s] # 13 submenu           fast    A                        Squad/team selection before gameplay; BEST 11 is already highlighted. ADVANCE button shows
+[ 308.2s] # 14 submenu           fast    A                        Pre-match squad selection screen with BEST 11 preset ready. ADVANCE button is lit; next st
+[ 312.0s] # 15 submenu           plan    A                        plan: submenu (from the guide)
+[ 315.8s] # 16 submenu           plan    A                        plan: submenu (from the guide)
+[ 320.8s] # 17 submenu           plan    A                        plan: submenu (from the guide)
+[ 346.3s] # 18 submenu           fast    A                        Player introduction/match ceremony screen before active gameplay. Teams and players are on
+[ 377.1s] # 19 submenu           fast    A                        Player introduction/team presentation screen before match becomes playable. HUD is visible
+[ 443.7s] # 20 submenu           fast    A                        All players positioned with HUD visible, but bowler has not delivered yet; pre-delivery re
+[ 494.6s] # 21 gameplay          fast    wait                     Active match HUD with live score, batsman and bowler in game-ready poses on the pitch, no 
+[ 516.9s] # 22 probe             probe   STICK:up:1.5             control 0.008, under input 0.013
+[ 573.1s] # 23 gameplay          fast    wait                     Active cricket match with full HUD visible, live score 0.2 overs indicates gameplay in pro
+[ 605.2s] # 24 probe             probe   HOLD:A:1.5               control 0.009, under input 0.050
+hold-play: sports look {'clock': 'Overs 0.2', 'period': 'Inning in progress (0 overs, 2 balls)', 'human_controlled': True, 'why': 'P1 label with controller icon on left side indicates human player; CPU opponent shown'}
+hold-play: genre team, need 630 s of play
+hold-play: fps at 181 s: median 59.0, share>=30 0.938 over 161 samples
+hold-play: fps at 306 s: median 59.0, share>=30 0.944 over 270 samples
+hold-play: play disagrees: hold 632.7 s, verdict 596.5 s (verdict trusted)
+hold-play: validity check share 172 s (hold 633 s of play, verdict 596.5)
+hold-play: verdict short on share by 172 s; holding on (budget 720 s left)
+hold-play: play disagrees: hold 701.8 s, verdict 666.1 s (verdict trusted)
+hold-play: validity check share 102 s (hold 702 s of play, verdict 666.1)
+hold-play: verdict short on share by 102 s; holding on (budget 651 s left)
+hold-play: play disagrees: hold 784.1 s, verdict 748.5 s (verdict trusted)
+hold-play: validity check share 21 s (hold 784 s of play, verdict 748.5)
+hold-play: verdict short on share by 21 s; holding on (budget 568 s left)
+hold-play: play disagrees: hold 886.0 s, verdict 851.1 s (verdict trusted)
+hold-play: validity check stop 0 s (hold 886 s of play, verdict 851.1)
+hold-play: not held 886/630 s of play; verdict stops the hold: fps_ok 0.9812, crash False, hang False
+held Ricky Ponting International Cricket 2005 Australia for 938s
+VERDICT Ricky Ponting International Cricket 2005 Australia ? PASS None gameplay=937.1s fps_ok=0.9812 crash=False hang=False audio_short=0.0 hitches=35/2.394pm worst_ms=251.5 static_frac=0.0013 play_share=0.9088 fps_excluded=86.0s
+{"name": "Ricky Ponting International Cricket 2005 Australia", "device": "nova", "result": "gameplay", "minutes": 10.09, "model_calls": 33, "steps": 24, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-434D0057-1014d/frames/023-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

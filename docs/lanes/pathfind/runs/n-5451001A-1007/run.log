@@ -1,0 +1,52 @@
+pathfind: Nickelodeon SpongeBob SquarePants Battle for Bikini Bottom USA (5451001A) on nova: /storage/E6C6-D7AA/Games/XBox/5451001A-Nickelodeon_SpongeBob_SquarePants_Battle_for_Bikini_Bottom_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 5451001A any, loaded none
+[  10.0s] #  1 loading           fast    wait                     No game text, title, or HUD present, just a loading icon on a blank background; wait for t
+[  20.2s] #  2 loading           fast    wait                     This looks like a stylized loading screen icon/mascot, not gameplay; no HUD or controls in
+[  30.3s] #  3 publisher_logo    fast    START A                  Publisher logo screen before title; skip per protocol
+[  39.1s] #  4 publisher_logo    fast    START A                  Engine/middleware logo screen before title; skip per protocol
+[  48.6s] #  5 publisher_logo    fast    START A                  Developer logo screen before title; skip per protocol
+[  58.5s] #  6 save_load_prompt  fast    DOWN A                   No is currently highlighted; need to move down to Yes to create a save and proceed into th
+[  71.0s] #  7 save_load_prompt  fast    A                        Save slot picker with first EMPTY slot selected by default; pressing A accepts/creates the
+[  83.7s] #  8 cutscene          fast    START A                  No HUD or player control visible, looks like an establishing camera pan of the hub world b
+[  95.7s] #  9 cutscene          fast    A                        Dialogue/tutorial text box with A CONTINUE prompt; this is an intro dialogue sequence befo
+[ 100.8s] # 10 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 110.5s] # 11 cutscene          fast    A                        This is a tutorial dialogue box prompting A CONTINUE, not yet free player control
+[ 114.3s] # 12 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 123.3s] # 13 cutscene          fast    A                        Tutorial dialogue box with A CONTINUE prompt, not yet free player control; continuing the 
+[ 132.9s] # 14 cutscene          fast    A                        Another tutorial/dialogue text box prompting A CONTINUE, same pattern as recent steps; con
+[ 137.1s] # 15 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 145.6s] # 16 cutscene          fast    A                        Tutorial dialogue box prompting A CONTINUE, not yet free player control; continuing the di
+[ 154.4s] # 17 cutscene          fast    A                        Tutorial dialogue box still prompting A CONTINUE, same pattern as recent steps; not yet fr
+[ 158.4s] # 18 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 168.0s] # 19 cutscene          fast    A                        Still a tutorial text box prompting A CONTINUE, not yet free player control; continuing th
+[ 177.3s] # 20 cutscene          fast    R1                       Still a tutorial prompt instructing to pull the R trigger to talk to an NPC, not yet free 
+[ 181.4s] # 21 cutscene          repeat  R1                       repeat R1: it advanced the cutscene
+[ 185.3s] # 22 cutscene          repeat  R1                       repeat R1: it advanced the cutscene
+[ 189.2s] # 23 cutscene          repeat  R1                       repeat R1: it advanced the cutscene
+[ 202.4s] # 24 cutscene          fast    STICK:right:1 R1         Tutorial prompt still showing after repeated R1 presses with almost no change; the NPC to 
+[ 218.5s] # 25 cutscene          fast    STICK:right:1 R1 R1      Tutorial prompt still demands pulling R to talk to an NPC; SpongeBob may not be close enou
+[ 231.7s] # 26 cutscene          fast    STICK:left:1 R1 R1       Tutorial prompt persists; SpongeBob isn't close enough to the NPC to trigger the talk prom
+[ 247.2s] # 27 gameplay          fast    STICK:up:1.5             No tutorial prompt text is visible now; full collectible HUD is up and SpongeBob is in an 
+[ 255.4s] # 28 probe             probe   STICK:up:1.5 STICK:up:1.5 control 0.000, under input 0.000
+[ 261.7s] # 29 cutscene          fast    A                        This is a dialogue/news prompt with explicit A CONTINUE button shown; pressing A advances 
+[ 271.2s] # 30 cutscene          fast    A                        Dialogue prompt with explicit A CONTINUE button; pressing A advances the dialogue toward g
+[ 279.4s] # 31 cutscene          fast    A                        Dialogue prompt with explicit A CONTINUE button; advancing through the news broadcast cuts
+[ 283.2s] # 32 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 291.4s] # 33 cutscene          fast    A                        This is a dialogue prompt with explicit A CONTINUE button; advancing through it toward gam
+[ 304.1s] # 34 cutscene          fast    A                        This is a multi-page newscaster dialogue; the text differs from prior screens so A is stil
+[ 307.8s] # 35 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 316.5s] # 36 gameplay          fast    STICK:up:1.5             No dialogue prompt or letterbox bars now; SpongeBob is standing freely in a 3D playable ro
+[ 328.7s] # 37 probe             probe   STICK:up:1.5 STICK:up:1.5 control 0.014, under input 0.023
+[ 333.9s] # 38 gameplay          fast    STICK:upright:1.5        Free 3D room with player character visible, no menu or cutscene UI; previous probe showed 
+[ 349.6s] # 39 probe             probe   STICK:upright:1.5 STICK:upright:1.5 control 0.018, under input 0.408
+hold-play: genre other, need 600 s of play
+hold-play: fps at 186 s: median 59.0, share>=30 1.0 over 186 samples
+hold-play: fps at 308 s: median 59.0, share>=30 1.0 over 307 samples
+hold-play: validity check stop 0 s (hold 602 s of play, verdict 601.9)
+hold-play: not held 602/600 s of play; verdict stops the hold: fps_ok 1.0, crash False, hang False
+held Nickelodeon SpongeBob SquarePants Battle for Bikini Bottom USA for 604s
+VERDICT Nickelodeon SpongeBob SquarePants Battle for Bikini Bottom USA ? PASS None gameplay=602.6s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0 play_share=0.9997 fps_excluded=2.0s
+{"name": "Nickelodeon SpongeBob SquarePants Battle for Bikini Bottom USA", "device": "nova", "result": "gameplay", "minutes": 5.83, "model_calls": 37, "steps": 39, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5451001A-1007/frames/038-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

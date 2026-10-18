@@ -1,0 +1,40 @@
+pathfind: Prince of Persia The Sands of Time (5553001D) on nova: /storage/E6C6-D7AA/Games/XBox/5553001D-Prince_of_Persia_The_Sands_of_Time.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 5553001D any, loaded none
+[  13.6s] #  1 publisher_logo    fast    A                        Boot sequence of Prince of Persia: The Sands of Time (Ubisoft 5553001D). Publisher logos a
+[  28.0s] #  2 cutscene          fast    START                    Opening cinematic showing the dagger right after publisher logos; needs to be skipped to r
+[  32.2s] #  3 black             black   wait                     black frame
+[  44.8s] #  4 title_screen      fast    START                    Explicit 'PLEASE PRESS START TO BEGIN' prompt on a static title screen after the opening c
+[  97.6s] #  5 name_entry        fast    A                        Default profile name 'PRINCE_01' is already filled in the text field; this screen is the p
+[ 118.2s] #  6 loading           fast    wait                     System is actively saving the profile after name entry; the blocking message and warning i
+[ 132.2s] #  7 main_menu         fast    A                        Menu screen with cursor on START NEW GAME, the fastest path to gameplay per instructions.
+[ 146.2s] #  8 cutscene          fast    START                    This is a story intro cinematic after selecting START NEW GAME from the main menu. Tropica
+[ 161.0s] #  9 pause             fast    A                        Pause menu opened after START on the cutscene; CONTINUE is highlighted and ready to resume
+[ 206.4s] # 10 gameplay          fast    wait                     Pause menu was resumed with A in step 9; player character is now visible in the palace env
+[ 218.5s] # 11 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 control 0.052, under input 0.069
+[ 228.5s] # 12 cutscene          fast    START                    Heavy blur, letterboxing, and FPS: 0 indicate an unskippable or skip-pending cinematic, no
+[ 232.0s] # 13 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 235.7s] # 14 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 239.4s] # 15 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 243.1s] # 16 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 246.8s] # 17 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 250.4s] # 18 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 270.1s] # 19 cutscene          fast    START                    Letterbox bars present; continuing the pattern from steps 13-18 where START repeatedly adv
+[ 286.1s] # 20 pause             fast    A                        Pause menu appeared when START was pressed (likely during gameplay after the cutscene). CO
+[ 331.8s] # 21 gameplay          fast    wait                     After unpausing from the pause menu in step 20, we're back in the game world with the char
+[ 346.8s] # 22 probe             probe   STICK:up:1.5             control 0.020, under input 0.345
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 181 s: median 29.0, share>=30 1.0 over 91 samples
+hold-play: fps at 307 s: median 29.0, share>=30 1.0 over 154 samples
+hold-play: off play for 12 steps (game_over): ladder round 1
+hold-play: off play for 12 steps (game_over): ladder round 2
+hold-play: off play for 12 steps (game_over): ladder round 3
+hold-play: off play for 12 steps (game_over): ladder round 4
+hold-play: off play for 12 steps (game_over): ladder round 5
+hold-play: off play for 12 steps (game_over): ladder round 6
+hold-play: not held 197/600 s of play; budget 40 min with 197 s of play
+held Prince of Persia The Sands of Time for 2016s
+VERDICT Prince of Persia The Sands of Time ? FAIL(menu time: 10.4% of the scored window in `play` (bar 90%; game_over 1700 s, play 210 s, still 85 s, loading 20 s)) gameplay=2014.5s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0 play_share=0.1042 fps_excluded=1803.9s
+{"name": "Prince of Persia The Sands of Time", "device": "nova", "result": "gameplay", "minutes": 5.78, "model_calls": 102, "steps": 22, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5553001D-1013d/frames/021-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

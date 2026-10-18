@@ -1,0 +1,45 @@
+taken: nova by lane.pathfind
+idle: nova is held and runs nothing
+held at 22:24:41
+pathfind: Tork: Prehistoric Punk (55530040) on nova: /storage/E6C6-D7AA/Games/XBox/Tork - Prehistoric Punk (USA).iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 55530040 any, loaded golden 6cb2e3c07c9e
+[   6.7s] #  1 publisher_logo    replay  START A                  replay step 0: replay step 0: Ubisoft-style logo/splash on white background, no HUD or men
+[  14.1s] #  2 publisher_logo    replay  START A                  replay step 1: Ubisoft publisher logo, not yet the title. Per the hints, START while the t
+[  21.3s] #  3 black             black   wait                     black frame
+[  27.4s] #  4 title_screen      replay  START                    replay step 2: replay step 2: Tork title card with publisher/copyright text, no 'Press Sta
+[  32.4s] #  5 title_screen      replay  A                        replay step 3: replay step 3: Tork 'START GAME' menu with Empty save slot highlighted and 
+[  43.4s] #  6 submenu           fast    A                        Save-slot select screen; the centre slot is highlighted with YOK filled in and Continue is
+[  49.8s] #  7 publisher_logo    replay  START                    replay step 5: This is the Tork title logo card, not a menu yet; the recorded path expects
+[  57.6s] #  8 title_screen      fast    START                    Tork title card is up with no prompt visible; past recorded path pressed START on the titl
+[  70.4s] #  9 cutscene          fast    START                    Scenic letterboxed shot with no HUD or menu, so it is not gameplay. The previous title-car
+[  75.5s] # 10 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[  80.5s] # 11 cutscene          replay  START A                  replay step 9: Letterbox bars and no HUD mean a cinematic, not player control. Skip with S
+[  95.0s] # 12 cutscene          fast    STICK:up:1.5             Letterbox-style bars and no HUD, so not confirmed gameplay. The creature is in the world a
+[ 100.2s] # 13 cutscene          repeat  STICK:up:1.5             repeat STICK:up:1.5: it advanced the cutscene
+[ 105.3s] # 14 cutscene          repeat  STICK:up:1.5             repeat STICK:up:1.5: it advanced the cutscene
+[ 110.6s] # 15 cutscene          repeat  STICK:up:1.5             repeat STICK:up:1.5: it advanced the cutscene
+[ 115.9s] # 16 cutscene          repeat  STICK:up:1.5             repeat STICK:up:1.5: it advanced the cutscene
+[ 121.2s] # 17 cutscene          repeat  STICK:up:1.5             repeat STICK:up:1.5: it advanced the cutscene
+[ 126.8s] # 18 cutscene          repeat  STICK:up:1.5             repeat STICK:up:1.5: it advanced the cutscene
+[ 138.2s] # 19 cutscene          fast    START A                  Staged close-up with letterbox bars and no HUD is a scripted cinematic, not player control
+[ 144.3s] # 20 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 153.9s] # 21 cutscene          fast    START A                  Staged close-up with no HUD and no player control. Not gameplay yet, so skip with START th
+[ 159.5s] # 22 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 167.0s] # 23 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 172.6s] # 24 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 177.9s] # 25 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 183.1s] # 26 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 188.5s] # 27 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 201.7s] # 28 cutscene          fast    STICK:up:1.5             No HUD is visible, so this is not confirmed gameplay. The character looks mid-animation or
+[ 206.6s] # 29 black             black   wait                     black frame
+[ 215.5s] # 30 cutscene          fast    A                        A dialogue box with a portrait and subtitle is a scripted story moment, not player control
+[ 225.7s] # 31 gameplay          fast    wait                     HUD (hearts and counter) is up, the player's character is in the world, and no cutscene ba
+[ 240.2s] # 32 probe             probe   STICK:up:1.5             control 0.023, under input 0.252
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 181 s: median 29.0, share>=30 1.0 over 92 samples
+hold-play: fps at 311 s: median 29.0, share>=30 1.0 over 156 samples
+released: nova by lane.pathfind
+Terminated
+released rc=0

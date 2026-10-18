@@ -1,0 +1,82 @@
+pathfind: Mission Impossible Operation Surma USA (4947001F) on nova: /storage/E6C6-D7AA/Games/XBox/4947001F-Mission_Impossible_Operation_Surma_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4947001F any, loaded none
+[  11.5s] #  1 loading           fast    wait                     This looks like an Android app loading screen (possibly the emulator launching), not game 
+[  21.7s] #  2 publisher_logo    fast    START A                  This is a legal/credits splash screen before any menu; standard skip sequence is START the
+[  30.9s] #  3 cutscene          fast    START A                  Dark, low-detail blurry image with no HUD or menu text suggests an intro cutscene still re
+[  41.0s] #  4 title_screen      fast    START                    Classic title screen with PRESS START prompt visible over a stylized background
+[  48.5s] #  5 main_menu         fast    A                        NEW GAME is already highlighted/boxed, so confirm with A to start a fresh game with defaul
+[  60.5s] #  6 submenu           fast    A                        Difficulty select dialog is open with IMPOSSIBLE currently highlighted; pressing A accepts
+[  68.0s] #  7 save_load_prompt  fast    A                        A warning dialog about no saves found needs acknowledgment with A before proceeding to sel
+[  75.2s] #  8 submenu           fast    A                        A save-slot picker for a new game; GAME 1-EMPTY is highlighted, confirm with A to create a
+[  83.8s] #  9 save_load_prompt  fast    A                        YES is highlighted to confirm the save for the new game; press A to accept and proceed to 
+[  93.7s] # 10 save_load_prompt  fast    A                        Save completed confirmation dialog needs acknowledgment with A to proceed into gameplay
+[ 102.7s] # 11 cutscene          fast    START A                  Letterboxed cinematic scene with no HUD after the save confirmation dialogs; try to skip w
+[ 107.9s] # 12 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 113.0s] # 13 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 118.3s] # 14 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 124.9s] # 15 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 130.1s] # 16 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 135.4s] # 17 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 144.4s] # 18 cutscene          fast    START A                  Letterboxed underwater cinematic matches ongoing cutscene sequence; continuing to advance 
+[ 149.6s] # 19 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 159.4s] # 20 cutscene          fast    START A                  Still letterboxed with bars top/bottom, no HUD, continuing the same cinematic sequence; ad
+[ 164.7s] # 21 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 170.2s] # 22 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 175.6s] # 23 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 180.9s] # 24 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 186.2s] # 25 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 192.8s] # 26 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 201.3s] # 27 cutscene          fast    START A                  Letterboxed underwater scene with no HUD, continuing the pattern of START advancing the cu
+[ 206.6s] # 28 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 211.8s] # 29 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 217.2s] # 30 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 223.6s] # 31 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 229.0s] # 32 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 234.3s] # 33 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 243.0s] # 34 cutscene          fast    START A                  Letterboxed cinematic shot, continuing the sequence of cutscenes that have been advancing 
+[ 248.3s] # 35 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 253.5s] # 36 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 260.2s] # 37 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 265.6s] # 38 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 270.9s] # 39 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 276.3s] # 40 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 285.6s] # 41 cutscene          fast    START A                  This is a briefing/dossier cutscene screen, same pattern as prior steps that advanced with
+[ 292.1s] # 42 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 297.5s] # 43 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 302.9s] # 44 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 308.2s] # 45 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 313.6s] # 46 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 318.9s] # 47 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 329.1s] # 48 cutscene          fast    START A                  Mission briefing dialogue text is still being displayed, same pattern as prior steps where
+[ 334.5s] # 49 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 339.8s] # 50 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 345.2s] # 51 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 350.7s] # 52 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 357.3s] # 53 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 362.7s] # 54 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 371.4s] # 55 cutscene          fast    START A                  Letterboxed underwater cutscene continuing from prior steps; keep advancing with START the
+[ 376.8s] # 56 black             black   wait                     black frame
+[ 384.3s] # 57 cutscene          fast    START A                  Dark exterior shot with no HUD or player indicator visible, likely still part of the cutsc
+[ 394.3s] # 58 cutscene          fast    START A                  Location title card with letterbox bars and no player HUD; continuing to advance the cutsc
+[ 405.9s] # 59 cutscene          fast    A                        Narrative establishing shot with subtitle text and letterbox bars; repeated START A hasn't
+[ 411.5s] # 60 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 417.0s] # 61 black             black   wait                     black frame
+[ 425.5s] # 62 cutscene          fast    A START A                Subtitled dialogue line with a character shown in a narrative scene, no HUD - still part o
+[ 438.5s] # 63 cutscene          fast    A A                      Subtitled narrative dialogue with no HUD or player control indicators; continuing to advan
+[ 448.1s] # 64 gameplay          fast    STICK:up:1.5             Full player HUD (health, minimap, objective banner, item slot) with a controllable charact
+[ 457.3s] # 65 probe             probe   STICK:up:1.5 STICK:up:1.5 control 0.003, under input 0.000
+[ 462.5s] # 66 gameplay          fast    A                        This is a tutorial tip overlay during active gameplay (HUD visible); it needs A to dismiss
+[ 469.2s] # 67 probe             probe   A STICK:up:1.5           control 0.000, under input 0.000
+[ 474.6s] # 68 gameplay          fast    A STICK:up:2             A tutorial tip overlay is blocking gameplay; dismiss with A then push forward into the wal
+[ 487.9s] # 69 probe             probe   X A STICK:up:2 HOLD:A:3  control 0.018, under input 0.083
+hold-play: genre shooter, need 600 s of play
+hold-play: fps at 186 s: median 5.5, share>=30 0.0 over 20 samples
+hold-play: stuck (scene unchanged for 4 consecutive samples (genre shooter)): unstick STICK:left:2 RT:1 at 261 s
+hold-play: fps at 305 s: median 6.0, share>=30 0.0 over 35 samples -> STOP (not on course)
+hold-play: not held 299/600 s of play; fps gate at 5:04: median 6 < 27, 0% of 35 samples at >= 28.5
+held Mission Impossible Operation Surma USA for 306s
+VERDICT Mission Impossible Operation Surma USA ? FAIL(hang: 10.0 s without 60 guest flips after the mark) gameplay=305.4s fps_ok=0.0 crash=False hang=True audio_short=0.0 hitches=28/6.846pm worst_ms=200.1 static_frac=0.5244 play_share=0.9991 fps_excluded=0.0s
+{"name": "Mission Impossible Operation Surma USA", "device": "nova", "result": "gameplay", "minutes": 8.13, "model_calls": 32, "steps": 69, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4947001F-1011/frames/068-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

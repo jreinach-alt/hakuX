@@ -1,0 +1,58 @@
+pathfind: Marvel Nemesis Rise of the Imperfects (4541038A) on nova: /storage/E6C6-D7AA/Games/XBox/4541038A-Marvel_Nemesis_Rise_of_the_Imperfects.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4541038A any, loaded none
+[   5.9s] #  1 publisher_logo    replay  A                        replay step 0: replay step 0: This looks like the early boot/logo animation; the green fac
+[  10.3s] #  2 publisher_logo    replay  A                        replay step 1: replay step 1: replay step 1: EA publisher logo; per EA hints, A skips Rend
+[  20.9s] #  3 publisher_logo    fast    A                        EA publisher logo still on screen; per the EA/RenderWare hint A skips logos. Previous A ch
+[  25.7s] #  4 cutscene          replay  START A                  replay step 4: replay step 4: replay step 2: Intro cinematic with letterbox bars after the
+[  35.4s] #  5 publisher_logo    fast    A                        This is the EA/game logo card after the publisher logos, not a title menu or gameplay. Per
+[  40.0s] #  6 cutscene          replay  START A                  replay step 5: replay step 5: replay step 3: repeat START: it advanced the cutscene
+[  49.5s] #  7 main_menu         fast    A                        Main menu with VERSUS highlighted; the recorded path and quick-play rule say A selects VER
+[  53.9s] #  8 cutscene          replay  START A                  replay step 7: replay step 7: replay step 5: repeat START: it advanced the cutscene
+[  62.8s] #  9 submenu           fast    A                        Versus match-type setup, not gameplay. TIMED MATCH is the default and matches the recorded
+[  67.1s] # 10 cutscene          replay  START A                  replay step 9: replay step 9: replay step 7: repeat START: it advanced the cutscene
+[  72.2s] # 11 cutscene          replay  START A                  replay step 10: replay step 10: replay step 8: repeat START: it advanced the cutscene
+[  81.8s] # 12 submenu           fast    A                        Still on character select with THE THING shown and COM tag; per select-screen rule accept 
+[  90.5s] # 13 submenu           fast    A                        Character select, not gameplay. THE THING is READY, so A accepts the highlighted default p
+[ 104.5s] # 14 submenu           fast    RIGHT LEFT A             Still on character select with Spider-Man not READY. A, START A, LEFT A and HOLD:A did not
+[ 118.2s] # 15 submenu           fast    STICK:down:0.4 A         Character select, not gameplay. Earlier A, START, HOLD:A, LEFT A and RIGHT LEFT A all retu
+[ 126.7s] # 16 submenu           fast    A                        Stage/level select, not gameplay. THE BRIDGE is the highlighted default, so A accepts it a
+[ 137.5s] # 17 loading           fast    wait                     The stage-select card has already been accepted and this is a versus-intro/loading card wi
+[ 154.4s] # 18 loading           fast    wait                     Previous step was a versus-intro/loading card; this is a live-looking 3D stage with no HUD
+[ 162.0s] # 19 loading           fast    wait                     The 'CLASH' card is a versus-intro/stage banner over the arena, not confirmed player contr
+[ 169.8s] # 20 gameplay          fast    wait                     HUD and both health bars are up over a live fight with no menu, banner or cutscene bars, s
+[ 188.6s] # 21 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.719, under input 0.191
+[ 194.6s] # 22 gameplay          fast    wait                     HUD and both health bars are up over a live fight with no menu or cutscene bars. The earli
+[ 208.4s] # 23 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.241, under input 0.237
+[ 219.4s] # 24 unknown           fast    wait                     A 'VANQUISHED' round-end banner is over the fight, so this is not live play yet and not a 
+[ 228.8s] # 25 gameplay          fast    wait                     The HUD and both health bars are up over a live arena with both fighters in the world and 
+[ 247.1s] # 26 probe             probe   STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.312, under input 0.354
+[ 255.1s] # 27 gameplay          fast    wait                     HUD and both health bars are up over a live arena with the player's Spider-Man in the worl
+[ 271.1s] # 28 probe             probe   STICK:down:1.5 STICK:left:1.2 STICK:right:1.2 control 0.257, under input 0.501
+[ 278.2s] # 29 gameplay          fast    wait                     HUD and both health bars are up over a live fight with the player's Spider-Man in the worl
+[ 293.2s] # 30 probe             probe   STICK:upleft:1.5 STICK:left:1.2 STICK:right:1.2 control 0.252, under input 0.374
+[ 305.2s] # 31 gameplay          fast    wait                     Live fight with both health bars and the RAGE meter up, no menu, pause or letterbox. The c
+[ 324.4s] # 32 probe             probe   STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.591, under input 0.329
+[ 328.2s] # 33 cutscene          fast    START A                  This is a close-up presentation shot with no HUD or control prompt, so it is not confirmed
+[ 333.3s] # 34 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 342.7s] # 35 results           fast    A                        The fight ended and this is an end-of-match results menu, not gameplay. The highlighted de
+[ 353.1s] # 36 submenu           fast    DOWN A                   Post-match rematch confirm, not gameplay. NO is highlighted; moving DOWN to YES and confir
+[ 364.9s] # 37 cutscene          fast    START A                  Letterboxed cinematic with no HUD or control prompt, so it is not confirmed gameplay. It f
+[ 370.0s] # 38 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 379.7s] # 39 gameplay          fast    wait                     HUD and both health bars are up over a live fight with no menu, banner or cutscene bars, s
+[ 396.7s] # 40 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.663, under input 0.543
+[ 402.4s] # 41 gameplay          fast    wait                     HUD and both health bars are up over a live fight with no menu or cutscene bars. The earli
+[ 419.2s] # 42 probe             probe   STICK:upleft:1.5 STICK:left:1.2 STICK:right:1.2 control 0.205, under input 0.700
+[ 424.8s] # 43 gameplay          fast    wait                     HUD, health bars and a live fight with no menu, banner or cutscene bars. Earlier probes we
+[ 439.4s] # 44 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.198, under input 0.162
+[ 444.4s] # 45 gameplay          fast    wait                     Live fight with HUD and both health bars, no menu, banner or cutscene bars. Earlier stick 
+[ 456.0s] # 46 probe             probe   RT:3                     control 0.081, under input 0.137
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 186 s: median 29.0, share>=30 1.0 over 92 samples
+hold-play: fps at 303 s: median 29.0, share>=30 1.0 over 150 samples
+hold-play: HELD 601/600 s of play; 
+held Marvel Nemesis Rise of the Imperfects for 603s
+VERDICT Marvel Nemesis Rise of the Imperfects ? FAIL(hitches: a 1014 ms stall after the first 60 s (bar 500 ms)) gameplay=601.8s fps_ok=0.9918 crash=False hang=False audio_short=0.0 hitches=1/0.111pm worst_ms=1014.3 static_frac=0.0015 play_share=0.9998 fps_excluded=2.0s
+{"name": "Marvel Nemesis Rise of the Imperfects", "device": "nova", "result": "gameplay", "minutes": 7.6, "model_calls": 48, "steps": 46, "replayed": 7, "reason": "four probes refused", "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A-r3/frames/045-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

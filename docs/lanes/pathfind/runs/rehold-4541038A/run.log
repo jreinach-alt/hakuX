@@ -1,0 +1,93 @@
+pathfind: Marvel Nemesis Rise of the Imperfects (4541038A) on nova: /storage/E6C6-D7AA/Games/XBox/4541038A-Marvel_Nemesis_Rise_of_the_Imperfects.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4541038A any, loaded none
+[   5.5s] #  1 publisher_logo    replay  A                        replay step 0: replay step 0: replay step 0: This looks like the early boot/logo animation
+[   9.6s] #  2 publisher_logo    replay  A                        replay step 1: replay step 1: replay step 1: replay step 1: EA publisher logo; per EA hint
+[  16.5s] #  3 publisher_logo    fast    A                        This is an animated publisher/logo card still mid-animation, not a title or menu; per the 
+[  23.9s] #  4 cutscene          fast    START A                  Intro cinematic with letterbox bars after the EA logos, not a title, menu or gameplay. Per
+[  28.7s] #  5 cutscene          replay  START A                  replay step 3: replay step 4: replay step 4: replay step 2: Intro cinematic with letterbox
+[  35.1s] #  6 cutscene          replay  START A                  replay step 5: replay step 5: replay step 5: replay step 3: repeat START: it advanced the 
+[  42.9s] #  7 main_menu         fast    A                        Main menu with VERSUS highlighted; the recorded path selects VERSUS with A, which avoids X
+[  47.1s] #  8 cutscene          replay  START A                  replay step 7: replay step 7: replay step 7: replay step 5: repeat START: it advanced the 
+[  55.9s] #  9 submenu           fast    A                        Versus match-type submenu, not gameplay. TIMED MATCH is the default in the recorded path a
+[  60.3s] # 10 cutscene          replay  START A                  replay step 9: replay step 9: replay step 9: replay step 7: repeat START: it advanced the 
+[  66.9s] # 11 cutscene          replay  START A                  replay step 10: replay step 10: replay step 10: replay step 8: repeat START: it advanced t
+[  76.4s] # 12 submenu           fast    A                        Character select, not gameplay. THE THING is the displayed fighter, so A accepts the highl
+[  88.5s] # 13 submenu           fast    UP A                     Character select, not gameplay. THE THING is READY, but Spider-Man is still not locked aft
+[ 101.0s] # 14 submenu           fast    A                        Character select, not gameplay. Player 1 THE THING is already READY, and the right side is
+[ 113.5s] # 15 submenu           fast    UP LEFT A                Plain A on this screen has been refused several times, so I'm changing input: moving playe
+[ 122.9s] # 16 submenu           fast    A                        Still on character select; player 1 THE THING is READY but the right side shows JOHNNY OHM
+[ 134.6s] # 17 submenu           fast    A                        Still on character select, not gameplay. Player 1 THE THING is READY. Player 2's displayed
+[ 142.8s] # 18 submenu           fast    A                        Stage select with THE BRIDGE as the highlighted default; the recorded path accepts it with
+[ 154.1s] # 19 loading           fast    wait                     Both fighters and the stage are locked in and a progress bar is filling, so this is the pr
+[ 165.6s] # 20 cutscene          fast    START A                  Letterbox bars and a presentation shot with no HUD or control prompt, so not gameplay. The
+[ 176.1s] # 21 gameplay          fast    wait                     HUD with both health bars and the rage pips is up over a live arena with both fighters in 
+[ 192.9s] # 22 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.566, under input 0.603
+[ 203.2s] # 23 gameplay          fast    wait                     HUD with both health bars and rage pips is up over a live arena with both fighters in the 
+[ 218.1s] # 24 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.628, under input 0.221
+[ 225.1s] # 25 gameplay          fast    wait                     HUD with both health bars, rage pips and a live fight in the world with no menu or cutscen
+[ 243.3s] # 26 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.410, under input 0.506
+[ 248.5s] # 27 gameplay          fast    wait                     HUD and both health bars are up over a live arena with both fighters in the world and no m
+[ 270.9s] # 28 probe             probe   STICK:left:1.5 HOLD:A:1 STICK:left:1.2 STICK:right:1.2 control 0.551, under input 0.577
+[ 276.8s] # 29 gameplay          fast    wait                     HUD and both health bars are up over a live fight with no menu or cutscene bars; the airbo
+[ 294.9s] # 30 probe             probe   STICK:left:1.5 STICK:right:1.2 STICK:left:1.2 STICK:right:1.2 control 0.155, under input 0.195
+[ 302.7s] # 31 gameplay          fast    wait                     Live fight HUD with both health bars and a DANGER tag over a playfield with the player's f
+[ 317.0s] # 32 probe             probe   STICK:up:2 STICK:left:1.2 STICK:right:1.2 control 0.540, under input 0.691
+[ 321.3s] # 33 gameplay          fast    wait                     HUD with both health bars is up over a live arena with both fighters in the world and no m
+[ 339.5s] # 34 probe             probe   STICK:upleft:1.5 STICK:left:1.2 STICK:right:1.2 control 0.591, under input 0.332
+[ 354.1s] # 35 gameplay          fast    wait                     HUD and both health bars are up over a live arena with no menu, pause or cutscene bars. Ea
+[ 370.7s] # 36 probe             probe   STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.237, under input 0.169
+[ 377.6s] # 37 gameplay          fast    wait                     HUD and health bars are up with no menu or cutscene bars. The fighter is standing over a d
+[ 381.8s] # 38 probe             probe   STICK:up:2               control 0.610, under input 0.169
+[ 385.8s] # 39 cutscene          fast    START A                  Letterbox bars and a close-up presentation shot with no HUD or control prompt, the same lo
+[ 390.7s] # 40 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 401.1s] # 41 results           fast    A                        End-of-match results menu, not gameplay. REMATCH is highlighted and is the fastest route b
+[ 409.6s] # 42 submenu           fast    UP A                     A confirmation dialog for REMATCH. NO is highlighted by default, and I want to get back in
+[ 419.9s] # 43 cutscene          fast    START A                  Black letterbox bars and a close-up presentation shot with no HUD, the same look as the ea
+[ 425.1s] # 44 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 436.6s] # 45 gameplay          fast    wait                     HUD with both health bars and portraits is up over a live arena with both fighters in the 
+[ 453.1s] # 46 probe             probe   RT:3 RT+left:1.2 RT+right:1.2 control 0.624, under input 0.541
+[ 466.5s] # 47 gameplay          fast    wait                     Health-bar HUD over a live arena with both fighters in the world and no menu or cutscene b
+[ 483.2s] # 48 probe             probe   RT:3 RT+left:1.2 RT+right:1.2 control 0.398, under input 0.452
+[ 487.5s] # 49 gameplay          fast    wait                     HUD with both health bars and portraits up over a live arena with no menu or cutscene bars
+[ 505.4s] # 50 probe             probe   HOLD:X:3 STICK:left:1.2 STICK:right:1.2 control 0.246, under input 0.446
+[ 512.3s] # 51 gameplay          fast    wait                     The HUD with both health bars is up over a live arena with no menu, pause or cutscene bars
+[ 528.9s] # 52 probe             probe   STICK:upleft:1.5 STICK:left:1.2 STICK:right:1.2 control 0.550, under input 0.149
+[ 537.7s] # 53 gameplay          fast    wait                     HUD and both health bars are up over a live fight with no menu or cutscene bars. Earlier s
+[ 554.0s] # 54 probe             probe   A HOLD:X:3 STICK:left:1.2 STICK:right:1.2 control 0.540, under input 0.193
+[ 561.1s] # 55 gameplay          fast    wait                     HUD with both health bars and portraits is up over a live arena with no menu, banner or cu
+[ 579.8s] # 56 probe             probe   STICK:down:1.5 STICK:left:1.2 STICK:right:1.2 control 0.637, under input 0.619
+[ 586.3s] # 57 cutscene          fast    START                    A close-up camera shot of a special-move animation with the HUD up. Recent probes were ref
+[ 595.6s] # 58 pause             fast    UP A                     This is the pause menu, not gameplay. UP moves to RESUME GAME (clamps there if already on 
+[ 605.9s] # 59 pause             fast    B                        A quit confirmation was opened by the previous step's UP A. Quitting would lose progress a
+[ 613.8s] # 60 pause             fast    A                        Quit confirmation is open with NO highlighted. A on NO is the safe choice: it backs out of
+[ 622.4s] # 61 pause             fast    UP A                     Pause menu, not gameplay. VIBRATION is highlighted, so UP moves to RESUME GAME (top row) a
+[ 630.5s] # 62 pause             fast    B                        Pause menu, not gameplay. VIBRATION is highlighted; DOWN is not needed, so UP once moves t
+[ 639.9s] # 63 gameplay          fast    wait                     Live fight with both health bars and the HUD up, no menu or cutscene bars; the previous pa
+[ 656.8s] # 64 probe             probe   LT:2 LT+left:1.2 LT+right:1.2 control 0.358, under input 0.600
+[ 661.5s] # 65 gameplay          fast    wait                     Live fight with HUD and both health bars up, no menu or cutscene bars. The last probe was 
+[ 681.1s] # 66 probe             probe   LT:2 LT+left:1.2 LT+right:1.2 control 0.709, under input 0.200
+[ 685.6s] # 67 gameplay          fast    wait                     Live fight with HUD and both health bars and no menu or cutscene bars; earlier stick probe
+[ 702.1s] # 68 probe             probe   HOLD:B:3 STICK:left:1.2 STICK:right:1.2 control 0.309, under input 0.490
+[ 707.6s] # 69 gameplay          fast    wait                     HUD and both health bars are up over a live fight with no menu, banner or cutscene bars; t
+[ 724.5s] # 70 probe             probe   HOLD:B:3 STICK:left:1.2 STICK:right:1.2 control 0.381, under input 0.342
+[ 729.7s] # 71 cutscene          fast    START A                  No HUD or health bars, and the black bands suggest letterboxing, so this is a presentation
+[ 734.6s] # 72 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 744.6s] # 73 results           fast    A                        End-of-match results menu, not gameplay. REMATCH is highlighted by default and is the fast
+[ 754.1s] # 74 submenu           fast    DOWN A                   Confirmation dialog after choosing REMATCH on the results screen. NO is highlighted by def
+[ 765.4s] # 75 cutscene          fast    START A                  Letterboxed presentation shot with no HUD or control prompt, so not confirmed gameplay. Pr
+[ 772.1s] # 76 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 780.5s] # 77 gameplay          fast    wait                     HUD and both health bars up over a live arena with both fighters in the world and no menu,
+[ 795.7s] # 78 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.571, under input 0.551
+[ 802.7s] # 79 gameplay          fast    wait                     HUD and both health bars are up over a live arena with both fighters in the world, and no 
+[ 823.3s] # 80 probe             probe   A STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.649, under input 0.213
+[ 830.2s] # 81 gameplay          fast    wait                     HUD and both health bars are up over a live arena with both fighters in the world, no menu
+[ 848.2s] # 82 probe             probe   STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.208, under input 0.559
+[ 852.6s] # 83 gameplay          fast    wait                     HUD and both health bars are up over a live fight with both fighters in the world and no m
+[ 868.9s] # 84 probe             probe   A STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.452, under input 0.193
+[ 874.6s] # 85 results           fast    A                        A 'VANQUISHED' banner after a fight is a round-end result, not live play. The recorded pat
+[ 885.2s] # 86 gameplay          fast    wait                     HUD with both health bars is up over a live arena with both fighters in the world and no m
+[ 900.3s] # 87 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.651, under input 0.726
+{"name": "Marvel Nemesis Rise of the Imperfects", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 77, "steps": 87, "replayed": 7, "reason": "budget 15 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

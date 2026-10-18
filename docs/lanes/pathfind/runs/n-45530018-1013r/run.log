@@ -1,0 +1,29 @@
+pathfind: 25 to Life (45530018) on nova: /storage/E6C6-D7AA/Games/XBox/45530018-25_to_Life.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 45530018 any, loaded golden c623e1b7bc4a
+[  37.8s] #  1 publisher_logo    fast    A                        Early boot screen showing an animated geometric logo; typical publisher splash before titl
+[  52.2s] #  2 cutscene          fast    START                    Post-logo intro cinematic in 3D game world with cinematic framing (black bars). Needs to b
+[  66.5s] #  3 loading           fast    wait                     Explicit 'Loading...' text with disc icon indicates content is loading between scenes; wai
+[  83.2s] #  4 title_screen      fast    A                        Title screen showing the game logo after loading, no explicit prompt visible but standard 
+[ 109.8s] #  5 profile_creation  fast    A                        Profile selection menu; Profile1 is the available/highlighted profile. Per instructions (h
+[ 130.1s] #  6 save_load_prompt  fast    A                        Confirmation prompt for successful profile load; OK button is highlighted and requires A t
+[ 144.5s] #  7 main_menu         fast    A                        Main menu with highlighted Single Player option at top. Per instructions, Single Player is
+[ 157.3s] #  8 submenu           fast    A                        Difficulty selection menu after profile load; Normal is the standard default difficulty. P
+[ 172.0s] #  9 submenu           fast    A                        Chapter/level selection screen after difficulty setup; 01 Warehouse is the default availab
+[ 185.0s] # 10 cutscene          fast    START                    Story intro after level selection in a prison-crime game; cinematic framing with letterbox
+[ 199.5s] # 11 loading           fast    A                        Chapter title splash after cutscene; not yet gameplay. A dismisses it per hints (level spl
+[ 236.5s] # 12 loading           fast    A                        Mission briefing/objectives screen as part of level initialization after chapter title spl
+[ 259.8s] # 13 gameplay          fast    wait                     Full HUD elements present, player character visible in warehouse level, mission objective 
+[ 289.3s] # 14 probe             probe   STICK:up:1.5             control 0.002, under input 0.276
+[ 303.6s] # 15 gameplay          fast    A                        Full HUD and playable level visible; tutorial overlay blocking active input requires A to 
+[ 324.6s] # 16 probe             probe   A STICK:up:1.5           control 0.000, under input 0.293
+hold-play: genre shooter, need 600 s of play
+hold-play: fps at 189 s: median 59.0, share>=30 0.969 over 163 samples
+hold-play: fps at 326 s: median 59.0, share>=30 0.983 over 293 samples
+hold-play: validity check stop 0 s (hold 608 s of play, verdict 608.4)
+hold-play: not held 608/600 s of play; verdict stops the hold: fps_ok 0.9737, crash False, hang False
+held 25 to Life for 611s
+VERDICT 25 to Life ? PASS None gameplay=609.4s fps_ok=0.9737 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.1429 play_share=0.9996 fps_excluded=2.1s
+{"name": "25 to Life", "device": "nova", "result": "gameplay", "minutes": 5.41, "model_calls": 24, "steps": 16, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45530018-1013r/frames/015-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

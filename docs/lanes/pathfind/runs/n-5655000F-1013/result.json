@@ -1,0 +1,78 @@
+{
+ "title_id": "5655000F",
+ "name": "Battlestar Galactica USA",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/5655000F-Battlestar_Galactica_USA.xiso.iso",
+ "result": "gameplay",
+ "tool": "74dfc2db2c",
+ "started": "2026-10-13 02:15:33 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5655000F-1013/frames/025-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5655000F-1013/frames/025-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5655000F-1013/frames/025-probe-c.jpg"
+ ],
+ "minutes": 15.05,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5655000F-1013/frames/024-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5655000F-1013/frames/026-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5655000F-1013/frames/027-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5655000F-1013/frames/028-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5655000F-1013/frames/029-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5655000F-1013/frames/030-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5655000F-1013/frames/031-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5655000F-1013/frames/032-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5655000F-1013/frames/033-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-5655.md"
+ ],
+ "hold": {
+  "genre": "drive",
+  "why": "Player pilots a spacecraft through space environment, similar to flying a plane; combat is secondary to vehicle control.",
+  "ok": false,
+  "play_s": 627.0,
+  "need_s": 600.0,
+  "hold_s": 965.3,
+  "model_navs": 14,
+  "frames": 25,
+  "still_windows": 0,
+  "shed": [],
+  "reversals": 0,
+  "reason": "share short by 2741 s with no budget left",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 181,
+    "median": 59.0,
+    "share": 1.0,
+    "at_s": 180.2,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 307,
+    "median": 59.0,
+    "share": 1.0,
+    "at_s": 306.5,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "stuck_abort": false,
+  "verdict": "VERDICT Battlestar Galactica USA ? FAIL(menu time: 61.6% of the scored window in `play` (bar 90%; play 595 s, game_over 294 s, cutscene 76 s, no-timeline 0 s)) gameplay=965.8s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=3/0.199pm worst_ms=161.6 static_frac=0.0917 play_share=0.6163 fps_excluded=371.2s"
+ },
+ "model_calls": 47,
+ "calls_by_model": {
+  "claude-haiku-4-5-20251001": 47
+ },
+ "steps": 25,
+ "seconds": 1921.6,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5655000F-1013/frames/149-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 1,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5655000F-1013/strip.jpg"
+}

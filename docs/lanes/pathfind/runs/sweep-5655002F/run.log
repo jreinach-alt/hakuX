@@ -1,0 +1,78 @@
+pathfind: Fight Club (5655002F) on nova: /storage/E6C6-D7AA/Games/XBox/5655002F-Fight_Club.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 5655002F any, loaded none
+[  10.3s] #  1 loading           fast    wait                     This looks like a loading or boot-time graphic (a spinning 3D mesh on a white field), not 
+[  19.3s] #  2 publisher_logo    fast    A                        Copyright/trademark legal text card in the publisher-logo sequence; skip with A per hints,
+[  26.7s] #  3 publisher_logo    fast    A                        ESRB rating card is a publisher/legal logo in the boot sequence, not a menu or gameplay. P
+[  33.8s] #  4 publisher_logo    fast    A                        Vivendi Universal publisher logo in the boot sequence; per hints, skip with A, then re-rea
+[  42.1s] #  5 publisher_logo    fast    A                        Sofdec middleware logo in the boot sequence, not a menu or gameplay. Per hints, skip with 
+[  50.1s] #  6 title_screen      fast    START                    Title-style 'PRESS START' prompt in a dimmed scene with no HUD and no menu; START is the p
+[  58.8s] #  7 save_load_prompt  fast    A                        Save prompt with Yes highlighted (default). Per hints, Yes to a new save reaches play; A c
+[  67.5s] #  8 save_load_prompt  fast    wait                     A save is in progress (system message, no choice to make). Not gameplay yet; nothing to pr
+[  76.5s] #  9 main_menu         fast    A                        Main menu with GAME MODES highlighted by default; Game Modes leads to play. Pressing A acc
+[  84.2s] # 10 main_menu         fast    A                        Game mode menu; ARCADE is already highlighted and is a fast route to play. A accepts it.
+[  93.6s] # 11 submenu           fast    A                        Character select screen, not gameplay. Accept the highlighted default character with A.
+[ 106.3s] # 12 cutscene          fast    STICK:up:1.5             The character is in the world but there is no HUD, so gameplay is not proven. The previous
+[ 115.3s] # 13 gameplay          fast    wait                     Live fight with HUD (health bars, names) and no menu, banner, or pause panel. The previous
+[ 135.0s] # 14 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.501, under input 0.487
+[ 154.1s] # 15 gameplay          fast    wait                     Live fight with HUD (health bars, names) and no menu, banner, or pause panel; the previous
+[ 176.4s] # 16 probe             probe   STICK:left:1.5 STICK:right:1.2 STICK:left:1.2 STICK:right:1.2 control 0.282, under input 0.340
+[ 181.6s] # 17 gameplay          fast    STICK:left:1.5           Live fight with HUD (health bars, names) and no menu, banner, or pause panel; the scene is
+[ 205.5s] # 18 probe             probe   STICK:left:1.5 STICK:left:1.5 STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.570, under input 0.559
+[ 210.3s] # 19 submenu           fast    A                        Post-fight REMATCH prompt; YES is highlighted (default). Pressing A accepts and starts ano
+[ 228.1s] # 20 cutscene          fast    A                        The previous step was a post-fight REMATCH prompt, and this frame shows a scripted-looking
+[ 239.9s] # 21 gameplay          fast    wait                     Live fight with HUD (health bars, names) and no menu, banner, or pause panel. Not a replay
+[ 258.2s] # 22 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.419, under input 0.349
+[ 262.6s] # 23 gameplay          fast    wait                     Live fight with HUD (health bars, names) and no menu, banner, or pause panel; the scene is
+[ 280.0s] # 24 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.184, under input 0.272
+[ 287.9s] # 25 gameplay          fast    B X                      The HUD is up and no menu or banner is showing, so this is a live round. Earlier stick pro
+[ 307.7s] # 26 probe             probe   B X HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.271, under input 0.610
+[ 312.0s] # 27 continue          fast    A                        A rematch prompt after the fight; YES is highlighted, so A accepts it and returns to a liv
+[ 322.7s] # 28 cutscene          fast    START                    A cinematic close-up with no HUD, prompt or menu. The history's last fight-with-HUD state 
+[ 331.1s] # 29 pause             fast    A                        START opened the pause menu during the fight; RESUME is highlighted, so A returns to the l
+[ 344.1s] # 30 gameplay          fast    wait                     The HUD is up with health bars and no menu, banner or pause panel, so this is a live round
+[ 363.6s] # 31 probe             probe   Y STICK:up:2 STICK:left:1.2 STICK:right:1.2 control 0.466, under input 0.420
+[ 368.4s] # 32 gameplay          fast    wait                     HUD with health bars and a live fight, no menu or banner. Prior probes were refused becaus
+[ 393.2s] # 33 probe             probe   STICK:right:1.5 B X STICK:up:2 STICK:left:1.2 STICK:right:1.2 control 0.391, under input 0.524
+[ 398.8s] # 34 gameplay          fast    wait                     HUD with health bars and a live fight, no menu, banner or pause panel. Earlier probes were
+[ 418.6s] # 35 probe             probe   RT:3 RT+left:1.2 RT+right:1.2 control 0.256, under input 0.339
+[ 423.8s] # 36 continue          fast    wait                     The 'LOSE' banner over a downed opponent means the round is over and a continue/retry prom
+[ 439.6s] # 37 cutscene          fast    START                    No HUD, menu or prompt is visible; the character is sitting down after the previous round'
+[ 450.7s] # 38 cutscene          fast    A                        The previous round ended with a KO, and this frame has no HUD or prompt, so it is most lik
+[ 458.1s] # 39 gameplay          fast    wait                     HUD with two health bars and a live fighter pair in the playfield, no menu or banner. Earl
+[ 477.2s] # 40 probe             probe   RT:3 RT+left:1.2 RT+right:1.2 control 0.520, under input 0.594
+[ 481.5s] # 41 gameplay          fast    wait                     Live fight HUD with two health bars and both fighters in the playfield, no menu or round b
+[ 502.1s] # 42 probe             probe   HOLD:X:3 STICK:left:1.2 STICK:right:1.2 control 0.511, under input 0.286
+[ 508.1s] # 43 gameplay          fast    wait                     Live fight HUD with two health bars and both fighters in the playfield; no menu, prompt or
+[ 527.9s] # 44 probe             probe   STICK:left:1.2 HOLD:X:3 STICK:left:1.2 STICK:right:1.2 control 0.398, under input 0.372
+[ 532.7s] # 45 gameplay          fast    wait                     Live fight with HUD health bars and both fighters in the playfield, no menu or round banne
+[ 549.7s] # 46 probe             probe   LT:2 LT+left:1.2 LT+right:1.2 control 0.155, under input 0.215
+[ 553.9s] # 47 continue          fast    A                        A rematch prompt after a fight, with YES already highlighted; A accepts the default and re
+[ 571.2s] # 48 unknown           fast    wait                     No HUD or prompt is visible, and the previous fight context was a rematch prompt, so this 
+[ 579.0s] # 49 gameplay          fast    wait                     Live fight HUD with both health bars and both fighters in the playfield; no menu or prompt
+[ 597.7s] # 50 probe             probe   LT:2 LT+left:1.2 LT+right:1.2 control 0.424, under input 0.358
+[ 603.0s] # 51 gameplay          fast    wait                     HUD health bars and both fighters in the playfield with no menu or banner; Irvin is standi
+[ 622.9s] # 52 probe             probe   HOLD:B:3 STICK:left:1.2 STICK:right:1.2 control 0.320, under input 0.416
+[ 639.4s] # 53 gameplay          fast    wait                     Live fight HUD with both health bars and both fighters in the playfield, no menu, banner o
+[ 656.6s] # 54 probe             probe   HOLD:B:3 STICK:left:1.2 STICK:right:1.2 control 0.383, under input 0.364
+[ 664.1s] # 55 continue          fast    A                        A rematch prompt after a fight; YES is highlighted, so A accepts it and restarts the fight
+[ 677.0s] # 56 cutscene          fast    A                        Last step accepted the REMATCH prompt with A, so the fight is restarting. This framed clos
+[ 686.1s] # 57 gameplay          fast    wait                     Live fight HUD with both health bars and both fighters in the playfield, no menu, banner o
+[ 714.0s] # 58 probe             probe   STICK:left:1.2 STICK:right:1.2 STICK:left:1.2 STICK:right:1.2 control 0.297, under input 0.291
+[ 721.0s] # 59 gameplay          fast    wait                     Live fight with HUD and both fighters in the playfield and no menu up, so this is gameplay
+[ 743.4s] # 60 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.519, under input 0.119
+[ 754.8s] # 61 continue          fast    A                        Rematch prompt after a fight; YES is highlighted, A accepts and restarts the fight toward 
+[ 767.3s] # 62 cutscene          fast    A                        A framed close-up with no HUD after the fight ended, not a live fight. Recent steps show a
+[ 777.6s] # 63 gameplay          fast    wait                     Live fight HUD with both health bars and both fighters in the playfield, no menu up; prior
+[ 798.5s] # 64 probe             probe   STICK:left:1.2 STICK:right:1.2 STICK:left:1.2 STICK:right:1.2 control 0.485, under input 0.396
+[ 804.6s] # 65 gameplay          fast    wait                     Live fight with HUD, both health bars and both fighters in the playfield, no menu up. Earl
+[ 823.0s] # 66 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.393, under input 0.530
+[ 832.0s] # 67 gameplay          fast    wait                     Fight HUD with both health bars and both fighters live in the arena, no menu up. Two earli
+[ 852.9s] # 68 probe             probe   X STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.361, under input 0.308
+[ 858.2s] # 69 gameplay          fast    X                        HUD with both health bars and both fighters in the playfield, no menu up, Irvin standing a
+[ 879.8s] # 70 probe             probe   X X STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.514, under input 0.410
+[ 886.8s] # 71 continue          fast    A                        Post-fight rematch prompt, not gameplay. YES is already highlighted, so A accepts the defa
+[ 900.3s] # 72 cutscene          fast    A                        No HUD or menu is visible and the character is shown in a cinematic framing, so this looks
+{"name": "Fight Club", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 77, "steps": 72, "replayed": 0, "reason": "budget 15 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

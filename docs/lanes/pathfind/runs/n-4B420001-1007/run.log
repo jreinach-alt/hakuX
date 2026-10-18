@@ -1,0 +1,42 @@
+pathfind: Batman Dark Tomorrow (4B420001) on nova: /storage/E6C6-D7AA/Games/XBox/4B420001-Batman_Dark_Tomorrow.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4B420001 any, loaded golden 1117346a0efc
+[   6.0s] #  1 publisher_logo    replay  A                        replay step 0: A green logo sits on a white screen during boot, which looks like a publish
+[  14.1s] #  2 publisher_logo    fast    A                        This is the standard Xbox startup logo shown before any game content; skip with A to progr
+[  18.3s] #  3 publisher_logo    replay  A                        replay step 1: Developer/publisher logo on boot, no title or menu yet; the last A press ch
+[  23.0s] #  4 publisher_logo    replay  A                        replay step 2: Developer logo (HotGen Studios) during boot, no title or menu yet. Previous
+[  31.0s] #  5 black             fast    wait                     Screen is essentially blank/white with no readable logo, text or menu yet; FPS is very low
+[  38.2s] #  6 intro_video       fast    A                        Ambiguous animated transition screen, no title or menu yet; continuing to skip per hint pa
+[  45.4s] #  7 title_screen      fast    A                        This is the game's title card animation, matching the recorded path's title_screen step wh
+[  49.5s] #  8 black             black   wait                     black frame
+[  59.4s] #  9 cutscene          fast    START                    Matches the recorded path's city-flyover cutscene after the title card; no player HUD or c
+[  67.0s] # 10 cutscene          fast    START                    This is still the city flyover cinematic matching the recorded path's cutscene step; no HU
+[  76.5s] # 11 gameplay          fast    STICK:up:1.5             Full HUD with health/energy bars visible, player character Batman in open world facing ene
+[  88.9s] # 12 probe             probe   STICK:up:1.5 STICK:up:1.5 control 0.026, under input 0.039
+[  93.2s] # 13 gameplay          fast    STICK:up:1.5             HUD is up, combat is happening with player character visible among enemies in the game wor
+[ 109.5s] # 14 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 control 0.146, under input 0.132
+[ 113.2s] # 15 game_over         fast    A                        Game Over after dying in combat; CONTINUE is the default highlighted option to resume play
+[ 122.9s] # 16 gameplay          fast    X X STICK:up:1           Full HUD with health/energy bars and player character Batman actively in combat with enemi
+[ 135.2s] # 17 probe             probe   X X STICK:up:1 HOLD:X:1.5 control 0.023, under input 0.166
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 188 s: median 55.0, share>=30 0.994 over 154 samples
+hold-play: fps at 308 s: median 47.0, share>=30 0.996 over 239 samples
+hold-play: 3 still looks: walk reversed (back) at 713 s
+hold-play: 3 still looks: walk reversed (forward) at 735 s
+hold-play: 3 still looks: walk reversed (back) at 1068 s
+hold-play: 3 still looks: walk reversed (forward) at 1119 s
+hold-play: 3 still looks: walk reversed (back) at 1197 s
+hold-play: 3 still looks: walk reversed (forward) at 1221 s
+hold-play: 3 still looks: walk reversed (back) at 1520 s
+hold-play: 3 still looks: walk reversed (forward) at 1684 s
+hold-play: 3 still looks: walk reversed (back) at 1741 s
+hold-play: 3 still looks: walk reversed (forward) at 1794 s
+hold-play: 3 still looks: walk reversed (back) at 1944 s
+hold-play: 3 still looks: walk reversed (forward) at 2046 s
+hold-play: 3 still looks: walk reversed (back) at 2177 s
+hold-play: not held 129/600 s of play; budget 40 min with 129 s of play
+held Batman Dark Tomorrow for 2237s
+VERDICT Batman Dark Tomorrow ? FAIL(menu time: 5.8% of the scored window in `play` (bar 90%; still 2095 s, play 129 s, menu 10 s, no-timeline 0 s)) gameplay=2235.1s fps_ok=0.977 crash=False hang=False audio_short=0.0 hitches=2/0.055pm worst_ms=816.8 static_frac=0.0902 play_share=0.0578 fps_excluded=2106.2s
+{"name": "Batman Dark Tomorrow", "device": "nova", "result": "gameplay", "minutes": 2.25, "model_calls": 130, "steps": 17, "replayed": 3, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4B420001-1007/frames/016-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

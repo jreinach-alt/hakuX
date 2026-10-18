@@ -1,0 +1,41 @@
+pathfind: Torino 2006 Europe En Fr De Es It (545400A9) on nova: /storage/E6C6-D7AA/Games/XBox/545400A9-Torino_2006_Europe_En_Fr_De_Es_It.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 545400A9 any, loaded none
+[  17.4s] #  1 publisher_logo    fast    A                        Green star logo with loading bar typical of a boot splash; 0.1 min in indicates early star
+[  21.8s] #  2 publisher_logo    repeat  A                        repeat A: it advanced the publisher_logo
+[  35.6s] #  3 publisher_logo    fast    A                        2K Sports publisher logo; already tried A twice, continuing to skip with A
+[  53.1s] #  4 main_menu         fast    DOWN A                   Main menu reached after publisher logos; 'Single Event' is the fastest path to gameplay (d
+[  74.1s] #  5 submenu           fast    A                        Alpine Skiing is pre-selected; pressing A confirms the sport and advances toward gameplay
+[ 107.5s] #  6 submenu           fast    A                        Event type selection menu; Downhill is the default highlighted option, ready to confirm
+[ 125.0s] #  7 submenu           fast    A                        Event type selection within Alpine Skiing sport; Downhill is pre-selected and highlighted;
+[ 138.6s] #  8 submenu           fast    LEFT A                   Player count selection for a skiing event; 1 Player is fastest to gameplay with defaults, 
+[ 156.3s] #  9 submenu           fast    A                        Nation selection screen; Germany is pre-selected (yellow highlight); Continue button visib
+[ 199.5s] # 10 submenu           fast    A                        Nation selection screen with Great Britain already highlighted in the left panel; the righ
+[ 240.1s] # 11 submenu           fast    DOWN A                   Stuck in a loop: previous two inputs were A (to Continue), both resulted in tiny screen ch
+[ 308.9s] # 12 submenu           fast    Y                        Stuck in loop: previous A presses on 'Continue' looped back without progress (0.03-0.04 s 
+[ 392.7s] # 13 submenu           fast    UP A                     Multiplayer player-selection setup for Skiing. The right-panel buttons are cycling due to 
+[ 420.4s] # 14 submenu           fast    Y                        Stuck in player-selection loop; Continue is not advancing. The Y icon on the Back button s
+[ 444.5s] # 15 submenu           fast    BACK                     Stuck in a multiplayer player-selection loop; A on Continue cycles without advancing. This
+[ 478.8s] # 16 submenu           fast    START                    Stuck in multiplayer player-selection loop after 7 failed attempts (A, Y, DOWN A, UP A, BA
+[ 526.5s] # 17 submenu           fast    X                        Stuck in multiplayer setup loop. Italy is selected for Player 3, but name entry has not be
+[ 592.4s] # 18 name_entry        fast    START                    At name entry for Player 3 (from history); following hint preference to use START to jump 
+[ 693.2s] # 19 name_entry        fast    UP UP UP A DOWN DOWN DOWN A Player 3 name entry in progress. OK button is already selected. Field appears empty. Hint 
+[ 804.0s] # 20 submenu           fast    DOWN RIGHT A             Stuck in player selection loop after 7 failed attempts at the same screen. The right panel
+[ 869.5s] # 21 submenu           fast    UP UP A                  Stuck looping on this screen with A on Continue cycling without advancing. Previous attemp
+[ 883.3s] # 22 submenu           fast    A                        Difficulty selection menu; Medium is the default center position. Accept with A to proceed
+[ 897.8s] # 23 loading           fast    wait                     Progress bar active with Loading message; awaiting asset load completion before gameplay a
+[ 927.7s] # 24 cutscene          fast    A                        Post-loading event intro displaying the selected athlete and event. Static posed image wit
+[1009.4s] # 25 submenu           fast    A                        Pre-race positioning screen at the starting gate. The 'Start' button indicates A is needed
+[1026.5s] # 26 submenu           fast    A                        The 'Start' button is visible, confirming this is the pre-race setup screen, not yet live 
+[1039.9s] # 27 gameplay          fast    wait                     Real-time gameplay with HUD (Time, Speed, Gate Faults), player character visibly moving do
+[1057.7s] # 28 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.504, under input 0.531
+hold-play: genre other, need 630 s of play
+hold-play: fps at 182 s: median 30.0, share>=30 0.632 over 95 samples
+hold-play: fps at 305 s: median 39.0, share>=30 0.774 over 186 samples
+hold-play: off play 167 s of a 724 s scored window cannot drop to 10% with 678 s of budget left: no amount of further play can pass
+hold-play: not held 566/630 s of play; off play 167 s of a 724 s scored window cannot drop to 10% with 678 s of budget left: no amount of further play can pass
+held Torino 2006 Europe En Fr De Es It for 726s
+VERDICT Torino 2006 Europe En Fr De Es It ? FAIL(menu time: 76.9% of the scored window in `play` (bar 90%; play 557 s, menu 66 s, pause 34 s, results 27 s)) gameplay=724.8s fps_ok=0.6591 crash=False hang=False audio_short=0.000185 hitches=12/1.083pm worst_ms=1013.6 static_frac=0.0 play_share=0.7686 fps_excluded=168.3s
+{"name": "Torino 2006 Europe En Fr De Es It", "device": "nova", "result": "gameplay", "minutes": 17.63, "model_calls": 46, "steps": 28, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-545400A9-1014d/frames/027-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

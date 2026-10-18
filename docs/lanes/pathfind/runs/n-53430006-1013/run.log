@@ -1,0 +1,41 @@
+pathfind: Conflict Desert Storm II Back to Baghdad USA (53430006) on nova: /storage/E6C6-D7AA/Games/XBox/53430006-Conflict_Desert_Storm_II_Back_to_Baghdad_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 53430006 any, loaded none
+[  14.5s] #  1 publisher_logo    fast    A                        Publisher logo at 0.1 min post-boot. Standard skip with A.
+[  32.2s] #  2 publisher_logo    fast    A                        New publisher logo after initial boot; skip with A per standard instructions
+[  43.2s] #  3 loading           fast    wait                     Animated loading spinner visible; post-publisher-logo, pre-gameplay. Standard loading scre
+[  57.5s] #  4 publisher_logo    fast    A                        Dolby Digital logo screen after loading spinner; a new publisher logo in sequence. Skip wi
+[ 109.2s] #  5 save_load_prompt  fast    A                        Default profile confirmation prompt; OK is highlighted; accepting the default proceeds fas
+[ 130.2s] #  6 submenu           fast    A                        NEW GAME is highlighted on the Single Player submenu; A selects it and reaches gameplay fa
+[ 156.0s] #  7 submenu           fast    A                        MEDIUM is already highlighted; this is difficulty selection. Accept default with A to proc
+[ 180.5s] #  8 submenu           fast    A                        Team select menu before gameplay. The first option (22nd SAS) is highlighted as the defaul
+[ 194.5s] #  9 cutscene          fast    START                    Post-team-select introductory cinematic showing game world in letterboxed cinematic style;
+[ 225.4s] # 10 gameplay          fast    wait                     HUD elements visible (tactical panels, squad/objective information on right side); game wo
+[ 229.1s] # 11 probe             probe   STICK:up:1.5             control 0.000, under input 0.000
+[ 243.0s] # 12 loading           fast    A                        Mission briefing screen before gameplay; requires advancing past the narrative prompt to r
+[ 256.5s] # 13 cutscene          fast    START                    Location/date briefing card before gameplay; letterboxed with narrative text, not a HUD or
+[ 269.1s] # 14 pause             fast    A                        Game is paused; RESUME is the highlighted option at the bottom. Press A to unpause and ret
+[ 296.9s] # 15 submenu           fast    A                        Character profile/stats menu with SELECT button highlighted at bottom; this is a confirmat
+[ 313.8s] # 16 submenu           fast    A                        Character profile/squad confirmation screen; SELECT button highlighted at bottom right. Th
+[ 341.7s] # 17 submenu           fast    BACK                     Squad/character confirmation screen; SELECT pressed twice looped back. Try BACK to exit th
+[ 381.0s] # 18 pause             fast    START                    'GAME PAUSED' is explicit; this is a pause menu. The UI text 'START RESUME' at bottom left
+[ 409.1s] # 19 gameplay          fast    wait                     HUD elements present (character portrait, ammo/resource counter, compass), squad visible i
+[ 424.6s] # 20 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 control 0.012, under input 0.012
+[ 480.8s] # 21 gameplay          fast    wait                     Squad-based tactical game with full HUD (character portraits, health bars, compass, tactic
+[ 495.9s] # 22 probe             probe   STICK:left:1.5 STICK:left:1.5 STICK:left:1.5 control 0.017, under input 0.016
+[ 513.8s] # 23 gameplay          fast    wait                     Full HUD visible (squad portraits, health bars, compass, ammo counter) and player characte
+[ 530.4s] # 24 probe             probe   HOLD:A:3                 control 0.010, under input 0.228
+hold-play: genre drive, need 600 s of play
+hold-play: fps at 183 s: median 35.0, share>=30 0.907 over 108 samples
+hold-play: fps at 302 s: median 42.0, share>=30 0.954 over 218 samples
+hold-play: off play for 12 steps (game_over): ladder round 1
+hold-play: off play for 12 steps (game_over): ladder round 2
+hold-play: off play for 12 steps (game_over): ladder round 3
+hold-play: off play for 12 steps (game_over): ladder round 4
+hold-play: off play for 12 steps (game_over): ladder round 5
+hold-play: not held 284/600 s of play; budget 40 min with 284 s of play
+held Conflict Desert Storm II Back to Baghdad USA for 1821s
+VERDICT Conflict Desert Storm II Back to Baghdad USA ? FAIL(menu time: 16.0% of the scored window in `play` (bar 90%; game_over 1407 s, play 292 s, results 69 s, menu 40 s)) gameplay=1820.0s fps_ok=0.9321 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.093 play_share=0.1602 fps_excluded=1529.6s
+{"name": "Conflict Desert Storm II Back to Baghdad USA", "device": "nova", "result": "gameplay", "minutes": 8.84, "model_calls": 98, "steps": 24, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-53430006-1013/frames/023-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

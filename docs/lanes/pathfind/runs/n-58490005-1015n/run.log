@@ -1,0 +1,32 @@
+pathfind: Motor Trend Presents Lotus Challenge USA (58490005) on nova: /storage/E6C6-D7AA/Games/XBox/58490005-Motor_Trend_Presents_Lotus_Challenge_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 58490005 any, loaded none
+[   8.5s] #  1 loading           fast    wait                     App or emulator appears to be loading; nothing to interact with yet, just wait.
+[  17.1s] #  2 loading           fast    START                    Legal/copyright text screen during boot sequence, not yet interactive; standard pre-title 
+[  25.4s] #  3 title_screen      fast    START                    Title screen prompts for START to begin
+[  35.4s] #  4 profile_creation  fast    A                        No saves exist; need to create a new profile. 'New' option appears highlighted at top of t
+[  41.8s] #  5 save_load_prompt  fast    UP A                     Need to confirm creating a new save game; cursor is on No, need to move to Yes to proceed 
+[  49.1s] #  6 title_screen      fast    START                    This appears to be a title/menu screen with a Start button highlighted; pressing START or 
+[  59.5s] #  7 main_menu         fast    A                        Start/1 Player is highlighted; prompt says A to continue, which should proceed toward mode
+[  67.7s] #  8 main_menu         fast    A                        Single Game/1 Player/Start are highlighted as the default quick-play path; press A to cont
+[  76.0s] #  9 main_menu         fast    A                        Race is selected under Single Game/1 Player/Start, the default quick-race path; press A to
+[  84.3s] # 10 submenu           fast    A                        This is a race setup/confirmation screen with defaults already selected; need to press A o
+[  93.9s] # 11 submenu           fast    A                        Left panel's Next button is highlighted orange; pressing A should confirm and continue to 
+[ 101.0s] # 12 submenu           fast    A                        This is the final pre-race confirmation screen with defaults set; pressing A starts the ra
+[ 111.5s] # 13 gameplay          fast    RT:2                     Car is on track in starting grid formation with HUD-free racing view; this is the actual r
+[ 133.5s] # 14 probe             probe   RT:2 RT:2 RT+left:1.2 RT+right:1.2 control 0.348, under input 0.084
+hold-play: genre drive, need 630 s of play
+hold-play: gas probe RT: band change 0.053 (confirmed)
+hold-play: drive gas confirmed RT (tried ['RT'])
+hold-play: fps at 190 s: median 59.0, share>=30 1.0 over 191 samples
+hold-play: fps at 302 s: median 59.0, share>=30 1.0 over 303 samples
+hold-play: stuck (scene unchanged for 4 consecutive samples (genre drive)): prompt look at 566 s
+hold-play: stuck (scene unchanged for 4 consecutive samples (genre drive)): unstick LT+left:3 RT+right:3 at 566 s
+hold-play: play disagrees: hold 640.1 s, verdict 652.7 s (verdict trusted)
+hold-play: validity check stop 0 s (hold 640 s of play, verdict 652.7)
+hold-play: not held 640/630 s of play; verdict stops the hold: fps_ok 1.0, crash False, hang False
+held Motor Trend Presents Lotus Challenge USA for 655s
+VERDICT Motor Trend Presents Lotus Challenge USA ? FAIL(static window: 45% of pixels never moved more than 10/255 from the window's first frame, over 18 sampled frames from route-frames (bar 20%)) gameplay=653.5s fps_ok=1.0 crash=False hang=False audio_short=0.000662 hitches=0/0.0pm worst_ms=0.0 static_frac=0.4472 play_share=0.9996 fps_excluded=1.0s
+{"name": "Motor Trend Presents Lotus Challenge USA", "device": "nova", "result": "gameplay", "minutes": 2.22, "model_calls": 24, "steps": 14, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-58490005-1015n/frames/013-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

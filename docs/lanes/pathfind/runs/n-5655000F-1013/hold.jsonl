@@ -1,0 +1,119 @@
+{"n": 34, "hold_s": 0.9, "play_s": 7.0, "changed": null, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": true}
+{"n": 35, "hold_s": 8.0, "play_s": 14.3, "changed": 0.1441, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 36, "hold_s": 15.4, "play_s": 21.5, "changed": 0.0414, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 37, "hold_s": 22.5, "play_s": 28.8, "changed": 0.0616, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 38, "hold_s": 29.8, "play_s": 36.0, "changed": 0.1045, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 39, "hold_s": 37.1, "play_s": 43.4, "changed": 0.045, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.1249, "kept": true}
+{"n": 40, "hold_s": 44.4, "play_s": 50.5, "changed": 0.0831, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 41, "hold_s": 51.7, "play_s": 57.9, "changed": 0.088, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 42, "hold_s": 59.1, "play_s": 65.4, "changed": 0.037, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 43, "hold_s": 66.5, "play_s": 106.3, "changed": 0.0076, "off": false, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Player spaceship actively visible in game world with combat HUD, targeting reticles, radar displays, and distance markers all active", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 44, "hold_s": 107.4, "play_s": 113.7, "changed": 0.0956, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.1188, "kept": true}
+{"n": 45, "hold_s": 114.9, "play_s": 120.8, "changed": 0.0347, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 46, "hold_s": 122.0, "play_s": 127.9, "changed": 0.0367, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 47, "hold_s": 129.1, "play_s": 135.0, "changed": 0.0208, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 48, "hold_s": 136.2, "play_s": 142.1, "changed": 0.0236, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 49, "hold_s": 143.2, "play_s": 149.1, "changed": 0.0725, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.1059, "kept": true}
+{"n": 50, "hold_s": 150.3, "play_s": 156.2, "changed": 0.0621, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 51, "hold_s": 157.5, "play_s": 178.9, "changed": 0.0392, "off": false, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Spacecraft in active space combat with visible HUD, targeting reticle, shield indicators, weapons readout, and mini-map; game running and interactive", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 52, "hold_s": 180.2, "play_s": 186.1, "changed": 0.2195, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.2476, "kept": true}
+{"n": 53, "hold_s": 187.5, "play_s": 193.3, "changed": 0.1183, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 54, "hold_s": 194.8, "play_s": 200.9, "changed": 0.1702, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 55, "hold_s": 202.2, "play_s": 208.2, "changed": 0.1175, "off": false, "shift_look": 1.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 56, "hold_s": 209.6, "play_s": 215.6, "changed": 0.2176, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 57, "hold_s": 217.0, "play_s": 223.0, "changed": 0.0634, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.2674, "kept": true}
+{"n": 58, "hold_s": 224.5, "play_s": 230.2, "changed": 0.0455, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 59, "hold_s": 231.6, "play_s": 237.2, "changed": 0.0555, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 60, "hold_s": 238.8, "play_s": 244.6, "changed": 0.0516, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 61, "hold_s": 246.1, "play_s": 251.9, "changed": 0.0785, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 62, "hold_s": 253.4, "play_s": 275.7, "changed": 0.1079, "off": false, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Player's spaceship visible in game world with active flight/combat HUD (reticles, distance readouts, system status)", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.0972, "kept": true}
+{"n": 63, "hold_s": 277.3, "play_s": 282.9, "changed": 0.0352, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 64, "hold_s": 284.5, "play_s": 290.3, "changed": 0.0383, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.0406, "kept": true}
+{"n": 65, "hold_s": 292.0, "play_s": 297.6, "changed": 0.062, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 66, "hold_s": 299.2, "play_s": 304.8, "changed": 0.0643, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 67, "hold_s": 306.5, "play_s": 312.2, "changed": 0.3468, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 68, "hold_s": 313.9, "play_s": 319.6, "changed": 0.3272, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 69, "hold_s": 321.3, "play_s": 327.0, "changed": 0.3177, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.3232, "kept": true}
+{"n": 70, "hold_s": 328.8, "play_s": 334.4, "changed": 0.2495, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 71, "hold_s": 336.3, "play_s": 341.8, "changed": 0.2676, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 72, "hold_s": 343.5, "play_s": 370.7, "changed": 0.1895, "off": false, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Player's spaceship actively engaged in combat; HUD with targeting systems, distance readouts, and enemy contacts visible", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 73, "hold_s": 372.5, "play_s": 378.1, "changed": 0.5623, "off": false, "shift_look": 15.3, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.5675, "kept": true}
+{"n": 74, "hold_s": 379.9, "play_s": 378.1, "changed": 0.0, "off": false, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Game over screen displayed with RETRY/QUIT menu options", "action": ["A"], "kept": false}
+{"n": 75, "hold_s": 388.7, "play_s": 378.1, "changed": 0.1096, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 76, "hold_s": 392.5, "play_s": 378.1, "changed": 0.1096, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 77, "hold_s": 396.2, "play_s": 378.1, "changed": 0.1096, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 78, "hold_s": 400.0, "play_s": 378.1, "changed": 0.1096, "off": true, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "GAME OVER screen displayed with RETRY and QUIT options; no gameplay in progress", "action": ["A"], "kept": false}
+{"n": 79, "hold_s": 409.9, "play_s": 378.1, "changed": 0.1096, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 80, "hold_s": 413.8, "play_s": 378.1, "changed": 0.1096, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 81, "hold_s": 417.6, "play_s": 378.1, "changed": 0.1096, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 82, "hold_s": 421.4, "play_s": 378.1, "changed": 0.1096, "off": true, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Game-over screen with RETRY/QUIT menu displayed; player is not in the game world", "action": ["A"], "kept": false}
+{"n": 83, "hold_s": 433.5, "play_s": 378.1, "changed": 0.1096, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 84, "hold_s": 437.2, "play_s": 378.1, "changed": 0.1096, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 85, "hold_s": 440.9, "play_s": 378.1, "changed": 0.1096, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 86, "hold_s": 444.9, "play_s": 378.1, "changed": 0.1096, "off": true, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Game over screen with RETRY/QUIT menu displayed; no active gameplay", "action": ["A"], "kept": false}
+{"n": 87, "hold_s": 455.0, "play_s": 378.1, "changed": 0.1096, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 88, "hold_s": 458.8, "play_s": 378.1, "changed": 0.1096, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 89, "hold_s": 462.5, "play_s": 378.1, "changed": 0.1096, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 90, "hold_s": 466.3, "play_s": 378.1, "changed": 0.1096, "off": true, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Game over screen displayed with RETRY/QUIT menu; RETRY is highlighted", "action": ["A"], "kept": false}
+{"n": 91, "hold_s": 476.8, "play_s": 378.1, "changed": 0.1096, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "stuck": {"menu": false, "run": 4, "reason": "scene unchanged for 4 consecutive samples (genre drive)", "action": ["LT+left:3", "RT+right:3"], "abort": false}, "kept": true}
+{"n": 92, "hold_s": 488.8, "play_s": 378.1, "changed": 0.1096, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 93, "hold_s": 492.6, "play_s": 378.1, "changed": 0.1096, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 94, "hold_s": 496.4, "play_s": 378.1, "changed": 0.1096, "off": true, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "GAME OVER screen with RETRY/QUIT menu options displayed", "action": ["A"], "kept": false}
+{"n": 95, "hold_s": 505.5, "play_s": 378.1, "changed": 0.1096, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 96, "hold_s": 509.3, "play_s": 378.1, "changed": 0.1096, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "stuck": {"menu": false, "run": 5, "reason": "scene unchanged for 5 consecutive samples (genre drive)", "action": ["LT+right:3", "RT+left:3"], "abort": false}, "kept": true}
+{"n": 97, "hold_s": 521.0, "play_s": 378.1, "changed": 0.1097, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 98, "hold_s": 524.9, "play_s": 378.1, "changed": 0.5184, "off": true, "shift_look": 40.36, "src": "check", "state": "cutscene", "why": "Cutscene with 'Press BACK to skip' prompt at bottom; player not in control of character/vehicle", "action": ["BACK"], "kept": false}
+{"n": 99, "hold_s": 534.7, "play_s": 378.1, "changed": 0.5712, "off": true, "shift_look": 40.8, "src": "repeat", "state": "cutscene", "action": ["BACK"], "kept": false}
+{"n": 100, "hold_s": 538.6, "play_s": 378.1, "changed": 0.0952, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["BACK"], "kept": false}
+{"n": 101, "hold_s": 542.5, "play_s": 378.1, "changed": 0.3032, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["BACK"], "kept": true}
+{"n": 102, "hold_s": 546.5, "play_s": 408.8, "changed": 0.2504, "off": true, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Player in active space combat with visible targeting reticles, distance indicators, radar, ship status HUD, and enemy contacts; game world running.", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 103, "hold_s": 577.3, "play_s": 416.3, "changed": 0.1915, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.2894, "kept": true}
+{"n": 104, "hold_s": 584.8, "play_s": 423.7, "changed": 0.2699, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 105, "hold_s": 592.3, "play_s": 431.3, "changed": 0.2872, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 106, "hold_s": 599.9, "play_s": 438.8, "changed": 0.1441, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 107, "hold_s": 607.3, "play_s": 446.0, "changed": 0.0823, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.2334, "kept": true}
+{"n": 108, "hold_s": 614.5, "play_s": 453.2, "changed": 0.0502, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 109, "hold_s": 621.8, "play_s": 460.5, "changed": 0.049, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 110, "hold_s": 629.1, "play_s": 467.8, "changed": 0.0728, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 111, "hold_s": 636.6, "play_s": 498.4, "changed": 0.1001, "off": false, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Player's ship is in active space combat with visible targeting reticle, enemy markers, ammo status (100), and real-time HUD displayed.", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 112, "hold_s": 667.0, "play_s": 505.5, "changed": 0.0772, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.1696, "kept": true}
+{"n": 113, "hold_s": 674.1, "play_s": 512.9, "changed": 0.149, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 114, "hold_s": 681.7, "play_s": 520.3, "changed": 0.0956, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 115, "hold_s": 689.0, "play_s": 527.6, "changed": 0.0303, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 116, "hold_s": 696.3, "play_s": 535.0, "changed": 0.0596, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 117, "hold_s": 703.7, "play_s": 542.2, "changed": 0.0303, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.2519, "kept": true}
+{"n": 118, "hold_s": 711.1, "play_s": 549.6, "changed": 0.299, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 119, "hold_s": 718.4, "play_s": 556.7, "changed": 0.3481, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 120, "hold_s": 725.5, "play_s": 563.7, "changed": 0.0766, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 121, "hold_s": 732.5, "play_s": 591.9, "changed": 0.018, "off": false, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Active tactical combat HUD with live targeting display; vessel under player control; game running at 54 FPS", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 122, "hold_s": 760.6, "play_s": 598.9, "changed": 0.4182, "off": false, "shift_look": 15.65, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.5327, "kept": true}
+{"n": 123, "hold_s": 767.7, "play_s": 598.9, "changed": 0.0, "off": false, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Game Over screen with RETRY/QUIT menu options displayed", "action": ["A"], "kept": false}
+{"n": 124, "hold_s": 778.2, "play_s": 598.9, "changed": 0.1049, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 125, "hold_s": 783.0, "play_s": 598.9, "changed": 0.1049, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 126, "hold_s": 787.6, "play_s": 598.9, "changed": 0.1049, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 127, "hold_s": 792.3, "play_s": 598.9, "changed": 0.1049, "off": true, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Game Over screen with Retry/Quit menu displayed; game not running", "action": ["A"], "kept": true}
+{"n": 128, "hold_s": 803.0, "play_s": 598.9, "changed": 0.1049, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 129, "hold_s": 807.7, "play_s": 598.9, "changed": 0.1049, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 130, "hold_s": 812.3, "play_s": 598.9, "changed": 0.1049, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 131, "hold_s": 817.0, "play_s": 598.9, "changed": 0.1049, "off": true, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Game Over screen displayed with RETRY/QUIT menu options; RETRY is highlighted", "action": ["A"], "kept": false}
+{"n": 132, "hold_s": 825.7, "play_s": 598.9, "changed": 0.1049, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 133, "hold_s": 828.5, "play_s": 598.9, "changed": 0.1049, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 134, "hold_s": 831.2, "play_s": 598.9, "changed": 0.1049, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 135, "hold_s": 834.0, "play_s": 598.9, "changed": 0.1049, "off": true, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Game Over screen displayed with Retry/Quit menu options", "action": ["A"], "kept": false}
+{"n": 136, "hold_s": 842.8, "play_s": 598.9, "changed": 0.1049, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 137, "hold_s": 846.6, "play_s": 598.9, "changed": 0.1049, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 138, "hold_s": 850.3, "play_s": 598.9, "changed": 0.1049, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 139, "hold_s": 854.1, "play_s": 598.9, "changed": 0.1049, "off": true, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Game over screen with RETRY and QUIT menu options displayed", "action": ["A"], "kept": false}
+{"n": 140, "hold_s": 864.0, "play_s": 598.9, "changed": 0.1049, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "stuck": {"menu": false, "run": 4, "reason": "scene unchanged for 4 consecutive samples (genre drive)", "action": ["LT+left:3", "RT+right:3"], "abort": false}, "kept": true}
+{"n": 141, "hold_s": 875.7, "play_s": 598.9, "changed": 0.1049, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 142, "hold_s": 879.3, "play_s": 598.9, "changed": 0.1049, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 143, "hold_s": 883.0, "play_s": 598.9, "changed": 0.1049, "off": true, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "GAME OVER screen shown with RETRY/QUIT menu options; player not in game world", "action": ["A"], "kept": false}
+{"n": 144, "hold_s": 893.1, "play_s": 598.9, "changed": 0.1049, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 145, "hold_s": 897.0, "play_s": 598.9, "changed": 0.1049, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "stuck": {"menu": false, "run": 5, "reason": "scene unchanged for 5 consecutive samples (genre drive)", "action": ["LT+right:3", "RT+left:3"], "abort": false}, "kept": true}
+{"n": 146, "hold_s": 908.6, "play_s": 598.9, "changed": 0.1051, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 147, "hold_s": 912.4, "play_s": 598.9, "changed": 0.5236, "off": true, "shift_look": 18.11, "src": "check", "state": "cutscene", "why": "Cinematic view of Battlestar Galactica with 'Press BACK to skip' prompt; player is not in active gameplay", "action": ["BACK"], "kept": false}
+{"n": 148, "hold_s": 926.0, "play_s": 598.9, "changed": 0.562, "off": true, "shift_look": 17.89, "src": "repeat", "state": "cutscene", "action": ["BACK"], "kept": false}
+{"n": 149, "hold_s": 929.9, "play_s": 598.9, "changed": 0.3212, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["BACK"], "kept": true}
+{"n": 150, "hold_s": 933.9, "play_s": 598.9, "changed": 0.2479, "off": true, "shift_look": 0.0, "src": "repeat", "state": "cutscene", "action": ["BACK"], "kept": false}
+{"n": 151, "hold_s": 937.8, "play_s": 627.0, "changed": 0.136, "off": true, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Player's spaceship is actively navigating in the game world with combat HUD visible; FPS 59 indicates live gameplay", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"check": "share", "short_s": 2740.8, "hold_play_s": 627.0, "verdict_play_s": 594.6, "gameplay_s": 965.2}

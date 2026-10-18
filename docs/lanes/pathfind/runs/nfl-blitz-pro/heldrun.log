@@ -1,0 +1,18 @@
+taken: nova by lane.pathfind
+NOT IDLE: nova is held but busy -- do not touch it yet:
+dispatcher pid 518495 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+running: 1-1791221182-lane.gpuclock-2660089 on nova
+run: hold.sh wait-idle nova <timeout_s>, and touch the device only on exit 0
+waiting for nova: dispatcher pid 518495 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+running: 1-1791221182-lane.gpuclock-2660089 on nova
+idle: nova is held and runs nothing
+held at 12:31:05
+pathfind: NFL Blitz Pro (None) on nova: /storage/E6C6-D7AA/Games/XBox/NFL_Blitz_Pro.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: - any, loaded all goldens (title not identified)
+[   9.5s] #  1 publisher_logo    fast    START                    Boot splash or logo animation on a blank white screen; no title, menu, or gameplay yet. No
+[  18.6s] #  2 publisher_logo    fast    START                    Midway publisher logo still on screen, the disk-access box is a system message, not a menu
+released: nova by lane.pathfind
+Terminated
+released rc=0

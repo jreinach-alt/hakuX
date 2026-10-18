@@ -1,0 +1,98 @@
+taken: nova by lane.pathfind
+idle: nova is held and runs nothing
+held at 16:11:18
+pathfind: NBA 2K3 (None) on nova: /storage/E6C6-D7AA/Games/XBox/NBA_2K3.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: - any, loaded all goldens (title not identified)
+[   9.0s] #  1 publisher_logo    fast    A                        Early boot logo with nothing to press yet; per hints, skip with A once, then re-read.
+[  16.4s] #  2 publisher_logo    fast    A                        Publisher logo with nothing to press beyond the skip; the hint says skip with A once, then
+[  24.0s] #  3 publisher_logo    fast    A                        Third publisher logo with nothing to press beyond the skip; per hints, skip with A once, t
+[  32.8s] #  4 publisher_logo    fast    A                        NBA legal/trademark notice screen, a publisher-style logo with nothing to choose; per hint
+[  41.3s] #  5 publisher_logo    fast    A                        Still the NBA logo or legal/trademark screen with nothing to choose; the hint says skip wi
+[  45.5s] #  6 black             black   wait                     black frame
+[  52.6s] #  7 title_screen      fast    START                    Title screen with a 'Press START' prompt; per the title-screen rule, START is the input.
+[  63.3s] #  8 main_menu         fast    DOWN DOWN A              Quick Game is highlighted, but the run goal requires setting quarter length and game clock
+[  72.7s] #  9 submenu           fast    DOWN A                   Options submenu open with NBA Rules highlighted. The run goal needs the quarter length and
+[  83.0s] # 10 submenu           fast    DOWN DOWN DOWN RIGHT     Options submenu before the game starts. The run goal needs Quarter Length at the longest v
+[  93.3s] # 11 submenu           fast    A                        Quarter Length is the highlighted row at 5 Minutes, which is not yet the longest value. Th
+[ 103.7s] # 12 submenu           fast    RIGHT                    Quarter Length is highlighted at 6 Minutes. The previous step's A moved it from 5 to 6, so
+[ 112.8s] # 13 submenu           fast    RIGHT                    Options submenu with Quarter Length highlighted at 6 Minutes. The last RIGHT may not have 
+[ 122.0s] # 14 submenu           fast    A                        Quarter Length is really highlighted at 6 Minutes. RIGHT twice did not change it, but A mo
+[ 133.3s] # 15 submenu           fast    UP LEFT                  Quarter Length is now highlighted at 8 Minutes, which is longer than the 6 seen before, so
+[ 143.2s] # 16 submenu           fast    DOWN                     Quarter Length is 8 Minutes, not confirmed longest; the highlight is on Game Speed, not Qu
+[ 151.5s] # 17 submenu           fast    RIGHT                    Quarter Length is highlighted at 8 Minutes and the red bar confirms it is the active row. 
+[ 163.9s] # 18 submenu           fast    UP LEFT                  Quarter Length is highlighted at 8 Minutes, and RIGHT/A/UP-LEFT attempts keep returning to
+[ 174.6s] # 19 submenu           fast    LEFT                     Quarter Length already reads 8 Minutes after repeated RIGHT/A attempts that never confirme
+[ 183.8s] # 20 submenu           fast    LEFT                     The highlight is on Game Speed at Normal, not Quarter Length, so the earlier RIGHT and A p
+[ 193.0s] # 21 submenu           fast    DOWN                     The highlight is on Game Speed, so the earlier RIGHT and A presses changed the wrong row. 
+[ 210.0s] # 22 submenu           fast    A                        The red highlight is on Quarter Length (8 Minutes), not Game Speed. Earlier RIGHT/A presse
+[ 218.0s] # 23 submenu           fast    RIGHT                    Quarter Length is the highlighted row and reads 10 Minutes, up from 8. A did nothing on th
+[ 226.4s] # 24 submenu           fast    UP LEFT                  Quarter Length is already at 10 Minutes, the longest value (RIGHT did nothing at 10). Next
+[ 236.1s] # 25 submenu           fast    LEFT                     Quarter Length is already at 10 Minutes, the longest offered. The red highlight is on Game
+[ 244.1s] # 26 submenu           fast    LEFT                     Quarter Length is already at the longest value, 10 Minutes. The highlight is on Game Speed
+[ 254.0s] # 27 submenu           fast    B                        Quarter Length is already at the longest value (10 Minutes). Game Speed has resisted LEFT/
+[ 264.5s] # 28 submenu           fast    B                        Quarter Length is already at the longest value (10 min) per the last steps, and Game Speed
+[ 272.2s] # 29 main_menu         fast    A                        Quarter Length is already at the longest value (10 min) from earlier steps; Quick Game is 
+[ 281.4s] # 30 submenu           fast    RIGHT                    Team select with controller 1 still in the middle column. Per the run goal, press RIGHT ex
+[ 289.9s] # 31 submenu           fast    START                    Team select. Controller 1 moved one notch with the single RIGHT and shows the User Name pl
+[ 299.8s] # 32 loading           fast    wait                     Team-info card between team select and game start; nothing to choose and no player control
+[ 307.9s] # 33 loading           fast    A                        Team-info card between team select and game start; no player control yet. Skip is offered 
+[ 316.2s] # 34 loading           fast    wait                     Matchup card between team select and game start; nothing to choose and no player control y
+[ 325.6s] # 35 loading           fast    wait                     Starting-lineups card between team select and game start; no player control yet, so wait f
+[ 334.5s] # 36 loading           fast    wait                     Starting-lineup/pre-game introduction still running before the game starts; no player cont
+[ 343.9s] # 37 loading           fast    wait                     Pre-game introduction/lineup presentation still running; no player control yet, so wait fo
+[ 354.1s] # 38 loading           fast    wait                     Pregame player introductions are still running; no player control yet and no menu or choic
+[ 364.4s] # 39 loading           fast    wait                     Pregame introduction card still running, no player control and no menu or choice shown, so
+[ 373.6s] # 40 loading           fast    wait                     Pregame introduction is still running (same as previous steps); no player control and no m
+[ 382.9s] # 41 loading           fast    wait                     Pregame player introduction/lineup presentation still running; no player control and no me
+[ 394.1s] # 42 loading           fast    wait                     Pregame player introduction card is still running, as in the previous steps. No player con
+[ 404.6s] # 43 cutscene          fast    START                    Pregame player introduction presentation, not player control and no menu or choice shown, 
+[ 414.5s] # 44 pause             fast    A                        The earlier START opened the pause menu during the pregame intro. Resume is highlighted, s
+[ 422.4s] # 45 cutscene          fast    START                    Pregame introduction presentation still running with no player control; the earlier START 
+[ 433.0s] # 46 pause             fast    A                        Pause menu opened by an earlier START during the pregame intro; Resume is highlighted, so 
+[ 441.3s] # 47 cutscene          fast    START                    Pregame player introduction is still running with no menu or player control. START opened 
+[ 451.8s] # 48 pause             fast    DOWN                     The pause menu was opened by an earlier START during the pregame intro. Resume is highligh
+[ 460.4s] # 49 pause             fast    UP A                     The orange arrow sits on Replay, not Resume, because the earlier DOWN moved it. Resume is 
+[ 470.6s] # 50 cutscene          fast    START                    Pregame introduction presentation with no menu or player control. START has opened the pau
+[ 481.7s] # 51 pause             fast    A                        Pause menu with Resume highlighted by the orange dash. Earlier A presses resumed into the 
+[ 495.2s] # 52 cutscene          fast    START                    Pregame player introduction with no menu, pause panel or player control. START has opened 
+[ 507.0s] # 53 pause             fast    B                        Resume has been tried repeatedly and each A returns to the pregame cutscene, where START r
+[ 520.2s] # 54 pause             fast    A                        Earlier A presses on Resume returned to the pregame cutscene, and START reopened the pause
+[ 544.1s] # 55 gameplay          fast    wait                     Scoreboard shows 1st quarter with the clock counting at 10:00 and a HUD up, so the game is
+[ 560.9s] # 56 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.384, under input 0.142
+[ 565.4s] # 57 gameplay          fast    wait                     Quarter clock is counting down (10:00 to 9:45) with the HUD up and no menu, so play is liv
+[ 583.1s] # 58 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.507, under input 0.612
+[ 589.3s] # 59 gameplay          fast    wait                     The quarter clock is counting down with the full HUD up and no menu open, so play is live;
+[ 606.6s] # 60 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.623, under input 0.635
+[ 612.8s] # 61 gameplay          fast    wait                     The quarter clock is counting down with the full HUD and no menu, so play is live. The con
+[ 629.6s] # 62 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.324, under input 0.223
+[ 637.1s] # 63 gameplay          fast    wait                     Live quarter clock counting, HUD up, no menu or foul banner; the controlled player is O'Ne
+[ 652.8s] # 64 probe             probe   STICK:left:2 STICK:left:1.2 STICK:right:1.2 control 0.624, under input 0.636
+[ 661.1s] # 65 gameplay          fast    wait                     Full HUD with the quarter clock counting down and no menu or foul banner, so play is live.
+[ 676.1s] # 66 probe             probe   STICK:upright:1.5 STICK:left:1.2 STICK:right:1.2 control 0.332, under input 0.293
+[ 682.5s] # 67 gameplay          fast    wait                     Full HUD with the quarter clock running (9:08) and no menu, pause, or foul banner, so live
+[ 702.0s] # 68 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.606, under input 0.658
+[ 709.0s] # 69 gameplay          fast    wait                     HUD is up, the quarter clock is counting down (8:55), and no menu, pause or foul banner is
+[ 729.5s] # 70 probe             probe   RT:3 RT+left:1.2 RT+right:1.2 control 0.177, under input 0.415
+[ 737.2s] # 71 gameplay          fast    wait                     A live HUD with the play on the floor, but a 5-second inbound violation banner is up, so t
+[ 753.2s] # 72 probe             probe   RT:3 RT+left:1.2 RT+right:1.2 control 0.512, under input 0.444
+[ 760.8s] # 73 gameplay          fast    wait                     HUD and running quarter clock are up with no menu or banner. Earlier probes with the trigg
+[ 777.7s] # 74 probe             probe   HOLD:X:3 STICK:left:1.2 STICK:right:1.2 control 0.611, under input 0.258
+[ 784.6s] # 75 gameplay          fast    wait                     Live HUD with the play on the floor and no menu up. The 8 SECONDS VIOLATION banner is a br
+[ 799.0s] # 76 probe             probe   HOLD:X:3 STICK:left:1.2 STICK:right:1.2 control 0.521, under input 0.762
+[ 806.2s] # 77 gameplay          fast    wait                     Live play on the floor with a HUD and scoring-run callout, no menu or pause panel. Earlier
+[ 827.1s] # 78 probe             probe   LT:2 LT+left:1.2 LT+right:1.2 control 0.463, under input 0.661
+[ 831.4s] # 79 gameplay          fast    wait                     Live play on the floor with no menu up; only a brief violation callout. Waiting one beat l
+[ 848.1s] # 80 probe             probe   LT:2 LT+left:1.2 LT+right:1.2 control 0.304, under input 0.500
+[ 851.9s] # 81 gameplay          fast    wait                     Live play on the floor with HUD and no menu up; the violation callout is brief, so I wait 
+[ 869.4s] # 82 probe             probe   HOLD:B:3 STICK:left:1.2 STICK:right:1.2 control 0.457, under input 0.505
+[ 876.2s] # 83 gameplay          fast    wait                     Live game with a HUD and no menu or pause panel. The 8-second violation callout is a brief
+[ 892.2s] # 84 probe             probe   HOLD:B:3 STICK:left:1.2 STICK:right:1.2 control 0.551, under input 0.743
+[ 899.4s] # 85 gameplay          fast    wait                     The HUD is up with a running quarter clock and no menu over the play. The controller marke
+[ 915.3s] # 86 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.707, under input 0.460
+{"name": "NBA 2K3", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 86, "steps": 86, "replayed": 0, "reason": "budget 15 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256
+pathfind rc=1 at 16:26:36
+released: nova by lane.pathfind
+released rc=0

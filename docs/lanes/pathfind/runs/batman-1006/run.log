@@ -1,0 +1,72 @@
+pathfind: Batman Begins (45410389) on nova: /storage/E6C6-D7AA/Games/XBox/45410389-Batman_Begins.xiso.iso
+titlestate: titles disk: harvest (the device's disk changed since its last harvest)
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 45410389 any, loaded none
+[   8.1s] #  1 publisher_logo    replay  A                        replay step 0: Early boot splash with a logo still animating in; not a title or menu yet. 
+[  13.9s] #  2 black             black   wait                     black frame
+[  20.2s] #  3 loading           fast    wait                     Game is loading after logos; progress bar still filling, no menu or prompt to act on, so w
+[  26.1s] #  4 publisher_logo    replay  A                        replay step 2: Publisher logo still animating; per hints, skip with A first, then re-read.
+[  30.1s] #  5 black             black   wait                     black frame
+[  36.6s] #  6 publisher_logo    fast    A                        A publisher logo (DC Comics) is still on screen; per hints, skip logos with A once the scr
+[  40.7s] #  7 publisher_logo    replay  A                        replay step 4: Batman Begins logo splash still on screen, not a title or menu yet; per hin
+[  50.4s] #  8 publisher_logo    fast    A                        Still the publisher/title logo splash with no title prompt or menu; per hints, skip logos 
+[  54.7s] #  9 publisher_logo    replay  A                        replay step 6: This is still an intro/logo splash with no title prompt or menu yet. Per hi
+[  62.1s] # 10 title_screen      fast    START                    Title screen with a 'PRESS START' prompt; per hints, START is the input for this prompt. N
+[  70.8s] # 11 main_menu         fast    A                        Title screen is past; NEW GAME is the highlighted default and the fastest route to play. L
+[  78.2s] # 12 submenu           fast    A                        Difficulty submenu after New Game; NORMAL is the highlighted default, so accept it with A 
+[  90.2s] # 13 profile_creation  fast    A                        Empty profile slots on the New Game screen; the highlight is on BATMAN A, so A creates a f
+[  96.9s] # 14 loading           fast    wait                     A save-in-progress screen after choosing New Game and the difficulty; it must finish on it
+[ 105.9s] # 15 loading           fast    wait                     A loading bar is filling, so the game is mid-load. Nothing to press; wait for it to finish
+[ 117.7s] # 16 cutscene          fast    START                    Dark cinematic or fade with rock geometry, no menu or prompt to answer. Previous A presses
+[ 124.0s] # 17 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 130.1s] # 18 black             black   wait                     black frame
+[ 133.6s] # 19 black             black   wait                     black frame
+[ 137.0s] # 20 black             black   wait                     black frame
+[ 145.7s] # 21 cutscene          fast    START                    A scripted-looking brawl with no HUD or control prompt; not confirmed player control. Prev
+[ 155.4s] # 22 cutscene          fast    START                    Scripted cinematic with no HUD or control prompt; not confirmed player control. Previous S
+[ 164.4s] # 23 cutscene          fast    A                        Scripted first-person scene with a fallen enemy and no HUD or control prompt; not confirme
+[ 172.2s] # 24 cutscene          fast    START                    Scripted close-up with no HUD and no confirmed player control; the previous cutscene steps
+[ 180.3s] # 25 pause             fast    A                        The game is already live (Batman in the world behind a pause panel), and CONTINUE is the l
+[ 187.4s] # 26 gameplay          fast    wait                     Live Batman with a HUD and an enemy target in the world, the scripted cutscene has ended a
+[ 201.2s] # 27 probe             probe   STICK:left:1.5 STICK:left:1.5 STICK:left:1.5 control 0.005, under input 0.005
+[ 207.6s] # 28 gameplay          fast    X                        Live combat with a HUD and an enemy target, and the scene is not a cutscene or pause. The 
+[ 223.5s] # 29 probe             probe   X STICK:up:1.5           control 0.003, under input 0.008
+[ 229.9s] # 30 gameplay          fast    Y                        Live combat with the HUD and enemy health bar, and Batman is in the world. The on-screen p
+[ 248.2s] # 31 probe             probe   Y STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.577, under input 0.703
+[ 252.6s] # 32 game_over         fast    wait                     'Mission Failed' banner is shown over the live scene, so the mission has ended in failure 
+[ 261.1s] # 33 game_over         fast    A                        Mission failed screen with a menu; the highlighted first item is CONTINUE LAST CHECKPOINT,
+[ 267.1s] # 34 black             black   wait                     black frame
+[ 273.4s] # 35 cutscene          fast    START                    Dark scene with letterbox bars and no HUD, so it is not gameplay; the previous step was a 
+[ 278.5s] # 36 black             black   wait                     black frame
+[ 290.4s] # 37 gameplay          fast    wait                     Live 3D scene with the Batman emblem HUD and a fighting stance after the checkpoint contin
+[ 304.0s] # 38 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.497, under input 0.782
+[ 308.1s] # 39 cutscene          fast    START                    A close-up character shot with no HUD and no player control; the previous step was a cutsc
+[ 316.3s] # 40 gameplay          fast    wait                     Live 3D playfield with the player's Batman and HUD (health bar, emblem), no menu, cutscene
+[ 332.4s] # 41 probe             probe   HOLD:A:3 HOLD:A:3 HOLD:A:3 control 0.008, under input 0.004
+[ 336.4s] # 42 gameplay          fast    X                        HUD up and the player's Batman is in the playfield, but the on-screen tutorial box is wait
+[ 353.6s] # 43 probe             probe   X X HOLD:A:3 HOLD:A:3 HOLD:A:3 control 0.008, under input 0.003
+[ 359.7s] # 44 gameplay          fast    Y                        Live combat with the player's Batman, HUD up, and a quick-time prompt asking for Y. Pressi
+[ 380.8s] # 45 probe             probe   Y RT:3 RT+left:1.2 RT+right:1.2 control 0.669, under input 0.565
+claim: 3 live reads with self-moving refused probes: entering the hold
+hold-play: genre attack, need 600 s of play
+hold-play: 3 still looks: walk reversed (back) at 116 s
+hold-play: fps at 185 s: median 29.0, share>=30 0.935 over 93 samples
+hold-play: fps at 315 s: median 29.0, share>=30 0.962 over 158 samples
+hold-play: 3 still looks: walk reversed (forward) at 357 s
+hold-play: 3 still looks: walk reversed (back) at 617 s
+hold-play: 3 still looks: walk reversed (forward) at 954 s
+hold-play: 3 still looks: walk reversed (back) at 1044 s
+hold-play: 3 still looks: walk reversed (forward) at 1073 s
+hold-play: 3 still looks: walk reversed (back) at 1290 s
+hold-play: 3 still looks: walk reversed (forward) at 1317 s
+hold-play: 3 still looks: walk reversed (back) at 1433 s
+hold-play: 3 still looks: walk reversed (forward) at 1560 s
+hold-play: 3 still looks: walk reversed (back) at 1615 s
+hold-play: 3 still looks: walk reversed (forward) at 1647 s
+hold-play: 3 still looks: walk reversed (back) at 1828 s
+hold-play: not held 416/600 s of play; hakuX left the foreground during the hold
+held Batman Begins for 1929s
+VERDICT Batman Begins ? FAIL(menu time: 21.4% of the scored window in `play` (bar 90%; still 1334 s, play 413 s, black 46 s, cutscene 44 s)) gameplay=1927.6s fps_ok=0.8329 crash=False hang=False audio_short=0.0 hitches=8/0.257pm worst_ms=450.8 static_frac=0.0 play_share=0.2141 fps_excluded=1507.6s
+{"name": "Batman Begins", "device": "nova", "result": "gameplay", "minutes": 6.35, "model_calls": 135, "steps": 45, "replayed": 4, "reason": "four probes refused", "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batman-1006/frames/044-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

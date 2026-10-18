@@ -1,0 +1,33 @@
+pathfind: Yetisports Arctic Adventures Europe (4A570004) on nova: /storage/E6C6-D7AA/Games/XBox/4A570004-Yetisports_Arctic_Adventures_Europe.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4A570004 any, loaded none
+[   9.4s] #  1 black             fast    wait                     This looks like an early boot/loading screen with just a logo element, no title text or me
+[  18.9s] #  2 publisher_logo    fast    START A                  A new publisher logo screen, not yet title or menu; skip it per instructions.
+[  27.4s] #  3 main_menu         fast    A                        This is the main menu with a selectable box highlighted; pressing A should select/confirm 
+[  34.3s] #  4 submenu           fast    A                        Profile selection screen with 'Play Without a Profile' already highlighted; pressing A pro
+[  44.1s] #  5 submenu           fast    A                        This is a game selection carousel with Baseball currently shown/highlighted in the center;
+[  62.5s] #  6 submenu           fast    RIGHT A                  This is a level/character select carousel; pressing A three times here looped back to the 
+[  70.5s] #  7 loading           fast    wait                     Loading screen with explicit please wait text; no input needed, just wait for it to progre
+[  80.2s] #  8 gameplay          fast    STICK:up:1.5             Playfield with a controllable character visible in a 3D world, no menu/HUD text prompts; t
+[  97.9s] #  9 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 control 0.046, under input 0.048
+[ 103.3s] # 10 cutscene          fast    A                        This is a tutorial/instruction text box explaining the game objective before gameplay star
+[ 111.0s] # 11 gameplay          fast    STICK:up:1.5             HUD showing player, round, score is present, controllable yeti character in a 3D playfield
+[ 129.4s] # 12 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 control 0.126, under input 0.084
+[ 133.4s] # 13 gameplay          fast    STICK:up:1.5             HUD with player/round/score present and controllable yeti character in 3D playfield; this 
+[ 151.8s] # 14 probe             probe   STICK:up:1.5 HOLD:A:3 HOLD:A:3 HOLD:A:3 control 0.058, under input 0.076
+[ 155.9s] # 15 results           fast    A                        This is a post-round score summary screen, not live gameplay; need to press A to proceed t
+[ 163.7s] # 16 gameplay          fast    STICK:up:1.5             HUD with round/score present and a controllable yeti character in a 3D playfield with a fi
+[ 174.2s] # 17 probe             probe   STICK:up:1.5 HOLD:A:3    control 0.043, under input 0.070
+hold-play: genre other, need 630 s of play
+hold-play: stuck (scene unchanged for 4 consecutive samples (genre other)): prompt look at 122 s
+hold-play: stuck (scene unchanged for 4 consecutive samples (genre other)): unstick X at 122 s
+hold-play: stuck (scene unchanged for 5 consecutive samples (genre other)): unstick B at 154 s
+hold-play: fps at 180 s: median 34.5, share>=30 0.941 over 118 samples
+hold-play: stuck (scene unchanged for 6 consecutive samples (genre other)): unstick Y at 188 s
+hold-play: stuck_abort: scene unchanged for 7 consecutive samples (genre other); 3 unstick rung(s) tried, still stuck
+hold-play: not held 201/630 s of play; stuck_abort: scene unchanged for 7 consecutive samples (genre other); 3 unstick rung(s) tried, still stuck
+held Yetisports Arctic Adventures Europe for 233s
+VERDICT Yetisports Arctic Adventures Europe ? FAIL(duration: 232 s of gameplay < 600 s confirmation) gameplay=232.1s fps_ok=0.9686 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.7944 play_share=0.875 fps_excluded=30.0s
+{"name": "Yetisports Arctic Adventures Europe", "device": "nova", "result": "gameplay", "minutes": 2.9, "model_calls": 20, "steps": 17, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4A570004-1015n/frames/016-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

@@ -1,0 +1,4 @@
+pathfind: Turok Evolution (41430004) on thor: /storage/emulated/0/ROMS/xbox/41430004-Turok_Evolution.xiso.iso
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 41430004 any, loaded none
+[  33.2s] #  1 unknown           fast    A                        This is the hakuX emulator front-end setup dialog, not the Xbox game itself; no menu curso

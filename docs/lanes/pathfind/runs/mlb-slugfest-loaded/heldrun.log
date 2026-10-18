@@ -1,0 +1,45 @@
+taken: nova by lane.pathfind
+idle: nova is held and runs nothing
+held at 15:16:21
+pathfind: MLB SlugFest Loaded (None) on nova: /storage/E6C6-D7AA/Games/XBox/MLB_SlugFest_Loaded.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: - any, loaded all goldens (title not identified)
+[   9.3s] #  1 publisher_logo    fast    A                        Early boot splash/logo animation, no title or menu yet. Per hints, skip with A once and re
+[  16.7s] #  2 publisher_logo    fast    A                        Publisher logo still showing; per hints, skip with A once and re-read. Previous A press ch
+[  21.1s] #  3 black             black   wait                     black frame
+[  29.3s] #  4 publisher_logo    fast    A                        This is the game's opening splash/logo screen, not yet the title menu. Per hints, skip wit
+[  38.1s] #  5 publisher_logo    fast    A                        Game's opening splash/logo screen, not yet the title menu; per hints, A skips it. No curso
+[  47.6s] #  6 title_screen      fast    START                    The title screen shows a 'Press START' prompt, and the title-screen rule is START. No menu
+[  56.1s] #  7 main_menu         fast    A                        Quickplay is the fastest route to a playable game and is already highlighted, so A selects
+[  66.1s] #  8 controller_prompt fast    LEFT A                   Nobody is assigned to a team, so the CPU would play both sides. Move controller 1 under th
+[  76.7s] #  9 submenu           fast    A                        Team select, not a menu to skip. The previous step put controller 1 under the away side, a
+[  86.1s] # 10 submenu           fast    A                        Team select, and the previous steps say controller 1 was moved under the away side (Marlin
+[  95.8s] # 11 submenu           fast    A                        Styles is a pre-game submenu; Slugfest is already highlighted and Rookie is the default di
+[ 103.8s] # 12 loading           fast    wait                     A pre-game matchup splash between the two teams, not a menu or gameplay yet; no input is n
+[ 111.6s] # 13 loading           fast    wait                     The game is loading after the team and style selections, and the bottom bar says LOADING. 
+[ 116.4s] # 14 loading           static  wait                     load still on screen (barely changed)
+[ 121.3s] # 15 loading           static  wait                     load still on screen (barely changed)
+[ 127.0s] # 16 loading           static  wait                     load still on screen (barely changed)
+[ 131.8s] # 17 loading           static  wait                     load still on screen (barely changed)
+[ 136.6s] # 18 loading           static  wait                     load still on screen (barely changed)
+[ 145.7s] # 19 loading           fast    wait                     Still on the loading transition after team and style selection; the screen shows the contr
+[ 151.6s] # 20 loading           static  wait                     load still on screen (barely changed)
+[ 156.5s] # 21 loading           static  wait                     load still on screen (barely changed)
+[ 162.1s] # 22 loading           static  wait                     load still on screen (barely changed)
+[ 171.0s] # 23 gameplay          fast    wait                     Game HUD with scoreboard and a live field view (1st inning, 0-0, 0 outs); the pre-pitch vi
+[ 187.7s] # 24 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.621, under input 0.635
+[ 196.9s] # 25 gameplay          fast    wait                     Live batting field view with the game HUD and the batter's button prompts, the pre-pitch s
+[ 210.5s] # 26 probe             probe   HOLD:A:1.5               control 0.019, under input 0.067
+hold-play: sports look {'clock': 'none', 'period': '1st inning', 'human_controlled': True, 'why': 'No game clock in baseball; the top bar shows 1st inning (▲ top) with 0 outs, and the batting button prompts (Contact/Power/Bunt/Dodge) indicate the human contro'}
+hold-play: genre team, need 600 s of play
+hold-play: fps at 188 s: median 59.0, share>=30 1.0 over 186 samples
+hold-play: fps at 302 s: median 59.0, share>=30 1.0 over 295 samples
+hold-play: HELD 601/600 s of play; 
+held MLB SlugFest Loaded for 603s
+VERDICT MLB SlugFest Loaded ? PASS None gameplay=600.8s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0328 play_share=0.9995 fps_excluded=1.4s
+{"name": "MLB SlugFest Loaded", "device": "nova", "result": "gameplay", "minutes": 3.51, "model_calls": 26, "steps": 26, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/mlb-slugfest-loaded/hold/frames/025-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256
+pathfind rc=0 at 15:30:44
+released: nova by lane.pathfind
+released rc=0

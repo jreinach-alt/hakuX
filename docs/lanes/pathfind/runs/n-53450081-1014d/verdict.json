@@ -1,0 +1,180 @@
+{
+  "title": "World Snooker Championship 2005 Europe",
+  "title_id": null,
+  "name": null,
+  "device": "",
+  "ref": null,
+  "apk_sha": null,
+  "request_id": "n-53450081-1014d",
+  "route": null,
+  "surface_scale": null,
+  "adb_failures": null,
+  "thermal": {
+    "measured": false,
+    "samples": 0,
+    "unread": 0,
+    "pauses": [],
+    "in_window": false,
+    "window_covered": null,
+    "gap": null,
+    "first_pause_s": null,
+    "regimen": null,
+    "failed_sustained": null,
+    "still_heating": null
+  },
+  "human_review": "",
+  "build": null,
+  "env": null,
+  "booted": true,
+  "reached_gameplay": true,
+  "gameplay_by": "route",
+  "crash": false,
+  "crash_detail": [],
+  "crash_warnings": 0,
+  "gameplay_s": 301.5,
+  "timeline": {
+    "play_s": 301.2,
+    "scored_s": 301.5,
+    "play_share": 0.9992,
+    "by_state": {
+      "play": 301.2,
+      "no-timeline": 0.2
+    },
+    "play_spans": 1,
+    "changes": 1,
+    "fps_excluded_s": 0.0,
+    "fps_excluded_windows": 0
+  },
+  "capture_gaps_s": [],
+  "capture_lost_s": 0,
+  "capture_truncated": false,
+  "capture_truncated_s": null,
+  "hang": false,
+  "hang_gaps_s": [],
+  "fps_windows": 114,
+  "fps_bar": 30.0,
+  "fps_ok_share": 0.0,
+  "fps_ok_window_share": 0.0,
+  "fps_window_median": 23.36,
+  "fps_window_min": 18.17,
+  "g_fps_mean_reported_not_judged": 23.0,
+  "target_fps": 30.0,
+  "own_target_share": 0.0,
+  "confirmation_need_s": 600.0,
+  "below_own_target": false,
+  "power": {
+    "measured": false,
+    "samples": 0,
+    "sign": "battery_w: + discharging, - charging; net_w = battery_w + usb_w",
+    "battery_w": null,
+    "usb_w": null,
+    "usb_from": null,
+    "usb_bound": null,
+    "net_w": null,
+    "sign_suspect": 0,
+    "thermal_status_max": null,
+    "scored_s": 300.7,
+    "flips": 6840,
+    "j_per_frame": null,
+    "j_per_frame_battery": null
+  },
+  "audio_measured": true,
+  "audio_starve_share": 0.0,
+  "audio_empty_calls": 0,
+  "pace": {
+    "lines": 115,
+    "nominal_vblanks": 2,
+    "late_per_100": 33.09,
+    "worst_stall": 434.4,
+    "last": "f=25680 v0=0 v1=1 v2=40 v3=3 v4=16 vb=154 max=69.3 ms=2573.6"
+  },
+  "hitches": {
+    "n": 23,
+    "n_after_warmup": 19,
+    "per_min_after_warmup": 4.721,
+    "worst_ms": 434.4,
+    "n_big_after_warmup": 0,
+    "classification": {
+      "shader": 0,
+      "texture": 0,
+      "both": 0,
+      "unexplained": 23
+    },
+    "worst5": [
+      {
+        "off_s": 233.9,
+        "max_ms": 434.4,
+        "dsm": 0,
+        "dpc_ms": 0.0,
+        "shader_stage_ms": 0.0,
+        "tex_us": 504,
+        "cls": "unexplained"
+      },
+      {
+        "off_s": 4.3,
+        "max_ms": 400.5,
+        "dsm": 0,
+        "dpc_ms": 0.0,
+        "shader_stage_ms": 0.0,
+        "tex_us": 572,
+        "cls": "unexplained"
+      },
+      {
+        "off_s": 222.9,
+        "max_ms": 399.3,
+        "dsm": 0,
+        "dpc_ms": 0.0,
+        "shader_stage_ms": 0.0,
+        "tex_us": 706,
+        "cls": "unexplained"
+      },
+      {
+        "off_s": 77.8,
+        "max_ms": 366.5,
+        "dsm": 0,
+        "dpc_ms": 0.0,
+        "shader_stage_ms": 0.0,
+        "tex_us": 531,
+        "cls": "unexplained"
+      },
+      {
+        "off_s": 127.6,
+        "max_ms": 366.5,
+        "dsm": 0,
+        "dpc_ms": 0.0,
+        "shader_stage_ms": 0.0,
+        "tex_us": 653,
+        "cls": "unexplained"
+      }
+    ]
+  },
+  "hitch_allowance": null,
+  "static_window": {
+    "measured": true,
+    "frozen_frac": 0.0001,
+    "n": 8,
+    "source": "route-frames"
+  },
+  "position": {
+    "measured": true,
+    "reason": null,
+    "source": "route-frames",
+    "samples": 8,
+    "pairs": 7,
+    "still": 0,
+    "still_frac": 0.0,
+    "first_last": 0.6675,
+    "bar": 0.025
+  },
+  "pass_kind": "confirmation",
+  "void": null,
+  "pass": false,
+  "failing": "duration: 301 s of gameplay < 600 s confirmation",
+  "failures": [
+    "duration: 301 s of gameplay < 600 s confirmation",
+    "fps: 0.0% of gameplay at >= 30 fps (bar 90%)"
+  ],
+  "rating_candidate": null,
+  "contact_sheet": "contact.png",
+  "judged_utc": "2026-10-15T11:16:34Z"
+}

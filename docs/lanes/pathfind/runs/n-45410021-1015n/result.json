@@ -1,0 +1,74 @@
+{
+ "title_id": "45410021",
+ "name": "Tiger Woods PGA Tour 2003 USA",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/45410021-Tiger_Woods_PGA_Tour_2003_USA.xiso.iso",
+ "result": "gameplay",
+ "tool": "920a61de3c",
+ "started": "2026-10-16 01:41:25 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45410021-1015n/frames/010-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45410021-1015n/frames/010-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45410021-1015n/frames/010-probe-c.jpg"
+ ],
+ "minutes": 1.86,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45410021-1015n/frames/009-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45410021-1015n/frames/011-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45410021-1015n/frames/012-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45410021-1015n/frames/013-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45410021-1015n/frames/014-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45410021-1015n/frames/015-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45410021-1015n/frames/016-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45410021-1015n/frames/017-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45410021-1015n/frames/018-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-4541.md",
+  "hints/learned-series-tiger-woods.md"
+ ],
+ "hold": {
+  "genre": "other",
+  "why": "A golfer addressing the ball for a swing, not one of the listed categories.",
+  "ok": false,
+  "play_s": 185.2,
+  "need_s": 630.0,
+  "hold_s": 186.4,
+  "model_navs": 0,
+  "frames": 6,
+  "still_windows": 0,
+  "shed": [],
+  "reversals": 0,
+  "reason": "fps gate at 3:06: median 20 < 22, 0% of 64 samples at >= 28.5",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 64,
+    "median": 20.0,
+    "share": 0.0,
+    "at_s": 186.4,
+    "floor": 22.0,
+    "stop": true
+   }
+  ],
+  "stuck_abort": false,
+  "verdict": "VERDICT Tiger Woods PGA Tour 2003 USA ? FAIL(duration: 188 s of gameplay < 600 s confirmation) gameplay=187.6s fps_ok=0.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.399 play_share=0.9985 fps_excluded=2.9s"
+ },
+ "model_calls": 13,
+ "calls_by_model": {
+  "claude-sonnet-5": 13
+ },
+ "steps": 10,
+ "seconds": 339.8,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45410021-1015n/frames/037-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [
+  "4541003A",
+  "45410054"
+ ],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45410021-1015n/strip.jpg"
+}

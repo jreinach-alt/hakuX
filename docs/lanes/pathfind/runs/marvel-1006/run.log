@@ -1,0 +1,43 @@
+pathfind: Marvel Nemesis Rise of the Imperfects (4541038A) on nova: /storage/E6C6-D7AA/Games/XBox/4541038A-Marvel_Nemesis_Rise_of_the_Imperfects.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4541038A any, loaded none
+[   5.7s] #  1 publisher_logo    replay  A                        replay step 0: replay step 0: replay step 0: This looks like the early boot/logo animation
+[  11.6s] #  2 publisher_logo    replay  A                        replay step 1: replay step 1: replay step 1: replay step 1: EA publisher logo; per EA hint
+[  19.1s] #  3 publisher_logo    fast    A                        EA publisher logo still animating; per EA/RenderWare hint, A skips logos. Nothing highligh
+[  23.3s] #  4 cutscene          replay  START A                  replay step 3: replay step 4: replay step 4: replay step 2: Intro cinematic with letterbox
+[  28.2s] #  5 publisher_logo    replay  A                        replay step 4: This is the EA/game logo card after the publisher logos, not a title menu o
+[  32.4s] #  6 cutscene          replay  START A                  replay step 5: replay step 5: replay step 5: replay step 3: repeat START: it advanced the 
+[  40.6s] #  7 main_menu         fast    A                        Main menu with VERSUS highlighted; A selects it, avoiding Xbox Live, Rewards and Options. 
+[  46.7s] #  8 cutscene          replay  START A                  replay step 7: replay step 7: replay step 7: replay step 5: repeat START: it advanced the 
+[  55.5s] #  9 submenu           fast    A                        Versus match-type setup, not gameplay. TIMED MATCH is the highlighted default and matches 
+[  59.8s] # 10 cutscene          replay  START A                  replay step 9: replay step 9: replay step 9: replay step 7: repeat START: it advanced the 
+[  64.9s] # 11 cutscene          replay  START A                  replay step 10: replay step 10: replay step 10: replay step 8: repeat START: it advanced t
+[  74.5s] # 12 submenu           fast    A                        Character select, not gameplay. The displayed fighter is THE THING, and per the select-scr
+[  85.1s] # 13 submenu           fast    A                        Still on the character select screen; THE THING is READY and is the displayed default, so 
+[  96.9s] # 14 submenu           fast    X A                      Same select screen after A, START A, LEFT A, HOLD:A, RIGHT LEFT A and STICK:down A all fai
+[ 108.4s] # 15 submenu           fast    DOWN UP A                Still on character select with Spider-Man not READY. A, START, LEFT, HOLD:A, RIGHT LEFT an
+[ 119.7s] # 16 submenu           fast    A                        Stage select, not gameplay. THE BRIDGE is the highlighted default, so A accepts it as the 
+[ 130.0s] # 17 submenu           fast    A                        Stage select with THE BRIDGE as the highlighted default. The recorded path accepts it with
+[ 142.9s] # 18 cutscene          fast    START                    A close-up presentation shot of The Thing with no control prompt and no confirmed player m
+[ 155.5s] # 19 gameplay          fast    wait                     HUD and both health bars are up over a live arena with no menu or cutscene bars, so this i
+[ 172.9s] # 20 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.597, under input 0.020
+[ 177.0s] # 21 gameplay          fast    DOWN                     HUD with both health bars up over a live arena with no menu or cutscene bars; the last pro
+[ 197.7s] # 22 probe             probe   DOWN UP STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.411, under input 0.642
+[ 204.0s] # 23 gameplay          fast    wait                     HUD and both health bars are up over a live arena with the player's Spider-Man in the worl
+[ 221.8s] # 24 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.324, under input 0.253
+claim: 3 live reads with self-moving refused probes: entering the hold
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 184 s: median 29.0, share>=30 0.978 over 91 samples
+hold-play: off play for 12 steps (menu): ladder round 1
+hold-play: fps at 305 s: median 29.0, share>=30 0.987 over 151 samples
+hold-play: off play for 12 steps (menu): ladder round 2
+hold-play: off play for 12 steps (menu): ladder round 3
+hold-play: off play for 12 steps (menu): ladder round 4
+hold-play: off play for 12 steps (menu): ladder round 5
+hold-play: validity check share 3648 s (hold 601 s of play, verdict 601.3)
+hold-play: not held 601/600 s of play; share short by 3648 s with no budget left
+held Marvel Nemesis Rise of the Imperfects for 1076s
+VERDICT Marvel Nemesis Rise of the Imperfects ? FAIL(menu time: 56.0% of the scored window in `play` (bar 90%; play 602 s, menu 400 s, other 22 s, results 18 s)) gameplay=1073.9s fps_ok=0.9888 crash=False hang=False audio_short=0.0 hitches=4/0.237pm worst_ms=1022.9 static_frac=0.0001 play_share=0.5605 fps_excluded=473.4s
+{"name": "Marvel Nemesis Rise of the Imperfects", "device": "nova", "result": "gameplay", "minutes": 3.7, "model_calls": 98, "steps": 24, "replayed": 8, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/marvel-1006/frames/023-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

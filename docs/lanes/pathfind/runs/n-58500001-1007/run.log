@@ -1,0 +1,38 @@
+pathfind: Gui Yi Taiwan (58500001) on nova: /storage/E6C6-D7AA/Games/XBox/58500001-Gui_Yi_Taiwan.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 58500001 any, loaded none
+[  12.3s] #  1 publisher_logo    fast    START A                  A static logo graphic on a blank background with no menu text or HUD, consistent with an e
+[  22.5s] #  2 publisher_logo    fast    START A                  Static middleware logo splash, no menu or HUD; skip with START then A
+[  32.2s] #  3 title_screen      fast    START                    Title screen explicitly prompting to press START button
+[  44.0s] #  4 main_menu         fast    A                        A menu appeared after the title screen; top option 開始冒險 (Start Adventure/New Game) is the 
+[  53.4s] #  5 submenu           fast    A                        This is a character confirmation screen following character select; A confirms the default
+[  62.6s] #  6 loading           fast    wait                     Explicit loading text and progress bar visible; no HUD or player control yet
+[  73.4s] #  7 cutscene          fast    START                    This is a somber cinematic (kneeling figure, grave-like sword marker, atmospheric fog) wit
+[  83.3s] #  8 gameplay          fast    STICK:up:1.5             Full HUD (health bar, resource bar, item counter) over a controllable character in the gam
+[  95.2s] #  9 probe             probe   STICK:up:1.5 STICK:up:1.5 control 0.010, under input 0.494
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 185 s: median 59.0, share>=30 0.982 over 163 samples
+hold-play: fps at 307 s: median 59.0, share>=30 0.989 over 271 samples
+hold-play: off play for 12 steps (menu): ladder round 1
+hold-play: off play for 12 steps (menu): ladder round 2
+hold-play: off play for 12 steps (menu): ladder round 3
+hold-play: off play for 12 steps (menu): ladder round 4
+hold-play: off play for 12 steps (menu): ladder round 5
+hold-play: off play for 12 steps (menu): ladder round 6
+hold-play: off play for 12 steps (menu): ladder round 7
+hold-play: off play for 12 steps (menu): ladder round 8
+hold-play: off play for 12 steps (menu): ladder round 9
+hold-play: off play for 12 steps (menu): ladder round 10
+hold-play: off play for 12 steps (menu): ladder round 11
+hold-play: off play for 12 steps (menu): ladder round 12
+hold-play: off play for 12 steps (menu): ladder round 13
+hold-play: off play for 12 steps (menu): ladder round 14
+hold-play: off play for 12 steps (menu): ladder round 15
+hold-play: off play for 12 steps (menu): ladder round 16
+hold-play: off play for 12 steps (menu): ladder round 17
+hold-play: not held 418/600 s of play; budget 40 min with 418 s of play
+held Gui Yi Taiwan for 2270s
+VERDICT Gui Yi Taiwan ? FAIL(menu time: 18.4% of the scored window in `play` (bar 90%; menu 1699 s, play 418 s, still 151 s, no-timeline 0 s)) gameplay=2268.7s fps_ok=0.9429 crash=False hang=False audio_short=0.0 hitches=1/0.027pm worst_ms=278.1 static_frac=0.001 play_share=0.1844 fps_excluded=1849.6s
+{"name": "Gui Yi Taiwan", "device": "nova", "result": "gameplay", "minutes": 1.59, "model_calls": 246, "steps": 9, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-58500001-1007/frames/008-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

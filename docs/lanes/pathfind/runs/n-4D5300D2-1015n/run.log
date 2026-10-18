@@ -1,0 +1,60 @@
+pathfind: Big Bumpin USA (4D5300D2) on nova: /storage/E6C6-D7AA/Games/XBox/4D5300D2-Big_Bumpin_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4D5300D2 any, loaded none
+[  10.0s] #  1 loading           fast    wait                     This looks like an emulator/app loading screen with a spinner-like icon, not yet showing a
+[  18.4s] #  2 publisher_logo    fast    START A                  Copyright/publisher text screen before gameplay; skip with START then A per convention.
+[  26.5s] #  3 publisher_logo    fast    START A                  New publisher logo screen; skip with START then A per convention.
+[  36.1s] #  4 main_menu         fast    A                        SINGLE PLAYER is highlighted with asterisks as the default selection; confirm with A to pr
+[  49.4s] #  5 submenu           fast    A                        Single Player submenu offering mode choices; RIDES is the default quick-play option to pic
+[  57.3s] #  6 submenu           fast    A                        Character select screen; THE KING appears to be the highlighted/default character (pin poi
+[  74.7s] #  7 submenu           fast    A                        This is the Single Player mode-select submenu (Rides/Tournaments/Garage/Characters); RIDES
+[  83.1s] #  8 submenu           fast    A                        Character select screen with THE KING highlighted as default; confirm with A to proceed in
+[  95.9s] #  9 submenu           fast    LEFT UP A                Previous A presses from this screen looped back here repeatedly, likely because CHARACTERS
+[ 105.8s] # 10 submenu           fast    A                        Ride select screen with THE BROILER highlighted by arrow pointer as default choice; confir
+[ 118.9s] # 11 loading           fast    A                        Arena showcase/transition screen after confirming ride selection, no HUD or score indicato
+[ 129.9s] # 12 gameplay          fast    STICK:up:1.5             Full HUD with multiple player health/score bars, bumper cars positioned in arena, coins sc
+[ 138.2s] # 13 probe             probe   STICK:up:1.5 STICK:up:1.5 control 0.919, under input 0.000
+[ 145.1s] # 14 results           fast    A                        This is a post-match score screen, not active gameplay; need to confirm an option to get b
+[ 152.4s] # 15 save_load_prompt  fast    B                        Save prompt after results screen; choose Continue without saving to return to gameplay fas
+[ 163.5s] # 16 submenu           fast    A                        RIDES tile is highlighted with the arrow pointer as default; selecting it leads back into 
+[ 171.1s] # 17 submenu           fast    A                        Ride/arena selection screen with The Broiler already highlighted by the arrow pointer; pre
+[ 180.0s] # 18 loading           fast    wait                     This looks like the pre-match arena view/intro shot after selecting the ride, likely about
+[ 188.1s] # 19 gameplay          fast    STICK:up:1.5             This is an active bumper car match with a HUD-free but clear playfield, multiple cars, and
+[ 209.9s] # 20 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.948, under input 0.966
+[ 214.9s] # 21 gameplay          fast    STICK:left:1 STICK:right:1 Active bumper car match with HUD score indicators and multiple cars colliding, playfield v
+[ 228.4s] # 22 probe             probe   STICK:left:1 STICK:right:1 HOLD:A:3 control 0.000, under input 0.788
+[ 234.1s] # 23 submenu           fast    A                        RIDES tile is highlighted by the arrow pointer; selecting it should lead to ride/arena sel
+[ 242.6s] # 24 submenu           fast    A                        The Broiler ride is highlighted with an arrow pointer; pressing A selects it as the defaul
+[ 254.3s] # 25 loading           fast    START                    This looks like the arena just loaded after selecting The Broiler ride; cars are stationar
+[ 263.4s] # 26 pause             fast    A                        Game is paused; RESUME GAME is highlighted, so pressing A will return to active gameplay.
+[ 273.9s] # 27 gameplay          fast    STICK:up:1.5             Countdown '1' is the final count before the match goes live; HUD with player names and hea
+[ 290.2s] # 28 probe             probe   STICK:up:1.5 HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.906, under input 0.674
+claim: 3 live reads with self-moving refused probes: entering the hold
+[ 326.9s] # 36 retracted         probe   wait                     retracted after 30 s: This is the Single Player selection menu (Rides/Tournaments/Garage/C
+[ 338.9s] # 37 submenu           fast    A                        RIDES tile has the highlighted blue border indicating it's the current selection; selectin
+[ 348.3s] # 38 submenu           fast    A                        This is a tournament selection grid reached after choosing Rides; need to pick a tournamen
+[ 360.8s] # 39 gameplay          fast    STICK:up:1.5             This is an in-match view of the bumper car arena from the tournament selected; no menu or 
+[ 376.5s] # 40 probe             probe   STICK:up:1.5 RT:3 RT+left:1.2 RT+right:1.2 control 0.995, under input 0.995
+[ 381.7s] # 41 gameplay          fast    STICK:up:1.5 RT:2        In-match bumper car arena with HUD (player names, dot meters) visible, cars actively posit
+[ 409.5s] # 42 probe             probe   STICK:up:1.5 RT:2 STICK:up:1.5 RT+left:1.2 RT+right:1.2 RT+right:1.2 RT+right:1.2 control 0.005, under input 0.000
+[ 416.4s] # 43 results           fast    A                        Match-end scoreboard with CONTINUE TOURNAMENT highlighted in red; pressing A should resume
+[ 424.8s] # 44 save_load_prompt  fast    B                        Save prompt after match end; continue without saving avoids any save issues and gets back 
+[ 433.7s] # 45 results           fast    A                        Tournament standings screen between matches; CONTINUE TOURNAMENT is the only option shown,
+[ 447.7s] # 46 loading           fast    wait                     This looks like an arena preview/flyover before the next match starts (no HUD or menu elem
+[ 456.0s] # 47 gameplay          fast    STICK:up:1.5 RT:2        HUD with player names, score dots, and power meter visible over an active 3D arena with th
+[ 480.0s] # 48 probe             probe   STICK:up:1.5 RT:2 RT:3 RT+left:1.2 RT+right:1.2 control 0.377, under input 0.548
+[ 485.2s] # 49 gameplay          fast    RT:2 RT+left:1.2         HUD with timer and score dots visible over active 3D arena with player-controlled bumper c
+[ 515.6s] # 50 probe             probe   RT:2 RT+left:1.2 RT:1.5 RT+right:1.2 RT+left:1.2 RT+right:1.2 control 0.349, under input 0.537
+claim: 3 live reads with self-moving refused probes: entering the hold
+hold-play: genre drive, need 630 s of play
+hold-play: gas probe RT: band change 0.308 (confirmed)
+hold-play: drive gas confirmed RT (tried ['RT'])
+hold-play: fps at 185 s: median 59.0, share>=30 0.992 over 127 samples
+hold-play: fps at 304 s: median 30.0, share>=30 0.985 over 196 samples
+hold-play: off play 148 s of a 513 s scored window cannot drop to 10% with 889 s of budget left: no amount of further play can pass
+hold-play: not held 364/630 s of play; off play 148 s of a 513 s scored window cannot drop to 10% with 889 s of budget left: no amount of further play can pass
+held Big Bumpin USA for 516s
+VERDICT Big Bumpin USA ? FAIL(duration: 514 s of gameplay < 600 s confirmation) gameplay=513.9s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0 play_share=0.7108 fps_excluded=150.4s
+{"name": "Big Bumpin USA", "device": "nova", "result": "gameplay", "minutes": 8.59, "model_calls": 73, "steps": 43, "replayed": 0, "reason": "four probes refused", "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D5300D2-1015n/frames/049-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

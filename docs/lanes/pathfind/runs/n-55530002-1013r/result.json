@@ -1,0 +1,79 @@
+{
+ "title_id": "55530002",
+ "name": "Rayman 3 Hoodlum Havoc",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/55530002-Rayman_3_Hoodlum_Havoc.xiso.iso",
+ "result": "gameplay",
+ "tool": "74dfc2db2c",
+ "started": "2026-10-13 13:11:05 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-55530002-1013r/frames/011-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-55530002-1013r/frames/011-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-55530002-1013r/frames/011-probe-left.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-55530002-1013r/frames/011-probe-right.jpg"
+ ],
+ "minutes": 3.48,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-55530002-1013r/frames/010-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-55530002-1013r/frames/012-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-55530002-1013r/frames/013-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-55530002-1013r/frames/014-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-55530002-1013r/frames/015-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-55530002-1013r/frames/016-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-55530002-1013r/frames/017-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-55530002-1013r/frames/018-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-55530002-1013r/frames/019-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-5553.md"
+ ],
+ "hold": {
+  "genre": "onrails",
+  "why": "Character follows a guided path; player steers toward objectives (red lums) using the thumbstick rather than freely navigating the environment.",
+  "ok": false,
+  "play_s": 600.9,
+  "need_s": 600.0,
+  "hold_s": 602.8,
+  "model_navs": 0,
+  "frames": 20,
+  "still_windows": 0,
+  "shed": [],
+  "reversals": 0,
+  "reason": "verdict stops the hold: fps_ok 1.0, crash False, hang False",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 199,
+    "median": 59.0,
+    "share": 1.0,
+    "at_s": 198.2,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 302,
+    "median": 59.0,
+    "share": 1.0,
+    "at_s": 300.7,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "stuck_abort": false,
+  "verdict": "VERDICT Rayman 3 Hoodlum Havoc ? PASS None gameplay=603.5s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0004 play_share=0.9995 fps_excluded=2.0s"
+ },
+ "model_calls": 17,
+ "calls_by_model": {
+  "claude-haiku-4-5-20251001": 17
+ },
+ "steps": 11,
+ "seconds": 864.2,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-55530002-1013r/frames/495-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 1,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-55530002-1013r/strip.jpg"
+}

@@ -1,0 +1,32 @@
+pathfind: Guilty Gear XX Reload The Midnight Carnival (53410002) on nova: /storage/E6C6-D7AA/Games/XBox/53410002-Guilty_Gear_XX_Reload_The_Midnight_Carnival.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 53410002 any, loaded golden 6f0d8fc26eb7
+[   5.8s] #  1 publisher_logo    replay  A                        replay step 0: replay step 0: replay step 0: replay step 0: replay step 0: Early boot (0.1
+[   9.9s] #  2 black             black   wait                     black frame
+[  16.6s] #  3 publisher_logo    fast    A                        Publisher logo still up, not a title or menu. Per hints, one A press to skip, then re-read
+[  20.8s] #  4 black             black   wait                     black frame
+[  24.3s] #  5 publisher_logo    replay  A                        replay step 4: Arc System Works publisher logo is still up, not a title or menu. Per hints
+[  34.0s] #  6 black             fast    wait                     This is an opening cinematic/transition backdrop, not a logo, title or menu; no highlight 
+[  41.1s] #  7 cutscene          fast    START                    This is an anime-style opening/intro cinematic with rain and a hero close-up, not gameplay
+[  45.8s] #  8 title_screen      replay  START                    replay step 5: replay step 6: replay step 5: Title screen with a PRESS START prompt; the r
+[  50.3s] #  9 main_menu         replay  A                        replay step 6: replay step 7: replay step 6: Main menu with ARCADE highlighted in the cent
+[  54.8s] # 10 submenu           replay  A                        replay step 7: replay step 8: replay step 7: Character select is a menu, not gameplay. The
+[  59.1s] # 11 title_screen      replay  START                    replay step 8: replay step 9: replay step 8: Title with a PRESS START prompt; the recorded
+[  69.0s] # 12 submenu           fast    A                        This is a select screen (stage/character select), not a title or live round. Per the guida
+[  78.4s] # 13 gameplay          fast    wait                     A live round with HUD and a counting 99 timer, no banner. The PRESS START is a P2 join pro
+[ 103.5s] # 14 probe             probe   STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.397, under input 0.218
+[ 110.3s] # 15 gameplay          fast    wait                     Live round: HUD and counting timer, no banner. The PRESS START is a P2 join prompt, so STA
+[ 128.1s] # 16 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.616, under input 0.139
+[ 137.4s] # 17 gameplay          fast    wait                     Live round: HUD and a counting timer (46), no round banner or PLEASE WAIT. The PRESS START
+[ 151.9s] # 18 probe             probe   STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.217, under input 0.495
+claim: 3 live reads with self-moving refused probes: entering the hold
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 193 s: median 59.0, share>=30 1.0 over 193 samples
+hold-play: fps at 309 s: median 59.0, share>=30 1.0 over 310 samples
+hold-play: validity check share 2131 s (hold 602 s of play, verdict 602.0)
+hold-play: not held 602/600 s of play; share short by 2131 s with no budget left
+held Guilty Gear XX Reload The Midnight Carnival for 909s
+VERDICT Guilty Gear XX Reload The Midnight Carnival ? FAIL(menu time: 66.5% of the scored window in `play` (bar 90%; play 603 s, menu 109 s, still 91 s, game_over 64 s)) gameplay=906.4s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0 play_share=0.665 fps_excluded=305.4s
+{"name": "Guilty Gear XX Reload The Midnight Carnival", "device": "nova", "result": "gameplay", "minutes": 2.53, "model_calls": 46, "steps": 18, "replayed": 6, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/guiltygear-1006/frames/017-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

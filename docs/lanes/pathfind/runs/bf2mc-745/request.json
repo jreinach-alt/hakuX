@@ -1,0 +1,32 @@
+{
+  "id": "1790877270-autoverdict-2187810",
+  "requester": "autoverdict",
+  "purpose": "#433 Playable confirmation (600-s rule, nominated: same question as Blood Wake: the Thor collapse may have been heat (#433/#507))",
+  "program": "pgraph",
+  "suites": [],
+  "tests": [],
+  "skip_tests": [],
+  "ref": "ec244430e3",
+  "arm": "company",
+  "runs": 1,
+  "title": "45410062-Battlefield_2_Modern_Combat.xiso.iso",
+  "seconds": 840,
+  "device": "nova",
+  "pin": "hard",
+  "pull_glob": "",
+  "audio_capture": "",
+  "base_iso": "",
+  "perflog": "",
+  "only_tests": [],
+  "env": [
+    "PERF_REGIMEN=default"
+  ],
+  "frames_every": 0,
+  "route_name": "bf2mc",
+  "route": "# Battlefield 2: Modern Combat (45410062): one route for every run (the\n# campaign is not saved). PLAYED by nav.py on the Thor, 2026-09-27 06:46 PDT\n# (lane.titleroutes HELD session bf2mc.first-run-20260927T064649).\n#\n#   RenderWare and publisher logos (A) -> PRESS START (START) -> PLAY\n#   CAMPAIGN (A) -> CREATE CAMPAIGN (A) -> the CAMPAIGN NAME keyboard, cursor\n#   on A: A types \"A\"; START does not submit. The stick does not move this\n#   cursor and the hat does: HATX left once reaches BACKSPACE (the row wraps),\n#   and HATY down twice reaches ENTER (A) -> \"Do you want to save?\", cursor on\n#   Yes: HATY down to No (A) -> the campaign menu, PLAY FIRST MISSION (A) ->\n#   a long load with a tank still, the briefing FMV (A) and the briefing map\n#   -> the mission, a Help box: \"Press A to continue, Press B to disable\n#   help\" (B) -> first person in a snowy square at night, \"Fight Through To\n#   The Rendezvous\", mission clock 00:11.\n#\n# Saying No to the save keeps the disk as it was, so later runs take the\n# same path. B turns help off for the mission, so no more help boxes stop\n# play during the window.\n#\n# Player control: LY min walked forward, RX turned, RT fired (ammo 23 -> 15;\n# nav frames 019-gameplay -> 020-moved, clock 00:28).\nwait 27.0\nshot boot\nwait 5.6\npress A\nwait 5.4\npress A\nwait 5.4\npress A\nwait 5.1\nshot a3\nwait 7.0\npress START\nwait 6.1\nshot st\nwait 5.9\npress A\nwait 6.1\nshot camp\nwait 6.3\npress A\nwait 6.1\nshot create\nwait 8.7\npress A\nwait 2.1\nshot typed\nwait 1.3\npress START\nwait 5.1\nshot enter\nwait 8.2\naxis LX min\nwait 0.4\naxis LX mid\nwait 0.7\naxis LX min\nwait 0.3\naxis LX mid\nwait 0.6\nshot left2\nwait 8.6\naxis HATX min\nwait 0.2\naxis HATX mid\nwait 0.7\nshot hat1\nwait 8.1\naxis HATY max\nwait 0.2\naxis HATY mid\nwait 0.8\naxis HATY max\nwait 0.2\naxis HATY mid\nwait 0.7\nshot hat2\nwait 7.0\npress A\nwait 6.1\nshot entered\nwait 8.0\naxis HATY max\nwait 0.2\naxis HATY mid\nwait 0.7\nshot no\nwait 6.7\npress A\nwait 8.1\nshot nosave\nwait 7.2\npress A\nwait 15.1\nshot first\nwait 33.4\nshot load\nwait 38.3\nshot load2\nwait 6.8\npress A\nwait 8.1\nshot skip\nwait 39.7\nshot load3\nwait 7.8\npress B\nwait 3.1\nshot nohelp\nwait 8.0\nmark gameplay\nrepeat forever {\n    axis LY min\n    wait 2\n    axis LY mid\n    axis RX max\n    wait 0.6\n    axis RX mid\n    axis RT max\n    wait 0.3\n    axis RT min\n    axis LY min\n    wait 2\n    axis LY mid\n    axis RX min\n    wait 0.6\n    axis RX mid\n    axis RT max\n    wait 0.3\n    axis RT min\n}",
+  "expect": "",
+  "expect_sha": "",
+  "no_expect": "Playable confirmation, judged by autoverdict",
+  "priority": "study",
+  "queued_utc": "2026-10-01T17:54:30Z"
+}

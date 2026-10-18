@@ -1,0 +1,27 @@
+pathfind: Area 51 (4D570005) on nova: /storage/E6C6-D7AA/Games/XBox/4D570005-Area_51_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4D570005 any, loaded none
+[  11.8s] #  1 black             fast    wait                     This looks like an early boot/loading screen with a minimal logo, not yet a title or menu;
+[  20.4s] #  2 black             fast    wait                     This is the Xbox boot animation/logo screen before the game even starts loading, not yet a
+[  25.0s] #  3 black             black   wait                     black frame
+[  31.5s] #  4 publisher_logo    fast    START A                  Publisher logo screen; skip with START then A per standard logo-skip procedure
+[  42.1s] #  5 profile_creation  fast    A                        No profiles exist; Create New Profile is highlighted, need to select it with A to proceed
+[  50.1s] #  6 profile_creation  fast    A                        Default name 'Player1' is filled in and OK is already highlighted; press A to accept it pe
+[  58.3s] #  7 submenu           fast    DOWN DOWN DOWN DOWN DOWN A This is the profile settings menu after name entry; need to select ACCEPT at the bottom to
+[  70.1s] #  8 main_menu         fast    A                        New Campaign is already the highlighted/lit item at top of the Campaign Menu; previous att
+[  81.7s] #  9 cutscene          fast    START                    This is a stylized in-engine cutscene (camcorder footage framing device) following the New
+[  86.0s] # 10 black             black   wait                     black frame
+[  94.3s] # 11 gameplay          fast    STICK:up:1.5             First-person in-engine view with player character model visible, in a game world corridor,
+[ 114.8s] # 12 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.379, under input 0.550
+[ 149.1s] # 13 gameplay          fast    STICK:up:1.5             Full first-person HUD with health bar and ammo counter is present over a navigable 3D ware
+[ 160.1s] # 14 probe             probe   STICK:up:1.5 STICK:up:1.5 control 0.000, under input 0.650
+hold-play: genre shooter, need 600 s of play
+hold-play: fps at 183 s: median 29.0, share>=30 0.616 over 86 samples
+hold-play: fps at 307 s: median 29.0, share>=30 0.71 over 145 samples
+hold-play: validity check stop 0 s (hold 601 s of play, verdict 600.4)
+hold-play: not held 601/600 s of play; verdict stops the hold: fps_ok 0.7245, crash False, hang False
+held Area 51 for 603s
+VERDICT Area 51 ? FAIL(fps: 72.5% of gameplay at >= 30 fps (bar 90%)) gameplay=601.0s fps_ok=0.7254 crash=False hang=False audio_short=0.0 hitches=1/0.111pm worst_ms=108.2 static_frac=0.0132 play_share=0.9996 fps_excluded=0.0s
+{"name": "Area 51", "device": "nova", "result": "gameplay", "minutes": 2.67, "model_calls": 20, "steps": 14, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D570005-1008/frames/013-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

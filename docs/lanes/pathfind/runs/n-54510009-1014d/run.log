@@ -1,0 +1,34 @@
+pathfind: FILA World Tour Tennis Europe (54510009) on nova: /storage/E6C6-D7AA/Games/XBox/54510009-FILA_World_Tour_Tennis_Europe.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 54510009 any, loaded none
+[  22.9s] #  1 publisher_logo    fast    START                    Publisher intro splash screen; learned paths for 5451 titles (Dark Summit, Ratatouille, Av
+[  35.6s] #  2 main_menu         fast    A                        Main menu is displayed with ARCADE already highlighted. ARCADE is the fastest path to game
+[  49.0s] #  3 submenu           fast    A                        Tour difficulty selection; BEGINNER TOUR is the topmost option and fastest path to gamepla
+[  60.5s] #  4 submenu           fast    A                        Player selection screen before match start. First player (P1) is already highlighted; acce
+[ 101.2s] #  5 submenu           fast    A                        Player selection menu within arcade mode; P1 is already highlighted as the default; confir
+[ 111.8s] #  6 loading           fast    wait                     Loading screen with animated text; game is loading the match after player selections
+[ 142.6s] #  7 gameplay          fast    wait                     Active tennis match with player character on court and HUD visible; game ready for player 
+[ 156.1s] #  8 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 control 0.109, under input 0.054
+[ 200.4s] #  9 gameplay          fast    wait                     Player character on the court with active HUD showing player names and match info; tennis 
+[ 219.8s] # 10 probe             probe   RT:1.5 RT+left:1.2 RT+right:1.2 control 0.372, under input 0.378
+[ 258.1s] # 19 retracted         probe   wait                     retracted after 30 s: Match results screen showing 'Match result: 0-3' with ARCADE/QUIT me
+[ 282.9s] # 20 results           fast    A                        Tennis match has ended with a loss (0-3). Results screen displays with ARCADE highlighted 
+[ 302.5s] # 21 submenu           fast    A                        Pre-match setup/confirmation menu for the next tennis round. The player character is alrea
+[ 391.4s] # 22 gameplay          fast    A STICK:right:1.5        Tennis match active on court with both players visible and HUD displaying match info (P1 v
+[ 420.4s] # 23 probe             probe   A STICK:right:1.5 A STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.249, under input 0.541
+[ 458.8s] # 32 retracted         probe   wait                     retracted after 30 s: Match result screen showing final score (0-3) with menu options (ARC
+[ 468.8s] # 33 results           fast    A                        Post-match results screen with menu options (ARCADE/RETRY/QUIT); ARCADE is highlighted in 
+[ 486.5s] # 34 submenu           fast    A                        Pre-match confirmation menu for the next tennis round; Player is highlighted on the left. 
+[ 549.3s] # 35 gameplay          fast    wait                     Active tennis match with both players on court, HUD showing match score and player info. P
+[ 570.4s] # 36 probe             probe   STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.642, under input 0.153
+hold-play: genre rally, need 630 s of play
+hold-play: fps at 181 s: median 56.0, share>=30 1.0 over 170 samples
+hold-play: fps at 303 s: median 56.0, share>=30 1.0 over 284 samples
+hold-play: play disagrees: hold 634.2 s, verdict 626.7 s (verdict trusted)
+hold-play: validity check stop 0 s (hold 634 s of play, verdict 626.7)
+hold-play: not held 634/630 s of play; verdict stops the hold: fps_ok 1.0, crash False, hang False
+held FILA World Tour Tennis Europe for 658s
+VERDICT FILA World Tour Tennis Europe ? PASS None gameplay=657.0s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0001 play_share=0.9552 fps_excluded=31.3s
+{"name": "FILA World Tour Tennis Europe", "device": "nova", "result": "gameplay", "minutes": 9.51, "model_calls": 29, "steps": 20, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-54510009-1014d/frames/035-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

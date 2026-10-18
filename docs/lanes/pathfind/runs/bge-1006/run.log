@@ -1,0 +1,78 @@
+pathfind: Beyond Good Evil (55530018) on nova: /storage/E6C6-D7AA/Games/XBox/55530018-Beyond_Good_Evil.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 55530018 any, loaded none
+[   9.8s] #  1 publisher_logo    fast    A                        A publisher logo is animating; per the hints, skip with A first, then START if nothing cha
+[  16.7s] #  2 cutscene          fast    START                    Letterboxed in-engine cinematic with no HUD or menu after the publisher logos; per the hin
+[  21.2s] #  3 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[  26.9s] #  4 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[  31.3s] #  5 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[  35.7s] #  6 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[  40.1s] #  7 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[  44.6s] #  8 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[  52.7s] #  9 cutscene          fast    START                    This is a cinematic space shot with no HUD or player-controlled element, so it is not game
+[  62.4s] # 10 cutscene          fast    START                    Abstract cinematic/transition frame with letterbox bars and no HUD or player-controlled el
+[  66.7s] # 11 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[  71.1s] # 12 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[  75.6s] # 13 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[  80.0s] # 14 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[  84.4s] # 15 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[  88.7s] # 16 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[  99.2s] # 17 cutscene          fast    START                    Letterbox bars and no HUD mean a cutscene, not gameplay. Earlier START presses advanced th
+[ 103.7s] # 18 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 108.1s] # 19 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 112.3s] # 20 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 116.8s] # 21 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 121.3s] # 22 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 127.4s] # 23 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 135.6s] # 24 cutscene          fast    START A                  Letterboxed in-engine cinematic with no HUD or player control; the previous START presses 
+[ 140.8s] # 25 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 145.8s] # 26 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 151.0s] # 27 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 156.0s] # 28 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 162.4s] # 29 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 167.4s] # 30 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 175.6s] # 31 cutscene          fast    START A                  Letterboxed in-engine cinematic with no HUD or menu; previous steps show START then A adva
+[ 180.7s] # 32 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 185.7s] # 33 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 195.9s] # 34 submenu           fast    B                        This is an inventory/menu wheel with a 'Back' prompt, not gameplay. The previous START A c
+[ 204.1s] # 35 gameplay          fast    wait                     Full HUD with health hearts, Jade's portrait, and an 'A Fight' context prompt; the scene i
+[ 215.7s] # 36 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 control 0.117, under input 0.147
+[ 221.8s] # 37 gameplay          fast    wait                     Full HUD with health hearts and portrait, a live 3D world with the player character, and a
+[ 227.2s] # 38 probe             probe   STICK:up:1.5             control 0.333, under input 0.236
+[ 231.7s] # 39 cutscene          fast    START                    HUD and a live-looking 3D world with the player character, but the black letterbox bars an
+[ 236.0s] # 40 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 240.4s] # 41 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 249.9s] # 42 pause             fast    B                        This is an in-game menu overlay (inventory/wheel), not play. START did nothing here last s
+[ 253.1s] # 43 unknown           check   wait                     hakuX not in front (xemu alive: False)
+[ 262.1s] # 44 black             black   wait                     black frame
+[ 269.0s] # 45 loading           fast    wait                     Game is loading (progress bar partly filled); no input is needed or useful until it finish
+[ 274.4s] # 46 black             black   wait                     black frame
+[ 282.4s] # 47 publisher_logo    fast    A                        Publisher logo still playing with no skip prompt; a new logo is progress. Per hint, press 
+[ 286.6s] # 48 black             black   wait                     black frame
+[ 295.8s] # 49 publisher_logo    fast    A                        A bat logo splash (likely the Batman Begins/title intro logo) is a logo, not gameplay or a
+[ 304.3s] # 50 cutscene          fast    A                        A Batman Begins-style splash/title art still with no menu, no prompt and no HUD; the prior
+[ 313.5s] # 51 title_screen      fast    START                    Title with a 'PRESS START' prompt; START is the required input here, per the title-screen 
+[ 322.6s] # 52 main_menu         fast    A                        Main menu with NEW GAME highlighted as the fastest route to play; A selects the highlighte
+[ 333.5s] # 53 submenu           fast    A                        Difficulty submenu; NORMAL is the default highlight, so accept it with A to reach play wit
+[ 341.0s] # 54 loading           fast    wait                     A save-in-progress notice; nothing to press and pressing could interrupt the save. Wait fo
+[ 350.8s] # 55 loading           fast    wait                     Loading bar is filling, so the game is still loading; nothing to press and pressing could 
+[ 361.3s] # 56 cutscene          fast    A                        Dark cinematic-looking scene with letterbox bars and no HUD or controllable character; not
+[ 365.4s] # 57 black             black   wait                     black frame
+[ 372.3s] # 58 cutscene          fast    START                    Letterboxed cinematic with no HUD and no controllable character; not gameplay. Skip it wit
+[ 376.5s] # 59 black             black   wait                     black frame
+[ 380.1s] # 60 black             black   wait                     black frame
+[ 399.9s] # 61 cutscene          fast    A                        A scripted-looking fight scene with no HUD and no visible controllable character; it is no
+[ 408.8s] # 62 cutscene          fast    START                    Close-up character shot with no HUD or controllable player; looks like a scripted cinemati
+[ 419.5s] # 63 gameplay          fast    wait                     Player-controlled Batman is in the game world with a bat-emblem HUD element and no cutscen
+[ 435.0s] # 64 probe             probe   HOLD:A:3                 control 0.002, under input 0.728
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 192 s: median 29.0, share>=30 0.918 over 97 samples
+hold-play: fps at 300 s: median 29.0, share>=30 0.94 over 151 samples
+hold-play: play disagrees: hold 602.9 s, verdict 562.9 s (verdict trusted)
+hold-play: validity check stop 0 s (hold 603 s of play, verdict 562.9)
+hold-play: not held 603/600 s of play; verdict stops the hold: fps_ok 0.9329, crash False, hang False
+held Beyond Good Evil for 623s
+VERDICT Beyond Good Evil ? PASS None gameplay=621.9s fps_ok=0.9332 crash=False hang=False audio_short=0.0 hitches=3/0.32pm worst_ms=441.7 static_frac=0.0 play_share=0.9067 fps_excluded=57.2s
+{"name": "Beyond Good Evil", "device": "nova", "result": "gameplay", "minutes": 7.25, "model_calls": 40, "steps": 64, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/bge-1006/frames/063-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

@@ -1,0 +1,52 @@
+pathfind: Urbz The Sims in the City USA (45410060) on nova: /storage/E6C6-D7AA/Games/XBox/45410060-Urbz_The_Sims_in_the_City_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: build (the titles disk is not on the device)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 45410060 any, loaded none
+[  43.9s] #  1 loading           fast    A                        Animated geometric logo/spinner typical of a publisher splash or load screen; 0.5 min sinc
+[  55.9s] #  2 publisher_logo    fast    A                        EA/Maxis publisher splash screen; should skip with A per EA title conventions
+[  59.4s] #  3 publisher_logo    repeat  A                        repeat A: it advanced the publisher_logo
+[  62.9s] #  4 publisher_logo    repeat  A                        repeat A: it advanced the publisher_logo
+[  66.3s] #  5 publisher_logo    repeat  A                        repeat A: it advanced the publisher_logo
+[  81.0s] #  6 publisher_logo    fast    A                        EA publisher splash screen, part of the logo sequence; the dots suggest animation in progr
+[  84.4s] #  7 publisher_logo    repeat  A                        repeat A: it advanced the publisher_logo
+[  87.9s] #  8 publisher_logo    repeat  A                        repeat A: it advanced the publisher_logo
+[  91.4s] #  9 publisher_logo    repeat  A                        repeat A: it advanced the publisher_logo
+[ 102.7s] # 10 title_screen      fast    START                    The prompt explicitly says 'Please press START to begin' — this is the standard title scre
+[ 116.4s] # 11 main_menu         fast    A                        Game mode selection menu after title screen; 1 Player is already highlighted in orange; qu
+[ 128.3s] # 12 save_load_prompt  fast    A                        New Game is already highlighted; select it with A to proceed fastest to gameplay without l
+[ 141.3s] # 13 save_load_prompt  fast    LEFT A                   Confirmation dialog for creating a new game save; No is currently highlighted on the right
+[ 153.6s] # 14 save_load_prompt  fast    A                        Save/load choice menu; New Game is already highlighted; confirm with A to proceed to next 
+[ 194.3s] # 15 save_load_prompt  fast    BACK                     Loop detected: same screen after attempts ['A', 'LEFT A', 'A']; backing out to try a diffe
+[ 256.5s] # 16 save_load_prompt  fast    DOWN DOWN A              Stuck in a loop: selecting 'New Game' + confirming save repeatedly returns to this same me
+[ 274.7s] # 17 main_menu         fast    A                        Game mode selection after escaping the save_load_prompt loop; '1 Player' is highlighted in
+[ 313.9s] # 18 save_load_prompt  fast    DOWN A                   New Game has caused a loop (step 12-14: tried New Game and confirmation, returned to this 
+[ 326.3s] # 19 save_load_prompt  fast    A                        Asking which save slot to load or create a new game in; all slots empty; first slot alread
+[ 364.3s] # 20 save_load_prompt  fast    START                    Stuck on save slot selection after A failed. First slot (Urb 1) is highlighted. Need to tr
+[ 384.5s] # 21 save_load_prompt  fast    UP                       A and START both failed on this slot selection. With empty slots and no navigation respons
+[ 431.2s] # 22 save_load_prompt  fast    DOWN                     Asking to select a save slot to play or create a new game. Up, Start, and A did not respon
+[ 447.9s] # 23 save_load_prompt  fast    STICK:down:1             A save/load slot menu where all slots are empty; D-pad inputs did not work. D-pad alternat
+[ 494.6s] # 24 save_load_prompt  fast    B                        Stuck on save slot selection; all slots are empty. UP, DOWN, START, A, and STICK down have
+[ 504.1s] # 25 save_load_prompt  fast    A                        Choice between loading or creating a new game; 'New Game' is already highlighted, confirmi
+[ 518.3s] # 26 save_load_prompt  fast    LEFT A                   Confirmation dialog for creating a new save. No is the default (right side); Yes is on the
+[ 531.4s] # 27 save_load_prompt  fast    A                        A menu offering a choice between starting new or loading existing. 'New Game' is highlight
+[ 545.4s] # 28 save_load_prompt  fast    LEFT A                   Confirmation dialog for new game creation. No is currently highlighted; to proceed into ga
+[ 606.7s] # 29 save_load_prompt  fast    DOWN A                   Stuck in a loop on 'New Game' (A repeated with no progress). Try 'Load Game' as an alterna
+[ 663.1s] # 30 save_load_prompt  fast    B                        The game is stuck in save/load prompts after many steps. Standard inputs (A, UP, DOWN, STA
+[ 684.1s] # 31 save_load_prompt  fast    DOWN A                   Same loop-screen after 6 prior attempts on New Game (A, LEFT A, DOWN A, B all returned her
+[ 705.7s] # 32 save_load_prompt  fast    UP                       This is a save game selection screen with empty slots and scroll arrows, indicating a menu
+[ 746.7s] # 33 save_load_prompt  fast    START                    This is a save game selection menu with no saved games. Previous inputs (A, B, UP, DOWN co
+[ 792.1s] # 34 save_load_prompt  fast    BACK                     Stuck in a slot-selection loop; all standard navigation (A, B, UP, DOWN, LEFT, START) eith
+[ 855.1s] # 35 save_load_prompt  fast    DOWN DOWN A              Stuck in a loop where A on 'New Game' and DOWN A to 'Load Game' both cycled back to empty 
+[ 867.8s] # 36 submenu           fast    A                        Game mode selection menu after coming out of the save/load loop. '1 Player' is the default
+[ 908.2s] # 37 save_load_prompt  fast    BACK                     This is a save/load dialog, but previous attempts to select "New Game" (A, LEFT A, DOWN A,
+[ 921.1s] # 38 submenu           fast    A                        Game mode selection menu; '1 Player' is the highlighted option in bright orange. This is a
+[ 992.6s] # 39 save_load_prompt  fast    BACK                     This is a save/load menu. Previous attempts cycled between this dialog and a submenu. 'New
+[1014.9s] # 40 submenu           fast    START                    Game mode selection screen. '1 Player' is highlighted. Previous attempts with A on this op
+[1101.5s] # 41 submenu           fast    BACK                     We're stuck in a loop: A on '1 Player' → save_load_prompt → BACK → back here, repeatedly (
+[1157.5s] # 42 submenu           fast    DOWN A                   Game mode selection menu. '1 Player' is highlighted but pressing A enters a save_load_prom
+[1172.8s] # 43 save_load_prompt  fast    A                        This is a clear fork: load or start new. 'New Game' is highlighted. Previous loop was on t
+[1188.4s] # 44 save_load_prompt  fast    LEFT A                   Confirmation dialog asking to create a new game. No is highlighted; we need Yes to proceed
+[1262.0s] # 45 save_load_prompt  fast    B                        Stuck looping: A on 'New Game' → confirmation dialog → LEFT A → back here. Previous path d
+{"name": "Urbz The Sims in the City USA", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 39, "steps": 45, "replayed": 0, "reason": "budget 20 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

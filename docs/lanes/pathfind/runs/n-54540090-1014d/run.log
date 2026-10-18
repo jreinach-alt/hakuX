@@ -1,0 +1,43 @@
+pathfind: NBA 2K6 USA (54540090) on nova: /storage/E6C6-D7AA/Games/XBox/54540090-NBA_2K6_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 54540090 any, loaded none
+[  16.7s] #  1 publisher_logo    fast    A                        Cold boot of NBA 2K6; Take-Two/2K titles begin with publisher logos and long boot sequence
+[  74.8s] #  2 main_menu         fast    A                        After the publisher logo (which we advanced past with A at 0.0), this team logo display is
+[  77.4s] #  3 black             black   wait                     black frame
+[  81.0s] #  4 black             black   wait                     black frame
+[  84.6s] #  5 black             black   wait                     black frame
+[  88.2s] #  6 black             black   wait                     black frame
+[  93.9s] #  7 black             black   wait                     black frame
+[  97.6s] #  8 black             black   wait                     black frame
+[ 101.3s] #  9 black             black   wait                     black frame
+[ 105.0s] # 10 black             black   wait                     black frame
+[ 108.9s] # 11 black             black   wait                     black frame
+[ 113.0s] # 12 black             black   wait                     black frame
+[ 117.3s] # 13 black             black   wait                     black frame
+[ 121.2s] # 14 black             black   START                    black for 44 s
+[ 128.9s] # 15 black             black   A                        black for 52 s
+[ 134.7s] # 16 black             black   A                        black for 57 s
+[ 140.5s] # 17 black             black   START                    black for 63 s
+[ 146.4s] # 18 black             black   START                    black for 69 s
+[ 152.1s] # 19 black             black   A                        black for 75 s
+[ 160.1s] # 20 black             black   START                    black for 83 s
+[ 165.9s] # 21 black             black   START                    black for 89 s
+[ 171.5s] # 22 black             black   A                        black for 94 s
+[ 177.4s] # 23 black             black   START                    black for 100 s
+[ 183.2s] # 24 black             black   START                    black for 106 s
+[ 188.8s] # 25 black             black   A                        black for 111 s
+[ 196.4s] # 26 black             black   A                        black for 119 s
+[ 202.0s] # 27 black             black   START                    black for 125 s
+[ 207.5s] # 28 black             black   A                        black for 130 s
+[ 213.0s] # 29 black             black   A                        black for 136 s
+[ 218.7s] # 30 black             black   START                    black for 141 s
+[ 224.2s] # 31 black             black   START                    black for 147 s
+[ 231.6s] # 32 black             black   A                        black for 154 s
+[ 237.2s] # 33 black             black   A                        black for 160 s
+[ 242.7s] # 34 black             black   START                    black for 165 s
+[ 248.3s] # 35 black             black   A                        black for 171 s
+[ 253.9s] # 36 black             black   A                        black for 177 s
+[ 259.6s] # 37 black             check   wait                     black for 182 s (xemu alive: True)
+{"name": "NBA 2K6 USA", "device": "nova", "result": "black-hang", "minutes": null, "model_calls": 2, "steps": 37, "replayed": 0, "reason": "black for over 180.0 s, xemu alive: True", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

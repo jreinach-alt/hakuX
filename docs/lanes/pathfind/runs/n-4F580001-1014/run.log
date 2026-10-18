@@ -1,0 +1,31 @@
+pathfind: Conspiracy Weapons of Mass Destruction Europe En Fr De Es It (4F580001) on nova: /storage/E6C6-D7AA/Games/XBox/4F580001-Conspiracy_Weapons_of_Mass_Destruction_Europe_En_Fr_De_Es_It.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4F580001 any, loaded none
+[  17.7s] #  1 publisher_logo    fast    A                        Faint publisher logo visible in the fade-in; 0.1 min into boot suggests early logo sequenc
+[  28.1s] #  2 cutscene          fast    A                        Character intro text on black background, part of the opening narrative before gameplay; t
+[  31.5s] #  3 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[  41.8s] #  4 title_screen      fast    START                    Title screen explicitly prompts 'Press START button' - this is the standard title screen r
+[  54.7s] #  5 save_load_prompt  fast    A                        The game is creating a new save file and prompting for A to proceed; this is a standard sa
+[  66.6s] #  6 main_menu         fast    A                        Main menu with 'Start New Game' already highlighted in red. This is the fastest path to ga
+[  77.7s] #  7 submenu           fast    A                        Difficulty level selection is a submenu before gameplay; Normal is highlighted in red, so 
+[  95.3s] #  8 cutscene          fast    A                        Narrative/briefing screen with a continue prompt, not yet player-controlled gameplay. Afte
+[  99.8s] #  9 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 122.6s] # 10 gameplay          fast    wait                     First-person view with active HUD (health, ammo, reticle), weapon in hand, and interactive
+[ 138.2s] # 11 probe             probe   STICK:up:1.5             control 0.026, under input 0.367
+hold-play: genre shooter, need 630 s of play
+hold-play: fps at 185 s: median 59.0, share>=30 1.0 over 187 samples
+hold-play: fps at 308 s: median 59.0, share>=30 1.0 over 309 samples
+hold-play: 3 still looks: walk reversed (forward) at 475 s
+hold-play: 3 still looks: walk reversed (forward) at 582 s
+hold-play: play disagrees: hold 637.6 s, verdict 623.9 s (verdict trusted)
+hold-play: validity check share 577 s (hold 638 s of play, verdict 623.9)
+hold-play: verdict short on share by 577 s; holding on (budget 646 s left)
+hold-play: 3 still looks: walk reversed (forward) at 804 s
+hold-play: play disagrees: hold 662.3 s, verdict 656.9 s (verdict trusted)
+hold-play: validity check share 838 s (hold 662 s of play, verdict 656.9)
+hold-play: not held 662/630 s of play; share short by 838 s with no budget left
+held Conspiracy Weapons of Mass Destruction Europe En Fr De Es It for 824s
+VERDICT Conspiracy Weapons of Mass Destruction Europe En Fr De Es It ? FAIL(menu time: 79.8% of the scored window in `play` (bar 90%; play 657 s, continue 97 s, cutscene 61 s, loading 8 s)) gameplay=823.5s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0 play_share=0.7978 fps_excluded=168.2s
+{"name": "Conspiracy Weapons of Mass Destruction Europe En Fr De Es It", "device": "nova", "result": "gameplay", "minutes": 2.3, "model_calls": 30, "steps": 11, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4F580001-1014/frames/010-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

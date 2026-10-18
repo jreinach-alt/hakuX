@@ -1,0 +1,287 @@
+{"n": 34, "hold_s": 0.9, "play_s": 7.1, "changed": null, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": true}
+{"n": 35, "hold_s": 8.0, "play_s": 14.6, "changed": 0.1502, "off": false, "shift_look": 3.16, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 36, "hold_s": 15.6, "play_s": 22.1, "changed": 0.1014, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 37, "hold_s": 23.2, "play_s": 29.8, "changed": 0.2441, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 38, "hold_s": 30.9, "play_s": 37.3, "changed": 0.3338, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.3449, "kept": true}
+{"n": 39, "hold_s": 38.4, "play_s": 44.4, "changed": 0.0347, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 40, "hold_s": 45.5, "play_s": 51.8, "changed": 0.0112, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 41, "hold_s": 52.9, "play_s": 59.1, "changed": 0.0386, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 42, "hold_s": 60.2, "play_s": 66.5, "changed": 0.0434, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 43, "hold_s": 67.6, "play_s": 74.0, "changed": 0.0127, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.0792, "kept": true}
+{"n": 44, "hold_s": 75.1, "play_s": 97.4, "changed": 0.0084, "off": false, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Player character visible in game world with active squad HUD; game running with tactical view", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 45, "hold_s": 98.6, "play_s": 104.9, "changed": 0.1045, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.1536, "kept": true}
+{"n": 46, "hold_s": 106.2, "play_s": 112.6, "changed": 0.0102, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 47, "hold_s": 113.8, "play_s": 146.0, "changed": 0.0042, "off": false, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Player character visible and active in game world; squad UI, ammo counter, and compass displayed; game running", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 48, "hold_s": 147.3, "play_s": 153.6, "changed": 0.0475, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.1494, "kept": true}
+{"n": 49, "hold_s": 155.0, "play_s": 161.0, "changed": 0.0131, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 50, "hold_s": 162.3, "play_s": 181.5, "changed": 0.0021, "off": false, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Player character visible in active game world with team HUD, compass, and weapon info; night combat scenario in progress", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 51, "hold_s": 182.8, "play_s": 188.9, "changed": 0.0326, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.101, "kept": true}
+{"n": 52, "hold_s": 190.3, "play_s": 207.6, "changed": 0.0097, "off": false, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Player character visible in game world with active HUD (compass, squad roster, ammo counter); no menu or overlay blocking play", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 53, "hold_s": 208.8, "play_s": 214.8, "changed": 0.6535, "off": false, "shift_look": 10.77, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 54, "hold_s": 216.0, "play_s": 221.7, "changed": 0.1098, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.7266, "kept": true}
+{"n": 55, "hold_s": 222.9, "play_s": 228.6, "changed": 0.0939, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 56, "hold_s": 229.9, "play_s": 235.5, "changed": 0.0934, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 57, "hold_s": 236.7, "play_s": 242.4, "changed": 0.0888, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 58, "hold_s": 243.7, "play_s": 249.4, "changed": 0.0884, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 59, "hold_s": 250.6, "play_s": 256.2, "changed": 0.0918, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.1087, "kept": true}
+{"n": 60, "hold_s": 257.5, "play_s": 263.1, "changed": 0.0902, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 61, "hold_s": 264.3, "play_s": 269.8, "changed": 0.1018, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 62, "hold_s": 271.1, "play_s": 276.8, "changed": 0.0952, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 63, "hold_s": 278.1, "play_s": 283.9, "changed": 0.0942, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 64, "hold_s": 285.2, "play_s": 283.9, "changed": 0.0966, "off": false, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Mission failed screen with menu options; player not in game world", "action": ["A"], "kept": true}
+{"n": 65, "hold_s": 294.9, "play_s": 283.9, "changed": 0.2789, "off": true, "shift_look": 28.07, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 66, "hold_s": 298.6, "play_s": 283.9, "changed": 0.2996, "off": true, "shift_look": 9.49, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 67, "hold_s": 302.2, "play_s": 283.9, "changed": 0.3079, "off": true, "shift_look": 20.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 68, "hold_s": 305.9, "play_s": 283.9, "changed": 0.2945, "off": true, "shift_look": 8.94, "src": "check", "state": "game_over", "why": "Mission failed screen with menu options (RESTART MISSION / LOAD GAME / QUIT TO MAIN MENU)", "action": ["A"], "kept": false}
+{"n": 69, "hold_s": 316.4, "play_s": 283.9, "changed": 0.287, "off": true, "shift_look": 12.81, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 70, "hold_s": 321.1, "play_s": 283.9, "changed": 0.2919, "off": true, "shift_look": 9.49, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 71, "hold_s": 325.7, "play_s": 283.9, "changed": 0.2951, "off": true, "shift_look": 10.2, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 72, "hold_s": 330.3, "play_s": 283.9, "changed": 0.2905, "off": true, "shift_look": 45.71, "src": "check", "state": "game_over", "why": "Mission failed screen with menu options displayed; RESTART MISSION is highlighted", "action": ["A"], "kept": false}
+{"n": 73, "hold_s": 345.5, "play_s": 283.9, "changed": 0.2849, "off": true, "shift_look": 45.71, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 74, "hold_s": 349.1, "play_s": 283.9, "changed": 0.3048, "off": true, "shift_look": 29.02, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 75, "hold_s": 352.7, "play_s": 283.9, "changed": 0.3042, "off": true, "shift_look": 8.94, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 76, "hold_s": 356.3, "play_s": 283.9, "changed": 0.297, "off": true, "shift_look": 8.25, "src": "check", "state": "game_over", "why": "Mission failed screen with restart/load/quit menu; not in active gameplay", "action": ["A"], "kept": false}
+{"n": 77, "hold_s": 367.6, "play_s": 283.9, "changed": 0.2711, "off": true, "shift_look": 31.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 78, "hold_s": 372.3, "play_s": 283.9, "changed": 0.2959, "off": true, "shift_look": 2.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 79, "hold_s": 376.9, "play_s": 283.9, "changed": 0.306, "off": true, "shift_look": 25.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 80, "hold_s": 381.5, "play_s": 283.9, "changed": 0.2945, "off": true, "shift_look": 9.85, "src": "check", "state": "game_over", "why": "Mission failed screen with restart/load/quit options; not in active gameplay", "action": ["A"], "kept": true}
+{"n": 81, "hold_s": 395.5, "play_s": 283.9, "changed": 0.2995, "off": true, "shift_look": 23.19, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 82, "hold_s": 398.1, "play_s": 283.9, "changed": 0.3022, "off": true, "shift_look": 10.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 83, "hold_s": 400.8, "play_s": 283.9, "changed": 0.3, "off": true, "shift_look": 8.06, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 84, "hold_s": 403.4, "play_s": 283.9, "changed": 0.2928, "off": true, "shift_look": 13.0, "src": "check", "state": "game_over", "why": "Mission failed screen with restart/load menu displayed", "action": ["A"], "kept": false}
+{"n": 85, "hold_s": 415.8, "play_s": 283.9, "changed": 0.2717, "off": true, "shift_look": 19.31, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 86, "hold_s": 420.5, "play_s": 283.9, "changed": 0.2943, "off": true, "shift_look": 7.21, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 87, "hold_s": 425.1, "play_s": 283.9, "changed": 0.3044, "off": true, "shift_look": 7.28, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 88, "hold_s": 429.8, "play_s": 283.9, "changed": 0.2945, "off": true, "shift_look": 21.19, "src": "check", "state": "game_over", "why": "Mission failed screen with menu options; player not in world", "action": ["A"], "kept": false}
+{"n": 89, "hold_s": 439.3, "play_s": 283.9, "changed": 0.2885, "off": true, "shift_look": 6.71, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 90, "hold_s": 443.0, "play_s": 283.9, "changed": 0.3028, "off": true, "shift_look": 3.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 91, "hold_s": 446.7, "play_s": 283.9, "changed": 0.3052, "off": true, "shift_look": 22.02, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 92, "hold_s": 450.4, "play_s": 283.9, "changed": 0.2917, "off": true, "shift_look": 30.36, "src": "check", "state": "game_over", "why": "Mission Failed screen with menu options (Restart Mission, Load Game, Quit to Main Menu)", "action": ["A"], "kept": false}
+{"n": 93, "hold_s": 460.3, "play_s": 283.9, "changed": 0.2855, "off": true, "shift_look": 4.47, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 94, "hold_s": 463.9, "play_s": 283.9, "changed": 0.2936, "off": true, "shift_look": 18.68, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 95, "hold_s": 467.5, "play_s": 283.9, "changed": 0.306, "off": true, "shift_look": 26.08, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 96, "hold_s": 471.1, "play_s": 283.9, "changed": 0.3055, "off": true, "shift_look": 46.1, "src": "check", "state": "game_over", "why": "Mission Failed screen; menu with restart/load/quit options; no active gameplay", "action": ["A"], "kept": false}
+{"n": 97, "hold_s": 483.4, "play_s": 283.9, "changed": 0.2927, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 98, "hold_s": 487.1, "play_s": 283.9, "changed": 0.2834, "off": true, "shift_look": 8.06, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 99, "hold_s": 490.8, "play_s": 283.9, "changed": 0.3003, "off": true, "shift_look": 8.25, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 100, "hold_s": 494.4, "play_s": 283.9, "changed": 0.3081, "off": true, "shift_look": 41.44, "src": "check", "state": "results", "why": "Mission failed screen showing failure results with menu options", "action": ["A"], "kept": false}
+{"n": 101, "hold_s": 514.5, "play_s": 283.9, "changed": 0.3066, "off": true, "shift_look": 9.49, "src": "check", "state": "menu", "why": "Restart confirmation dialog overlay; player not actively controlling character/vehicle", "action": ["STICK:down:1", "A"], "kept": true}
+{"n": 102, "hold_s": 525.8, "play_s": 283.9, "changed": 0.3067, "off": true, "shift_look": 37.7, "src": "check", "state": "game_over", "why": "Mission failed screen shown; globe and menu options visible, no active gameplay", "action": ["A"], "kept": false}
+{"n": 103, "hold_s": 542.9, "play_s": 283.9, "changed": 0.3069, "off": true, "shift_look": 23.54, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 104, "hold_s": 545.7, "play_s": 283.9, "changed": 0.2947, "off": true, "shift_look": 12.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 105, "hold_s": 548.3, "play_s": 283.9, "changed": 0.2913, "off": true, "shift_look": 32.02, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 106, "hold_s": 551.0, "play_s": 283.9, "changed": 0.2934, "off": true, "shift_look": 3.61, "src": "check", "state": "game_over", "why": "Mission failed screen with menu options (RESTART MISSION, LOAD GAME); no active gameplay", "ladder_round": 1, "ladder": 1, "action": ["A"], "kept": false}
+{"n": 107, "hold_s": 560.7, "play_s": 283.9, "changed": 0.3027, "off": true, "shift_look": 36.12, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 108, "hold_s": 564.4, "play_s": 283.9, "changed": 0.3069, "off": true, "shift_look": 25.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 109, "hold_s": 567.9, "play_s": 283.9, "changed": 0.3033, "off": true, "shift_look": 25.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 110, "hold_s": 571.4, "play_s": 283.9, "changed": 0.2966, "off": true, "shift_look": 39.81, "src": "check", "state": "game_over", "why": "Mission failed screen showing restart/load/quit options; player not in active gameplay", "ladder": 2, "action": ["START"], "kept": false}
+{"n": 111, "hold_s": 582.5, "play_s": 283.9, "changed": 0.2781, "off": true, "shift_look": 39.81, "src": "repeat", "state": "game_over", "action": ["START"], "kept": true}
+{"n": 112, "hold_s": 586.1, "play_s": 283.9, "changed": 0.2968, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 113, "hold_s": 589.8, "play_s": 283.9, "changed": 0.3036, "off": true, "shift_look": 35.81, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 114, "hold_s": 593.3, "play_s": 283.9, "changed": 0.2992, "off": true, "shift_look": 34.93, "src": "check", "state": "game_over", "why": "Mission failed screen with menu options; player not in game world", "ladder": 3, "action": ["A"], "kept": false}
+{"n": 115, "hold_s": 603.8, "play_s": 283.9, "changed": 0.288, "off": true, "shift_look": 32.98, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 116, "hold_s": 607.3, "play_s": 283.9, "changed": 0.2867, "off": true, "shift_look": 2.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 117, "hold_s": 610.8, "play_s": 283.9, "changed": 0.3029, "off": true, "shift_look": 28.28, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 118, "hold_s": 614.4, "play_s": 283.9, "changed": 0.3079, "off": true, "shift_look": 37.36, "src": "check", "state": "game_over", "why": "Mission failed screen showing menu options; game world not active", "ladder": 4, "action": ["A"], "kept": true}
+{"n": 119, "hold_s": 625.5, "play_s": 283.9, "changed": 0.2896, "off": true, "shift_look": 11.31, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 120, "hold_s": 628.9, "play_s": 283.9, "changed": 0.2949, "off": true, "shift_look": 14.76, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 121, "hold_s": 632.4, "play_s": 283.9, "changed": 0.2954, "off": true, "shift_look": 21.21, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 122, "hold_s": 636.0, "play_s": 283.9, "changed": 0.3054, "off": true, "shift_look": 50.01, "src": "check", "state": "game_over", "why": "Mission failed screen with restart menu; player character not in world", "ladder": 5, "action": ["B"], "kept": false}
+{"n": 123, "hold_s": 646.1, "play_s": 283.9, "changed": 0.1053, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": true}
+{"n": 124, "hold_s": 649.7, "play_s": 283.9, "changed": 0.0968, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 125, "hold_s": 653.2, "play_s": 283.9, "changed": 0.1005, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 126, "hold_s": 656.8, "play_s": 283.9, "changed": 0.0958, "off": true, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Mission Failed screen showing menu options; player not in game world", "ladder": 6, "action": ["START"], "kept": false}
+{"n": 127, "hold_s": 666.3, "play_s": 283.9, "changed": 0.2833, "off": true, "shift_look": 13.93, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 128, "hold_s": 669.9, "play_s": 283.9, "changed": 0.2961, "off": true, "shift_look": 4.12, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 129, "hold_s": 673.6, "play_s": 283.9, "changed": 0.2955, "off": true, "shift_look": 18.0, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 130, "hold_s": 677.2, "play_s": 283.9, "changed": 0.2947, "off": true, "shift_look": 10.77, "src": "check", "state": "game_over", "why": "MISSION FAILED screen showing game-over menu with restart/load/quit options; no player vehicle or character in the game world", "ladder": 7, "action": ["A"], "kept": true}
+{"n": 131, "hold_s": 686.8, "play_s": 283.9, "changed": 0.3049, "off": true, "shift_look": 8.94, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 132, "hold_s": 690.3, "play_s": 283.9, "changed": 0.2908, "off": true, "shift_look": 8.6, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 133, "hold_s": 694.0, "play_s": 283.9, "changed": 0.2947, "off": true, "shift_look": 5.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 134, "hold_s": 697.6, "play_s": 283.9, "changed": 0.2958, "off": true, "shift_look": 29.43, "src": "check", "state": "game_over", "why": "Mission Failed screen displayed; player must restart or load to resume play", "ladder": 8, "action": ["START"], "kept": false}
+{"n": 135, "hold_s": 708.7, "play_s": 283.9, "changed": 0.2933, "off": true, "shift_look": 7.81, "src": "repeat", "state": "game_over", "action": ["START"], "kept": true}
+{"n": 136, "hold_s": 712.4, "play_s": 283.9, "changed": 0.3028, "off": true, "shift_look": 11.4, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 137, "hold_s": 715.9, "play_s": 283.9, "changed": 0.296, "off": true, "shift_look": 16.12, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 138, "hold_s": 719.5, "play_s": 283.9, "changed": 0.2967, "off": true, "shift_look": 44.01, "src": "check", "state": "game_over", "why": "Mission failed screen with menu options; player not in active gameplay", "ladder": 9, "action": ["A"], "kept": false}
+{"n": 139, "hold_s": 731.6, "play_s": 283.9, "changed": 0.2932, "off": true, "shift_look": 1.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 140, "hold_s": 735.2, "play_s": 283.9, "changed": 0.3053, "off": true, "shift_look": 9.49, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 141, "hold_s": 738.8, "play_s": 283.9, "changed": 0.2906, "off": true, "shift_look": 33.53, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 142, "hold_s": 742.4, "play_s": 283.9, "changed": 0.2928, "off": true, "shift_look": 36.62, "src": "check", "state": "game_over", "why": "Mission Failed screen with menu options; player is not actively playing", "ladder": 10, "action": ["A"], "kept": false}
+{"n": 143, "hold_s": 754.8, "play_s": 283.9, "changed": 0.2996, "off": true, "shift_look": 30.07, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 144, "hold_s": 758.3, "play_s": 283.9, "changed": 0.3084, "off": true, "shift_look": 19.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 145, "hold_s": 761.9, "play_s": 283.9, "changed": 0.2954, "off": true, "shift_look": 37.36, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 146, "hold_s": 765.4, "play_s": 283.9, "changed": 0.2943, "off": true, "shift_look": 3.16, "src": "check", "state": "game_over", "why": "Mission failed screen with menu options; game not running", "ladder": 11, "action": ["B"], "kept": false}
+{"n": 147, "hold_s": 775.0, "play_s": 283.9, "changed": 0.0832, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": true}
+{"n": 148, "hold_s": 778.7, "play_s": 283.9, "changed": 0.1024, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 149, "hold_s": 782.2, "play_s": 283.9, "changed": 0.1101, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 150, "hold_s": 785.9, "play_s": 283.9, "changed": 0.0974, "off": true, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Mission failed screen with menu options; game is not running", "ladder": 12, "action": ["START"], "kept": false}
+{"n": 151, "hold_s": 795.4, "play_s": 283.9, "changed": 0.2917, "off": true, "shift_look": 6.4, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 152, "hold_s": 799.0, "play_s": 283.9, "changed": 0.2837, "off": true, "shift_look": 8.06, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 153, "hold_s": 802.5, "play_s": 283.9, "changed": 0.3003, "off": true, "shift_look": 30.02, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 154, "hold_s": 806.1, "play_s": 283.9, "changed": 0.3073, "off": true, "shift_look": 33.02, "src": "check", "state": "game_over", "why": "Mission Failed screen with menu options; player is not in active gameplay", "ladder": 13, "action": ["A"], "kept": true}
+{"n": 155, "hold_s": 816.1, "play_s": 283.9, "changed": 0.2904, "off": true, "shift_look": 5.66, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 156, "hold_s": 819.7, "play_s": 283.9, "changed": 0.301, "off": true, "shift_look": 6.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 157, "hold_s": 823.4, "play_s": 283.9, "changed": 0.2892, "off": true, "shift_look": 45.18, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 158, "hold_s": 827.0, "play_s": 283.9, "changed": 0.3026, "off": true, "shift_look": 12.37, "src": "check", "state": "game_over", "why": "Mission Failed screen with restart/load/quit menu options displayed", "ladder_round": 2, "ladder": 1, "action": ["A"], "kept": false}
+{"n": 159, "hold_s": 838.5, "play_s": 283.9, "changed": 0.3003, "off": true, "shift_look": 9.85, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 160, "hold_s": 842.5, "play_s": 283.9, "changed": 0.2942, "off": true, "shift_look": 20.02, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 161, "hold_s": 846.1, "play_s": 283.9, "changed": 0.2905, "off": true, "shift_look": 46.82, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 162, "hold_s": 849.8, "play_s": 283.9, "changed": 0.291, "off": true, "shift_look": 12.17, "src": "check", "state": "game_over", "why": "Mission failed screen with menu options; gameplay not active", "ladder": 2, "action": ["START"], "kept": false}
+{"n": 163, "hold_s": 862.5, "play_s": 283.9, "changed": 0.2945, "off": true, "shift_look": 10.2, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 164, "hold_s": 866.0, "play_s": 283.9, "changed": 0.2951, "off": true, "shift_look": 16.76, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 165, "hold_s": 869.6, "play_s": 283.9, "changed": 0.2919, "off": true, "shift_look": 26.48, "src": "repeat", "state": "game_over", "action": ["START"], "kept": true}
+{"n": 166, "hold_s": 873.3, "play_s": 283.9, "changed": 0.2926, "off": true, "shift_look": 3.0, "src": "check", "state": "game_over", "why": "Mission failed screen with restart/load/quit options; not actively playing", "ladder": 3, "action": ["A"], "kept": false}
+{"n": 167, "hold_s": 886.6, "play_s": 283.9, "changed": 0.2977, "off": true, "shift_look": 5.39, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 168, "hold_s": 890.1, "play_s": 283.9, "changed": 0.2952, "off": true, "shift_look": 18.68, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 169, "hold_s": 893.7, "play_s": 283.9, "changed": 0.2922, "off": true, "shift_look": 42.95, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 170, "hold_s": 897.2, "play_s": 283.9, "changed": 0.2927, "off": true, "shift_look": 3.0, "src": "check", "state": "game_over", "why": "Mission failed screen showing game-over menu with restart, load, and quit options", "ladder": 4, "action": ["A"], "kept": false}
+{"n": 171, "hold_s": 911.1, "play_s": 283.9, "changed": 0.3007, "off": true, "shift_look": 4.12, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 172, "hold_s": 914.8, "play_s": 283.9, "changed": 0.2993, "off": true, "shift_look": 4.47, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 173, "hold_s": 918.4, "play_s": 283.9, "changed": 0.2919, "off": true, "shift_look": 11.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 174, "hold_s": 921.9, "play_s": 283.9, "changed": 0.2952, "off": true, "shift_look": 17.26, "src": "check", "state": "game_over", "why": "Mission Failed screen showing with restart/load/quit menu options; game not running", "ladder": 5, "action": ["B"], "kept": false}
+{"n": 175, "hold_s": 932.3, "play_s": 283.9, "changed": 0.095, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 176, "hold_s": 935.9, "play_s": 283.9, "changed": 0.0976, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 177, "hold_s": 939.7, "play_s": 283.9, "changed": 0.1019, "off": true, "shift_look": 6.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 178, "hold_s": 943.3, "play_s": 283.9, "changed": 0.0889, "off": true, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Mission failed screen with menu options; RESTART MISSION is highlighted; player not in active gameplay", "ladder": 6, "action": ["START"], "kept": true}
+{"n": 179, "hold_s": 955.9, "play_s": 283.9, "changed": 0.2716, "off": true, "shift_look": 23.6, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 180, "hold_s": 959.5, "play_s": 283.9, "changed": 0.2968, "off": true, "shift_look": 44.01, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 181, "hold_s": 963.0, "play_s": 283.9, "changed": 0.2971, "off": true, "shift_look": 44.01, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 182, "hold_s": 966.5, "play_s": 283.9, "changed": 0.2888, "off": true, "shift_look": 10.2, "src": "check", "state": "results", "why": "Mission Failed screen with menu options; player not in active gameplay", "ladder": 7, "action": ["A"], "kept": false}
+{"n": 183, "hold_s": 976.9, "play_s": 283.9, "changed": 0.2957, "off": true, "shift_look": 8.06, "src": "check", "state": "pause", "why": "Pause menu asking whether to restart; NO is highlighted; game not running", "ladder": 8, "action": ["START"], "kept": true}
+{"n": 184, "hold_s": 1008.3, "play_s": 283.9, "changed": 0.3039, "off": true, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Mission Failed screen with menu options; player not in game world", "ladder": 9, "action": ["A"], "kept": true}
+{"n": 185, "hold_s": 1020.4, "play_s": 283.9, "changed": 0.2885, "off": true, "shift_look": 31.06, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 186, "hold_s": 1024.0, "play_s": 283.9, "changed": 0.3028, "off": true, "shift_look": 17.26, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 187, "hold_s": 1027.5, "play_s": 283.9, "changed": 0.2963, "off": true, "shift_look": 17.03, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 188, "hold_s": 1031.1, "play_s": 283.9, "changed": 0.2952, "off": true, "shift_look": 33.62, "src": "check", "state": "game_over", "why": "Mission Failed screen with menu options; player not controlling character in game world", "ladder": 10, "action": ["A"], "kept": false}
+{"n": 189, "hold_s": 1042.3, "play_s": 283.9, "changed": 0.3024, "off": true, "shift_look": 33.62, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 190, "hold_s": 1046.0, "play_s": 283.9, "changed": 0.304, "off": true, "shift_look": 40.01, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 191, "hold_s": 1049.6, "play_s": 283.9, "changed": 0.2962, "off": true, "shift_look": 7.21, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 192, "hold_s": 1053.4, "play_s": 283.9, "changed": 0.2963, "off": true, "shift_look": 13.42, "src": "check", "state": "game_over", "why": "Mission failed screen with menu overlay; player must select an option to continue", "ladder": 11, "action": ["B"], "kept": false}
+{"n": 193, "hold_s": 1065.3, "play_s": 283.9, "changed": 0.0911, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 194, "hold_s": 1068.8, "play_s": 283.9, "changed": 0.1107, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 195, "hold_s": 1072.4, "play_s": 283.9, "changed": 0.1044, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": true}
+{"n": 196, "hold_s": 1075.9, "play_s": 283.9, "changed": 0.1008, "off": true, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Mission failed screen with menu options (Restart Mission, Load Game, Quit to Main Menu); no active gameplay", "ladder": 12, "action": ["START"], "kept": false}
+{"n": 197, "hold_s": 1087.5, "play_s": 283.9, "changed": 0.269, "off": true, "shift_look": 16.28, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 198, "hold_s": 1091.0, "play_s": 283.9, "changed": 0.3031, "off": true, "shift_look": 37.01, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 199, "hold_s": 1094.6, "play_s": 283.9, "changed": 0.3068, "off": true, "shift_look": 16.03, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 200, "hold_s": 1098.1, "play_s": 283.9, "changed": 0.2936, "off": true, "shift_look": 27.31, "src": "check", "state": "game_over", "why": "Mission failed screen; menu shows restart/load/quit options; no player character in world", "ladder": 13, "action": ["A"], "kept": false}
+{"n": 201, "hold_s": 1109.0, "play_s": 283.9, "changed": 0.2844, "off": true, "shift_look": 5.83, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 202, "hold_s": 1112.5, "play_s": 283.9, "changed": 0.2939, "off": true, "shift_look": 11.05, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 203, "hold_s": 1116.0, "play_s": 283.9, "changed": 0.3069, "off": true, "shift_look": 23.26, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 204, "hold_s": 1119.5, "play_s": 283.9, "changed": 0.3048, "off": true, "shift_look": 29.07, "src": "check", "state": "game_over", "why": "Mission failed screen with menu options; player is not actively in the game world", "ladder_round": 3, "ladder": 1, "action": ["A"], "kept": false}
+{"n": 205, "hold_s": 1130.6, "play_s": 283.9, "changed": 0.2901, "off": true, "shift_look": 3.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 206, "hold_s": 1134.1, "play_s": 283.9, "changed": 0.2916, "off": true, "shift_look": 9.49, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 207, "hold_s": 1137.7, "play_s": 283.9, "changed": 0.2929, "off": true, "shift_look": 28.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 208, "hold_s": 1141.3, "play_s": 283.9, "changed": 0.303, "off": true, "shift_look": 39.01, "src": "check", "state": "game_over", "why": "Mission failed screen with menu options; player not in active gameplay", "ladder": 2, "action": ["START"], "kept": true}
+{"n": 209, "hold_s": 1157.7, "play_s": 283.9, "changed": 0.2953, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 210, "hold_s": 1161.2, "play_s": 283.9, "changed": 0.2917, "off": true, "shift_look": 18.11, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 211, "hold_s": 1164.8, "play_s": 283.9, "changed": 0.3056, "off": true, "shift_look": 5.1, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 212, "hold_s": 1168.3, "play_s": 283.9, "changed": 0.3017, "off": true, "shift_look": 37.85, "src": "check", "state": "game_over", "why": "Mission failed screen with menu options (RESTART MISSION already highlighted)", "ladder": 3, "action": ["A"], "kept": false}
+{"n": 213, "hold_s": 1181.0, "play_s": 283.9, "changed": 0.2898, "off": true, "shift_look": 7.28, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 214, "hold_s": 1184.5, "play_s": 283.9, "changed": 0.2937, "off": true, "shift_look": 11.05, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 215, "hold_s": 1188.1, "play_s": 283.9, "changed": 0.307, "off": true, "shift_look": 20.22, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 216, "hold_s": 1191.7, "play_s": 283.9, "changed": 0.3045, "off": true, "shift_look": 19.0, "src": "check", "state": "game_over", "why": "Mission failed screen showing restart/load/quit options; no active gameplay", "ladder": 4, "action": ["A"], "kept": false}
+{"n": 217, "hold_s": 1202.7, "play_s": 283.9, "changed": 0.2903, "off": true, "shift_look": 9.85, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 218, "hold_s": 1206.3, "play_s": 283.9, "changed": 0.2916, "off": true, "shift_look": 12.04, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 219, "hold_s": 1209.9, "play_s": 283.9, "changed": 0.2951, "off": true, "shift_look": 33.12, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 220, "hold_s": 1213.5, "play_s": 283.9, "changed": 0.3019, "off": true, "shift_look": 28.02, "src": "check", "state": "game_over", "why": "Mission failed screen with menu options; player not in game world", "ladder": 5, "action": ["B"], "kept": true}
+{"n": 221, "hold_s": 1225.0, "play_s": 283.9, "changed": 0.0898, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 222, "hold_s": 1228.6, "play_s": 283.9, "changed": 0.0952, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 223, "hold_s": 1232.2, "play_s": 283.9, "changed": 0.0962, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 224, "hold_s": 1235.7, "play_s": 283.9, "changed": 0.1111, "off": true, "shift_look": 0.0, "src": "check", "state": "results", "why": "Mission failed screen with menu options; player must select an action from the menu", "ladder": 6, "action": ["START"], "kept": false}
+{"n": 225, "hold_s": 1249.2, "play_s": 283.9, "changed": 0.3023, "off": true, "shift_look": 13.34, "src": "check", "state": "menu", "why": "Restart confirmation dialog blocking gameplay; cursor on NO (highlighted).", "ladder": 7, "action": ["A"], "kept": true}
+{"n": 226, "hold_s": 1264.0, "play_s": 283.9, "changed": 0.3012, "off": true, "shift_look": 15.3, "src": "check", "state": "game_over", "why": "Mission failed screen with menu; player not in active gameplay", "ladder": 8, "action": ["START"], "kept": false}
+{"n": 227, "hold_s": 1275.1, "play_s": 283.9, "changed": 0.2878, "off": true, "shift_look": 7.81, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 228, "hold_s": 1278.7, "play_s": 283.9, "changed": 0.287, "off": true, "shift_look": 11.0, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 229, "hold_s": 1282.4, "play_s": 283.9, "changed": 0.2992, "off": true, "shift_look": 23.85, "src": "repeat", "state": "game_over", "action": ["START"], "kept": true}
+{"n": 230, "hold_s": 1286.0, "play_s": 283.9, "changed": 0.3048, "off": true, "shift_look": 44.65, "src": "check", "state": "game_over", "why": "Mission Failed screen with restart menu displayed", "ladder": 9, "action": ["A"], "kept": false}
+{"n": 231, "hold_s": 1296.8, "play_s": 283.9, "changed": 0.2911, "off": true, "shift_look": 15.26, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 232, "hold_s": 1300.4, "play_s": 283.9, "changed": 0.2933, "off": true, "shift_look": 8.54, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 233, "hold_s": 1304.1, "play_s": 283.9, "changed": 0.2957, "off": true, "shift_look": 36.35, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 234, "hold_s": 1307.8, "play_s": 283.9, "changed": 0.3049, "off": true, "shift_look": 50.99, "src": "check", "state": "game_over", "why": "Mission Failed screen with menu options; not live play", "ladder": 10, "action": ["A"], "kept": false}
+{"n": 235, "hold_s": 1317.9, "play_s": 283.9, "changed": 0.2969, "off": true, "shift_look": 9.85, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 236, "hold_s": 1321.6, "play_s": 283.9, "changed": 0.2946, "off": true, "shift_look": 18.79, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 237, "hold_s": 1325.2, "play_s": 283.9, "changed": 0.2947, "off": true, "shift_look": 50.6, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 238, "hold_s": 1328.8, "play_s": 283.9, "changed": 0.2939, "off": true, "shift_look": 37.85, "src": "check", "state": "game_over", "why": "Mission failed screen with menu options; not in active gameplay", "ladder": 11, "action": ["B"], "kept": false}
+{"n": 239, "hold_s": 1341.9, "play_s": 283.9, "changed": 0.0999, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 240, "hold_s": 1345.5, "play_s": 283.9, "changed": 0.1016, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 241, "hold_s": 1349.1, "play_s": 283.9, "changed": 0.0968, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": true}
+{"n": 242, "hold_s": 1352.6, "play_s": 283.9, "changed": 0.0978, "off": true, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Mission Failed screen with menu options; not live gameplay", "ladder": 12, "action": ["START"], "kept": false}
+{"n": 243, "hold_s": 1364.4, "play_s": 283.9, "changed": 0.286, "off": true, "shift_look": 15.0, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 244, "hold_s": 1368.0, "play_s": 283.9, "changed": 0.297, "off": true, "shift_look": 35.34, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 245, "hold_s": 1371.5, "play_s": 283.9, "changed": 0.3002, "off": true, "shift_look": 9.49, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 246, "hold_s": 1375.1, "play_s": 283.9, "changed": 0.2846, "off": true, "shift_look": 10.0, "src": "check", "state": "game_over", "why": "Mission failed screen with menu; player not controlling character", "ladder": 13, "action": ["A"], "kept": false}
+{"n": 247, "hold_s": 1385.1, "play_s": 283.9, "changed": 0.2965, "off": true, "shift_look": 11.4, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 248, "hold_s": 1388.7, "play_s": 283.9, "changed": 0.2928, "off": true, "shift_look": 29.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 249, "hold_s": 1392.4, "play_s": 283.9, "changed": 0.2949, "off": true, "shift_look": 14.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 250, "hold_s": 1396.0, "play_s": 283.9, "changed": 0.2982, "off": true, "shift_look": 33.12, "src": "check", "state": "game_over", "why": "Mission Failed screen with menu options (Restart Mission, Load Game, Quit to Main Menu)", "ladder_round": 4, "ladder": 1, "action": ["A"], "kept": false}
+{"n": 251, "hold_s": 1405.6, "play_s": 283.9, "changed": 0.3042, "off": true, "shift_look": 29.41, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 252, "hold_s": 1409.2, "play_s": 283.9, "changed": 0.2996, "off": true, "shift_look": 32.2, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 253, "hold_s": 1413.0, "play_s": 283.9, "changed": 0.2962, "off": true, "shift_look": 12.73, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 254, "hold_s": 1416.6, "play_s": 283.9, "changed": 0.2927, "off": true, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Mission failed screen with menu options; not in live gameplay", "ladder": 2, "action": ["START"], "kept": true}
+{"n": 255, "hold_s": 1427.9, "play_s": 283.9, "changed": 0.2937, "off": true, "shift_look": 35.51, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 256, "hold_s": 1431.5, "play_s": 283.9, "changed": 0.3055, "off": true, "shift_look": 19.0, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 257, "hold_s": 1435.1, "play_s": 283.9, "changed": 0.2963, "off": true, "shift_look": 9.85, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 258, "hold_s": 1438.7, "play_s": 283.9, "changed": 0.2957, "off": true, "shift_look": 5.66, "src": "check", "state": "game_over", "why": "Mission failed screen showing menu options to restart, load, or quit", "ladder": 3, "action": ["A"], "kept": false}
+{"n": 259, "hold_s": 1448.7, "play_s": 283.9, "changed": 0.2998, "off": true, "shift_look": 22.09, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 260, "hold_s": 1452.4, "play_s": 283.9, "changed": 0.3061, "off": true, "shift_look": 3.16, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 261, "hold_s": 1456.0, "play_s": 283.9, "changed": 0.303, "off": true, "shift_look": 20.02, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 262, "hold_s": 1459.6, "play_s": 283.9, "changed": 0.296, "off": true, "shift_look": 38.08, "src": "check", "state": "game_over", "why": "Mission failed screen showing restart/load/quit menu options", "ladder": 4, "action": ["A"], "kept": false}
+{"n": 263, "hold_s": 1469.8, "play_s": 283.9, "changed": 0.2819, "off": true, "shift_look": 38.08, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 264, "hold_s": 1473.4, "play_s": 283.9, "changed": 0.2913, "off": true, "shift_look": 4.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 265, "hold_s": 1477.0, "play_s": 283.9, "changed": 0.3045, "off": true, "shift_look": 12.04, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 266, "hold_s": 1480.6, "play_s": 283.9, "changed": 0.3033, "off": true, "shift_look": 4.0, "src": "check", "state": "game_over", "why": "Mission failed screen with restart/load/quit menu options; player not in active game world", "ladder": 5, "action": ["B"], "kept": true}
+{"n": 267, "hold_s": 1510.8, "play_s": 283.9, "changed": 0.1029, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": true}
+{"n": 268, "hold_s": 1514.4, "play_s": 283.9, "changed": 0.0983, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 269, "hold_s": 1518.0, "play_s": 283.9, "changed": 0.0956, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 270, "hold_s": 1521.7, "play_s": 283.9, "changed": 0.0943, "off": true, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Mission failed screen with three menu options (RESTART MISSION, LOAD GAME, QUIT TO MAIN MENU)", "ladder": 6, "action": ["START"], "kept": false}
+{"n": 271, "hold_s": 1532.6, "play_s": 283.9, "changed": 0.2867, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 272, "hold_s": 1536.2, "play_s": 283.9, "changed": 0.2961, "off": true, "shift_look": 25.32, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 273, "hold_s": 1539.8, "play_s": 283.9, "changed": 0.2985, "off": true, "shift_look": 7.0, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 274, "hold_s": 1543.3, "play_s": 283.9, "changed": 0.2879, "off": true, "shift_look": 5.66, "src": "check", "state": "game_over", "why": "Mission failed screen with menu options (Restart Mission, Load Game, Quit to Main Menu)", "ladder": 7, "action": ["A"], "kept": true}
+{"n": 275, "hold_s": 1553.7, "play_s": 283.9, "changed": 0.2926, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 276, "hold_s": 1557.2, "play_s": 283.9, "changed": 0.2953, "off": true, "shift_look": 2.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 277, "hold_s": 1560.7, "play_s": 283.9, "changed": 0.2933, "off": true, "shift_look": 15.3, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 278, "hold_s": 1564.3, "play_s": 283.9, "changed": 0.2941, "off": true, "shift_look": 2.24, "src": "check", "state": "game_over", "why": "Mission Failed screen with menu options; not in active gameplay", "ladder": 8, "action": ["START"], "kept": false}
+{"n": 279, "hold_s": 1573.4, "play_s": 283.9, "changed": 0.3053, "off": true, "shift_look": 45.04, "src": "repeat", "state": "game_over", "action": ["START"], "kept": true}
+{"n": 280, "hold_s": 1577.1, "play_s": 283.9, "changed": 0.3022, "off": true, "shift_look": 5.1, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 281, "hold_s": 1580.8, "play_s": 283.9, "changed": 0.2928, "off": true, "shift_look": 5.83, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 282, "hold_s": 1584.3, "play_s": 283.9, "changed": 0.2931, "off": true, "shift_look": 24.6, "src": "check", "state": "game_over", "why": "Mission failed results screen with restart/load/quit menu options", "ladder": 9, "action": ["A"], "kept": false}
+{"n": 283, "hold_s": 1595.3, "play_s": 283.9, "changed": 0.2973, "off": true, "shift_look": 40.02, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 284, "hold_s": 1598.9, "play_s": 283.9, "changed": 0.3063, "off": true, "shift_look": 35.44, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 285, "hold_s": 1602.4, "play_s": 283.9, "changed": 0.2907, "off": true, "shift_look": 9.85, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 286, "hold_s": 1606.2, "play_s": 283.9, "changed": 0.2944, "off": true, "shift_look": 25.71, "src": "check", "state": "game_over", "why": "Mission failed screen with menu options; not in active gameplay", "ladder": 10, "action": ["A"], "kept": true}
+{"n": 287, "hold_s": 1618.0, "play_s": 283.9, "changed": 0.2978, "off": true, "shift_look": 37.01, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 288, "hold_s": 1621.7, "play_s": 283.9, "changed": 0.3013, "off": true, "shift_look": 33.06, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 289, "hold_s": 1625.4, "play_s": 283.9, "changed": 0.2989, "off": true, "shift_look": 34.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 290, "hold_s": 1629.0, "play_s": 283.9, "changed": 0.294, "off": true, "shift_look": 2.0, "src": "check", "state": "game_over", "why": "Mission Failed screen with menu options; player not in active play", "ladder": 11, "action": ["B"], "kept": false}
+{"n": 291, "hold_s": 1638.7, "play_s": 283.9, "changed": 0.0826, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": true}
+{"n": 292, "hold_s": 1642.5, "play_s": 283.9, "changed": 0.1007, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 293, "hold_s": 1646.1, "play_s": 283.9, "changed": 0.1082, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 294, "hold_s": 1649.7, "play_s": 283.9, "changed": 0.0972, "off": true, "shift_look": 0.0, "src": "check", "state": "results", "why": "Mission failed screen with menu options; player not in game world", "ladder": 12, "action": ["START"], "kept": false}
+{"n": 295, "hold_s": 1661.1, "play_s": 283.9, "changed": 0.2827, "off": true, "shift_look": 17.8, "src": "check", "state": "menu", "why": "Restart confirmation dialog displayed over the game world; game is paused waiting for user choice", "ladder": 13, "action": ["A"], "kept": false}
+{"n": 296, "hold_s": 1673.1, "play_s": 283.9, "changed": 0.2792, "off": true, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Mission failed screen with menu options; game over state", "ladder_round": 5, "ladder": 1, "action": ["A"], "kept": true}
+{"n": 297, "hold_s": 1684.1, "play_s": 283.9, "changed": 0.2841, "off": true, "shift_look": 3.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 298, "hold_s": 1687.7, "play_s": 283.9, "changed": 0.2901, "off": true, "shift_look": 5.83, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 299, "hold_s": 1691.2, "play_s": 283.9, "changed": 0.3045, "off": true, "shift_look": 30.08, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 300, "hold_s": 1694.8, "play_s": 283.9, "changed": 0.3056, "off": true, "shift_look": 31.05, "src": "check", "state": "game_over", "why": "Mission Failed screen showing menu options; no player character in world", "ladder": 2, "action": ["START"], "kept": false}
+{"n": 301, "hold_s": 1704.8, "play_s": 283.9, "changed": 0.2971, "off": true, "shift_look": 13.6, "src": "repeat", "state": "game_over", "action": ["START"], "kept": true}
+{"n": 302, "hold_s": 1708.5, "play_s": 283.9, "changed": 0.2914, "off": true, "shift_look": 9.85, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 303, "hold_s": 1712.2, "play_s": 283.9, "changed": 0.2952, "off": true, "shift_look": 36.5, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 304, "hold_s": 1715.8, "play_s": 283.9, "changed": 0.3058, "off": true, "shift_look": 50.99, "src": "check", "state": "game_over", "why": "Mission Failed screen with menu options; player is not in active gameplay", "ladder": 3, "action": ["A"], "kept": false}
+{"n": 305, "hold_s": 1726.7, "play_s": 283.9, "changed": 0.2974, "off": true, "shift_look": 4.24, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 306, "hold_s": 1730.2, "play_s": 283.9, "changed": 0.2962, "off": true, "shift_look": 9.49, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 307, "hold_s": 1733.8, "play_s": 283.9, "changed": 0.2915, "off": true, "shift_look": 13.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 308, "hold_s": 1737.3, "play_s": 283.9, "changed": 0.2917, "off": true, "shift_look": 4.0, "src": "check", "state": "game_over", "why": "Mission failed screen showing menu options to restart, load, or quit", "ladder": 4, "action": ["A"], "kept": true}
+{"n": 309, "hold_s": 1747.3, "play_s": 283.9, "changed": 0.2834, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 310, "hold_s": 1750.9, "play_s": 283.9, "changed": 0.2964, "off": true, "shift_look": 17.03, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 311, "hold_s": 1754.5, "play_s": 283.9, "changed": 0.2963, "off": true, "shift_look": 8.94, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 312, "hold_s": 1758.0, "play_s": 283.9, "changed": 0.2907, "off": true, "shift_look": 14.04, "src": "check", "state": "game_over", "why": "Mission failed screen with menu options; player not in game world", "ladder": 5, "action": ["B"], "kept": false}
+{"n": 313, "hold_s": 1777.6, "play_s": 283.9, "changed": 0.0974, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": true}
+{"n": 314, "hold_s": 1781.2, "play_s": 283.9, "changed": 0.098, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 315, "hold_s": 1784.8, "play_s": 283.9, "changed": 0.0956, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 316, "hold_s": 1788.4, "play_s": 283.9, "changed": 0.1107, "off": true, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Mission failed screen with menu showing restart, load, or quit options", "ladder": 6, "action": ["START"], "kept": false}
+{"n": 317, "hold_s": 1799.5, "play_s": 283.9, "changed": 0.2898, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 318, "hold_s": 1803.1, "play_s": 283.9, "changed": 0.2957, "off": true, "shift_look": 10.77, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 319, "hold_s": 1806.7, "play_s": 283.9, "changed": 0.286, "off": true, "shift_look": 11.0, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 320, "hold_s": 1810.4, "play_s": 283.9, "changed": 0.2979, "off": true, "shift_look": 21.21, "src": "check", "state": "game_over", "why": "MISSION FAILED screen with menu options; not active gameplay", "ladder": 7, "action": ["A"], "kept": true}

@@ -1,0 +1,77 @@
+{
+ "title_id": "4553000F",
+ "name": "Legacy of Kain Defiance USA",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/4553000F-Legacy_of_Kain_Defiance_USA.xiso.iso",
+ "result": "gameplay",
+ "tool": "3624b0a01d",
+ "started": "2026-10-07 18:07:54 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4553000F-1007/frames/007-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4553000F-1007/frames/007-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4553000F-1007/frames/007-probe-c.jpg"
+ ],
+ "minutes": 1.11,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4553000F-1007/frames/006-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4553000F-1007/frames/008-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4553000F-1007/frames/009-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4553000F-1007/frames/010-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4553000F-1007/frames/011-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4553000F-1007/frames/012-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4553000F-1007/frames/013-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4553000F-1007/frames/014-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4553000F-1007/frames/015-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-4553.md"
+ ],
+ "hold": {
+  "genre": "attack",
+  "why": "Character standing in a gothic courtyard exploring, this is Legacy of Kain's melee-combat/exploration gameplay, not a vehicle, gun, or sports scene.",
+  "ok": false,
+  "play_s": 886.5,
+  "need_s": 600.0,
+  "hold_s": 986.9,
+  "model_navs": 0,
+  "frames": 25,
+  "still_windows": 3,
+  "shed": [],
+  "reversals": 0,
+  "reason": "verdict stops the hold: fps_ok 0.9681, crash False, hang False",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 149,
+    "median": 51.0,
+    "share": 0.98,
+    "at_s": 187.4,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 261,
+    "median": 56.0,
+    "share": 0.989,
+    "at_s": 314.7,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "verdict": "VERDICT Legacy of Kain Defiance USA ? PASS None gameplay=987.2s fps_ok=0.9681 crash=False hang=False audio_short=0.0 hitches=1/0.065pm worst_ms=157.4 static_frac=0.0746 play_share=0.9001 fps_excluded=101.5s"
+ },
+ "model_calls": 18,
+ "calls_by_model": {
+  "claude-sonnet-5": 18
+ },
+ "steps": 7,
+ "seconds": 1098.3,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4553000F-1007/frames/090-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4553000F-1007/strip.jpg"
+}

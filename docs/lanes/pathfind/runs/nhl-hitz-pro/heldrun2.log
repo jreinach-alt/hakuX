@@ -1,0 +1,197 @@
+taken: nova by lane.pathfind
+NOT IDLE: nova is held but busy -- do not touch it yet:
+dispatcher pid 1353807 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+run: hold.sh wait-idle nova <timeout_s>, and touch the device only on exit 0
+waiting for nova: dispatcher pid 1353807 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+idle: nova is held and runs nothing
+held at 12:00:11
+pathfind: NHL Hitz Pro (None) on nova: /storage/E6C6-D7AA/Games/XBox/NHL_Hitz_Pro.xiso.iso
+titlestate: titles disk: harvest (the device's disk changed since its last harvest)
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: - first-run, loaded all goldens (title not identified)
+[  10.0s] #  1 publisher_logo    fast    A                        This is an unlabeled splash or logo-style animation, not gameplay or a menu. Skipping is t
+[  16.9s] #  2 loading           fast    wait                     Game is loading franchise teams after the logos; no menu or input is needed, so wait for t
+[  26.1s] #  3 publisher_logo    fast    A                        Trademark notice card after the logos, not a menu or gameplay. Previous step's A press cha
+[  35.6s] #  4 publisher_logo    fast    A                        Trademark notice card after the Midway logo, not a menu or gameplay. Prior A press changed
+[  43.3s] #  5 publisher_logo    fast    A                        Next Level Games studio logo after the earlier logos; not a menu or gameplay. Skip with A,
+[  51.7s] #  6 publisher_logo    fast    A                        This is the NHL Hitz Pro title/logo card shown after the earlier logos, not a menu or game
+[  59.3s] #  7 title_screen      fast    START                    Title screen with 'Press START' prompt; START is the correct input here. No cursor yet.
+[  69.0s] #  8 main_menu         fast    A                        Exhibition is the fastest route to play and is already highlighted, so A selects it with n
+[  77.7s] #  9 main_menu         fast    A                        Team select screen; the controller slots are not stuck in the middle column, and defaults 
+[  87.8s] # 10 submenu           fast    LEFT                     Team select with controllers still in the middle column, so nobody is assigned and A did n
+[  97.4s] # 11 submenu           fast    A                        Team select. USER1 is now assigned under the AWAY team (Ottawa), so a human controls a tea
+[ 109.5s] # 12 submenu           fast    A                        Team select with USER1 assigned under the AWAY team (Ottawa) and the prompt says Press A t
+[ 117.4s] # 13 submenu           fast    A                        Team select flow: controller was assigned earlier; this jersey screen just needs the defau
+[ 125.7s] # 14 loading           fast    wait                     Game is loading the match after team select; no input needed, wait for the rink to appear.
+[ 131.7s] # 15 loading           static  wait                     load still on screen (barely changed)
+[ 143.7s] # 16 loading           fast    wait                     Match is loading after team select; the loading spinner is active and no input is needed. 
+[ 149.8s] # 17 loading           static  wait                     load still on screen (barely changed)
+[ 154.8s] # 18 loading           static  wait                     load still on screen (barely changed)
+[ 159.8s] # 19 loading           static  wait                     load still on screen (barely changed)
+[ 164.7s] # 20 loading           static  wait                     load still on screen (barely changed)
+[ 171.2s] # 21 loading           static  wait                     load still on screen (barely changed)
+[ 178.9s] # 22 loading           fast    wait                     Match loading screen after team select; spinner is active and no input is needed. Waiting 
+[ 187.7s] # 23 loading           static  wait                     load still on screen (barely changed)
+[ 192.6s] # 24 loading           static  wait                     load still on screen (barely changed)
+[ 197.4s] # 25 loading           static  wait                     load still on screen (barely changed)
+[ 203.8s] # 26 loading           static  wait                     load still on screen (barely changed)
+[ 208.6s] # 27 loading           static  wait                     load still on screen (barely changed)
+[ 216.1s] # 28 loading           fast    wait                     Game is on its loading screen after the title logo; no input needed, the spinner is active
+[ 225.0s] # 29 loading           static  wait                     load still on screen (barely changed)
+[ 229.9s] # 30 loading           static  wait                     load still on screen (barely changed)
+[ 257.7s] # 31 loading           static  wait                     load still on screen (barely changed)
+[ 262.6s] # 32 loading           static  wait                     load still on screen (barely changed)
+[ 267.5s] # 33 loading           static  wait                     load still on screen (barely changed)
+[ 277.0s] # 34 loading           fast    wait                     Game is still on its loading screen after the title logo; spinner active, no menu or input
+[ 285.8s] # 35 loading           static  wait                     load still on screen (barely changed)
+[ 290.7s] # 36 loading           static  wait                     load still on screen (barely changed)
+[ 295.5s] # 37 loading           static  wait                     load still on screen (barely changed)
+[ 300.4s] # 38 loading           static  wait                     load still on screen (barely changed)
+[ 306.8s] # 39 loading           static  wait                     load still on screen (barely changed)
+[ 314.7s] # 40 loading           fast    wait                     Game is still on the loading screen after the title logo, spinner active, no menu or input
+[ 325.5s] # 41 loading           static  wait                     load still on screen (barely changed)
+[ 353.5s] # 42 loading           static  wait                     load still on screen (barely changed)
+[ 358.4s] # 43 loading           static  wait                     load still on screen (barely changed)
+[ 363.3s] # 44 loading           static  wait                     load still on screen (barely changed)
+[ 368.2s] # 45 loading           static  wait                     load still on screen (barely changed)
+[ 377.5s] # 46 loading           fast    wait                     Still on the loading screen after the title logo, spinner active, nothing to press; the hi
+[ 388.3s] # 47 loading           static  wait                     load still on screen (barely changed)
+[ 393.2s] # 48 loading           static  wait                     load still on screen (barely changed)
+[ 398.2s] # 49 loading           static  wait                     load still on screen (barely changed)
+[ 403.1s] # 50 loading           static  wait                     load still on screen (barely changed)
+[ 409.6s] # 51 loading           static  wait                     load still on screen (barely changed)
+[ 417.0s] # 52 loading           fast    wait                     Loading screen after the title logo; nothing to press. Spinner is still present and the sc
+[ 449.0s] # 53 loading           static  wait                     load still on screen (barely changed)
+[ 453.9s] # 54 loading           static  wait                     load still on screen (barely changed)
+[ 458.8s] # 55 loading           static  wait                     load still on screen (barely changed)
+[ 463.7s] # 56 loading           static  wait                     load still on screen (barely changed)
+[ 468.6s] # 57 loading           static  wait                     load still on screen (barely changed)
+[ 480.5s] # 58 loading           fast    wait                     Still on the loading screen after the title logo, with nothing to press. Several recent st
+[ 489.4s] # 59 loading           static  wait                     load still on screen (barely changed)
+[ 494.3s] # 60 loading           static  wait                     load still on screen (barely changed)
+[ 499.1s] # 61 loading           static  wait                     load still on screen (barely changed)
+[ 504.1s] # 62 loading           static  wait                     load still on screen (barely changed)
+[ 510.8s] # 63 loading           static  wait                     load still on screen (barely changed)
+[ 518.6s] # 64 loading           fast    wait                     Still on the loading screen after the title logo; nothing to press. Last several steps wer
+[ 550.5s] # 65 loading           static  wait                     load still on screen (barely changed)
+[ 555.4s] # 66 loading           static  wait                     load still on screen (barely changed)
+[ 560.3s] # 67 loading           static  wait                     load still on screen (barely changed)
+[ 565.3s] # 68 loading           static  wait                     load still on screen (barely changed)
+[ 570.1s] # 69 loading           static  wait                     load still on screen (barely changed)
+[ 579.9s] # 70 loading           fast    wait                     Still on the loading screen after the title logo; nothing to press. Spinner area is barely
+[ 588.8s] # 71 loading           static  wait                     load still on screen (barely changed)
+[ 593.8s] # 72 loading           static  wait                     load still on screen (barely changed)
+[ 598.7s] # 73 loading           static  wait                     load still on screen (barely changed)
+[ 603.6s] # 74 loading           static  wait                     load still on screen (barely changed)
+[ 610.0s] # 75 loading           static  wait                     load still on screen (barely changed)
+[ 617.9s] # 76 loading           fast    wait                     Loading screen after the title logo, spinner still present and nothing to press; per the h
+[ 650.0s] # 77 loading           static  wait                     load still on screen (barely changed)
+[ 654.8s] # 78 loading           static  wait                     load still on screen (barely changed)
+[ 659.7s] # 79 loading           static  wait                     load still on screen (barely changed)
+[ 664.6s] # 80 loading           static  wait                     load still on screen (barely changed)
+[ 669.5s] # 81 loading           static  wait                     load still on screen (barely changed)
+[ 681.3s] # 82 loading           fast    wait                     Loading screen after the title logo with nothing to press. Previous steps show the load ba
+[ 690.2s] # 83 loading           static  wait                     load still on screen (barely changed)
+[ 695.1s] # 84 loading           static  wait                     load still on screen (barely changed)
+[ 700.0s] # 85 loading           static  wait                     load still on screen (barely changed)
+[ 704.9s] # 86 loading           static  wait                     load still on screen (barely changed)
+[ 711.4s] # 87 loading           static  wait                     load still on screen (barely changed)
+[ 718.6s] # 88 loading           fast    wait                     Loading screen with nothing to press; history shows the load bar barely changing for six s
+[ 752.7s] # 89 loading           static  wait                     load still on screen (barely changed)
+[ 757.6s] # 90 loading           static  wait                     load still on screen (barely changed)
+[ 762.5s] # 91 loading           static  wait                     load still on screen (barely changed)
+[ 767.5s] # 92 loading           static  wait                     load still on screen (barely changed)
+[ 772.5s] # 93 loading           static  wait                     load still on screen (barely changed)
+[ 782.5s] # 94 loading           fast    wait                     Loading screen with nothing to press; the load has been on screen for several steps with l
+[ 791.3s] # 95 loading           static  wait                     load still on screen (barely changed)
+[ 796.1s] # 96 loading           static  wait                     load still on screen (barely changed)
+[ 801.0s] # 97 loading           static  wait                     load still on screen (barely changed)
+[ 805.8s] # 98 loading           static  wait                     load still on screen (barely changed)
+[ 812.4s] # 99 loading           static  wait                     load still on screen (barely changed)
+[ 820.8s] #100 loading           fast    wait                     Loading screen with nothing to press; the spinner has been on screen for many steps with b
+[ 852.9s] #101 loading           static  wait                     load still on screen (barely changed)
+[ 857.8s] #102 loading           static  wait                     load still on screen (barely changed)
+[ 862.7s] #103 loading           static  wait                     load still on screen (barely changed)
+[ 867.6s] #104 loading           static  wait                     load still on screen (barely changed)
+[ 872.5s] #105 loading           static  wait                     load still on screen (barely changed)
+[ 881.6s] #106 loading           fast    wait                     Loading screen with nothing to press; the same frame has held for several steps, so I wait
+[ 892.5s] #107 loading           static  wait                     load still on screen (barely changed)
+[ 897.4s] #108 loading           static  wait                     load still on screen (barely changed)
+[ 902.3s] #109 loading           static  wait                     load still on screen (barely changed)
+[ 907.2s] #110 loading           static  wait                     load still on screen (barely changed)
+[ 913.7s] #111 loading           static  wait                     load still on screen (barely changed)
+[ 921.6s] #112 loading           fast    wait                     Loading screen with nothing to press; the frame is nearly unchanged from prior steps, so I
+[ 955.6s] #113 loading           static  wait                     load still on screen (barely changed)
+[ 960.4s] #114 loading           static  wait                     load still on screen (barely changed)
+[ 965.4s] #115 loading           static  wait                     load still on screen (barely changed)
+[ 970.3s] #116 loading           static  wait                     load still on screen (barely changed)
+[ 975.1s] #117 loading           static  wait                     load still on screen (barely changed)
+[ 985.1s] #118 loading           fast    wait                     Loading screen with nothing to press; the screen is essentially unchanged from prior steps
+[ 994.0s] #119 loading           static  wait                     load still on screen (barely changed)
+[ 998.8s] #120 loading           static  wait                     load still on screen (barely changed)
+[1003.7s] #121 loading           static  wait                     load still on screen (barely changed)
+[1008.6s] #122 loading           static  wait                     load still on screen (barely changed)
+[1015.1s] #123 loading           static  wait                     load still on screen (barely changed)
+[1022.6s] #124 loading           fast    wait                     Loading screen with nothing to press; the same frame as the last six steps, so wait for th
+[1054.8s] #125 loading           static  wait                     load still on screen (barely changed)
+[1059.7s] #126 loading           static  wait                     load still on screen (barely changed)
+[1064.5s] #127 loading           static  wait                     load still on screen (barely changed)
+[1069.4s] #128 loading           static  wait                     load still on screen (barely changed)
+[1074.3s] #129 loading           static  wait                     load still on screen (barely changed)
+[1083.1s] #130 loading           fast    wait                     Loading screen with nothing to press; the same frame as the last six steps, so wait for th
+[1092.0s] #131 loading           static  wait                     load still on screen (barely changed)
+[1096.8s] #132 loading           static  wait                     load still on screen (barely changed)
+[1101.7s] #133 loading           static  wait                     load still on screen (barely changed)
+[1106.5s] #134 loading           static  wait                     load still on screen (barely changed)
+[1111.4s] #135 loading           static  wait                     load still on screen (barely changed)
+[1121.2s] #136 loading           fast    wait                     Loading screen with nothing to press; the frame has been unchanged for about six steps, so
+[1153.2s] #137 loading           static  wait                     load still on screen (barely changed)
+[1158.0s] #138 loading           static  wait                     load still on screen (barely changed)
+[1162.8s] #139 loading           static  wait                     load still on screen (barely changed)
+[1167.6s] #140 loading           static  wait                     load still on screen (barely changed)
+[1172.6s] #141 loading           static  wait                     load still on screen (barely changed)
+[1180.5s] #142 loading           fast    wait                     Loading screen with nothing to press, and the frame has barely changed for several steps. 
+[1191.1s] #143 loading           static  wait                     load still on screen (barely changed)
+[1195.9s] #144 loading           static  wait                     load still on screen (barely changed)
+[1200.7s] #145 loading           static  wait                     load still on screen (barely changed)
+[1205.6s] #146 loading           static  wait                     load still on screen (barely changed)
+[1210.4s] #147 loading           static  wait                     load still on screen (barely changed)
+[1220.6s] #148 loading           fast    wait                     Loading screen with nothing to press; the frame has been nearly unchanged for many steps. 
+[1252.6s] #149 loading           static  wait                     load still on screen (barely changed)
+[1257.4s] #150 loading           static  wait                     load still on screen (barely changed)
+[1262.2s] #151 loading           static  wait                     load still on screen (barely changed)
+[1267.1s] #152 loading           static  wait                     load still on screen (barely changed)
+[1271.9s] #153 loading           static  wait                     load still on screen (barely changed)
+[1280.5s] #154 loading           fast    wait                     Loading screen with nothing to press; the frame has been nearly unchanged for many steps. 
+[1292.9s] #155 loading           static  wait                     load still on screen (barely changed)
+[1297.8s] #156 loading           static  wait                     load still on screen (barely changed)
+[1302.6s] #157 loading           static  wait                     load still on screen (barely changed)
+[1307.5s] #158 loading           static  wait                     load still on screen (barely changed)
+[1312.4s] #159 loading           static  wait                     load still on screen (barely changed)
+[1322.5s] #160 loading           fast    wait                     Loading screen with nothing to press. The frame has barely changed for many steps, but the
+[1356.6s] #161 loading           static  wait                     load still on screen (barely changed)
+[1361.5s] #162 loading           static  wait                     load still on screen (barely changed)
+[1366.4s] #163 loading           static  wait                     load still on screen (barely changed)
+[1371.4s] #164 loading           static  wait                     load still on screen (barely changed)
+[1376.4s] #165 loading           static  wait                     load still on screen (barely changed)
+[1383.9s] #166 loading           fast    wait                     Loading screen with nothing to press; the history shows the frame barely changing for many
+[1394.5s] #167 loading           static  wait                     load still on screen (barely changed)
+[1399.5s] #168 loading           static  wait                     load still on screen (barely changed)
+[1404.4s] #169 loading           static  wait                     load still on screen (barely changed)
+[1409.3s] #170 loading           static  wait                     load still on screen (barely changed)
+[1414.1s] #171 loading           static  wait                     load still on screen (barely changed)
+[1423.9s] #172 loading           fast    wait                     Loading screen with nothing to press; the frame has barely changed for several steps, but 
+[1456.1s] #173 loading           static  wait                     load still on screen (barely changed)
+[1461.0s] #174 loading           static  wait                     load still on screen (barely changed)
+[1465.9s] #175 loading           static  wait                     load still on screen (barely changed)
+[1470.8s] #176 loading           static  wait                     load still on screen (barely changed)
+[1475.6s] #177 loading           static  wait                     load still on screen (barely changed)
+[1482.9s] #178 loading           fast    wait                     Loading screen with nothing to press; the frame has been static for six steps and the rule
+[1493.4s] #179 loading           static  wait                     load still on screen (barely changed)
+[1498.2s] #180 loading           static  wait                     load still on screen (barely changed)
+{"name": "NHL Hitz Pro", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 42, "steps": 180, "replayed": 0, "reason": "budget 25 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256
+pathfind rc=1 at 12:25:16
+released: nova by lane.pathfind
+released rc=0

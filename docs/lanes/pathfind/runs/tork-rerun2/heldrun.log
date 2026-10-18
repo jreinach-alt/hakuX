@@ -1,0 +1,55 @@
+taken: nova by lane.pathfind
+NOT IDLE: nova is held but busy -- do not touch it yet:
+dispatcher pid 518495 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+run: hold.sh wait-idle nova <timeout_s>, and touch the device only on exit 0
+waiting for nova: dispatcher pid 518495 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+idle: nova is held and runs nothing
+held at 06:38:28
+pathfind: Tork: Prehistoric Punk (55530040) on nova: /storage/E6C6-D7AA/Games/XBox/Tork - Prehistoric Punk (USA).iso
+titlestate: titles disk: harvest (the device's disk changed since its last harvest)
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 55530040 any, loaded golden 6cb2e3c07c9e
+[  26.1s] #  1 publisher_logo    replay  START A                  replay step 0: replay step 0: replay step 0: Ubisoft-style logo/splash on white background
+[  33.2s] #  2 publisher_logo    replay  START A                  replay step 1: replay step 1: Ubisoft publisher logo, not yet the title. Per the hints, ST
+[  43.7s] #  3 title_screen      fast    START                    Title card is up with no visible prompt; per the recorded path and title hint, START advan
+[  49.5s] #  4 title_screen      replay  A                        replay step 4: replay step 3: replay step 3: Tork 'START GAME' menu with Empty save slot h
+[  60.5s] #  5 submenu           fast    A                        Save-slot select with an existing profile. Continue is the highlighted default and the rec
+[  67.0s] #  6 publisher_logo    replay  START                    replay step 6: replay step 5: This is the Tork title logo card, not a menu yet; the record
+[  74.9s] #  7 title_screen      fast    START                    Title card is up with no visible 'Press Start' prompt; the recorded path and title hint sa
+[  80.4s] #  8 cutscene          replay  START                    replay step 8: Scenic letterboxed shot with no HUD or menu, so it is not gameplay. The pre
+[  89.0s] #  9 cutscene          fast    START A                  Letterboxed scenic shot with no HUD and no player control, so it is a cinematic, not gamep
+[  94.6s] # 10 cutscene          replay  START                    replay step 9: repeat START: it advanced the cutscene
+[ 104.3s] # 11 cutscene          fast    START A                  Scenic camera shot with no HUD or control prompt, so not confirmed gameplay. Per the title
+[ 109.6s] # 12 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 118.5s] # 13 cutscene          fast    START A                  Letterboxed, no HUD, camera-framed scene with a fade-dimmed look; this is a cinematic, not
+[ 123.9s] # 14 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 129.6s] # 15 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 135.2s] # 16 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 140.8s] # 17 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 146.4s] # 18 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 151.9s] # 19 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 161.4s] # 20 cutscene          fast    START A                  Scripted in-world scene with no HUD and no visible player control; recorded path and previ
+[ 167.2s] # 21 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 172.7s] # 22 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 178.2s] # 23 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 183.5s] # 24 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 188.9s] # 25 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 198.6s] # 26 cutscene          fast    A B                      Scripted close-up with letterbox bars and no HUD or player control, so not gameplay. START
+[ 204.0s] # 27 cutscene          replay  STICK:up:1.5             replay step 13: repeat STICK:up:1.5: it advanced the cutscene
+[ 213.4s] # 28 cutscene          fast    START A B                Letterbox bars and no HUD mean a scripted cinematic, not player control. Recent START A sk
+[ 225.1s] # 29 cutscene          fast    B START                  Letterboxed scripted shot with no HUD or player control, so not gameplay. START then A has
+[ 234.6s] # 30 pause             fast    A                        A pause menu is up over the game world with 'Back to game' already highlighted, so A resum
+[ 243.5s] # 31 gameplay          fast    wait                     Player character is visible in the world with a HUD (hearts, counter) and no menu, letterb
+[ 255.4s] # 32 probe             probe   STICK:up:1.5             control 0.021, under input 0.235
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 192 s: median 29.0, share>=30 1.0 over 97 samples
+hold-play: fps at 315 s: median 29.0, share>=30 0.994 over 158 samples
+hold-play: HELD 603/600 s of play; 
+held Tork: Prehistoric Punk for 654s
+VERDICT Tork: Prehistoric Punk ? FAIL(static window: 64% of pixels never moved more than 10/255 from the window's first frame, over 13 sampled frames from route-frames (bar 20%)) gameplay=652.6s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=2/0.203pm worst_ms=102.0 static_frac=0.6365 play_share=0.924 fps_excluded=52.1s
+{"name": "Tork: Prehistoric Punk", "device": "nova", "result": "gameplay", "minutes": 4.26, "model_calls": 20, "steps": 32, "replayed": 7, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/tork-rerun2/frames/031-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256
+pathfind rc=0 at 06:54:35
+released: nova by lane.pathfind
+released rc=0

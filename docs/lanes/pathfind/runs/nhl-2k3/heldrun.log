@@ -1,0 +1,82 @@
+taken: nova by lane.pathfind
+idle: nova is held and runs nothing
+held at 14:01:31
+pathfind: NHL 2K3 (None) on nova: /storage/E6C6-D7AA/Games/XBox/NHL_2K3.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: - any, loaded all goldens (title not identified)
+[   9.1s] #  1 publisher_logo    fast    START                    Early boot, likely a publisher or splash logo with no menu yet. Waiting for the next scree
+[  18.5s] #  2 publisher_logo    fast    START                    Publisher logo still showing, no menu yet; per hints, START or A skips logos. Pressing STA
+[  27.0s] #  3 publisher_logo    fast    START                    Still a publisher logo with no menu; previous START press changed the screen, so a new log
+[  36.2s] #  4 publisher_logo    fast    START                    This is a logo/splash screen with no menu yet; per hints, START or A skips logos. Previous
+[  44.2s] #  5 profile_creation  fast    A                        Profile creation prompt; per hints, accept the default and press OK. The only item is OK, 
+[  53.2s] #  6 profile_creation  fast    A                        No profiles exist, and the highlighted item is CREATE NEW USER, so A starts profile creati
+[  62.2s] #  7 name_entry        fast    START                    Default name is filled in, so START should accept it. Profile creation is not a team selec
+[  71.1s] #  8 main_menu         fast    A                        Main menu with Quick Game already highlighted by the arrow; Quick Game is the fastest rout
+[  82.2s] #  9 submenu           fast    RIGHT A                  Team select with controller 1 unassigned in the middle column (the CPU would play both sid
+[  90.0s] # 10 submenu           fast    RIGHT A                  Controller icons are in the middle column, so nobody is assigned and the CPU would play bo
+[  98.4s] # 11 cutscene          fast    A                        This is a pre-game broadcast intro card, not a menu or play. Team select was already handl
+[ 109.5s] # 12 gameplay          fast    wait                     Live hockey HUD with a scoreboard, a running 1st period and both teams on the ice. Nothing
+[ 125.1s] # 13 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.487, under input 0.344
+[ 131.5s] # 14 gameplay          fast    wait                     Live period with running clock and HUD, no menu or cutscene overlay. The controlled player
+[ 148.3s] # 15 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.368, under input 0.362
+[ 153.5s] # 16 cutscene          fast    START                    This is a goalie stats card over a close-up replay-style view with a frozen puck, not play
+[ 164.3s] # 17 submenu           fast    B                        A Forward Lines line-change overlay is open on top of a stopped puck, so this is not live 
+[ 173.5s] # 18 gameplay          fast    wait                     Live period with a running clock, HUD up, and no menu, pause, or replay overlay. The previ
+[ 191.5s] # 19 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.260, under input 0.502
+[ 198.4s] # 20 gameplay          fast    wait                     Live period with running clock and HUD, no menu or replay overlay. Probing with the stick 
+[ 215.1s] # 21 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.274, under input 0.447
+[ 221.6s] # 22 gameplay          fast    wait                     Live first period with a running clock, HUD up, and no menu or overlay on screen. Previous
+[ 237.6s] # 23 probe             probe   RT:3 RT+left:1.2 RT+right:1.2 control 0.278, under input 0.232
+[ 256.6s] # 24 gameplay          fast    wait                     Live first period with the clock running and the HUD up. The Forward Lines panels are the 
+[ 274.4s] # 25 probe             probe   RT:3 RT+left:1.2 RT+right:1.2 control 0.710, under input 0.770
+[ 290.1s] # 26 gameplay          fast    A                        Live period with HUD, but this is a faceoff setup, which waits for one press to drop the p
+[ 310.6s] # 27 probe             probe   A A HOLD:X:3 STICK:left:1.2 STICK:right:1.2 control 0.280, under input 0.219
+[ 325.3s] # 28 gameplay          fast    A                        Live first period with the HUD and clock up; the 'PUCK FROZEN' stoppage is a faceoff waiti
+[ 339.0s] # 29 probe             probe   A HOLD:X:3               control 0.059, under input 0.424
+[ 343.2s] # 30 gameplay          fast    A STICK:up:1.5           Live first period with HUD and clock running, players on the ice. The previous probes show
+[ 366.0s] # 31 probe             probe   A STICK:up:1.5 A LT:2 LT+left:1.2 LT+right:1.2 control 0.174, under input 0.353
+[ 374.9s] # 32 gameplay          fast    wait                     HUD and scoreboard are up, the clock has counted down from 14:06 to 12:27 with no menu ove
+[ 392.1s] # 33 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.253, under input 0.085
+[ 408.1s] # 34 gameplay          fast    wait                     Live rink with both teams on the ice and no menu over the play. The camera cut to a wide v
+[ 428.8s] # 35 probe             probe   A LT:2 LT+left:1.2 LT+right:1.2 control 0.219, under input 0.204
+[ 434.8s] # 36 gameplay          fast    wait                     HUD and running clock are up with both teams on the ice and no menu over the play. The con
+[ 449.9s] # 37 probe             probe   STICK:upleft:1.5 STICK:left:1.2 STICK:right:1.2 control 0.292, under input 0.267
+[ 465.6s] # 38 pause             fast    B                        A stoppage with the Forward Lines line-change panel open over the play, so this is a menu,
+[ 477.1s] # 39 gameplay          fast    wait                     Live play with the HUD and a running clock (9:14) and no menu over the rink, so the previo
+[ 494.2s] # 40 probe             probe   STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.656, under input 0.871
+[ 500.1s] # 41 pause             fast    B                        A stoppage with the Forward Lines line-change menu open over the play is a menu, not gamep
+[ 510.1s] # 42 gameplay          fast    wait                     HUD and running period clock are up with no menu over the rink. The previous steps flagged
+[ 527.3s] # 43 probe             probe   STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.282, under input 0.356
+[ 534.1s] # 44 gameplay          fast    wait                     HUD and running period clock (7:20) with no menu over the rink. Probe with the left stick 
+[ 551.5s] # 45 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.322, under input 0.335
+[ 559.3s] # 46 gameplay          fast    wait                     Period clock is running with no menu over the rink, so play is live. Earlier probes left t
+[ 574.0s] # 47 probe             probe   STICK:upleft:1.5 STICK:left:1.2 STICK:right:1.2 control 0.311, under input 0.688
+[ 588.1s] # 48 unknown           fast    wait                     No HUD or clock is visible, and the camera angle looks like a replay or a stoppage close-u
+[ 600.0s] # 49 gameplay          fast    wait                     HUD and running period clock with no menu over the rink; the clock moved 5:1 to 5:02 betwe
+[ 622.2s] # 50 probe             probe   STICK:upright:1.5 HOLD:B:3 STICK:left:1.2 STICK:right:1.2 control 0.216, under input 0.140
+[ 630.1s] # 51 gameplay          fast    wait                     HUD and a period clock that has been running across steps (5:02, 4:14, 3:39, now 3:07), wi
+[ 646.4s] # 52 probe             probe   HOLD:B:3 STICK:left:1.2 STICK:right:1.2 control 0.170, under input 0.074
+[ 665.6s] # 53 unknown           fast    START                    The clock is live, but the stick has not controlled a player across several probes, so thi
+[ 675.4s] # 54 pause             fast    START                    Pause menu is open and the footer says START returns to play. Replay is highlighted, and E
+[ 694.7s] # 55 unknown           fast    A                        Stoppage with the puck frozen and the Forward Lines overlay up; the stick has not controll
+[ 713.0s] # 56 gameplay          fast    wait                     A live HUD with the period clock now at 1:36 (earlier steps showed it counting down), no m
+[ 729.8s] # 57 probe             probe   STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.285, under input 0.318
+[ 742.3s] # 58 unknown           fast    A                        A stoppage stats overlay (COMPARISON card) covers the live ice; it is not player control. 
+[ 757.6s] # 59 unknown           fast    B                        The Forward Lines line-change overlay is covering a stoppage, not player control. The 2ND 
+[ 776.2s] # 60 gameplay          fast    wait                     HUD is up with a counting clock and no stoppage overlay or menu. Whether the stick control
+[ 791.0s] # 61 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.202, under input 0.357
+[ 806.5s] # 62 gameplay          fast    A                        Live HUD with a running period clock and no menu or overlay. The centre-ice faceoff format
+[ 827.5s] # 63 probe             probe   A STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.271, under input 0.568
+[ 834.8s] # 64 gameplay          fast    wait                     Live HUD with a running period clock and no menu or stoppage overlay. Earlier stick probes
+[ 850.8s] # 65 probe             probe   STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.262, under input 0.370
+[ 857.2s] # 66 gameplay          fast    wait                     The HUD shows a running period clock (17:19, was 18:32 earlier) and no menu, pause panel o
+[ 873.0s] # 67 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.246, under input 0.329
+[ 887.4s] # 68 unknown           fast    wait                     The HUD and clock are up, but the 'PUCK FROZEN' banner means a stoppage, not live play, so
+[ 898.5s] # 69 gameplay          fast    wait                     The HUD shows a running period clock (16:18) and no stoppage banner, menu, or pause panel.
+[ 914.9s] # 70 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.865, under input 0.459
+{"name": "NHL 2K3", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 84, "steps": 70, "replayed": 0, "reason": "budget 15 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256
+pathfind rc=1 at 14:16:49
+released: nova by lane.pathfind
+released rc=0

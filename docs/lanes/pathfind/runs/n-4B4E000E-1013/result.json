@@ -1,0 +1,79 @@
+{
+ "title_id": "4B4E000E",
+ "name": "Shadow of Memories Europe",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/4B4E000E-Shadow_of_Memories_Europe.xiso.iso",
+ "result": "gameplay",
+ "tool": "74dfc2db2c",
+ "started": "2026-10-13 06:44:25 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4B4E000E-1013/frames/032-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4B4E000E-1013/frames/032-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4B4E000E-1013/frames/032-probe-c.jpg"
+ ],
+ "minutes": 8.71,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4B4E000E-1013/frames/031-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4B4E000E-1013/frames/033-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4B4E000E-1013/frames/034-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4B4E000E-1013/frames/035-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4B4E000E-1013/frames/036-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4B4E000E-1013/frames/037-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4B4E000E-1013/frames/038-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4B4E000E-1013/frames/039-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4B4E000E-1013/frames/040-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4B4E000E-1013/frames/041-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-4B4E.md"
+ ],
+ "hold": {
+  "genre": "other",
+  "why": "Adventure/investigation game where the character explores an industrial environment and examines interactive objects in a puzzle scenario.",
+  "ok": false,
+  "play_s": 608.6,
+  "need_s": 600.0,
+  "hold_s": 662.9,
+  "model_navs": 0,
+  "frames": 18,
+  "still_windows": 2,
+  "shed": [],
+  "reversals": 1,
+  "reason": "verdict stops the hold: fps_ok 1.0, crash False, hang False",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 95,
+    "median": 29.0,
+    "share": 1.0,
+    "at_s": 188.7,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 152,
+    "median": 29.0,
+    "share": 1.0,
+    "at_s": 303.9,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "stuck_abort": false,
+  "verdict": "VERDICT Shadow of Memories Europe ? PASS None gameplay=663.3s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0003 play_share=0.9203 fps_excluded=56.1s"
+ },
+ "model_calls": 41,
+ "calls_by_model": {
+  "claude-haiku-4-5-20251001": 41
+ },
+ "steps": 32,
+ "seconds": 1236.8,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4B4E000E-1013/frames/102-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4B4E000E-1013/strip.jpg"
+}

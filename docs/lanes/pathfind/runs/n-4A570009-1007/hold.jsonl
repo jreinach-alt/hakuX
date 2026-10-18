@@ -1,0 +1,79 @@
+{"n": 24, "hold_s": 0.9, "play_s": 7.1, "changed": null, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": true}
+{"n": 25, "hold_s": 8.1, "play_s": 14.3, "changed": 0.264, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 26, "hold_s": 15.3, "play_s": 22.3, "changed": 0.1537, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 27, "hold_s": 23.2, "play_s": 29.5, "changed": 0.1496, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 28, "hold_s": 30.4, "play_s": 36.6, "changed": 0.1761, "off": false, "shift_look": 1.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 29, "hold_s": 37.6, "play_s": 43.9, "changed": 0.1322, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.3933, "kept": true}
+{"n": 30, "hold_s": 44.8, "play_s": 51.7, "changed": 0.1676, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 31, "hold_s": 52.6, "play_s": 59.1, "changed": 0.1658, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 32, "hold_s": 60.0, "play_s": 66.3, "changed": 0.2141, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 33, "hold_s": 67.2, "play_s": 73.4, "changed": 0.1419, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 34, "hold_s": 74.3, "play_s": 80.7, "changed": 0.18, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.2733, "kept": true}
+{"n": 35, "hold_s": 81.6, "play_s": 88.9, "changed": 0.182, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 36, "hold_s": 89.8, "play_s": 99.7, "changed": 0.1553, "off": false, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Player is actively driving/aiming a tank in the game world with HUD, crosshair, and minimap visible", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 37, "hold_s": 100.6, "play_s": 106.9, "changed": 0.1293, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 38, "hold_s": 107.9, "play_s": 114.3, "changed": 0.2219, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.2216, "kept": true}
+{"n": 39, "hold_s": 116.0, "play_s": 122.3, "changed": 0.0811, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 40, "hold_s": 123.4, "play_s": 129.6, "changed": 0.1568, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 41, "hold_s": 130.6, "play_s": 136.9, "changed": 0.2123, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 42, "hold_s": 137.9, "play_s": 144.2, "changed": 0.1199, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.2449, "kept": true}
+{"n": 43, "hold_s": 145.2, "play_s": 152.3, "changed": 0.1555, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 44, "hold_s": 153.3, "play_s": 159.5, "changed": 0.1585, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 45, "hold_s": 160.5, "play_s": 166.8, "changed": 0.1924, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 46, "hold_s": 167.7, "play_s": 173.9, "changed": 0.1902, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 47, "hold_s": 174.9, "play_s": 182.0, "changed": 0.2338, "off": false, "shift_look": 1.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.2318, "kept": true}
+{"n": 48, "hold_s": 183.0, "play_s": 192.6, "changed": 0.2001, "off": false, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Player is driving a tank in the game world, firing, with HUD compass and ammo count visible", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 49, "hold_s": 193.7, "play_s": 200.1, "changed": 0.2896, "off": false, "shift_look": 1.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 50, "hold_s": 201.2, "play_s": 207.5, "changed": 0.2596, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 51, "hold_s": 208.6, "play_s": 215.6, "changed": 0.2251, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.2833, "kept": true}
+{"n": 52, "hold_s": 216.6, "play_s": 223.0, "changed": 0.2183, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 53, "hold_s": 224.0, "play_s": 230.4, "changed": 0.2314, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 54, "hold_s": 231.5, "play_s": 237.7, "changed": 0.1615, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 55, "hold_s": 238.8, "play_s": 245.1, "changed": 0.2182, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.3042, "kept": true}
+{"n": 56, "hold_s": 246.1, "play_s": 252.8, "changed": 0.2085, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 57, "hold_s": 253.8, "play_s": 260.1, "changed": 0.1979, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 58, "hold_s": 261.1, "play_s": 267.2, "changed": 0.1569, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 59, "hold_s": 268.2, "play_s": 274.2, "changed": 0.1707, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 60, "hold_s": 275.2, "play_s": 285.7, "changed": 0.1811, "off": false, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Tank driving in third-person view with HUD compass and ammo count visible, no menu or overlay", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.2427, "kept": true}
+{"n": 61, "hold_s": 286.8, "play_s": 293.2, "changed": 0.2354, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 62, "hold_s": 294.4, "play_s": 300.7, "changed": 0.2179, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 63, "hold_s": 301.8, "play_s": 308.1, "changed": 0.1726, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 64, "hold_s": 309.1, "play_s": 316.1, "changed": 0.1022, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.2416, "kept": true}
+{"n": 65, "hold_s": 317.1, "play_s": 323.5, "changed": 0.2503, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 66, "hold_s": 324.5, "play_s": 330.7, "changed": 0.1888, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 67, "hold_s": 331.8, "play_s": 338.0, "changed": 0.1531, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 68, "hold_s": 339.0, "play_s": 344.9, "changed": 0.1665, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 69, "hold_s": 346.6, "play_s": 352.6, "changed": 0.2112, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.2824, "kept": true}
+{"n": 70, "hold_s": 353.7, "play_s": 359.7, "changed": 0.1274, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 71, "hold_s": 360.8, "play_s": 367.2, "changed": 0.0596, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 72, "hold_s": 368.3, "play_s": 377.6, "changed": 0.086, "off": false, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Tank driving through countryside with HUD crosshair, compass, and ammo count visible", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 73, "hold_s": 379.4, "play_s": 385.6, "changed": 0.1339, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.1769, "kept": true}
+{"n": 74, "hold_s": 386.8, "play_s": 392.9, "changed": 0.1393, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 75, "hold_s": 394.0, "play_s": 400.2, "changed": 0.0719, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 76, "hold_s": 401.4, "play_s": 407.5, "changed": 0.1354, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 77, "hold_s": 408.7, "play_s": 415.4, "changed": 0.0903, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 78, "hold_s": 416.5, "play_s": 422.6, "changed": 0.0599, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.2455, "kept": true}
+{"n": 79, "hold_s": 423.8, "play_s": 429.7, "changed": 0.0952, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 80, "hold_s": 430.9, "play_s": 437.1, "changed": 0.0877, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 81, "hold_s": 438.3, "play_s": 445.1, "changed": 0.1534, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 82, "hold_s": 446.3, "play_s": 452.5, "changed": 0.1552, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 83, "hold_s": 453.7, "play_s": 459.7, "changed": 0.1309, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.1481, "kept": true}
+{"n": 84, "hold_s": 461.0, "play_s": 471.8, "changed": 0.1225, "off": false, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Driving tank in-world with HUD, compass, and ammo counter visible", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 85, "hold_s": 473.0, "play_s": 479.8, "changed": 0.1409, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 86, "hold_s": 481.0, "play_s": 487.1, "changed": 0.2638, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 87, "hold_s": 488.3, "play_s": 494.4, "changed": 0.2353, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.1802, "kept": true}
+{"n": 88, "hold_s": 495.6, "play_s": 501.7, "changed": 0.1163, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 89, "hold_s": 502.9, "play_s": 508.9, "changed": 0.0672, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 90, "hold_s": 510.8, "play_s": 516.7, "changed": 0.1753, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 91, "hold_s": 517.9, "play_s": 524.1, "changed": 0.1603, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 92, "hold_s": 525.3, "play_s": 531.4, "changed": 0.1117, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.1891, "kept": true}
+{"n": 93, "hold_s": 532.6, "play_s": 538.9, "changed": 0.1944, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 94, "hold_s": 540.1, "play_s": 546.8, "changed": 0.1268, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 95, "hold_s": 548.1, "play_s": 554.1, "changed": 0.0248, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 96, "hold_s": 555.3, "play_s": 564.9, "changed": 0.0222, "off": false, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Tank driving in-world with crosshair, compass/minimap, and ammo HUD visible; no menu or overlay blocking play", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.1087, "kept": true}
+{"n": 97, "hold_s": 566.0, "play_s": 572.3, "changed": 0.0482, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 98, "hold_s": 573.6, "play_s": 580.3, "changed": 0.0151, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 99, "hold_s": 581.5, "play_s": 587.4, "changed": 0.0549, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 100, "hold_s": 588.6, "play_s": 597.5, "changed": 0.0018, "off": false, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Tank driving through village with HUD compass and crosshair active, no menu/pause overlay", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.0913, "kept": true}
+{"n": 101, "hold_s": 598.7, "play_s": 604.6, "changed": 0.0108, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"check": "stop", "short_s": 0.0, "hold_play_s": 604.6, "verdict_play_s": 604.8, "gameplay_s": 604.9}

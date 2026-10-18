@@ -1,0 +1,49 @@
+pathfind: International Superstar Soccer 2 Europe En Fr De Es It (4B4E0008) on nova: /storage/E6C6-D7AA/Games/XBox/4B4E0008-International_Superstar_Soccer_2_Europe_En_Fr_De_Es_It.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4B4E0008 any, loaded none
+[   6.1s] #  1 publisher_logo    sibreplay A                        sibling 4B4E002F step 0: This looks like a publisher or boot logo animation (abstract gree
+[  18.1s] #  2 save_load_prompt  fast    A                        Dialog about save data on the hard disk; no visible cursor or options shown, dismiss with 
+[  31.8s] #  3 publisher_logo    fast    A                        Another animated publisher/intro logo after the save_load_prompt; follows the sibling titl
+[  48.9s] #  4 title_screen      fast    START                    Title screen with explicit 'Press START to begin' prompt at the bottom; matches the standa
+[  95.8s] #  5 cutscene          fast    START                    Pre-match stadium introduction after title screen with no player control or interactive HU
+[ 116.9s] #  6 cutscene          fast    A                        This is a pre-match walk-out or anthem ceremony with no player control or interactive HUD;
+[ 130.7s] #  7 title_screen      fast    START                    Explicit 'Please press START to begin' prompt; this is the main title screen, and per the 
+[ 144.2s] #  8 main_menu         fast    A                        Main menu with Friendly Match pre-highlighted; fastest route to gameplay is to accept the 
+[ 159.5s] #  9 submenu           fast    A                        Player mode selection screen before match setup; PLAY AGAINST CPU is the default highlight
+[ 176.3s] # 10 submenu           fast    A                        Team selection screen, not gameplay. P1 is already assigned to England (the home team on t
+[ 194.8s] # 11 submenu           fast    A                        Team selection screen; P1 already assigned to England (home); need to confirm with A to pr
+[ 267.7s] # 12 submenu           fast    RIGHT A                  This is a team selection screen before match setup, not gameplay. A was sent twice in step
+[ 298.0s] # 13 submenu           fast    BACK                     The player is stuck in a loop on the team select screen; A and RIGHT A cycled back here. T
+[ 371.1s] # 14 submenu           fast    UP                       Team select screen: stuck in a loop after A (steps 10–11), RIGHT A (step 12), and BACK (st
+[ 428.3s] # 15 submenu           fast    DOWN                     Team setup screen, not gameplay. The stuck loop suggests the cursor is navigating within a
+[ 463.7s] # 16 submenu           fast    START                    Still on team select; stuck loop after A, RIGHT A, BACK, UP, DOWN all cycled back. The 'ST
+[ 537.6s] # 17 submenu           fast    L1                       Still on team select; the loop of A/RIGHT/BACK/UP/DOWN/START suggests the cursor is in a s
+[ 598.4s] # 18 submenu           fast    Y                        Team select is a setup menu, not gameplay. The stuck loop (A and directional inputs cyclin
+[ 624.5s] # 19 submenu           fast    B                        Still on team setup; cursor appears trapped in Edit Record or a configuration subsection. 
+[ 684.7s] # 20 submenu           fast    R1                       This is a team setup menu, not gameplay. The stuck loop (10+ inputs cycling back) suggests
+[ 732.6s] # 21 submenu           fast    UP                       Team setup menu, not gameplay. Cursor appears trapped in Jersey Colour or Edit Record subs
+[ 776.8s] # 22 submenu           fast    LEFT                     Team setup menu, not gameplay. The cursor is trapped cycling through configuration subsect
+[ 828.9s] # 23 submenu           fast    DOWN DOWN DOWN           Team setup screen, not gameplay. Cursor is trapped in the Edit Record subsection (shown by
+[ 883.4s] # 24 submenu           fast    BACK                     Still a team setup/configuration menu, not gameplay. The loop of 12 failed attempts (RIGHT
+[ 922.9s] # 25 submenu           fast    RIGHT                    Team setup/configuration menu, not gameplay. Cursor trapped in configuration subsection (J
+[ 965.8s] # 26 submenu           fast    A                        Team configuration menu, not gameplay. The last 12 steps all came back to this same screen
+[1047.1s] # 27 submenu           fast    A                        Team select menu with configuration subsections (Jersey Colour, Edit Record). Cursor appea
+[1091.1s] # 28 submenu           fast    START                    Still in team setup, not gameplay. Cursor has been looping through configuration subsectio
+[1125.2s] # 29 submenu           fast    LEFT LEFT LEFT           Still trapped in team configuration subsections after 12 failed steps. Cursor is in Jersey
+[1181.2s] # 30 submenu           fast    L1                       Team configuration menu, not gameplay. Stuck in subsection loop after 12 failed attempts w
+[1255.8s] # 31 submenu           fast    STICK:up:2 A             Cursor is trapped in team configuration subsection after 12 failed steps with D-pad button
+[1276.6s] # 32 submenu           fast    BACK BACK                Team configuration menu, not gameplay. Cursor is stuck in the Jersey Colour / Edit Record 
+[1313.2s] # 33 submenu           fast    UP UP UP UP              This is a team setup menu, not gameplay. Cursor is trapped in Jersey Colour / Edit Record 
+[1382.0s] # 34 submenu           fast    A                        Still in team configuration submenu, trapped in Jersey Colour selection. The recent histor
+[1419.1s] # 35 submenu           fast    START                    Team configuration menu, not gameplay. Cursor trapped in Jersey Colour subsection across 1
+[1493.7s] # 36 submenu           fast    A                        Still in team configuration menu, not gameplay. Trapped in Jersey Colour subsection for 12
+[1546.1s] # 37 submenu           fast    DOWN                     Team configuration setup screen, not gameplay. The Jersey Colour subsection is expanded, a
+[1592.3s] # 38 submenu           fast    RIGHT UP UP UP           Still in team configuration, not gameplay. Cursor is locked in Jersey Colour subsection af
+[1637.8s] # 39 submenu           fast    BACK                     Still in team setup menu; the Jersey Colour subsection is expanded and blocking progressio
+[1689.2s] # 40 submenu           fast    R1                       Still trapped in team configuration with Jersey Colour expanded. Previous A/DOWN/UP/BACK i
+[1740.6s] # 41 submenu           fast    UP UP UP UP UP UP UP UP  Team configuration menu, not gameplay. Previous 12 steps cycled within Jersey Colour (Home
+[1780.3s] # 42 submenu           fast    LEFT                     Team configuration screen. Jersey Colour subsection is expanded and blocking progression; 
+[1799.1s] # 43 submenu           fast    B                        Team select menu with expanded Jersey Colour subsection blocking progression. Previous 12 
+{"name": "International Superstar Soccer 2 Europe En Fr De Es It", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 42, "steps": 43, "replayed": 0, "reason": "budget 30 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

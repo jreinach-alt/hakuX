@@ -1,0 +1,22 @@
+pathfind: Lemony Snicket s A Series of Unfortunate Events USA (4156001F) on nova: /storage/E6C6-D7AA/Games/XBox/4156001F-Lemony_Snicket_s_A_Series_of_Unfortunate_Events_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4156001F any, loaded none
+[  10.2s] #  1 black             fast    START A                  This looks like an early boot/publisher logo screen with a stylized logo mark, not yet tit
+[  18.8s] #  2 black             fast    START A                  This appears to be a transitional dark scene, possibly a fade or early cutscene sky shot; 
+[  28.7s] #  3 title_screen      fast    START                    Classic press-start prompt visible; pressing START should advance to the main menu.
+[  37.0s] #  4 main_menu         fast    A                        New Game is highlighted as the brightest item; selecting it starts fresh play with default
+[  46.3s] #  5 save_load_prompt  fast    A                        Continue without saving is the highlighted option; selecting it proceeds to gameplay witho
+[  54.3s] #  6 cutscene          fast    A START A                Narrated storybook intro cutscene with text, not yet gameplay; attempt to skip with A then
+[  65.2s] #  7 cutscene          fast    START A START            Narrated storybook/dialogue cutscene with subtitles and letterbox bars, not player-control
+[  74.4s] #  8 gameplay          fast    STICK:up:1.5             This is a tutorial-style gameplay hint overlaid on the actual playfield with character mod
+[  85.1s] #  9 probe             probe   STICK:up:1.5 STICK:up:1.5 control 0.000, under input 0.181
+hold-play: genre other, need 600 s of play
+hold-play: fps at 188 s: median 59.0, share>=30 1.0 over 166 samples
+hold-play: fps at 310 s: median 59.0, share>=30 1.0 over 271 samples
+hold-play: validity check stop 0 s (hold 606 s of play, verdict 606.2)
+hold-play: not held 606/600 s of play; verdict stops the hold: fps_ok 1.0, crash False, hang False
+held Lemony Snicket s A Series of Unfortunate Events USA for 609s
+VERDICT Lemony Snicket s A Series of Unfortunate Events USA ? PASS None gameplay=607.0s fps_ok=1.0 crash=False hang=False audio_short=0.000142 hitches=0/0.0pm worst_ms=115.2 static_frac=0.0317 play_share=0.9996 fps_excluded=1.3s
+{"name": "Lemony Snicket s A Series of Unfortunate Events USA", "device": "nova", "result": "gameplay", "minutes": 1.42, "model_calls": 17, "steps": 9, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4156001F-1011/frames/008-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156001F": "8ff92b999081", "4156005D": "a1647bf6ddb4", "4253

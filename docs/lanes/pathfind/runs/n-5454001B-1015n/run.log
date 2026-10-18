@@ -1,0 +1,113 @@
+pathfind: Robotech Invasion USA (5454001B) on nova: /storage/E6C6-D7AA/Games/XBox/5454001B-Robotech_Invasion_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 5454001B any, loaded none
+[   9.9s] #  1 black             fast    wait                     This looks like a pre-boot loading screen (emulator front-end or Android launcher splash),
+[  15.4s] #  2 black             black   wait                     black frame
+[  21.7s] #  3 loading           fast    wait                     Loading screen with explicit 'Loading...' text; no input needed, just wait
+[  31.4s] #  4 publisher_logo    fast    A                        Legal/trademark text screen, standard pre-title content; skip with A
+[  40.3s] #  5 cutscene          fast    A                        Dramatic camera angle on a structure with no HUD or menu text suggests an intro cutscene s
+[  44.7s] #  6 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[  52.3s] #  7 loading           fast    A                        No HUD, no menu, no player control visible - likely a loading/transition screen showing a 
+[  60.0s] #  8 cutscene          fast    A                        This is a credits/intro cutscene still playing; try A to skip it.
+[  67.1s] #  9 cutscene          fast    A                        This is a stylized transition or warp effect typical of a cutscene scene-change, no HUD or
+[  74.1s] # 10 cutscene          fast    A                        This is a dramatic scene-transition visual effect typical of an intro cutscene, no player 
+[  81.9s] # 11 cutscene          fast    A                        This is a scene-transition visual effect typical of an intro cutscene, no player control o
+[  89.7s] # 12 cutscene          fast    A                        This is another scene-transition visual effect consistent with an intro cutscene still pla
+[  94.3s] # 13 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[  98.0s] # 14 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 105.1s] # 15 cutscene          fast    A                        This is a scene-transition visual effect consistent with an intro cutscene still playing, 
+[ 120.1s] # 16 cutscene          fast    A                        This is a scene-transition visual effect consistent with an ongoing intro cutscene; contin
+[ 129.0s] # 17 cutscene          fast    A                        This is a dramatic scene-transition visual effect typical of an intro cutscene, no HUD or 
+[ 137.1s] # 18 cutscene          fast    A                        This is a continuing scene-transition visual effect consistent with an intro cutscene; no 
+[ 140.7s] # 19 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 147.5s] # 20 cutscene          fast    A                        This continues the sequence of transition visual effects from an intro cutscene; pressing 
+[ 152.3s] # 21 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 157.1s] # 22 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 166.3s] # 23 cutscene          fast    A A START                This is a scene-transition effect in an intro cutscene; repeated A has been advancing it s
+[ 175.8s] # 24 cutscene          fast    A A START                Still the intro cutscene transition effect seen in prior steps; continue advancing with A 
+[ 185.3s] # 25 cutscene          fast    A A START                Same transition effect seen across multiple prior steps; continuing to advance it with A
+[ 195.8s] # 26 cutscene          fast    A A START                This is still the intro cutscene transition effect seen across the last several steps; con
+[ 205.5s] # 27 cutscene          fast    A A START                Still the same intro cutscene transition/warp effect seen across the last several steps; c
+[ 215.6s] # 28 cutscene          fast    A A START                Same scene-transition/warp effect seen across many prior steps in this intro cutscene; con
+[ 226.3s] # 29 cutscene          fast    A A START                Still the same scene-transition visual effect seen across the last several steps; continui
+[ 235.4s] # 30 cutscene          fast    A A START                Still the same scene-transition effect persisting across many steps; continuing to advance
+[ 244.6s] # 31 cutscene          fast    B B START                Still the intro cutscene warp transition; prior combo did nothing so trying a different in
+[ 256.1s] # 32 cutscene          fast    START                    Still the same warp transition effect as prior steps; A/B combos did nothing, trying START
+[ 267.2s] # 33 cutscene          fast    X X START                Still the same warp transition cutscene; tried START, A A START, B B START with no change 
+[ 277.8s] # 34 cutscene          fast    A                        Same unchanging warp transition as last 6 steps; all tried inputs (A A START, B B START, S
+[ 291.9s] # 35 cutscene          fast    B                        This warp-transition effect has been unchanged for many steps despite A, B, X, START and c
+[ 303.8s] # 36 cutscene          fast    START                    Same unchanging warp transition seen for 7+ steps; all button combos (A, B, X, START) prod
+[ 313.8s] # 37 cutscene          fast    START                    This warp transition has persisted across many inputs (A, B, X, START, combos); it may be 
+[ 328.2s] # 38 cutscene          fast    START                    This unchanging warp transition has persisted across many steps despite many button combos
+[ 338.0s] # 39 cutscene          fast    START                    This unchanging warp transition has persisted across 8+ steps despite A, B, X, START and c
+[ 351.3s] # 40 cutscene          fast    START                    This unchanging warp transition has persisted for 7+ steps despite every button tried (A, 
+[ 363.3s] # 41 cutscene          fast    START                    This is an unchanging/looping warp transition that has resisted many button presses over 6
+[ 373.3s] # 42 cutscene          fast    START                    This unchanging warp transition has persisted across many steps despite repeated button pr
+[ 383.3s] # 43 cutscene          fast    START                    This is a persistent warp transition effect that has resisted many inputs over 6+ steps; c
+[ 394.3s] # 44 cutscene          fast    BACK A                   This warp transition has persisted for 6+ steps despite many button presses (A, B, X, STAR
+[ 404.6s] # 45 cutscene          fast    START                    This is a persistent unskippable warp transition cutscene that has resisted many inputs ov
+[ 413.5s] # 46 cutscene          fast    START                    This warp transition has persisted across many steps despite A, B, X, START, BACK all trie
+[ 440.9s] # 47 cutscene          fast    A                        Unchanging warp transition that has resisted START, A, B, X, BACK across many steps; per g
+[ 454.4s] # 48 cutscene          fast    Y X B                    This persistent warp transition has resisted A, B, X, START, BACK repeatedly across many s
+[ 470.2s] # 49 cutscene          fast    B                        Same persistent warp transition effect seen for many steps; tried inputs (A, B, X, START, 
+[ 484.3s] # 50 cutscene          fast    START                    This is the same persistent unskippable warp transition seen for many steps; inputs tried 
+[ 498.3s] # 51 cutscene          fast    START                    This unskippable warp transition has persisted across 6+ steps despite A, B, X, Y, START, 
+[ 511.8s] # 52 cutscene          fast    START                    Persistent unskippable warp transition cutscene seen across many prior steps despite A/B/X
+[ 525.8s] # 53 cutscene          fast    START A B                Unskippable warp transition continues despite many varied inputs; it has been changing fra
+[ 535.4s] # 54 cutscene          fast    A START B                This is the same persistent unskippable warp transition seen across many prior steps; cont
+[ 547.5s] # 55 cutscene          fast    START                    Same persistent unskippable warp transition seen for 6+ steps; it does change frame-to-fra
+[ 558.8s] # 56 cutscene          fast    START                    Same persistent warp transition cutscene seen for 7+ steps; all standard skip inputs (A/B/
+[ 572.5s] # 57 cutscene          fast    START                    This is the same long-running unskippable warp cutscene seen across many steps; all standa
+[ 585.6s] # 58 cutscene          fast    START                    This persistent unskippable warp transition has been seen for 7+ steps despite varied skip
+[ 597.1s] # 59 cutscene          fast    START A B                Same persistent unskippable warp transition cutscene seen for 8+ steps now; still changing
+[ 607.0s] # 60 cutscene          fast    START A B                Same persistent unskippable warp transition cutscene seen for 9+ steps; standard skip inpu
+[ 623.2s] # 61 cutscene          fast    START                    This is the same persistent warp transition cutscene seen for 10+ steps; still rendering/c
+[ 636.7s] # 62 cutscene          fast    START                    Same persistent unskippable warp transition cutscene seen across many consecutive steps; t
+[ 650.2s] # 63 cutscene          fast    START A B                Same persistent unskippable warp transition cutscene seen for many consecutive steps; fram
+[ 666.1s] # 64 cutscene          fast    START                    Same persistent unskippable warp transition cutscene seen for many steps; standard skip co
+[ 677.7s] # 65 cutscene          fast    B                        Same persistent unskippable warp transition cutscene seen for many consecutive steps; fram
+[ 687.5s] # 66 cutscene          fast    START A B                Same persistent unskippable warp transition cutscene seen for many consecutive steps; cont
+[ 697.9s] # 67 cutscene          fast    B                        Same persistent warp transition cutscene across many steps; standard skip combos tried rep
+[ 708.3s] # 68 cutscene          fast    START A                  Same persistent warp transition cutscene seen for many steps; trying START/A/B combos has 
+[ 722.9s] # 69 cutscene          fast    START                    This is a long unskippable warp transition cutscene that has persisted for many steps; pre
+[ 732.9s] # 70 cutscene          fast    B                        Persistent unskippable warp transition cutscene; START alone did nothing on this exact fra
+[ 741.1s] # 71 cutscene          fast    A                        This is the same long unskippable warp transition that has persisted across many steps; B 
+[ 751.6s] # 72 cutscene          fast    wait                     Same persistent unskippable warp transition cutscene; A, B, and START have all been tried 
+[ 763.0s] # 73 cutscene          fast    wait                     This is the same persistent warp transition cutscene seen across many prior steps; A, B, a
+[ 773.1s] # 74 cutscene          fast    wait                     Persistent unskippable warp transition cutscene; A, B, START all tried with no change on t
+[ 785.3s] # 75 cutscene          fast    X X Y                    Persistent unskippable warp transition; A, B, START have all failed on this exact frame pe
+[ 801.2s] # 76 cutscene          fast    Y L1 R1                  Unskippable warp transition cutscene persisting across many steps; A/B/START/X/Y all tried
+[ 812.3s] # 77 cutscene          fast    BACK                     This is the persistent unskippable warp transition cutscene seen across many prior steps; 
+[ 826.3s] # 78 cutscene          fast    wait                     Unchanged persistent transition effect; all standard buttons (A,B,START,X,Y,BACK,L1,R1) tr
+[ 841.1s] # 79 cutscene          fast    UP DOWN LEFT RIGHT L3 R3 Persistent unskippable warp transition cutscene; A/B/START/X/Y/BACK/L1/R1 all failed previ
+[ 858.8s] # 80 cutscene          fast    wait                     This is the same persistent unskippable warp transition seen across many prior steps; all 
+[ 871.7s] # 81 cutscene          fast    STICK:up:2 RT:1.5        This is a persistent unskippable warp transition that has not changed across many steps de
+[ 886.4s] # 82 cutscene          fast    wait                     This persistent unskippable warp transition has resisted all standard buttons across many 
+[ 899.6s] # 83 cutscene          fast    wait                     Persistent unskippable warp transition unchanged across many prior steps; all common butto
+[ 912.6s] # 84 cutscene          fast    wait                     Unskippable warp transition cutscene unchanged across many prior steps; already exhausted 
+[ 925.9s] # 85 cutscene          fast    wait                     Persistent unskippable warp transition cutscene unchanged across many steps; all common bu
+[ 940.6s] # 86 cutscene          fast    wait                     This persistent unskippable warp transition has resisted all standard buttons (A/B/START/B
+[ 952.9s] # 87 cutscene          fast    wait                     Persistent unchanging warp transition screen; all common buttons exhausted per history. Tr
+[ 968.2s] # 88 cutscene          fast    wait                     This is an unskippable warp transition cutscene that has been unchanged across many prior 
+[ 983.0s] # 89 cutscene          fast    wait                     This is a persistent unskippable warp transition cutscene; many common inputs already trie
+[ 999.7s] # 90 cutscene          fast    wait                     Unchanging warp transition cutscene; many button combos already tried per history with no 
+[1013.8s] # 91 cutscene          fast    wait                     Persistent unskippable warp transition cutscene unchanged for many steps; all common singl
+[1026.5s] # 92 cutscene          fast    wait                     Persistent unskippable warp transition screen unchanged across many steps; most buttons al
+[1040.9s] # 93 cutscene          fast    L3                       Persistent unskippable warp transition screen, unchanged for many steps; all common single
+[1051.2s] # 94 cutscene          fast    R1 R1 R1                 Unskippable warp transition cutscene unchanged across many steps; most common inputs exhau
+[1063.9s] # 95 cutscene          fast    DOWN A                   Unskippable warp transition cutscene; most common buttons/sticks already tried with no cha
+[1074.4s] # 96 cutscene          fast    wait                     Unchanging unskippable warp transition cutscene persisting for many steps; most common inp
+[1087.6s] # 97 cutscene          fast    START START              Persistent unskippable warp transition cutscene, unchanged for many steps; trying START tw
+[1098.5s] # 98 cutscene          fast    START A B                Persistent unskippable warp transition screen; last step showed slight change with START S
+[1109.9s] # 99 cutscene          fast    B START X                Unskippable warp transition cutscene, unchanged for many steps despite varied inputs (STAR
+[1121.5s] #100 cutscene          fast    START A                  This is the same unskippable warp transition cutscene from prior steps; trying a fresh com
+[1133.1s] #101 cutscene          fast    START                    Same persistent warp transition effect seen across many prior steps; previous combos (STAR
+[1143.1s] #102 cutscene          fast    A START B                Unskippable warp transition cutscene persisting for many steps; continuing to vary inputs 
+[1155.0s] #103 cutscene          fast    A START B                Same unskippable warp transition effect noted repeatedly; continuing to vary input combos 
+[1166.9s] #104 cutscene          fast    A B START                This is the same persistent unskippable warp transition effect seen across many prior step
+[1177.5s] #105 cutscene          fast    START                    Still the same persistent warp transition cutscene; prior varied input combos haven't skip
+[1189.9s] #106 cutscene          fast    A A START                Same persistent unskippable warp transition effect seen across many prior steps (100-105);
+[1199.6s] #107 cutscene          fast    START A B                Persistent warp transition effect unchanged in nature from steps 101-106; continuing to tr
+{"name": "Robotech Invasion USA", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 100, "steps": 107, "replayed": 0, "reason": "budget 20 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

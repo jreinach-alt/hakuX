@@ -1,0 +1,40 @@
+pathfind: Mat Hoffman s Pro BMX 2 USA (4156000B) on nova: /storage/E6C6-D7AA/Games/XBox/4156000B-Mat_Hoffman_s_Pro_BMX_2_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4156000B any, loaded none
+[  14.8s] #  1 publisher_logo    fast    START                    Activision startup logo; skip with START, expect another logo or title screen next
+[  27.6s] #  2 loading           fast    wait                     Game logo with active spinner indicates the game is loading from boot; wait for load to co
+[  42.9s] #  3 cutscene          fast    START                    Intro cinematic after loading; skip with START to reach title screen or gameplay
+[  52.3s] #  4 title_screen      fast    START                    Clear 'PRESS START' prompt on a static scene of the game world; this is the title screen w
+[  85.2s] #  5 main_menu         fast    DOWN DOWN A              Game mode selection menu after title screen. Free ride is the fastest route to open gamepl
+[ 101.6s] #  6 submenu           fast    A                        Character/rider selection screen; Mat Hoffman is the default selection; pressing A will co
+[ 115.5s] #  7 submenu           fast    A                        Level selection submenu after character select (Mat Hoffman). OK CITY, OK is the current h
+[ 131.1s] #  8 gameplay          fast    wait                     Player character (BMX rider) is in the game world with active HUD (score display). The sce
+[ 145.8s] #  9 probe             probe   STICK:up:1.5             control 0.015, under input 0.528
+hold-play: genre drive, need 630 s of play
+hold-play: gas probe RT: band change 0.042 (confirmed)
+hold-play: drive gas confirmed RT (tried ['RT'])
+hold-play: stuck (scene unchanged for 4 consecutive samples (genre drive)): prompt look at 174 s
+hold-play: stuck (scene unchanged for 4 consecutive samples (genre drive)): unstick LT+left:3 RT+right:3 at 174 s
+hold-play: fps at 197 s: median 29.0, share>=30 0.99 over 99 samples
+hold-play: stuck (scene unchanged for 5 consecutive samples (genre drive)): unstick LT+right:3 RT+left:3 at 211 s
+hold-play: stuck (scene unchanged for 6 consecutive samples (genre drive)): drive recovery at 241 s
+hold-play: recover BACK: no change
+hold-play: recover Y: no change
+hold-play: recover pause A: changed
+hold-play: fps at 301 s: median 29.0, share>=30 0.993 over 151 samples
+hold-play: 3 still looks: walk reversed (back) at 423 s
+hold-play: stuck (scene unchanged for 4 consecutive samples (genre drive)): prompt look at 442 s
+hold-play: stuck (scene unchanged for 4 consecutive samples (genre drive)): unstick LT+left:3 RT+right:3 at 442 s
+hold-play: stuck (scene unchanged for 5 consecutive samples (genre drive)): unstick LT+right:3 RT+left:3 at 472 s
+hold-play: stuck (scene unchanged for 6 consecutive samples (genre drive)): drive recovery at 511 s
+hold-play: recover BACK: no change
+hold-play: recover Y: no change
+hold-play: recover pause A: changed
+hold-play: play disagrees: hold 649.5 s, verdict 739.5 s (verdict trusted)
+hold-play: validity check stop 0 s (hold 649 s of play, verdict 739.5)
+hold-play: not held 649/630 s of play; verdict stops the hold: fps_ok 1.0, crash False, hang False
+held Mat Hoffman s Pro BMX 2 USA for 771s
+VERDICT Mat Hoffman s Pro BMX 2 USA ? PASS None gameplay=769.7s fps_ok=1.0 crash=False hang=False audio_short=5.8e-05 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0785 play_share=0.9618 fps_excluded=30.1s
+{"name": "Mat Hoffman s Pro BMX 2 USA", "device": "nova", "result": "gameplay", "minutes": 2.43, "model_calls": 29, "steps": 9, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4156000B-1014/frames/008-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156000B": "7a106601093a", "4156005D": "a1647bf6ddb4", "4253

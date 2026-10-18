@@ -1,0 +1,99 @@
+pathfind: Beyond Good Evil (55530018) on nova: /storage/E6C6-D7AA/Games/XBox/55530018-Beyond_Good_Evil.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 55530018 any, loaded none
+[   5.1s] #  1 publisher_logo    replay  A                        replay step 0: A publisher logo is animating; per the hints, skip with A first, then START
+[  10.9s] #  2 publisher_logo    fast    A                        This is the Xbox system boot logo, not yet the game; skip with A per hints
+[  20.0s] #  3 cutscene          fast    START                    This is the title logo animation/intro cinematic, not a menu or title screen with a 'press
+[  24.5s] #  4 cutscene          replay  START                    replay step 3: repeat START: it advanced the cutscene
+[  32.4s] #  5 cutscene          fast    START                    This is a scripted news broadcast cinematic, not player-controlled; per recorded path and 
+[  36.8s] #  6 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[  41.3s] #  7 cutscene          replay  START                    replay step 7: repeat START: it advanced the cutscene
+[  49.9s] #  8 cutscene          fast    START                    Space/planet cinematic shot with letterbox bars, no HUD or player control; recorded path a
+[  58.1s] #  9 cutscene          fast    START                    Letterbox bars and no HUD or player control; recorded path and prior steps show START adva
+[  62.4s] # 10 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[  67.0s] # 11 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[  71.6s] # 12 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[  76.0s] # 13 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[  80.5s] # 14 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[  85.8s] # 15 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[  93.4s] # 16 cutscene          fast    START                    Letterboxed in-engine cinematic close-up with no HUD or player control; prior steps have a
+[  98.0s] # 17 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 102.4s] # 18 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 106.8s] # 19 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 111.3s] # 20 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 116.7s] # 21 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 121.2s] # 22 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 129.2s] # 23 cutscene          fast    START                    Letterbox bars, no HUD, no player control visible; prior steps show START reliably advance
+[ 133.6s] # 24 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 138.2s] # 25 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 142.6s] # 26 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 148.1s] # 27 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 152.6s] # 28 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 157.0s] # 29 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 164.6s] # 30 cutscene          fast    START                    Letterbox bars and no HUD indicate a cinematic; prior steps show START reliably advances t
+[ 169.0s] # 31 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 173.5s] # 32 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 177.9s] # 33 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 183.1s] # 34 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 187.5s] # 35 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 195.5s] # 36 submenu           fast    B                        This is a pause/status radial menu, not gameplay; START did nothing on this screen per his
+[ 215.5s] # 37 gameplay          fast    STICK:left:1.5           The scene is the live 3D game world with the player character and enemies present, plus a 
+[ 223.2s] # 38 probe             probe   STICK:left:1.5 STICK:left:1.5 control 0.263, under input 0.139
+[ 230.2s] # 39 gameplay          fast    STICK:up:1.5             HUD with contextual action prompts (Fight/Eat) and player character present in the 3D worl
+[ 237.9s] # 40 probe             probe   STICK:up:1.5 STICK:up:1.5 control 0.204, under input 0.293
+[ 248.4s] # 41 gameplay          fast    A                        Full HUD with contextual Fight/Eat action prompts and player character actively engaged wi
+[ 255.2s] # 42 probe             probe   A A STICK:up:1.5         control 0.384, under input 0.512
+claim: 3 live reads with self-moving refused probes: entering the hold
+[ 290.1s] # 51 retracted         probe   wait                     retracted after 30 s: letterboxed
+[ 295.9s] # 52 gameplay          fast    A A STICK:up:1.5         HUD with health/action prompts and an active enemy combat encounter is player-controlled g
+[ 305.4s] # 53 probe             probe   A A STICK:up:1.5 HOLD:A:3 control 0.407, under input 0.374
+[ 310.1s] # 54 gameplay          fast    A STICK:up:1.5           HUD with health, action prompts (Fight/Eat) and an active enemy encounter is player-contro
+[ 320.1s] # 55 probe             probe   A STICK:up:1.5 A HOLD:A:3 control 0.403, under input 0.575
+[ 328.9s] # 56 cutscene          fast    A START                  No HUD or player-control indicators are visible, just a scripted run through a lit cave to
+[ 334.2s] # 57 cutscene          repeat  A START                  repeat A: it advanced the cutscene
+[ 342.8s] # 58 cutscene          fast    A START A                Black bars top and bottom with no HUD indicate a cinematic; prior steps show A/START advan
+[ 353.4s] # 59 cutscene          fast    A START A                Black bars top and bottom with no HUD or player control indicators; still a scripted cinem
+[ 362.0s] # 60 cutscene          fast    A START A                Black bars and no HUD mean this is still a scripted cutscene; prior steps show A/START adv
+[ 371.4s] # 61 cutscene          fast    A START A                Letterbox bars with no HUD mean this is still a scripted cutscene; prior steps show A/STAR
+[ 381.7s] # 62 cutscene          fast    A START A                Black bars top and bottom with no HUD or player-control indicators; a scripted close-up sh
+[ 393.8s] # 63 gameplay          fast    HOLD:A:2                 Full interactive HUD with Fight/Eat prompts tied to buttons and an on-screen instruction t
+[ 402.2s] # 64 probe             probe   HOLD:A:2 RT:3            control 0.599, under input 0.363
+claim: 3 live reads with self-moving refused probes: entering the hold
+[ 437.5s] # 73 retracted         probe   wait                     retracted after 30 s: letterboxed
+[ 445.6s] # 74 gameplay          fast    A                        Interactive combat HUD with Fight/Eat prompts tied to A/B buttons and health icons for bot
+[ 452.9s] # 75 probe             probe   A A RT:3                 control 0.419, under input 0.552
+[ 462.9s] # 76 cutscene          fast    A                        Letterbox bars framing the shot plus a scripted interactive prompt screen (Fight/Eat icons
+[ 466.5s] # 77 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 470.0s] # 78 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 473.5s] # 79 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 477.1s] # 80 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 481.4s] # 81 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 484.9s] # 82 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 496.7s] # 83 gameplay          fast    A                        HUD with health/portraits and interactive action prompts (Fight/Eat) over a rendered 3D sc
+[ 502.9s] # 84 probe             probe   A HOLD:X:3               control 0.538, under input 0.598
+[ 507.6s] # 85 cutscene          fast    A                        Black bars top and bottom with a dramatic close-up camera angle and no HUD; prior steps sh
+[ 512.9s] # 86 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 517.2s] # 87 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 521.6s] # 88 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 526.0s] # 89 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 530.5s] # 90 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 534.9s] # 91 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 542.8s] # 92 cutscene          fast    A                        Letterboxed close-up cinematic with no HUD or player control; prior steps show A has been 
+[ 547.8s] # 93 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 552.1s] # 94 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 556.5s] # 95 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 560.9s] # 96 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 565.3s] # 97 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 569.8s] # 98 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 579.0s] # 99 submenu           fast    B                        This is an inventory/pearl detail menu with a Back prompt, not gameplay; need to back out 
+[ 585.4s] #100 cutscene          fast    A                        No HUD or menu, abstract cinematic lighting shot; prior history shows A advances these cut
+[ 589.9s] #101 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 594.5s] #102 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 599.1s] #103 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 603.7s] #104 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 608.3s] #105 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 613.4s] #106 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 617.8s] #107 diverged          diverged wait                     replay diverged at recorded step 8 (cutscene: This is a cinematic space shot with no HUD o
+{"name": "Beyond Good Evil", "device": "nova", "result": "diverged", "minutes": 10.3, "model_calls": 30, "steps": 91, "replayed": 3, "reason": "replay diverged at recorded step 8 (cutscene: This is a cinematic space shot with no HUD or player-controlled element, so it is not gameplay. Prior history shows STAR)", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

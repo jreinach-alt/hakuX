@@ -1,0 +1,31 @@
+pathfind: Kung Fu Chaos USA Asia En Fr De (4D530031) on nova: /storage/E6C6-D7AA/Games/XBox/4D530031-Kung_Fu_Chaos_USA_Asia_En_Fr_De.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4D530031 any, loaded none
+[  14.4s] #  1 publisher_logo    fast    A                        Early in boot sequence (~6 seconds); green Microsoft-style logo is a standard Xbox publish
+[  46.3s] #  2 intro_video       fast    A                        This animated scene immediately follows the publisher logo. The water rendering and moveme
+[  58.3s] #  3 title_screen      fast    START                    Standard Xbox title screen with 'Press START To Begin.' prompt visible; requires START to 
+[  72.8s] #  4 title_screen      fast    A                        Title screen with prompt still displayed; START was tried once with no change; try A as al
+[ 119.6s] #  5 title_screen      fast    B                        START and A each tried once with no screen change. Hints suggest trying BACK/B if START fa
+[ 158.4s] #  6 title_screen      fast    HOLD:START:1             Still on the title screen; single presses of START, A, and B produced no change. The promp
+[ 193.8s] #  7 title_screen      fast    RT:1                     Still showing the title screen prompt after START, A, B, and HOLD:START all failed. The hi
+[ 225.9s] #  8 title_screen      fast    STICK:up:0.5             Standard Microsoft Game Studios title screen. START failed five times in different forms (
+[ 242.6s] #  9 cutscene          fast    START                    Opening cinematic showing two fighters about to engage. No HUD, no gameplay feedback, stat
+[ 246.1s] # 10 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 258.2s] # 11 main_menu         fast    A                        Main menu with NINJA CHALLENGE highlighted at the top. A will select it and proceed to gam
+[ 272.0s] # 12 cutscene          fast    A                        Cinematic content with a CONTINUE prompt; not yet gameplay. A advances the scene toward th
+[ 286.8s] # 13 submenu           fast    A                        Character selection menu before match setup. First character is highlighted and default. A
+[ 300.9s] # 14 submenu           fast    A                        This is a level/scene selection menu. The first option 'RIOT ON THE SET!' is highlighted a
+[ 321.9s] # 15 cutscene          fast    START                    Tutorial/briefing screen with instructional content and move hints before the actual match
+[ 326.4s] # 16 black             black   wait                     black frame
+[ 388.8s] # 17 gameplay          fast    wait                     Fully rendered game arena with character visible in game world; transitioned from black sc
+[ 414.7s] # 18 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.266, under input 0.596
+hold-play: genre attack, need 630 s of play
+hold-play: fps at 216 s: median 59.0, share>=30 1.0 over 212 samples
+hold-play: fps at 309 s: median 59.0, share>=30 1.0 over 306 samples
+hold-play: off play 180 s of a 390 s scored window cannot drop to 10% with 1012 s of budget left: no amount of further play can pass
+hold-play: not held 162/630 s of play; off play 180 s of a 390 s scored window cannot drop to 10% with 1012 s of budget left: no amount of further play can pass
+held Kung Fu Chaos USA Asia En Fr De for 392s
+VERDICT Kung Fu Chaos USA Asia En Fr De ? FAIL(duration: 390 s of gameplay < 600 s confirmation) gameplay=390.1s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=5/0.909pm worst_ms=717.4 static_frac=0.0003 play_share=0.5378 fps_excluded=182.9s
+{"name": "Kung Fu Chaos USA Asia En Fr De", "device": "nova", "result": "gameplay", "minutes": 6.91, "model_calls": 24, "steps": 18, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D530031-1014d/frames/017-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

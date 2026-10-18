@@ -1,0 +1,246 @@
+pathfind: Puyo Pop Fever Europe (53450027) on nova: /storage/E6C6-D7AA/Games/XBox/53450027-Puyo_Pop_Fever_Europe.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 53450027 any, loaded none
+[  12.3s] #  1 loading           fast    wait                     This looks like an emulator loading/splash screen before the game boots, not game content 
+[  23.9s] #  2 publisher_logo    fast    START A                  ADX publisher logo screen before game boots further, skip it to progress
+[  34.5s] #  3 title_screen      fast    START A                  Title screen reached after publisher logo; press START to proceed to menu
+[  44.8s] #  4 loading           fast    wait                     Hard disk access dialog after selecting Single Puyo POP mode; must wait for it to finish l
+[  54.0s] #  5 save_load_prompt  fast    A                        Yes is already highlighted (bracketed) for creating game data, needed to proceed into the 
+[  63.1s] #  6 loading           fast    wait                     Game is actively saving data; must wait for the save operation to complete before the game
+[  72.9s] #  7 main_menu         fast    A                        Single Puyo POP is already highlighted (green, enlarged) as the default fastest path to pl
+[  84.7s] #  8 main_menu         fast    A                        RunRun Course is already highlighted as the enlarged selection; confirm with A to begin th
+[  96.3s] #  9 cutscene          fast    START A                  Narrative intro text is displaying over a scene; this is a story cutscene, skip it to reac
+[ 106.5s] # 10 cutscene          fast    START A                  Narrative dialogue scene with text box still printing out, part of the story intro before 
+[ 116.0s] # 11 loading           fast    wait                     Ready banner indicates the match is about to begin but hasn't started yet; wait for it to 
+[ 123.7s] # 12 loading           fast    wait                     This is a pre-match stage announcement/countdown screen (REST timers at 15.00 sec counting
+[ 128.4s] # 13 loading           static  wait                     load still on screen (barely changed)
+[ 133.1s] # 14 loading           static  wait                     load still on screen (barely changed)
+[ 137.9s] # 15 loading           static  wait                     load still on screen (barely changed)
+[ 142.6s] # 16 loading           static  wait                     load still on screen (barely changed)
+[ 147.4s] # 17 loading           static  wait                     load still on screen (barely changed)
+[ 159.1s] # 18 loading           fast    START                    Pre-match stage screen explicitly prompts 'Press START button.' to begin the match
+[ 169.2s] # 19 save_load_prompt  fast    RIGHT A                  A save prompt for Replay Data has appeared after the match; choosing No avoids a save deto
+[ 178.2s] # 20 loading           fast    wait                     The 'No' choice was confirmed and the game is now loading the next screen; nothing to do b
+[ 192.9s] # 21 save_load_prompt  fast    DOWN DOWN DOWN DOWN DOWN DOWN A This is a replay save prompt; selecting 'I will not save Replay Data' avoids a save detour
+[ 207.7s] # 22 save_load_prompt  fast    A                        The 'I will not save Replay Data' option is already highlighted at the bottom; pressing A 
+[ 217.2s] # 23 save_load_prompt  fast    A                        The not-save option is already highlighted; pressing A confirms it and should proceed past
+[ 233.0s] # 24 save_load_prompt  fast    B                        Repeated A presses on this same screen did not advance it; trying B (Cancel) as a differen
+[ 241.9s] # 25 results           fast    A                        This is a results/score tally screen after the match; A:Skip is indicated top-right, so pr
+[ 250.6s] # 26 results           fast    A                        This is a ranking/results tally screen after finishing a course; A:End is indicated, so pr
+[ 260.5s] # 27 main_menu         fast    A                        Single Puyo POP is already highlighted as the selected mode; pressing A (Decide) should co
+[ 270.6s] # 28 submenu           fast    A                        RunRun Course is the highlighted/lit bubble (beginner default course); pressing A should c
+[ 280.5s] # 29 cutscene          fast    START A                  Narrative intro text 'Once upon a time...' over a scene, classic story-opening cutscene; t
+[ 290.8s] # 30 cutscene          fast    START A                  Narrative dialogue scene with text box still typing out ('Hello k' looks mid-render), cont
+[ 301.5s] # 31 loading           fast    wait                     This is a pre-match 'Ready' countdown screen before the Puyo battle begins; no HUD gamepla
+[ 312.0s] # 32 loading           fast    wait                     Pre-battle countdown screen (REST 15.00 sec) before the Puyo match starts; no playfield or
+[ 316.7s] # 33 loading           static  wait                     load still on screen (barely changed)
+[ 321.5s] # 34 loading           static  wait                     load still on screen (barely changed)
+[ 326.3s] # 35 loading           static  wait                     load still on screen (barely changed)
+[ 331.1s] # 36 loading           static  wait                     load still on screen (barely changed)
+[ 335.9s] # 37 loading           static  wait                     load still on screen (barely changed)
+[ 353.3s] # 38 save_load_prompt  fast    RIGHT A                  A save-replay-data dialog is blocking progress after the match; declining (No) is the fast
+[ 362.6s] # 39 loading           fast    wait                     A loading dialog is displayed over the save prompt after declining; wait for it to finish.
+[ 372.5s] # 40 save_load_prompt  fast    A                        A save-replay-data prompt; the 'I will not save Replay Data' option appears highlighted/se
+[ 382.7s] # 41 save_load_prompt  fast    DOWN A                   This is a save/cancel sub-dialog after declining replay save; choosing Cancel (the faster 
+[ 393.9s] # 42 save_load_prompt  fast    A                        'I will not save Replay Data' is the highlighted option; confirming with A declines the sa
+[ 408.0s] # 43 save_load_prompt  fast    DOWN A                   A replay-save sub-dialog with Save/Cancel options; Save appears highlighted (yellow) by de
+[ 428.2s] # 44 save_load_prompt  fast    DOWN DOWN DOWN DOWN DOWN DOWN A A replay-save prompt; declining with 'I will not save Replay Data' is fastest path onward.
+[ 440.5s] # 45 save_load_prompt  fast    DOWN DOWN DOWN DOWN DOWN DOWN A The 'I will not save Replay Data' line at bottom is the no-save option, fastest path to sk
+[ 464.3s] # 46 save_load_prompt  fast    B                        Repeated DOWN-to-bottom-option then A has only produced tiny deltas (looping), so trying B
+[ 473.0s] # 47 results           fast    A                        This is a post-game score tally screen, not a save prompt; A:Skip is indicated top-right, 
+[ 481.2s] # 48 results           fast    A                        This is a ranking/results tally screen after a run; A:End prompts pressing A to move past 
+[ 489.6s] # 49 submenu           fast    A                        Single Puyo POP is already highlighted (green) with its description shown below; confirmin
+[ 500.0s] # 50 submenu           fast    A                        RunRun Course is already highlighted as the beginner training course (3 stages), fastest p
+[ 510.4s] # 51 cutscene          fast    START A                  Narrative text overlay with no HUD indicates an intro story cutscene for the course; skip 
+[ 520.3s] # 52 cutscene          fast    START A                  Letterboxed narrative scene continuing the RunRun Course intro story with no HUD or player
+[ 535.5s] # 53 loading           fast    wait                     This is the stage-start 'Go!' transition banner before puyo control begins; no player-cont
+[ 550.2s] # 54 loading           fast    wait                     This is a pre-match countdown/setup screen (REST 15.00 sec counting down) before puyo piec
+[ 558.9s] # 55 loading           fast    START                    pre-match countdown screen prompting Press START button; need to press START to begin the 
+[ 568.4s] # 56 pause             fast    A                        This is a pause menu that appeared after pressing START on the pre-stage countdown; Contin
+[ 582.9s] # 57 gameplay          fast    STICK:down:1.5           Puyo pieces are actively falling and stacking in both play columns with a live HUD (score,
+[ 598.3s] # 58 probe             probe   STICK:down:1.5 STICK:down:1.5 STICK:down:1.5 STICK:down:1.5 control 0.048, under input 0.043
+[ 606.4s] # 59 save_load_prompt  fast    A                        Post-round replay-save prompt with Yes highlighted; confirm with A to proceed past it towa
+[ 617.0s] # 60 continue          fast    START                    This is a continue countdown (8) after losing a round; press START once to continue past i
+[ 625.1s] # 61 loading           fast    wait                     This is a pre-match 'Ready' stage-intro screen before the puyo pieces start falling; no HU
+[ 634.0s] # 62 loading           fast    START                    Pre-match stage intro waiting for START to begin; not yet gameplay since pieces aren't fal
+[ 643.5s] # 63 pause             fast    A                        Pause menu is open with Continue highlighted; press A to resume gameplay.
+[ 655.9s] # 64 loading           fast    wait                     This is a pre-match stage-intro screen with a REST countdown timer running; no puyo pieces
+[ 668.1s] # 65 loading           fast    wait                     REST 15.00 sec countdown is running on both sides before the next round starts; no puyo pi
+[ 679.4s] # 66 save_load_prompt  fast    RIGHT A                  Save prompt appeared after round; choosing No continues without saving per hint guidance, 
+[ 688.6s] # 67 loading           fast    wait                     A loading popup is active over the save-replay-data screen; no input needed, just wait for
+[ 697.8s] # 68 save_load_prompt  fast    DOWN A                   Save prompt after match round; 'I will not save Replay Data' appears to be the highlighted
+[ 708.2s] # 69 save_load_prompt  fast    A                        Cancel is highlighted matching the 'I will not save' message; confirm with A to continue w
+[ 716.0s] # 70 save_load_prompt  fast    RIGHT A                  Hint says prefer not saving replay data; Yes is currently highlighted, need to move to No 
+[ 732.6s] # 71 save_load_prompt  fast    DOWN DOWN DOWN DOWN DOWN A Cursor appears on slot #2; need to move down past slots #3-#6 to reach 'I will not save Re
+[ 744.7s] # 72 save_load_prompt  fast    A                        The 'I will not save Replay Data' option is highlighted/selected at the bottom; confirming
+[ 752.7s] # 73 save_load_prompt  fast    wait                     A 'Continue' transition animation is playing over the save prompt after confirming 'I will
+[ 761.6s] # 74 save_load_prompt  fast    wait                     A transition/confirmation animation ('CONTINUE') is playing after confirming not to save r
+[ 770.6s] # 75 results           fast    A A A                    This is a results/score tally screen after a run ended quickly (0 stages cleared); need to
+[ 780.1s] # 76 results           fast    A A A                    This is a ranking/results tally after the run ended; need to press A to end and return to 
+[ 792.4s] # 77 main_menu         fast    A                        Single Puyo POP is already highlighted as the default selection and is the fastest path to
+[ 802.4s] # 78 submenu           fast    A                        RunRun Course is already highlighted as the default/leftmost, beginner-friendly fastest pa
+[ 811.5s] # 79 cutscene          fast    START A                  Opening narrative cutscene with 'Once upon a time...' text; skip it to reach gameplay fast
+[ 821.4s] # 80 cutscene          fast    START A                  This is an opening dialogue/cutscene prompting START to advance; skip it toward gameplay.
+[ 830.9s] # 81 loading           fast    wait                     This is a pre-match 'Ready' intro screen for the stage, not yet interactive gameplay; wait
+[ 839.6s] # 82 loading           fast    START                    This is a pre-match ready screen waiting for START to begin the stage; need to press START
+[ 851.4s] # 83 pause             fast    A                        This is a pause menu reached mid-stage (the STAGE 1 label and dual playfields confirm a ma
+[ 861.3s] # 84 loading           fast    wait                     Pre-match REST countdown at full 15.00 sec on both sides, scores at zero - stage intro not
+[ 865.1s] # 85 loading           static  wait                     load still on screen (barely changed)
+[ 870.4s] # 86 loading           static  wait                     load still on screen (barely changed)
+[ 875.2s] # 87 loading           static  wait                     load still on screen (barely changed)
+[ 884.7s] # 88 loading           fast    wait                     pre-match REST countdown still frozen at 15.00 sec on both sides, stage intro hasn't start
+[ 893.5s] # 89 loading           fast    wait                     REST countdown still frozen at 15.00 sec on both sides, match has not started counting dow
+[ 911.6s] # 90 save_load_prompt  fast    RIGHT A                  A replay-save confirmation dialog is covering the match-end screen; need to choose No (ski
+[ 920.6s] # 91 loading           fast    wait                     A loading/save transition dialog is active; no input needed, just wait for it to finish.
+[ 937.1s] # 92 save_load_prompt  fast    DOWN DOWN DOWN DOWN DOWN DOWN A This is a replay save prompt; selecting 'I will not save Replay Data' at the bottom avoids
+[ 953.0s] # 93 save_load_prompt  fast    DOWN DOWN DOWN DOWN DOWN DOWN A Replay save prompt reappeared; need to navigate down to 'I will not save Replay Data' opti
+[ 976.1s] # 94 save_load_prompt  fast    DOWN DOWN DOWN DOWN DOWN DOWN DOWN A This replay-save dialog keeps reappearing; need to move the cursor down past the save slot
+[ 988.9s] # 95 results           fast    A                        This is a post-match ranking/results screen with an explicit 'A: End' prompt in the top ri
+[ 997.3s] # 96 loading           fast    wait                     The content box is blank, suggesting this screen is still rendering/transitioning; no acti
+[1006.9s] # 97 main_menu         fast    A                        Single Puyo POP is already highlighted as the default fastest route to single-player gamep
+[1016.6s] # 98 submenu           fast    A                        RunRun Course is already highlighted as the default beginner training course; confirming w
+[1025.2s] # 99 cutscene          fast    START A                  Narrative intro text box before gameplay begins; skip with START then A
+[1035.3s] #100 cutscene          fast    START A                  Narrative dialogue box with text being displayed; this is a story/intro scene before gamep
+[1047.3s] #101 loading           fast    wait                     A 'Ready' banner before the puyo fields become active is a pre-match countdown, not yet li
+[1055.0s] #102 loading           fast    wait                     REST 15.00 sec countdown before the match starts is a pre-game timer, not yet controllable
+[1059.7s] #103 loading           static  wait                     load still on screen (barely changed)
+[1064.9s] #104 loading           static  wait                     load still on screen (barely changed)
+[1069.7s] #105 loading           static  wait                     load still on screen (barely changed)
+[1074.4s] #106 loading           static  wait                     load still on screen (barely changed)
+[1079.1s] #107 loading           static  wait                     load still on screen (barely changed)
+[1088.0s] #108 loading           fast    wait                     pre-game REST countdown timer still running, not yet player-controllable
+[1100.7s] #109 loading           fast    wait                     REST countdown (15.00 sec) still running on both sides, pre-game timer not yet at zero, so
+[1111.1s] #110 save_load_prompt  fast    A                        A save prompt appeared with Yes already highlighted; confirm with A to proceed to the matc
+[1123.0s] #111 continue          fast    START                    A continue countdown (8) has appeared mid-match; per the continue rule, press START once t
+[1133.7s] #112 loading           fast    wait                     REST countdown has hit 00.00 but 'Ready' banner is still displayed and no puyo pieces are 
+[1142.0s] #113 loading           fast    wait                     REST countdown shows 15.00 sec on both sides, meaning the pre-match timer has just reset/r
+[1146.6s] #114 loading           static  wait                     load still on screen (barely changed)
+[1151.3s] #115 loading           static  wait                     load still on screen (barely changed)
+[1156.1s] #116 loading           static  wait                     load still on screen (barely changed)
+[1160.8s] #117 loading           static  wait                     load still on screen (barely changed)
+[1166.1s] #118 loading           static  wait                     load still on screen (barely changed)
+[1181.4s] #119 save_load_prompt  fast    RIGHT A                  A replay-data save dialog has appeared after the match; declining it is the faster path ba
+[1190.8s] #120 loading           fast    wait                     The decline-save choice registered and the game is now loading; just wait for it to finish
+[1205.6s] #121 save_load_prompt  fast    DOWN DOWN DOWN DOWN DOWN DOWN A Declining the replay save is the fastest path back to gameplay; 'I will not save Replay Da
+[1227.8s] #122 save_load_prompt  fast    DOWN DOWN DOWN DOWN DOWN DOWN A This is the replay-save prompt again with a 'Continue' countdown overlay; declining the sa
+[1245.1s] #123 save_load_prompt  fast    DOWN DOWN DOWN DOWN DOWN DOWN A Same replay-save prompt looping; need cursor on the decline option at bottom then confirm 
+[1257.7s] #124 results           fast    A                        This is a post-match ranking/results table, not gameplay. Top-right prompt says 'A: End' i
+[1268.6s] #125 main_menu         fast    A                        Single Puyo POP is already highlighted (green glow) and is single-player vs COM, the faste
+[1279.9s] #126 submenu           fast    A                        RunRun Course is already highlighted as the beginner default; confirming with A should sta
+[1290.1s] #127 cutscene          fast    START A                  Intro narrative text on a static illustrated scene after selecting RunRun Course; this is 
+[1300.3s] #128 cutscene          fast    START A                  This is a story dialogue scene with a text box, part of the RunRun Course intro narrative;
+[1311.5s] #129 cutscene          fast    START                    This is a pre-match 'Ready' banner/countdown before the puzzle match begins, not yet inter
+[1320.7s] #130 pause             fast    A                        The previous START input opened a pause menu over the match; Continue is highlighted, so c
+[1330.3s] #131 gameplay          fast    LEFT                     The match HUD is up with live countdown timers (REST 15.00 sec) and score counters; this i
+[1351.4s] #132 probe             probe   LEFT STICK:left:1.5      control 0.025, under input 0.038
+[1358.8s] #133 gameplay          fast    LEFT LEFT DOWN           Live puzzle match HUD with active countdown timers and stacked puyos; this is the actual p
+[1371.6s] #134 probe             probe   LEFT LEFT DOWN STICK:left:1.5 control 0.023, under input 0.035
+[1376.5s] #135 gameplay          fast    LEFT LEFT DOWN DOWN      Live puzzle match HUD with active countdown timers and stacked puyos on both playfields; t
+[1393.9s] #136 probe             probe   LEFT LEFT DOWN DOWN HOLD:A:3 HOLD:A:3 HOLD:A:3 control 0.038, under input 0.044
+[1399.7s] #137 gameplay          fast    RIGHT RIGHT DOWN         Live puzzle match with active HUD, countdown timers, and stacked puyos on both playfields;
+[1411.1s] #138 probe             probe   RIGHT RIGHT DOWN STICK:down:1.5 control 0.022, under input 0.035
+[1417.3s] #139 gameplay          fast    STICK:left:1.5           Live puzzle match with active countdown timers, scores, and stacked puyos on both playfiel
+[1428.8s] #140 probe             probe   STICK:left:1.5 HOLD:A:3  control 0.059, under input 0.965
+[1433.7s] #141 loading           fast    wait                     A loading dialog is overlaying the save replay data screen after the match; must wait for 
+[1444.4s] #142 save_load_prompt  fast    DOWN DOWN DOWN DOWN DOWN DOWN A Post-match save prompt; choosing not to save is fastest back to gameplay, cursor appears t
+[1466.9s] #143 save_load_prompt  fast    A                        Post-match replay save screen with a countdown to auto-continue; pressing A follows the De
+[1475.4s] #144 save_load_prompt  fast    A                        Post-match save prompt with 'I will not save Replay Data' already highlighted at the botto
+[1484.1s] #145 results           fast    A                        This is a post-match results/score tally screen, not live gameplay; prompt says press A to
+[1491.9s] #146 results           fast    A                        This is a post-match ranking/results screen, not live gameplay; the prompt indicates A end
+[1499.1s] #147 loading           fast    wait                     Empty text box suggests content is still loading/transitioning; waiting for it to populate
+[1507.8s] #148 main_menu         fast    A                        Single Puyo POP is already highlighted; pressing A confirms it to start single player vs C
+[1517.3s] #149 submenu           fast    A                        This is a course selection menu within Single Puyo POP mode; RunRun Course is highlighted 
+[1527.8s] #150 cutscene          fast    START A                  This is a story intro narration screen before gameplay starts; skip with START then A.
+[1537.4s] #151 cutscene          fast    START A                  Dialogue/story scene with 'Press START button' prompt indicates a skippable narration befo
+[1549.8s] #152 loading           fast    wait                     The 'Ready' banner is a pre-round countdown before the puyo pieces start falling; not yet 
+[1563.4s] #153 loading           fast    wait                     Both sides show identical REST 15.00 sec countdown timers, indicating a pre-match countdow
+[1568.1s] #154 loading           static  wait                     load still on screen (barely changed)
+[1577.9s] #155 loading           fast    wait                     Pre-match REST countdown still at 15.00 sec on both sides, identical to the prior step; no
+[1588.2s] #156 loading           fast    wait                     Pre-match REST countdown still in progress on both sides; not yet controllable, must wait 
+[1598.4s] #157 save_load_prompt  fast    RIGHT A                  A save confirmation dialog is covering the screen; choosing No avoids extra save steps and
+[1607.6s] #158 loading           fast    wait                     A save-replay loading screen is in progress; must wait for it to finish before any input.
+[1617.6s] #159 save_load_prompt  fast    A                        This is a save replay prompt; 'I will not save Replay Data' is already highlighted at the 
+[1633.4s] #160 save_load_prompt  fast    DOWN A                   A save-replay sub-menu appeared with Save/Cancel; 'Save' is yellow (currently selected) bu
+[1647.3s] #161 save_load_prompt  fast    DOWN DOWN DOWN DOWN DOWN A Need to navigate down to the 'I will not save Replay Data' option at the bottom and confir
+[1659.4s] #162 save_load_prompt  fast    DOWN DOWN A              Need to move down past Save/Cancel to reach 'I will not save Replay Data' option at the bo
+[1668.1s] #163 save_load_prompt  fast    RIGHT A                  This is a confirmation dialog asking to save replay data; choosing No avoids the save and 
+[1685.5s] #164 save_load_prompt  fast    DOWN DOWN DOWN DOWN DOWN DOWN A Need to move the cursor down past all six slots to reach 'I will not save Replay Data' at 
+[1700.7s] #165 save_load_prompt  fast    DOWN A                   A popup over slot #5 offers Save/Cancel; Save is highlighted but we want to decline saving
+[1710.0s] #166 save_load_prompt  fast    DOWN A                   Cursor is on slot #5; need one more DOWN to reach 'I will not save Replay Data' at the bot
+[1730.1s] #167 save_load_prompt  fast    B                        A Save/Cancel popup is open over slot #6; repeated DOWN+A attempts from here haven't progr
+[1741.4s] #168 save_load_prompt  fast    DOWN A                   Cursor/selection box is between slot #6 and the 'I will not save Replay Data' line; need o
+[1750.0s] #169 save_load_prompt  fast    DOWN A                   Replay save screen; need to move cursor down to 'I will not save Replay Data' line and con
+[1761.3s] #170 save_load_prompt  fast    DOWN DOWN A              A countdown popup is active; need to reach and confirm 'I will not save Replay Data' at th
+[1775.3s] #171 save_load_prompt  fast    B                        Repeated DOWN+A attempts on this screen haven't progressed past it; trying B to cancel out
+[1783.0s] #172 results           fast    A                        This is a results/score tally screen after a run ended; it explicitly prompts A to skip pa
+[1791.2s] #173 results           fast    A                        Results/ranking screen explicitly prompts A:End to dismiss it and move on
+[1800.6s] #174 main_menu         fast    A                        Single Puyo POP is already highlighted (green/enlarged) and is the fastest path to single-
+[1811.5s] #175 submenu           fast    A                        RunRun Course is already highlighted as the default beginner course; pressing A confirms i
+[1821.9s] #176 cutscene          fast    START A                  Narrative intro text box after selecting course; this is a story cutscene, not gameplay ye
+[1831.8s] #177 cutscene          fast    START A                  Story cutscene with dialogue box and explicit 'Press START button' prompt; skip with START
+[1843.7s] #178 loading           fast    wait                     This is a pre-match stage-ready screen (Ready text, REST countdown at 00.00) before the Pu
+[1847.5s] #179 loading           static  wait                     load still on screen (barely changed)
+[1852.9s] #180 loading           static  wait                     load still on screen (barely changed)
+[1857.6s] #181 loading           static  wait                     load still on screen (barely changed)
+[1862.5s] #182 loading           static  wait                     load still on screen (barely changed)
+[1867.2s] #183 loading           static  wait                     load still on screen (barely changed)
+[1876.6s] #184 loading           fast    wait                     REST countdown timers at 15.00 sec on both sides indicate the match hasn't started yet; wa
+[1890.0s] #185 save_load_prompt  fast    RIGHT A                  A save-replay-data Yes/No prompt appeared after the match; choosing No avoids extra save s
+[1899.5s] #186 loading           fast    wait                     A loading overlay is active after declining to save replay data; must wait for it to finis
+[1910.9s] #187 save_load_prompt  fast    DOWN A                   The replay-save menu is still on screen with 'I will not save Replay Data' as the visible 
+[1922.2s] #188 save_load_prompt  fast    DOWN A                   Popup has Save highlighted but we want to decline saving; move down to Cancel then confirm
+[1934.6s] #189 save_load_prompt  fast    DOWN DOWN DOWN DOWN A    Need to move the cursor down past slots #3-#6 to reach 'I will not save Replay Data' then 
+[1945.3s] #190 save_load_prompt  fast    DOWN A                   Save is currently highlighted but we want to decline saving; move DOWN to select Cancel th
+[1955.4s] #191 save_load_prompt  fast    DOWN A                   Cursor is on slot #6, need to move DOWN once more to reach 'I will not save Replay Data' t
+[1963.3s] #192 save_load_prompt  fast    A                        The declining-save option is now highlighted after previous DOWN presses reached it; confi
+[1980.3s] #193 loading           fast    wait                     The big animated 'Continue 4' text overlaying the save prompt looks like a transition/coun
+[1990.3s] #194 results           fast    A                        This is a post-game score tally/breakdown screen with an explicit 'A:Skip' prompt, not pla
+[1998.0s] #195 results           fast    A                        This is a ranking/leaderboard results screen after a game round, not active gameplay; the 
+[2006.7s] #196 main_menu         fast    A                        Single Puyo POP is already highlighted/enlarged as the selected mode, matching the descrip
+[2017.6s] #197 submenu           fast    A                        RunRun Course is the highlighted/enlarged default option, a beginner training course - fas
+[2026.9s] #198 cutscene          fast    START A                  This is a narrative intro sequence with storybook text ('Once upon a time...') before game
+[2036.9s] #199 cutscene          fast    A                        Narrative storybook dialogue continuing from the intro cutscene; advance the text
+[2040.4s] #200 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[2044.0s] #201 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[2048.1s] #202 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[2055.5s] #203 cutscene          fast    A                        narrative text still rendering at bottom; continue advancing dialogue
+[2059.2s] #204 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[2062.7s] #205 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[2066.3s] #206 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[2074.4s] #207 cutscene          fast    A A A A                  Dialogue cutscene still progressing; advancing with A continues the text/story toward game
+[2086.7s] #208 loading           fast    wait                     This looks like a transition/loading screen between the cutscene and gameplay - just an is
+[2096.0s] #209 title_screen      fast    START                    A 'Press START button.' prompt is shown before the match begins; this is the stage-start p
+[2106.9s] #210 pause             fast    A                        This is a pause menu triggered after the START prompt; 'Continue' is highlighted, so press
+[2123.5s] #211 loading           fast    wait                     This is a stage-intro/VS splash screen with REST countdown timers ticking down before the 
+[2128.3s] #212 loading           static  wait                     load still on screen (barely changed)
+[2133.1s] #213 loading           static  wait                     load still on screen (barely changed)
+[2142.2s] #214 save_load_prompt  fast    RIGHT A                  Save Replay Data dialog; default is No, choosing No avoids extra save screens and proceeds
+[2151.6s] #215 loading           fast    wait                     Loading screen after declining to save replay data; must wait for it to finish before the 
+[2161.3s] #216 loading           fast    wait                     transitional loading screen after the save replay dialog, need to wait for the match to ac
+[2165.9s] #217 loading           static  wait                     load still on screen (barely changed)
+[2170.5s] #218 loading           static  wait                     load still on screen (barely changed)
+[2175.1s] #219 loading           static  wait                     load still on screen (barely changed)
+[2180.2s] #220 loading           static  wait                     load still on screen (barely changed)
+[2184.9s] #221 loading           static  wait                     load still on screen (barely changed)
+[2194.1s] #222 save_load_prompt  fast    DOWN A                   A save prompt after the match asking whether to save replay data; choosing not to save is 
+[2207.8s] #223 save_load_prompt  fast    A                        The footer text describes the Cancel option, indicating Cancel is currently highlighted; p
+[2223.6s] #224 save_load_prompt  fast    A                        Yes is already highlighted; confirming is the fastest way to clear this prompt and proceed
+[2230.5s] #225 save_load_prompt  fast    wait                     Save is in progress (saving replay data); must wait for it to complete before any further 
+[2239.1s] #226 save_load_prompt  fast    A                        A save prompt replay slot is selected/highlighted; confirming with A proceeds past this pr
+[2260.3s] #227 save_load_prompt  fast    B                        A context popup over an occupied save slot (Delete/Cancel) appeared; backing out with B av
+[2268.2s] #228 save_load_prompt  fast    DOWN DOWN DOWN DOWN A    A save prompt; choosing not to save is fastest back to gameplay/menu; navigate down to the
+[2284.0s] #229 save_load_prompt  fast    A                        A Save/Cancel popup is open over a replay slot; Cancel appears highlighted (white vs yello
+[2291.7s] #230 save_load_prompt  fast    A                        Yes is already highlighted on this save confirmation popup; confirming with A proceeds pas
+[2299.7s] #231 save_load_prompt  fast    wait                     Save is actively in progress with an explicit warning not to turn off the console; no inpu
+[2313.1s] #232 save_load_prompt  fast    B                        Cursor is on slot #6, not on 'I will not save' option; repeated attempts to save/cancel vi
+[2326.8s] #233 save_load_prompt  fast    DOWN DOWN DOWN DOWN DOWN DOWN DOWN A A countdown overlay is running over a save-replay list; need to move cursor down to 'I wil
+[2342.6s] #234 save_load_prompt  fast    DOWN A                   This is the replay save prompt after game over; need to move cursor down to 'I will not sa
+[2350.9s] #235 results           fast    A                        This is a post-game ranking/leaderboard screen, not gameplay; the prompt says A to End, so
+[2358.7s] #236 main_menu         fast    A                        Single Puyo POP is highlighted and described as single player vs COM, the fastest path to 
+[2368.2s] #237 submenu           fast    A                        RunRun Course is already highlighted as the default beginner training course; pressing A c
+[2379.1s] #238 cutscene          fast    START A                  Story intro cutscene with explicit Press START prompt; pressing START should advance/skip 
+[2389.1s] #239 cutscene          fast    A A A                    This is a story dialogue/cutscene with a text box progressing a conversation; advance it w
+[2398.6s] #240 cutscene          fast    A A A                    Story dialogue box still printing/displaying text; advance with A to continue the conversa
+{"name": "Puyo Pop Fever Europe", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 196, "steps": 240, "replayed": 0, "reason": "budget 40 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

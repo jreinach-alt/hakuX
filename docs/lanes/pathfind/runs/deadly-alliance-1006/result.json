@@ -1,0 +1,81 @@
+{
+ "title_id": "4D57000C",
+ "name": "Mortal Kombat Deadly Alliance",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/4D57000C-Mortal_Kombat_Deadly_Alliance.xiso.iso",
+ "result": "gameplay",
+ "tool": "84dca42871",
+ "started": "2026-10-06 14:09:40 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/deadly-alliance-1006/frames/011-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/deadly-alliance-1006/frames/011-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/deadly-alliance-1006/frames/011-probe-left.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/deadly-alliance-1006/frames/011-probe-right.jpg"
+ ],
+ "minutes": 1.36,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/deadly-alliance-1006/frames/010-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/deadly-alliance-1006/frames/012-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/deadly-alliance-1006/frames/013-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/deadly-alliance-1006/frames/014-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/deadly-alliance-1006/frames/015-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/deadly-alliance-1006/frames/016-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/deadly-alliance-1006/frames/017-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/deadly-alliance-1006/frames/018-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/deadly-alliance-1006/frames/019-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-4D57.md"
+ ],
+ "hold": {
+  "genre": "attack",
+  "why": "Two characters fight in melee under a health bar, with a 'ROUND 1' fight-game HUD.",
+  "ok": false,
+  "play_s": 1495.2,
+  "need_s": 600.0,
+  "hold_s": 1664.3,
+  "model_navs": 7,
+  "frames": 46,
+  "still_windows": 3,
+  "shed": [
+   "B"
+  ],
+  "reason": "verdict stops the hold: fps_ok 0.9955, crash False, hang False",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 132,
+    "median": 41.0,
+    "share": 1.0,
+    "at_s": 191.0,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 219,
+    "median": 41.0,
+    "share": 0.995,
+    "at_s": 310.2,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "verdict": "VERDICT Mortal Kombat Deadly Alliance ? FAIL(hitches: a 5475 ms stall after the first 60 s (bar 500 ms)) gameplay=1665.2s fps_ok=0.9955 crash=False hang=False audio_short=0.0 hitches=4/0.15pm worst_ms=5475.0 static_frac=0.0 play_share=0.9011 fps_excluded=165.4s"
+ },
+ "model_calls": 28,
+ "calls_by_model": {
+  "claude-sonnet-5": 28
+ },
+ "steps": 11,
+ "seconds": 1790.8,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/deadly-alliance-1006/frames/159-hold.jpg",
+ "last_state": "probe",
+ "replayed": 7,
+ "sib_replayed": 0,
+ "guide": [
+  "4D57000C"
+ ],
+ "cheap": 1,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/deadly-alliance-1006/strip.jpg"
+}

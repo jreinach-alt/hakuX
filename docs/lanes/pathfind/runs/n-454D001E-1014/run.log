@@ -1,0 +1,43 @@
+pathfind: Jacked Europe En Fr De Es It (454D001E) on nova: /storage/E6C6-D7AA/Games/XBox/454D001E-Jacked_Europe_En_Fr_De_Es_It.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 454D001E any, loaded none
+[  14.5s] #  1 publisher_logo    fast    A                        First frame after boot shows a publisher's animated logo; standard intro to skip
+[  24.6s] #  2 loading           fast    wait                     Loading screen with animated background and 'loading' text; no input needed yet.
+[  30.2s] #  3 black             black   wait                     black frame
+[  43.0s] #  4 publisher_logo    fast    A                        Dolby Digital audio logo after loading; skip with A per standard intro protocol.
+[  56.4s] #  5 title_screen      fast    START                    Title screen with explicit 'PRESS START BUTTON' prompt; proceed with START to reach the ma
+[  72.0s] #  6 profile_creation  fast    A                        Empty profile list requires selecting a slot to create a profile. The first profile is hig
+[  92.0s] #  7 profile_creation  fast    A                        Character selection within profile creation; 'kurtis' is highlighted/default; accept with 
+[ 120.1s] #  8 name_entry        fast    START A                  Keyboard interface for profile name entry. Per instructions, prefer START to jump to OK/Do
+[ 212.9s] #  9 name_entry        fast    DOWN RIGHT RIGHT RIGHT A Still on keyboard. Previous 'START A' had no effect. START likely does not jump to OK in t
+[ 270.3s] # 10 name_entry        fast    RIGHT A                  Still on the keyboard for profile name entry. The OK button is visible and orange (highlig
+[ 356.4s] # 11 name_entry        fast    LEFT A                   Cursor is on OK (right side). Pressing A on OK has not worked (tried START A, DOWN RIGHT R
+[ 454.6s] # 12 name_entry        fast    A STICK:right:2 A        Still on the keyboard name-entry screen. Previous arrow-key navigation (DOWN, RIGHT, LEFT)
+[ 550.9s] # 13 name_entry        fast    UP LEFT A DOWN RIGHT A   Still on keyboard after multiple A presses on OK failed; name field likely empty. Need to 
+[ 644.8s] # 14 name_entry        fast    UP A DOWN A              Stuck on keyboard after multiple A presses on OK failed; name field likely empty (empty na
+[ 702.7s] # 15 name_entry        fast    STICK:up:1 A             Stuck on the keyboard; pressing A on OK has failed multiple times. D-pad navigation has no
+[ 767.3s] # 16 name_entry        fast    B                        Stuck: A-press, D-pad navigation, and stick input have all done nothing on this unchanged 
+[ 777.9s] # 17 submenu           fast    A                        Character selection during profile creation; Kurtis is highlighted; pressing A accepts the
+[ 818.5s] # 18 name_entry        fast    START                    Still on keyboard with incomplete/garbled name 'YVV_'. Previous A-presses on OK and D-pad 
+[ 831.7s] # 19 loading           fast    wait                     The game is auto-saving the profile after name creation; no input is required, just wait f
+[ 848.7s] # 20 submenu           fast    A                        Main game mode selection menu after profile creation completed. MISSION MODE is the first 
+[ 865.7s] # 21 submenu           fast    A                        Track/location selection screen. Map display with menu on the right; bottom prompt 'ENTER 
+[ 879.3s] # 22 submenu           fast    A                        Mission/track selection screen. The prompt 'CHOOSE MISSION ▲' indicates A accepts this mis
+[ 896.9s] # 23 submenu           fast    A                        Bike selection menu after mission choice; 500cc rookie is the focused item; awaiting A to 
+[ 913.2s] # 24 loading           fast    wait                     The word 'loading' is visible and this is a loading/hint overlay between the bike selectio
+[ 941.6s] # 25 submenu           fast    A                        Pre-race start confirmation screen with track fully loaded and visible but player hasn't t
+[ 984.5s] # 26 gameplay          fast    RT:1.5                   Race is active with timer running and full HUD visible; bike positioned at starting line o
+[1015.6s] # 27 probe             probe   RT:1.5 STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.242, under input 0.258
+hold-play: genre drive, need 630 s of play
+hold-play: gas probe RT: band change 0.162 (confirmed)
+hold-play: drive gas confirmed RT (tried ['RT'])
+hold-play: fps at 188 s: median 46.0, share>=30 0.978 over 139 samples
+hold-play: fps at 316 s: median 44.0, share>=30 0.983 over 231 samples
+hold-play: play disagrees: hold 632.5 s, verdict 619.3 s (verdict trusted)
+hold-play: validity check stop 0 s (hold 632 s of play, verdict 619.3)
+hold-play: not held 632/630 s of play; verdict stops the hold: fps_ok 1.0, crash False, hang False
+held Jacked Europe En Fr De Es It for 648s
+VERDICT Jacked Europe En Fr De Es It ? PASS None gameplay=647.5s fps_ok=1.0 crash=False hang=False audio_short=0.000201 hitches=0/0.0pm worst_ms=0.0 static_frac=0.016 play_share=0.9575 fps_excluded=28.7s
+{"name": "Jacked Europe En Fr De Es It", "device": "nova", "result": "gameplay", "minutes": 16.93, "model_calls": 35, "steps": 27, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454D001E-1014/frames/026-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

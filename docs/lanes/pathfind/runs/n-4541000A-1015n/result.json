@@ -1,0 +1,82 @@
+{
+ "title_id": "4541000A",
+ "name": "Knockout Kings 2002 USA",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/4541000A-Knockout_Kings_2002_USA.xiso.iso",
+ "result": "gameplay",
+ "tool": "920a61de3c",
+ "started": "2026-10-16 00:22:51 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4541000A-1015n/frames/013-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4541000A-1015n/frames/013-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4541000A-1015n/frames/013-probe-left.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4541000A-1015n/frames/013-probe-right.jpg"
+ ],
+ "claim_live_selfmove": 3,
+ "minutes": 2.55,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4541000A-1015n/frames/012-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4541000A-1015n/frames/014-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4541000A-1015n/frames/015-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4541000A-1015n/frames/016-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4541000A-1015n/frames/017-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4541000A-1015n/frames/018-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4541000A-1015n/frames/019-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4541000A-1015n/frames/020-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4541000A-1015n/frames/021-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-4541.md"
+ ],
+ "hold": {
+  "genre": "attack",
+  "why": "Boxing ring with a fighter in stance and round timer/number shown, a melee combat sport.",
+  "ok": false,
+  "play_s": 638.4,
+  "need_s": 630.0,
+  "hold_s": 703.2,
+  "model_navs": 3,
+  "frames": 18,
+  "still_windows": 1,
+  "shed": [
+   "B"
+  ],
+  "reversals": 0,
+  "reason": "verdict stops the hold: fps_ok 1.0, crash False, hang False",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 177,
+    "median": 59.0,
+    "share": 1.0,
+    "at_s": 181.8,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 305,
+    "median": 59.0,
+    "share": 0.997,
+    "at_s": 312.2,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "stuck_abort": false,
+  "verdict": "VERDICT Knockout Kings 2002 USA ? PASS None gameplay=703.6s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=7/0.653pm worst_ms=233.6 static_frac=0.0 play_share=0.9096 fps_excluded=65.5s"
+ },
+ "model_calls": 24,
+ "calls_by_model": {
+  "claude-sonnet-5": 24
+ },
+ "steps": 13,
+ "seconds": 900.0,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4541000A-1015n/frames/073-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4541000A-1015n/strip.jpg"
+}

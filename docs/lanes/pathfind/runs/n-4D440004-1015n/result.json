@@ -1,0 +1,81 @@
+{
+ "title_id": "4D440004",
+ "name": "Stake USA En Fr De Es It",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/4D440004-Stake_USA_En_Fr_De_Es_It.xiso.iso",
+ "result": "gameplay",
+ "tool": "920a61de3c",
+ "started": "2026-10-16 04:25:48 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D440004-1015n/frames/010-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D440004-1015n/frames/010-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D440004-1015n/frames/010-probe-left.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D440004-1015n/frames/010-probe-right.jpg"
+ ],
+ "minutes": 1.61,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D440004-1015n/frames/009-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D440004-1015n/frames/011-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D440004-1015n/frames/012-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D440004-1015n/frames/013-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D440004-1015n/frames/014-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D440004-1015n/frames/015-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D440004-1015n/frames/016-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D440004-1015n/frames/017-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D440004-1015n/frames/018-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-4D44.md"
+ ],
+ "hold": {
+  "genre": "attack",
+  "why": "Character standing on terrain with health bar and combo counter, positioned for melee combat, not driving or shooting.",
+  "ok": false,
+  "play_s": 403.0,
+  "need_s": 630.0,
+  "hold_s": 556.8,
+  "model_navs": 4,
+  "frames": 15,
+  "still_windows": 4,
+  "shed": [
+   "B"
+  ],
+  "reversals": 0,
+  "reason": "off play 153 s of a 556 s scored window cannot drop to 10% with 846 s of budget left: no amount of further play can pass",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 173,
+    "median": 58.0,
+    "share": 1.0,
+    "at_s": 183.0,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 285,
+    "median": 58.0,
+    "share": 1.0,
+    "at_s": 301.5,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "stuck_abort": false,
+  "verdict": "VERDICT Stake USA En Fr De Es It ? FAIL(duration: 557 s of gameplay < 600 s confirmation) gameplay=556.8s fps_ok=0.9939 crash=False hang=False audio_short=0.000306 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0006 play_share=0.7253 fps_excluded=155.7s"
+ },
+ "model_calls": 22,
+ "calls_by_model": {
+  "claude-sonnet-5": 22
+ },
+ "steps": 10,
+ "seconds": 698.2,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D440004-1015n/frames/065-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D440004-1015n/strip.jpg"
+}

@@ -1,0 +1,157 @@
+pathfind: Batman Dark Tomorrow (4B420001) on nova: /storage/E6C6-D7AA/Games/XBox/4B420001-Batman_Dark_Tomorrow.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4B420001 any, loaded golden 1117346a0efc
+[   8.8s] #  1 publisher_logo    fast    A                        A green logo sits on a white screen during boot, which looks like a publisher or developer
+[  16.2s] #  2 publisher_logo    fast    A                        Developer/publisher logo on boot, no title or menu yet; the last A press changed the scree
+[  23.7s] #  3 publisher_logo    fast    A                        Developer logo (HotGen Studios) during boot, no title or menu yet. Previous A press change
+[  33.1s] #  4 publisher_logo    fast    A                        Publisher logo before the title screen; a new logo is progress. Skip with A, as with the p
+[  40.6s] #  5 publisher_logo    fast    A                        Title-card logo animation before the title screen, not yet a menu; a new logo/intro is pro
+[  48.2s] #  6 title_screen      fast    A                        Main menu is up with NEW GAME as the brightest, default highlighted item; New Game is the 
+[  56.7s] #  7 cutscene          fast    START                    A cinematic city flyover after New Game with letterbox bars and no player control, so it i
+[  66.3s] #  8 cutscene          fast    START                    Letterbox bars and a cinematic framing with the character shown as a camera shot, no HUD o
+[  73.8s] #  9 gameplay          fast    wait                     Full HUD with the player-controlled Batman in the open world, no cutscene bars; needs a st
+[  85.0s] # 10 probe             probe   STICK:up:1.5             control 0.036, under input 0.144
+[ 118.3s] # 18 retracted         probe   wait                     retracted after 30 s: The 'GAME OVER' screen with CONTINUE / QUIT GAME options and the SEL
+[ 122.6s] # 19 game_over         fast    A                        Game Over screen with CONTINUE highlighted-by-default in the list; a CONTINUE pick resumes
+[ 133.7s] # 20 submenu           fast    A                        This is an in-game gear selection menu, not gameplay, and it is not a title or main menu. 
+[ 140.4s] # 21 submenu           fast    LEFT A                   Equipment confirmation dialog; YES starts the game. Cursor sits on NO, so move RIGHT to YE
+[ 150.1s] # 22 submenu           fast    A                        In-game gear selection submenu, not gameplay. Per the step history, the next screen is an 
+[ 157.4s] # 23 submenu           fast    LEFT A                   Equipment confirmation dialog. Prior steps say the cursor sits on NO, so move LEFT to YES 
+[ 172.0s] # 24 submenu           fast    UP A                     Still in the in-game Batgear submenu, not gameplay. The cursor is on the middle-left slot,
+[ 181.6s] # 25 submenu           fast    STICK:left:0.5 A         Equipment confirm dialog, which leads to the game. LEFT on the D-pad twice did nothing, so
+[ 190.6s] # 26 submenu           fast    STICK:right:0.5 A        Still the in-game Batgear submenu, not gameplay. Prior A and UP+A on this screen looped ba
+[ 205.0s] # 27 submenu           fast    LEFT HOLD:A:1            Still the equipment confirm dialog. Prior A presses from the NO side looped back, so I hol
+[ 216.5s] # 28 submenu           fast    B                        Still the in-game Batgear submenu, not gameplay. Repeated A, UP+A and stick+A presses loop
+[ 224.9s] # 29 submenu           fast    START                    Still the in-game Batgear submenu, not gameplay. A, UP+A, stick+A, LEFT+A and B all looped
+[ 235.0s] # 30 submenu           fast    UP A                     Still the equipment confirm dialog. A on NO, LEFT/RIGHT and holding A all looped back. The
+[ 244.7s] # 31 gameplay          fast    wait                     Player-controlled Batman in the world with the HUD (health and energy bars) and no menu or
+[ 256.9s] # 32 probe             probe   STICK:up:1.5             control 0.055, under input 0.085
+[ 292.5s] # 41 retracted         probe   wait                     retracted after 30 s: The screen shows a 'GAME OVER' overlay with CONTINUE / QUIT GAME men
+[ 297.5s] # 42 game_over         fast    A                        Game Over screen with CONTINUE at the top, the default item. Quitting would end the run, s
+[ 309.9s] # 43 submenu           fast    B                        Still the in-game Batgear submenu, not gameplay. A and UP+A looped back earlier, so I'm tr
+[ 318.0s] # 44 submenu           fast    DOWN                     Still the Batgear submenu, not gameplay. A, UP+A and B all failed, so I'm moving the curso
+[ 325.2s] # 45 submenu           fast    RIGHT                    Still the in-game Batgear submenu, not gameplay. Earlier A, UP+A, B, START, DOWN all loope
+[ 333.3s] # 46 submenu           fast    X                        Still the in-game Batgear submenu after A, UP+A, B, START, DOWN and RIGHT all looped back.
+[ 344.4s] # 47 submenu           fast    BACK                     In-game Batgear submenu, not gameplay. A, UP+A, B, START, DOWN, RIGHT and X all looped bac
+[ 352.4s] # 48 submenu           fast    Y                        Still the in-game Batgear submenu, not gameplay. A, UP+A, B, START, DOWN, RIGHT, X and BAC
+[ 361.6s] # 49 submenu           fast    R1                       Still the in-game Batgear overlay after A, UP+A, B, START, DOWN, RIGHT, X, BACK and Y all 
+[ 373.3s] # 50 submenu           fast    HOLD:B:2                 Still the Batgear overlay over gameplay; every tap has been ignored, so I'm changing the i
+[ 387.0s] # 51 submenu           fast    HOLD:X:2                 Still the Batgear overlay over gameplay; earlier single taps of A, B, START, X, BACK, Y, R
+[ 398.3s] # 52 submenu           fast    STICK:down:1             Still the Batgear overlay over gameplay. Taps of A, B, START, X, BACK, Y, R1, UP+A and hol
+[ 411.1s] # 53 submenu           fast    HOLD:L1:1.5              Batgear overlay is still open and none of the taps or holds on A, B, START, X, BACK, Y, R1
+[ 420.8s] # 54 submenu           fast    L3 RSTICK:up:1           Batgear overlay still open over gameplay; every A, B, START, X, BACK, Y, R1, D-pad and hol
+[ 431.6s] # 55 submenu           fast    HOLD:B:0.5 LT:1.5        Batgear overlay is still open after many A, B, START, X, BACK, Y, R1, D-pad, stick and L1/
+[ 444.6s] # 56 submenu           fast    HOLD:A:2                 Batgear overlay is still open over gameplay after many taps and holds on A, B, START, X, B
+[ 454.1s] # 57 submenu           fast    LEFT A                   Batgear overlay on top of gameplay, so this is not gameplay yet. The Yes/No dialog is a co
+[ 464.7s] # 58 submenu           fast    RIGHT A                  Batgear overlay is still open on top of gameplay, so not gameplay yet. Earlier taps of the
+[ 474.4s] # 59 submenu           fast    LEFT A                   Still on the Batgear overlay's Yes/No confirm, not gameplay. Choosing YES starts the game 
+[ 484.9s] # 60 submenu           fast    HOLD:START:2             The Batgear overlay is still open over the scene, so this is not gameplay. Earlier taps of
+[ 495.7s] # 61 submenu           fast    B                        Yes/No confirm has not advanced after LEFT A and RIGHT A, so the confirm is not taking. Pr
+[ 503.4s] # 62 submenu           fast    B                        Batgear overlay is still open over the scene, so this is not gameplay. No confirm is showi
+[ 514.6s] # 63 submenu           fast    BACK                     Batgear overlay is still open over gameplay, so not gameplay. B did nothing on this screen
+[ 524.3s] # 64 submenu           fast    STICK:down:0.5           Batgear overlay is still open, so this is not gameplay. A, B, BACK and START were already 
+[ 533.2s] # 65 submenu           fast    Y X                      The Batgear overlay is still open, so this is not gameplay. A, B, BACK, START and stick do
+[ 545.5s] # 66 submenu           fast    X                        Batgear overlay is still open; A, B, START, BACK, stick down and Y X were already tried wi
+[ 553.8s] # 67 submenu           fast    RIGHT DOWN LEFT          Batgear overlay is still open and the buttons and stick tried so far did nothing. Trying t
+[ 563.8s] # 68 submenu           fast    R1 L1 B                  Batgear overlay is still open over the city scene, so this is not gameplay. A, B, START, B
+[ 576.1s] # 69 submenu           fast    HOLD:B:1.5 LT:1          Batgear overlay is still open and every button and stick direction tried so far did nothin
+[ 587.7s] # 70 submenu           fast    L3 R3                    Still the Batgear overlay. A, B, START, BACK, the stick, the D-pad, X, Y, R1, L1 and HOLD:
+[ 597.0s] # 71 submenu           fast    RSTICK:up:1.5 RSTICK:down:1.5 Still the Batgear overlay after many inputs, none of which closed it. Untried so far is th
+[ 614.0s] # 72 submenu           fast    RT:1.5                   Batgear overlay still open after many inputs. Right trigger has not been tried yet, so hol
+[ 624.5s] # 73 submenu           fast    DOWN A                   Batgear overlay is still open. Earlier buttons and sticks did nothing, so I'll move the cu
+[ 632.0s] # 74 submenu           fast    LEFT A                   Confirmation dialog 'Start the game with this equipment?' is up; the last step moved the c
+[ 640.8s] # 75 submenu           fast    A                        Still the Batgear selection submenu; the last step opened a 'Start the game with this equi
+[ 651.3s] # 76 submenu           fast    LEFT A                   Previous A on the dialog left us here, so the cursor is probably on NO. YES is to the left
+[ 661.7s] # 77 submenu           fast    B                        Repeated A and LEFT/RIGHT presses on this overlay have not started the game, so I'm backin
+[ 670.4s] # 78 submenu           fast    START                    Batgear overlay is still open and A, LEFT, DOWN and B have not moved it. The hint says STA
+[ 681.6s] # 79 submenu           fast    STICK:left:0.5 A         Two LEFT+A tries came back to this dialog, so D-pad LEFT may not be moving the highlight. 
+[ 690.7s] # 80 submenu           fast    A                        Still the Batgear submenu. Last step held LEFT stick and A, which per history left the dia
+[ 700.1s] # 81 submenu           fast    RIGHT A                  Still the same confirm dialog after A, LEFT+A, STICK+A and B. I can't tell which option is
+[ 707.9s] # 82 submenu           fast    UP B                     Still on the Batgear submenu with a confirm dialog, and every prior input has looped here.
+[ 719.5s] # 83 submenu           fast    START                    Batgear overlay is still open after many A/B/LEFT/RIGHT tries that looped. Trying START, w
+[ 729.5s] # 84 submenu           fast    HOLD:A:1                 Same confirm dialog after many A/B/LEFT/RIGHT/START tries that looped. Not yet tried: hold
+[ 738.4s] # 85 gameplay          fast    wait                     Live third-person Batman scene with the HUD up (health and energy bars, Batgear icon) and 
+[ 750.7s] # 86 probe             probe   HOLD:A:3                 control 0.023, under input 0.085
+[ 757.3s] # 87 gameplay          fast    wait                     Live combat scene with the HUD up and no menu or dialog on screen. Earlier probe was refus
+[ 773.0s] # 88 probe             probe   HOLD:A:3 HOLD:A:3 HOLD:A:3 control 0.146, under input 0.199; 2 of 3 idle/input rounds won
+[ 781.6s] # 89 gameplay          fast    wait                     HUD is up, no menu or dialog is open, and the third-person Batman scene is live. The last 
+[ 794.1s] # 90 probe             probe   STICK:left:1.5 STICK:left:1.5 STICK:left:1.5 control 0.039, under input 0.021
+[ 800.9s] # 91 gameplay          fast    wait                     HUD is up and Batman is live in the combat scene with no menu open. Earlier stick probes b
+[ 816.4s] # 92 probe             probe   STICK:upright:1.5 STICK:upright:1.5 STICK:upright:1.5 control 0.007, under input 0.007
+[ 823.3s] # 93 gameplay          fast    wait                     HUD is up, no menu is open, and the scene is live. Recent stick probes barely moved the vi
+[ 834.7s] # 94 probe             probe   RSTICK:right:1.5 RSTICK:right:1.5 RSTICK:right:1.5 control 0.009, under input 0.007
+[ 841.9s] # 95 gameplay          fast    wait                     HUD is up and no menu is open, but the last three stick probes left the view unchanged, so
+[ 857.0s] # 96 probe             probe   STICK:down:1.5 STICK:down:1.5 STICK:down:1.5 control 0.018, under input 0.008
+[ 863.6s] # 97 gameplay          fast    wait                     HUD is up and no menu is open. The earlier probes used only the upright, down and right-st
+[ 873.2s] # 98 probe             probe   STICK:left:1.5           control 0.003, under input 0.006
+[ 880.1s] # 99 gameplay          fast    wait                     Player character and HUD are live with no menu open. The last stick probes (up, down, righ
+[ 891.9s] #100 probe             probe   STICK:upright:1.5        control 0.004, under input 0.018
+[ 896.4s] #101 gameplay          fast    STICK:upright:2          HUD and health bars are up with no menu open. The last probe (STICK:upright:1.5) changed t
+[ 913.3s] #102 probe             probe   STICK:upright:2 RT:3 RT:3 RT:3 control 0.015, under input 0.011
+[ 922.6s] #103 gameplay          fast    STICK:up:1               HUD and health bars are up with no menu, and the earlier probes moved the view slightly. T
+[ 938.2s] #104 probe             probe   STICK:up:1 RT:3 RT:3 RT:3 control 0.007, under input 0.007
+[ 945.0s] #105 gameplay          fast    wait                     HUD and health bars are up with no menu open, and the player character is live in the worl
+[ 957.5s] #106 probe             probe   HOLD:X:3                 control 0.006, under input 0.066
+[ 990.6s] #114 retracted         probe   wait                     retracted after 30 s: The screen shows a 'GAME OVER' overlay with CONTINUE / QUIT GAME men
+[ 995.0s] #115 game_over         fast    A                        Game Over screen with a CONTINUE option; the history says CONTINUE led back into play, so 
+[1003.8s] #116 pause             fast    B                        A Batgear selection menu is open over gameplay; it is a menu, not live play. Press B to ba
+[1010.9s] #117 pause             fast    A                        Batgear selection submenu open over gameplay; it is a menu, not live play. B did nothing, 
+[1021.7s] #118 pause             fast    LEFT A                   Confirmation dialog, not live play. Cursor appears on NO, so LEFT moves to YES, then A con
+[1030.0s] #119 pause             fast    B                        Batgear selection submenu is a menu over gameplay, not live play. Previous step confirmed 
+[1038.5s] #120 pause             fast    START                    Batgear submenu over gameplay, not live play. B, A, B and LEFT+A did not close it, so I'm 
+[1049.2s] #121 pause             fast    STICK:left:0.3 A         Still a menu over the game, not live play. The earlier LEFT+A, B and START did not close i
+[1061.4s] #122 pause             fast    BACK                     Batgear menu is still open over gameplay; B, A, START and LEFT+A did not close it. Trying 
+[1069.9s] #123 pause             fast    Y                        Batgear menu is still open over gameplay, so this is not live play. B, A, START, BACK, LEF
+[1078.5s] #124 pause             fast    X B                      Still a Batgear submenu over gameplay, not live play. B, A, START, BACK, Y and LEFT+A did 
+[1087.3s] #125 pause             fast    HOLD:B:1.5               Batgear submenu over gameplay, not live play. Earlier B, A, START, BACK, Y, X+B and LEFT+A
+[1099.2s] #126 pause             fast    R1                       Batgear submenu is still open over gameplay. B, A, START, BACK, Y, X+B, HOLD:B and LEFT+A 
+[1108.6s] #127 pause             fast    HOLD:L1:1.5              Batgear menu is still open over gameplay. Tried A, B, X, Y, START, BACK, R1, HOLD:B, X+B a
+[1119.0s] #128 pause             fast    R3 L3 LT:1               Batgear menu is open over live gameplay. A, B, X, Y, START, BACK, R1, L1 and the d-pad/sti
+[1132.6s] #129 pause             fast    RT:2                     Batgear menu is still open over gameplay, and every button tried so far, including the tri
+[1144.5s] #130 pause             fast    STICK:down:0.5 A         Batgear menu is still open over live gameplay, and every button tried so far (including tr
+[1152.3s] #131 pause             fast    STICK:left:0.3 A         Batgear confirmation dialog is a menu over the game, not live play. Previous attempts to c
+[1165.4s] #132 pause             fast    HOLD:A:1.5               Batgear menu is still open over gameplay; earlier B, A, START, BACK and stick combos did n
+[1175.7s] #133 pause             fast    LEFT A                   Yes/No dialog with side-by-side options. Previous STICK:left attempts came back here, so I
+[1186.3s] #134 pause             fast    HOLD:B:2                 Still the Batgear overlay over live gameplay. Earlier B, A, START, BACK and short stick co
+[1199.2s] #135 pause             fast    X Y                      Batgear overlay is still open over live gameplay. Earlier B, A, START, BACK, triggers and 
+[1208.2s] #136 pause             fast    L1 R1 L3 R3              Batgear overlay is still open over live gameplay. B, A, START, BACK, triggers, stick and X
+[1219.5s] #137 pause             fast    RSTICK:down:1.5 HOLD:B:2 Batgear overlay is still open over live gameplay. Earlier B, A, START, BACK, triggers, sti
+[1234.8s] #138 pause             fast    HOLD:START:2             Batgear overlay is still open over live gameplay after many short presses failed. Trying a
+[1243.6s] #139 pause             fast    LEFT A                   Still a pause/Batgear overlay over live gameplay, not gameplay. The confirm dialog default
+[1252.2s] #140 pause             fast    B                        Batgear overlay is still open over live gameplay, not gameplay. Previous attempts to dismi
+[1262.9s] #141 pause             fast    HOLD:A:2                 Batgear overlay is still open over live gameplay; B, A, START, BACK, triggers, sticks, X, 
+[1274.3s] #142 pause             fast    STICK:left:0.5 LEFT A    Batgear confirm dialog is still open over the level, and the earlier LEFT A presses return
+[1285.1s] #143 gameplay          fast    wait                     Live Batman level with the HUD up and no menu or overlay on screen; the earlier pause/Batg
+[1299.6s] #144 probe             probe   HOLD:X:3 HOLD:X:3 HOLD:X:3 control 0.024, under input 0.027
+[1303.5s] #145 gameplay          fast    wait                     Live Batman level with full HUD and no menu or overlay; the earlier pause/Batgear dialog i
+[1307.3s] #146 probe             probe   LT:2                     control 0.504, under input 0.295
+[1311.2s] #147 game_over         fast    UP A                     Game Over screen with CONTINUE and QUIT GAME; CONTINUE is the top option and the one to re
+[1320.8s] #148 pause             fast    A                        Batgear selection submenu is open over the level, not live play. Confirm the highlighted g
+[1327.8s] #149 pause             fast    A                        Confirmation dialog for starting the game with the chosen gear; YES is the highlighted def
+[1337.9s] #150 gameplay          fast    wait                     Full HUD with the player character in the playfield and no menu, pause, or cutscene bars; 
+[1350.2s] #151 probe             probe   LT:2 LT:2 LT:2           control 0.049, under input 0.015
+[1354.6s] #152 gameplay          fast    wait                     Full Batman HUD (emblem, health bar, 100 counter) is up, no menu or pause or bars; the pre
+[1367.4s] #153 probe             probe   HOLD:B:3 HOLD:B:3 HOLD:B:3 control 0.006, under input 0.009
+[1371.4s] #154 game_over         fast    UP A                     Player died in gameplay; the Game Over screen is not live play. CONTINUE is the dimmed ite
+[1380.9s] #155 game_over         fast    B                        Player died; the Game Over prompt asks whether to return to the main menu. CANCEL is the h
+[1388.6s] #156 game_over         fast    UP A                     Player died and this is the Game Over menu, not live play. CONTINUE is the top item and QU
+[1400.6s] #157 pause             fast    B                        A Batgear selection menu overlay is open over the city view; it is a menu, not free play. 
+[1407.6s] #158 pause             fast    A                        Batgear selection menu is open over gameplay, not free play. B did nothing last time. Pres
+[1416.0s] #159 pause             fast    A                        Batgear confirm dialog over the city, not free play. YES appears highlighted (brighter tha
+[1424.3s] #160 gameplay          fast    wait                     HUD is up with Batman and enemies in the playfield and no menu open, so this is live play;
+[1439.4s] #161 probe             probe   HOLD:B:3                 control 0.020, under input 0.175
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 184 s: median 58.0, share>=30 0.994 over 156 samples
+hold-play: fps at 307 s: median 50.0, share>=30 0.996 over 246 samples
+hold-play: 3 still looks: walk reversed (back) at 759 s
+hold-play: 3 still looks: walk reversed (forward) at 860 s
+hold-play: 3 still looks: walk reversed (back) at 993 s
+hold-play: 3 still looks: walk reversed (forward) at 1177 s
+hold-play: 3 still looks: walk reversed (back) at 1213 s
+hold-play: 3 still looks: walk reversed (forward) at 1304 s
+hold-play: not held 241/600 s of play; budget 47 min with 241 s of play
+held Batman Dark Tomorrow for 1358s
+VERDICT Batman Dark Tomorrow ? FAIL(menu time: 17.8% of the scored window in `play` (bar 90%; still 1101 s, play 241 s, menu 14 s, no-timeline 0 s)) gameplay=1355.9s fps_ok=0.9876 crash=False hang=False audio_short=0.0 hitches=3/0.139pm worst_ms=824.8 static_frac=0.0815 play_share=0.1777 fps_excluded=1119.3s
+{"name": "Batman Dark Tomorrow", "device": "nova", "result": "gameplay", "minutes": 23.99, "model_calls": 169, "steps": 139, "replayed": 0, "reason": "four probes refused", "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batmandt-1006/frames/160-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

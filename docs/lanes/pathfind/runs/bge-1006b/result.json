@@ -1,0 +1,43 @@
+{
+ "title_id": "55530018",
+ "name": "Beyond Good Evil",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/55530018-Beyond_Good_Evil.xiso.iso",
+ "result": "diverged",
+ "tool": "3624b0a01d",
+ "started": "2026-10-06 22:13:27 PDT",
+ "claim_live_selfmove": 3,
+ "minutes": 11.05,
+ "gameplay_frame": null,
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/bge-1006b/frames/116-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/bge-1006b/frames/117-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/bge-1006b/frames/118-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/bge-1006b/frames/119-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/bge-1006b/frames/120-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/bge-1006b/frames/121-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/bge-1006b/frames/122-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/bge-1006b/frames/123-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/bge-1006b/frames/124-after.jpg"
+ ],
+ "retracted": 5,
+ "reason": "replay diverged at recorded step 8 (cutscene: This is a cinematic space shot with no HUD or player-controlled element, so it is not gameplay. Prior history shows STAR)",
+ "step": 8,
+ "frame": "frames/125-diverged.jpg",
+ "model_calls": 40,
+ "calls_by_model": {
+  "claude-sonnet-5": 40
+ },
+ "steps": 85,
+ "seconds": 663.0,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/bge-1006b/frames/125-diverged.jpg",
+ "last_state": "diverged",
+ "replayed": 4,
+ "sib_replayed": 0,
+ "guide": [
+  "55530018"
+ ],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/bge-1006b/strip.jpg"
+}

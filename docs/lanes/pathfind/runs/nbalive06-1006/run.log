@@ -1,0 +1,33 @@
+pathfind: NBA Live 06 (4541007A) on nova: /storage/E6C6-D7AA/Games/XBox/4541007A-NBA_Live_06.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4541007A any, loaded none
+[   5.7s] #  1 publisher_logo    sibreplay A                        sibling 45410038 step 0: sibling 45410050 step 0: Early boot publisher/splash logo (EA-sty
+[  13.5s] #  2 publisher_logo    fast    A                        This is the standard Xbox boot logo shown before publisher/game content; skip with A per h
+[  21.5s] #  3 publisher_logo    fast    A                        Standard EA Sports publisher logo screen before the title; skip with A per EA hints.
+[  32.3s] #  4 publisher_logo    fast    A                        Another EA Sports publisher logo screen before the title; continue skipping with A per EA 
+[  40.3s] #  5 publisher_logo    fast    A                        Still the game's title/branding splash with no menu highlight; continue skipping per EA hi
+[  50.0s] #  6 title_screen      fast    START                    Screen explicitly says 'Press START' and A was already unresponsive here per history; this
+[  61.3s] #  7 main_menu         fast    A                        PLAY NOW is highlighted as default; pressing A selects it, fastest path to play with defau
+[  75.6s] #  8 submenu           fast    LEFT A                   Both controller icons are in the middle column, meaning no team is assigned to a human pla
+[  84.3s] #  9 submenu           fast    A                        Jersey/team confirm screen with defaults shown; A advances forward per footer prompt and E
+[  95.3s] # 10 submenu           fast    DOWN RIGHT RIGHT RIGHT RIGHT RIGHT Sports setup rule: set Quarter Length to longest before tip-off. Cursor is on Skill Level;
+[ 105.9s] # 11 submenu           fast    RIGHT RIGHT              Quarter Length is highlighted at 10 Minutes, not yet the longest option per the sports set
+[ 113.8s] # 12 submenu           fast    A                        Quarter Length is now at 12 Minutes, the longest option, satisfying the sports setup rule.
+[ 122.9s] # 13 loading           fast    wait                     This is a loading/tips screen between the quarter-length confirm and the actual game; the 
+[ 136.2s] # 14 gameplay          fast    STICK:down:1.5           Full HUD, live playfield with players mid-action (a shot attempt) and no menu/banner visib
+[ 144.4s] # 15 probe             probe   STICK:down:1.5 STICK:down:1.5 control 0.610, under input 0.174
+[ 152.4s] # 16 cutscene          fast    START A                  This is a pre-game broadcast intro/scoreboard card (letterboxed), not player-controlled pl
+[ 165.5s] # 17 gameplay          fast    STICK:down:1.5           Live court view with HUD, scoreboard and game clock (11:58), controlled player PARKER mark
+[ 192.6s] # 18 probe             probe   STICK:down:1.5 STICK:down:1.5 STICK:left:1.2 STICK:right:1.2 control 0.601, under input 0.392
+[ 201.0s] # 19 gameplay          fast    STICK:up:1.5             Full HUD, scoreboard, running game clock, and a controlled player (Wallace, dribbling) in 
+[ 240.6s] # 20 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.852, under input 0.676
+claim: 3 live reads with self-moving refused probes: entering the hold
+hold-play: sports look {'clock': '11:39', 'period': '1st', 'human_controlled': True, 'why': 'Wallace is highlighted with ball in hand and name tag shown, indicating player control; no controller icon visible but active ball handler is marked.'}
+hold-play: genre team, need 600 s of play
+hold-play: fps at 189 s: median 19.0, share>=30 0.032 over 63 samples -> STOP (not on course)
+hold-play: not held 188/600 s of play; fps gate at 3:08: median 19 < 22, 3% of 63 samples at >= 28.5
+held NBA Live 06 for 190s
+VERDICT NBA Live 06 ? FAIL(duration: 187 s of gameplay < 600 s confirmation) gameplay=187.4s fps_ok=0.0 crash=False hang=False audio_short=0.0 hitches=1/0.471pm worst_ms=110.4 static_frac=0.0683 play_share=0.9992 fps_excluded=0.0s
+{"name": "NBA Live 06", "device": "nova", "result": "gameplay", "minutes": 4.01, "model_calls": 22, "steps": 20, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nbalive06-1006/frames/019-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

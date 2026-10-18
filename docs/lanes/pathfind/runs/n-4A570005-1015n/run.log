@@ -1,0 +1,46 @@
+pathfind: Ski Racing 2005 Europe (4A570005) on nova: /storage/E6C6-D7AA/Games/XBox/4A570005-Ski_Racing_2005_Europe.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4A570005 any, loaded none
+[  10.7s] #  1 loading           fast    wait                     Screen is mostly blank with a faint watermark, consistent with an emulator/game loading st
+[  19.6s] #  2 loading           fast    wait                     Blank/textured screen with no discernible UI elements suggests a loading or transition scr
+[  28.8s] #  3 intro_video       fast    START A                  Fiery cinematic imagery with no menu text or HUD, consistent with an intro video sequence;
+[  37.2s] #  4 intro_video       fast    START A                  Letterboxed scenic cinematic with no UI continues from the previous intro video; skip it
+[  46.9s] #  5 title_screen      fast    START                    Title screen prompts START to begin
+[  56.0s] #  6 save_load_prompt  fast    X                        Creating a profile would add name-entry steps; the footer offers X to play without saving,
+[  65.8s] #  7 save_load_prompt  fast    A                        A popup dialog is covering the profile select screen; need to dismiss it with A (OK) first
+[  72.8s] #  8 save_load_prompt  fast    X                        Profile select screen with Create New highlighted and empty slots; fastest path to play is
+[  82.5s] #  9 main_menu         fast    A                        WORLD CUP is already highlighted and is the default fastest path into play per the footer 
+[  90.4s] # 10 submenu           fast    A                        This is a skier-selection screen with an empty FREE SLOT; footer explicitly says A CREATE 
+[  98.7s] # 11 submenu           fast    A                        This is a skier creation/customization screen with defaults already filled in; footer expl
+[ 105.4s] # 12 name_entry        fast    A                        The 'ok' button is already highlighted on the keyboard; pressing A should confirm/accept a
+[ 113.4s] # 13 name_entry        fast    A                        The 'ok' key is highlighted; pressing A should confirm the selection and proceed past name
+[ 133.0s] # 14 name_entry        fast    LEFT LEFT LEFT A         Pressing A on 'ok' twice already did nothing (screen barely changed), likely because the n
+[ 148.5s] # 15 name_entry        fast    RIGHT RIGHT RIGHT A      cursor is on 'Z' key, not on 'ok'; need to move right three times to reach 'ok' then press
+[ 158.3s] # 16 submenu           fast    START                    Skier creation finished and now on select-skier screen with the new skier 'Z' shown; press
+[ 167.8s] # 17 cutscene          fast    START A                  Scenic flythrough with no HUD or menu, likely an intro/establishing cutscene before gamepl
+[ 179.1s] # 18 submenu           fast    START                    This is a stage select menu with CONTINUE mapped to A at the bottom; pressing A should pro
+[ 187.2s] # 19 submenu           fast    A                        This is event select with CONTINUE explicitly mapped to A (green A icon), not START as pre
+[ 196.8s] # 20 gameplay          fast    STICK:up:1.5             This is the start of a ski race run with the course visible and a start-boost tip; the pla
+[ 213.4s] # 21 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.420, under input 0.791
+[ 217.6s] # 22 gameplay          fast    STICK:up:1.5             Player-controlled skier at the start gate with HUD visible; this is the race run, probe to
+[ 233.5s] # 23 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.256, under input 0.563
+[ 238.2s] # 24 cutscene          fast    A                        SKIP REPLAY prompt and 0 km/h / 00:00:00 timer indicate this is a replay or pre-start sequ
+[ 246.3s] # 25 submenu           fast    A                        Disqualified popup with RETRY highlighted; selecting RETRY restarts the race run fastest w
+[ 255.4s] # 26 title_screen      fast    START                    This is a pre-race prompt waiting for START to begin the run, not yet live gameplay
+[ 263.0s] # 27 title_screen      fast    START                    This looks like the pre-start gate view waiting for START to begin the run, not yet in the
+[ 270.3s] # 28 pause             fast    B                        Game is paused mid-race; need to resume gameplay rather than retry, so press B to return t
+[ 283.4s] # 29 gameplay          fast    STICK:down:1.5           Player is in the starting gate ready to push off; HUD and course are visible, this is the 
+[ 298.7s] # 30 probe             probe   STICK:down:1.5 STICK:down:1.5 STICK:left:1.2 STICK:right:1.2 control 0.664, under input 0.730
+claim: 3 live reads with self-moving refused probes: entering the hold
+hold-play: genre drive, need 630 s of play
+hold-play: gas probe RT: band change 0.442 (confirmed)
+hold-play: drive gas confirmed RT (tried ['RT'])
+hold-play: fps at 187 s: median 59.0, share>=30 1.0 over 187 samples
+hold-play: fps at 303 s: median 59.0, share>=30 1.0 over 303 samples
+hold-play: off play 146 s of a 604 s scored window cannot drop to 10% with 799 s of budget left: no amount of further play can pass
+hold-play: not held 453/630 s of play; off play 146 s of a 604 s scored window cannot drop to 10% with 799 s of budget left: no amount of further play can pass
+held Ski Racing 2005 Europe for 606s
+VERDICT Ski Racing 2005 Europe ? FAIL(menu time: 75.8% of the scored window in `play` (bar 90%; play 458 s, period_break 45 s, cutscene 34 s, menu 33 s)) gameplay=604.5s fps_ok=1.0 crash=False hang=False audio_short=0.000142 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0 play_share=0.7578 fps_excluded=147.7s
+{"name": "Ski Racing 2005 Europe", "device": "nova", "result": "gameplay", "minutes": 4.98, "model_calls": 54, "steps": 30, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4A570005-1015n/frames/029-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

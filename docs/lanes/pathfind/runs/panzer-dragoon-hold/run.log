@@ -1,0 +1,14 @@
+taken: nova by lane.pathfind
+NOT IDLE: nova is held but busy -- do not touch it yet:
+dispatcher pid 1299872 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+running: 1791042391-arms-memfast-w1-fix-1542161 on nova
+run: hold.sh wait-idle nova <timeout_s>, and touch the device only on exit 0
+waiting for nova: dispatcher pid 1299872 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+running: 1791042391-arms-memfast-w1-fix-1542161 on nova
+dispatcher pid 1299872 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+running: 1791042391-arms-memfast-w1-fix-1542161 on nova
+hold.sh: nova still busy after 900 s; the hold is still yours to keep or release
+not idle
+released: nova by lane.pathfind
+released rc=0
+held Panzer Dragoon Orta for 740s

@@ -1,0 +1,38 @@
+pathfind: Crash Bandicoot: The Wrath of Cortex (56550003) on nova: /storage/E6C6-D7AA/Games/XBox/56550003-Crash_Bandicoot_The_Wrath_of_Cortex.xiso.iso
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 56550003 any, loaded golden a0b01ac26bf6
+[   3.5s] #  1 publisher_logo    sibreplay A                        sibling 504C0001 step 0: Early boot (0.1 min) showing a logo animation with no title or me
+[  13.6s] #  2 publisher_logo    fast    A                        Publisher logo with no title or menu yet; the hint says A skips logos, and the sibling pat
+[  21.3s] #  3 publisher_logo    fast    A                        Copyright credit card, not a title or menu; these skip with A per hint and sibling path. P
+[  29.8s] #  4 publisher_logo    fast    A                        Developer logo card, not a title or menu yet; per the hint, A skips logos and a new logo i
+[  37.3s] #  5 publisher_logo    fast    A                        Title logo card with no menu yet; the hint says the title's NEW GAME/LOAD GAME appears fro
+[  48.0s] #  6 profile_creation  fast    A                        Wrath of Cortex NEW GAME opens name entry with CRASH prefilled and DONE lit (hint); press 
+[  52.2s] #  7 publisher_logo    sibreplay A                        sibling 504C0001 step 2: This is the Zoxxo/ZOXX TOKYO developer logo card at early boot, n
+[  60.1s] #  8 loading           fast    wait                     Partial LOADING text over an animated transition with no menu or HUD; wait for it to finis
+[  69.9s] #  9 cutscene          fast    START                    A hub/warp-room style scene with the monitor showing Cortex's face and characters in place
+[  81.8s] # 10 gameplay          fast    wait                     The hint says the warp-room hub is gameplay, where the stick walks Crash. Crash stands in 
+[  90.7s] # 11 probe             probe   STICK:down:1.5           control 0.003, under input 0.336
+hold-play: genre other, need 600 s of play
+hold-play: fps at 188 s: median 46.0, share>=30 0.993 over 140 samples
+hold-play: fps at 303 s: median 45.0, share>=30 0.995 over 219 samples
+hold-play: 3 still looks: walk reversed (back) at 505 s
+hold-play: 3 still looks: walk reversed (forward) at 524 s
+hold-play: off play for 12 steps (menu): ladder round 1
+hold-play: validity check share 372 s (hold 605 s of play, verdict 602.6)
+hold-play: verdict short on share by 372 s; holding on (budget 1561 s left)
+hold-play: validity check share 336 s (hold 659 s of play, verdict 662.4)
+hold-play: verdict short on share by 336 s; holding on (budget 1498 s left)
+hold-play: validity check share 907 s (hold 672 s of play, verdict 670.2)
+hold-play: verdict short on share by 907 s; holding on (budget 1426 s left)
+hold-play: validity check share 844 s (hold 737 s of play, verdict 735.0)
+hold-play: verdict short on share by 844 s; holding on (budget 1361 s left)
+hold-play: validity check share 1135 s (hold 770 s of play, verdict 766.2)
+hold-play: verdict short on share by 1135 s; holding on (budget 1294 s left)
+hold-play: validity check share 1070 s (hold 835 s of play, verdict 831.7)
+hold-play: verdict short on share by 1070 s; holding on (budget 1228 s left)
+hold-play: validity check share 1233 s (hold 875 s of play, verdict 871.6)
+hold-play: not held 875/600 s of play; share short by 1233 s with no budget left
+held Crash Bandicoot: The Wrath of Cortex for 1107s
+VERDICT Crash Bandicoot: The Wrath of Cortex ? FAIL(menu time: 78.9% of the scored window in `play` (bar 90%; play 872 s, menu 68 s, other 66 s, loading 64 s)) gameplay=1106.2s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0016 play_share=0.7886 fps_excluded=236.9s
+{"name": "Crash Bandicoot: The Wrath of Cortex", "device": "nova", "result": "gameplay", "minutes": 1.51, "model_calls": 53, "steps": 11, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/crashwoc-1006/frames/010-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

@@ -1,6 +1,9 @@
 title	title_id	fps_ok_share	verdict	judged_utc	cause	fix_commit
 007: Nightfire		0.8916	docs/lanes/pathfind/runs/nightfire-1006/verdict.json	2026-10-07T03:01:46Z		
 25 to Life		0.9737	docs/lanes/pathfind/runs/n-45530018-1013r/verdict.json	2026-10-13T17:03:09Z		
+45410062-Battlefield_2_Modern_Combat.xiso.iso	45410062	0.6655	docs/lanes/pathfind/runs/bf2mc-745/verdict.json	2026-10-01T18:09:39Z	#745 (collapses to 2-6 fps for minutes 40-90 s into play), #656 (heavy views cost 35-40 ms GPU a frame); 515 s screening at 66.5% (1790877270-autoverdict-2187810, ref ec244430e3)	
+48550001-Bloody_Roar_Extreme.xiso.iso	48550001	0.0000	docs/lanes/pathfind/runs/bloodyroar-743/verdict.json	2026-10-02T12:11:02Z	#743: 9.8-10.8 fps median, on-screen counter 10 in combat (titleroutes 10-02, refs 7a090b6fa2/8fee881326); 10-18 gen route z-1792324130 never reached play, no newer gameplay fps	
+49470013-Dungeons_Dragons_Heroes.xiso.iso	49470013	0.4648	docs/lanes/pathfind/runs/ddheroes-747/verdict.json	2026-10-01T18:25:11Z	#747: 557 s screening at 46.5% (1790878175-autoverdict-2230436, ref ec244430e3); 10-06 hostops c3a0c70ace run 0.0, median 12.5 fps (FRAMETRACE env)	
 4x4 Evo 2		0.9956	docs/lanes/pathfind/runs/n-54540001-1013r/verdict.json	2026-10-13T18:12:43Z		
 Aeon Flux		0.8460	docs/lanes/pathfind/runs/n-4D4A0014-1013r/verdict.json	2026-10-13T17:20:14Z		
 Alias		1.0000	docs/lanes/pathfind/runs/n-41430016-1014d/verdict.json	2026-10-14T16:34:01Z		
@@ -135,6 +138,7 @@ ToeJam & Earl III: Mission to Earth		0.7278	docs/lanes/pathfind/runs/toejam-earl
 Tom Clancy s Splinter Cell Double Agent USA		0.0334	docs/lanes/pathfind/runs/n-5553005E-1011/verdict.json	2026-10-12T14:40:07Z		
 Tony Hawk s Pro Skater 4		0.9752	docs/lanes/pathfind/runs/n-41560017-1013d/verdict.json	2026-10-13T15:12:43Z		
 Tony Hawk s Underground 2 USA Europe En Fr De		1.0000	docs/lanes/pathfind/runs/n-4156003C-1013/verdict.json	2026-10-13T10:08:28Z		
+Top Spin	4D530035	0.8326	docs/lanes/pathfind/runs/topspin-ownerplay-1014/verdict.json	2026-10-14T21:21:16Z	#992: owner 10-14 "does not pass", slow motion, fps 30s in play and teens in the arena intro (owner-play 4D530035-1014-1417-23868, fps_ok 0.8326); #796 surface-download finishes	
 Torino 2006 Europe En Fr De Es It		0.6591	docs/lanes/pathfind/runs/n-545400A9-1014d/verdict.json	2026-10-15T10:32:11Z		
 Tork: Prehistoric Punk		1.0000	docs/lanes/pathfind/runs/tork-rerun4/verdict.json	2026-10-05T14:55:08Z		
 Tron 2.0 - Killer App (USA, Europe)		0.9777	docs/lanes/pathfind/runs/retro-tron/verdict.json	2026-10-05T05:09:51Z		
