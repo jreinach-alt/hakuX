@@ -400,7 +400,7 @@ hash equal to n176-177's), and the probe reads SR01=21 there: the guest turned t
 read and the probe's. It is one present at the screen-off edge, a race the desktop's upstream check has too. It was
 seen in 2 of 4 before runs and 0 of 3 after runs.
 
-## Nova before/after: queued, not yet run
+## Nova before/after: the requests (results under "Nova results" below)
 
 Six requests, `nova_ids.tsv`, `--video-after 10`:
 - before (`7ea8b80e71`): 1792284283 Halo CE, 1792284284 Top Spin, 1792284285 GTA III;
@@ -447,6 +447,89 @@ three titles, with M1 = M2 = M3 = 0 as for R1+R2.** A run with M4 > 0 refutes R5
 
 R5 is not on the desktop's path there: lavapipe has no external memory, so every desktop present is `src=v` and never
 reaches the fast path.
+
+## Attempt 3 (resumed 10-17 19:37 PDT): why attempt 2 stopped
+
+Attempt 2 hit its 300-turn cap too (`error_max_turns`, 301 turns, `logs/lane/bootstatic1017.20261018T000636Z.json`),
+at ~18:37 PDT. Its last action was committing R5's three request ids (`5723904eef`). Nothing was left uncommitted:
+the three tools the hostops addendum names were attempt 1's, and attempt 2 committed them. Every request had finished
+by 19:37 (R1+R2 and R5, nine runs), but none of them had been judged in these notes. The "queued, not yet run"
+section above was stale, and no `waiting:` line had been written. Attempt 3 judges them below with the judges
+committed before the data (`judge_nova.py`, `stale_logo.py`, `judge_video.py`), plus two table and view scripts
+(`tools/video_table.py`, `tools/preframes.py`) that change no rule.
+
+## Nova results: probe, every present from n0 (`tools/nova_table.py`, `tools/stale_logo.py`)
+
+Turnip in every run (3 `GPU: PurpleVK`-class lines, 0 stock). C1 holds in all ten (n from 0, no gaps, 2401 presents).
+
+| request | arm (ref) | title | verdict | title's first picture | screen-off presents to it | M1 | M2 | M3 | M4 |
+|---|---|---|---|---|---|---|---|---|---|
+| 1792282757 | before (`7ea8b80e71`) | Halo CE | FLASH | n358, 6.0 s | 225 | 225 | 0 | 0 | 1 |
+| 1792284283 | before | Halo CE | FLASH | n380, 6.3 s | 249 | 249 | 0 | 0 | 1 |
+| 1792284284 | before | Top Spin | FLASH | n247, 4.1 s | 193 | 193 | 0 | 0 | 1 |
+| 1792284285 | before | GTA III | FLASH | n150, 2.5 s | 95 | 95 | 0 | 0 | 1 |
+| 1792284286 | R1+R2 (`446e9abbed`) | Halo CE | CLEAN | n387, 6.4 s | 253 | 0 | 0 | 0 | 1 |
+| 1792284287 | R1+R2 | Top Spin | CLEAN | n245, 4.1 s | 192 | 0 | 0 | 0 | 1 |
+| 1792284288 | R1+R2 | GTA III | CLEAN | n144, 2.4 s | 89 | 0 | 0 | 0 | 1 |
+| 1792287441 | R5 (`2a012b14fc`) | Halo CE | CLEAN | n417, 6.9 s | 264 | 0 | 0 | 0 | 0 (vacuous, below) |
+| 1792287442 | R5 | Top Spin | CLEAN | n260, 4.3 s | 196 | 0 | 0 | 0 | **0** |
+| 1792287443 | R5 | GTA III | CLEAN | n140, 2.3 s | 83 | 0 | 0 | 0 | **0** |
+
+The before arm's M1 episodes are the account above, in all three titles: the static at start 0 with the screen off
+(Halo n9-20, 200 ms; Top Spin n9-10 and GTA III n10-11, 2 presents each), then the logo held, or the title's
+framebuffer shown, through the screen-off interval while the title loads (Halo n143-379, logo then streaks then
+static, 3.9 s; Top Spin n56-246, the logo, 3.2 s; GTA III n57-149, the logo, 1.6 s). Halo's streaks do not occur in
+Top Spin or GTA III: their kernel keeps the scan-out at its own framebuffer through the load, so the held logo is
+what shows there.
+
+**R5's prediction held: M4 = 0 in Top Spin and GTA III, where the kernel's logo was on screen** (hash 698586ab at
+the kernel's start: Top Spin n28-54, GTA III n28-57). Their first presents at the title's start show black (Top Spin
+n249-259) or the title's own first picture (GTA III n140), not the logo. **In the Halo R5 run, M4 tests nothing.**
+Halo's kernel draws its logo on the last present before it turns the screen off, so the logo shows for at most one
+present. In the R1+R2 run that was n144, and the next present (n145) found the screen off. In the R5 run the screen
+went off at n147 with the logo not yet presented, so no lit hash exists at the kernel's start and M4 is 0 by
+default. That is timing, not R5: R5 only changes the first present after a screen-off interval (n24 and n397 here).
+What Halo's player sees after the fix is black from the tap to Halo's first picture (7.1 s on video, below), where
+the before arm showed the logo for ~0.2 s and then 3.3 s of green streaks.
+
+R5 also keeps the one-refresh latency in play: from n401 on, every flip's hash follows its start one present late,
+as in every earlier run. R5 adds no wait there.
+
+## Nova results: the screen video (`tools/video_table.py` -> `video_table.out`, `tools/preframes.py`)
+
+`judge_video.py` V1 asks that the video start at least 2 s before the probe's first present.
+
+| request | arm | title | V1 lead (s) | video verdict | static or green episodes |
+|---|---|---|---|---|---|
+| 1792284283 | before | Halo CE | +2.70 | VALID | 5 frames "green" at -0.68 s (the launcher, below); **20 frames static** at +0.15 s (src v, screen off); **203 frames green streaks** at +2.6 s (src v, 205 of 205 screen off); **26 frames static** at +5.9 s (src v, 28 of 33 screen off) |
+| 1792287441 | R5 | Halo CE | +2.32 | VALID | 5 frames "green" at -0.81 s (the launcher, below); nothing else |
+| 1792284284/85/86/87/88, 1792287442/43 | all | Top Spin, GTA III, Halo R1+R2 | -1.74 to -0.05 | VOID: V1 | none, but these videos start after the first present, so they cannot see the static |
+
+The five "green" frames before the first present, in both valid videos, are **the device's launcher**, not a flash
+(`pre_7441.png`): the green Android robot on the launcher's "Android apps" card slides out as the hakuX splash (white,
+the `h` logo) slides in, then the splash fades to black 0.7 s before the emulator's first present. The centre-half
+green class counts the robot. So **H4 has no candidate**: from the splash's fade to the first present, both valid
+videos are black. Then, frame by frame (`vidruns.py` looks, 320 wide):
+
+- before, Halo: black 2.0 s (the kernel's start, screen on, not yet drawn), the logo 0.23 s, **streaks 3.3 s**, the
+  title's first frames, the logo for 1 frame (M4), black 0.4 s, Halo. The 20-frame static at +0.15 s is "picture"
+  to `vidruns.py`'s whole-frame look and noise to `judge_video.py`'s centre half. Its probe presents are n9-20.
+- R5, Halo: **black from the splash's fade (video 1.59 s) to Halo's first picture (8.69 s), 453 frames, then Halo.**
+  No static, no streaks, no logo.
+
+The VOID videos were judged anyway, because a video that starts late still shows the screen-off interval after the
+logo. Before, Top Spin shows the logo held 2.2 s and GTA III 1.4 s. R1+R2 shows black, then a **one-frame logo just
+before each title's first picture** in all three titles (Halo 5.155 s, Top Spin 2.904 s, GTA III 1.417 s: M4 on
+screen). R5 shows black, then the title, in Top Spin and GTA III. **So M4's frame was visible on screen, and R5
+removes it**, as M4 predicted.
+
+Why these videos started late: the dispatcher starts the video `--video-after` seconds after the soak begins
+(`dispatcher.sh` `start_soak_video`). The first present came at mark +9.2 to +9.95 s for Top Spin and GTA III, and at
++12.7 to +13.7 s for Halo, so `--video-after 10` started inside the launch for the first two. The logcat stream,
+started after the cool-down gate's wake (`soak_title.sh:577`) and before `am start` (`:640`), opens by mark +8.6 s.
+So the gap from the wake to the first present is about 1-2 s for these titles. One retry, R5 only, `--video-after 7`
+(`queue_nova.sh` `ONLY`), is queued below. If its video is empty (started before the wake) or still starts late,
+that is the route's limit: the probe's coverage from n0 stands, and the video's coverage of the static stays Halo's.
 
 ## Root cause
 

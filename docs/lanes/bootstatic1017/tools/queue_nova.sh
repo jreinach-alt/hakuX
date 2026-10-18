@@ -18,10 +18,15 @@
 # 6 runs x (75 s + 90 s setup) = 16.5 min of device time, inside the 30-min
 # pilot allowance. Both arms carry the same env, so the pref left on the device
 # until the next request is the probe's, which only writes files.
+#
+# ONLY (an ERE over the title's name) queues a subset. Attempt 3 requeued Top
+# Spin and GTA III with VIDEO_AFTER=7: with 10, their videos started 0.05-1.7 s
+# after the first present (the wake-to-launch gap is shorter than Halo's).
 set -u
 BEFORE="$1"; AFTER="$2"; OUT="$3"
 VIDEO_AFTER="${VIDEO_AFTER:-10}"
 ARMS="${ARMS:-before after}"
+ONLY="${ONLY:-.}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 REQ="$HERE/../../../testing/request.sh"
 TITLES=("Halo Combat Evolved.iso|Halo CE (Blam)" \
@@ -31,6 +36,7 @@ for arm in $ARMS; do
     ref="$BEFORE"; [ "$arm" = after ] && ref="$AFTER"
     for t in "${TITLES[@]}"; do
         iso="${t%%|*}"; name="${t#*|}"
+        echo "$name" | grep -Eq "$ONLY" || continue
         id=$(bash "$REQ" --who lane.bootstatic1017 \
             --purpose "#1045 launch flash, $arm ($ref), $name: every frame from launch" \
             --ref "$ref" --title "$iso" --device nova \

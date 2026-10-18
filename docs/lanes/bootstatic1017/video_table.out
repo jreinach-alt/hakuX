@@ -1,0 +1,580 @@
+[rawvideo @ 0x3c659280] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2 >= 2
+[rawvideo @ 0x3c659280] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 10 >= 10
+[rawvideo @ 0x3c659280] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 112 >= 112
+[rawvideo @ 0x3c659280] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 114 >= 114
+[rawvideo @ 0x3c659280] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 131 >= 131
+[rawvideo @ 0x3c659280] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 4466 >= 4466
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 340 >= 340
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 400 >= 400
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 768 >= 768
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 780 >= 780
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 805 >= 805
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 816 >= 816
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 820 >= 820
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 832 >= 832
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 839 >= 839
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 844 >= 844
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 846 >= 846
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 852 >= 852
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 854 >= 854
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1081 >= 1081
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1120 >= 1120
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1180 >= 1180
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1240 >= 1240
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1300 >= 1300
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1479 >= 1479
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1539 >= 1539
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1599 >= 1599
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1660 >= 1660
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1719 >= 1719
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1745 >= 1745
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1748 >= 1748
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1751 >= 1751
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1753 >= 1753
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1759 >= 1759
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1762 >= 1762
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1839 >= 1839
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1899 >= 1899
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1959 >= 1959
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2019 >= 2019
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2079 >= 2079
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2088 >= 2088
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2319 >= 2319
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2392 >= 2392
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2439 >= 2439
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2499 >= 2499
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2521 >= 2521
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2559 >= 2559
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2619 >= 2619
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2679 >= 2679
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2711 >= 2711
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2734 >= 2734
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2739 >= 2739
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2744 >= 2744
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2749 >= 2749
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2771 >= 2771
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2773 >= 2773
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2781 >= 2781
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2787 >= 2787
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2796 >= 2796
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2799 >= 2799
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2806 >= 2806
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2811 >= 2811
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2814 >= 2814
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2971 >= 2971
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2979 >= 2979
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3039 >= 3039
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3338 >= 3338
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3398 >= 3398
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3458 >= 3458
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3518 >= 3518
+[rawvideo @ 0x303c44c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3578 >= 3578
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 28 >= 28
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 29 >= 29
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 88 >= 88
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 89 >= 89
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 148 >= 148
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 149 >= 149
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 388 >= 388
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 409 >= 409
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 462 >= 462
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 808 >= 808
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 868 >= 868
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 929 >= 929
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 989 >= 989
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1049 >= 1049
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1168 >= 1168
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1228 >= 1228
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1288 >= 1288
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1348 >= 1348
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1408 >= 1408
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1451 >= 1451
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1828 >= 1828
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2128 >= 2128
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2174 >= 2174
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2188 >= 2188
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2248 >= 2248
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2273 >= 2273
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2308 >= 2308
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2322 >= 2322
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2327 >= 2327
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2342 >= 2342
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2351 >= 2351
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2369 >= 2369
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2375 >= 2375
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2390 >= 2390
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2392 >= 2392
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2394 >= 2394
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2396 >= 2396
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2398 >= 2398
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2404 >= 2404
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2410 >= 2410
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2412 >= 2412
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2419 >= 2419
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2436 >= 2436
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2456 >= 2456
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2488 >= 2488
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2548 >= 2548
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2608 >= 2608
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2668 >= 2668
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2728 >= 2728
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2788 >= 2788
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3027 >= 3027
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3087 >= 3087
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3147 >= 3147
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3178 >= 3178
+[rawvideo @ 0x3ffe0900] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3451 >= 3451
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1 >= 1
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2 >= 2
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 14 >= 14
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 62 >= 62
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 64 >= 64
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 70 >= 70
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 78 >= 78
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 82 >= 82
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 84 >= 84
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 89 >= 89
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 238 >= 238
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 256 >= 256
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 316 >= 316
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 376 >= 376
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 397 >= 397
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 437 >= 437
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 449 >= 449
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 556 >= 556
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 608 >= 608
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 616 >= 616
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 676 >= 676
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 737 >= 737
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 743 >= 743
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 791 >= 791
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 797 >= 797
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 799 >= 799
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 811 >= 811
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 815 >= 815
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 817 >= 817
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 821 >= 821
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 823 >= 823
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 825 >= 825
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 829 >= 829
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 831 >= 831
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 856 >= 856
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 916 >= 916
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 932 >= 932
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 972 >= 972
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1156 >= 1156
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1174 >= 1174
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1184 >= 1184
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1188 >= 1188
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1191 >= 1191
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1216 >= 1216
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1276 >= 1276
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1313 >= 1313
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1517 >= 1517
+    Last message repeated 1 times
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1541 >= 1541
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1543 >= 1543
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1546 >= 1546
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1548 >= 1548
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1553 >= 1553
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1660 >= 1660
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1697 >= 1697
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1699 >= 1699
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1757 >= 1757
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1817 >= 1817
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1877 >= 1877
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1881 >= 1881
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1903 >= 1903
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1912 >= 1912
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1915 >= 1915
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1921 >= 1921
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1927 >= 1927
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1929 >= 1929
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1933 >= 1933
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1935 >= 1935
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1937 >= 1937
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1943 >= 1943
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2038 >= 2038
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2057 >= 2057
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2117 >= 2117
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2177 >= 2177
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2237 >= 2237
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2283 >= 2283
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2290 >= 2290
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2294 >= 2294
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2297 >= 2297
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2299 >= 2299
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2310 >= 2310
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2357 >= 2357
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2395 >= 2395
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2427 >= 2427
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2597 >= 2597
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2657 >= 2657
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2960 >= 2960
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2972 >= 2972
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3041 >= 3041
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3047 >= 3047
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3078 >= 3078
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3138 >= 3138
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3308 >= 3308
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3378 >= 3378
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3396 >= 3396
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3438 >= 3438
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3498 >= 3498
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3516 >= 3516
+[rawvideo @ 0x9a47e00] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3558 >= 3558
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 24 >= 24
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 84 >= 84
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 144 >= 144
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 204 >= 204
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 215 >= 215
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 264 >= 264
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 324 >= 324
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 384 >= 384
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 444 >= 444
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 504 >= 504
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 563 >= 563
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 623 >= 623
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 683 >= 683
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 743 >= 743
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 803 >= 803
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 863 >= 863
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 873 >= 873
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1043 >= 1043
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1104 >= 1104
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1111 >= 1111
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1113 >= 1113
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1124 >= 1124
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1130 >= 1130
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1134 >= 1134
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1137 >= 1137
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1139 >= 1139
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1143 >= 1143
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1163 >= 1163
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1169 >= 1169
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1220 >= 1220
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1583 >= 1583
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1881 >= 1881
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1883 >= 1883
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1943 >= 1943
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2003 >= 2003
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2063 >= 2063
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2123 >= 2123
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2164 >= 2164
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2169 >= 2169
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2172 >= 2172
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2175 >= 2175
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2187 >= 2187
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2192 >= 2192
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2196 >= 2196
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2200 >= 2200
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2204 >= 2204
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2213 >= 2213
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2229 >= 2229
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2243 >= 2243
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2303 >= 2303
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2363 >= 2363
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2423 >= 2423
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2722 >= 2722
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2782 >= 2782
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2796 >= 2796
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3082 >= 3082
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3502 >= 3502
+[rawvideo @ 0x2dd6fdc0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3562 >= 3562
+[rawvideo @ 0x25f1c5c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 36 >= 36
+[rawvideo @ 0x25f1c5c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 96 >= 96
+[rawvideo @ 0x25f1c5c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 157 >= 157
+[rawvideo @ 0x25f1c5c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 217 >= 217
+[rawvideo @ 0x25f1c5c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 277 >= 277
+[rawvideo @ 0x25f1c5c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 337 >= 337
+[rawvideo @ 0x25f1c5c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 397 >= 397
+[rawvideo @ 0x25f1c5c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 516 >= 516
+[rawvideo @ 0x25f1c5c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 576 >= 576
+[rawvideo @ 0x25f1c5c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 630 >= 630
+[rawvideo @ 0x25f1c5c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 751 >= 751
+[rawvideo @ 0x25f1c5c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 846 >= 846
+[rawvideo @ 0x25f1c5c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 991 >= 991
+[rawvideo @ 0x25f1c5c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1056 >= 1056
+[rawvideo @ 0x25f1c5c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1116 >= 1116
+[rawvideo @ 0x25f1c5c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1515 >= 1515
+[rawvideo @ 0x25f1c5c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1526 >= 1526
+[rawvideo @ 0x25f1c5c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1528 >= 1528
+[rawvideo @ 0x25f1c5c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1894 >= 1894
+[rawvideo @ 0x25f1c5c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1896 >= 1896
+[rawvideo @ 0x25f1c5c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1956 >= 1956
+[rawvideo @ 0x25f1c5c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2016 >= 2016
+[rawvideo @ 0x25f1c5c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2076 >= 2076
+[rawvideo @ 0x25f1c5c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2260 >= 2260
+[rawvideo @ 0x25f1c5c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2315 >= 2315
+[rawvideo @ 0x25f1c5c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2375 >= 2375
+[rawvideo @ 0x25f1c5c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2435 >= 2435
+[rawvideo @ 0x25f1c5c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2495 >= 2495
+[rawvideo @ 0x25f1c5c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2524 >= 2524
+[rawvideo @ 0x25f1c5c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2795 >= 2795
+[rawvideo @ 0x25f1c5c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2855 >= 2855
+[rawvideo @ 0x25f1c5c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2892 >= 2892
+[rawvideo @ 0x25f1c5c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3393 >= 3393
+[rawvideo @ 0x25f1c5c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3396 >= 3396
+[rawvideo @ 0x25f1c5c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3455 >= 3455
+[rawvideo @ 0x25f1c5c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3515 >= 3515
+[rawvideo @ 0x25f1c5c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3575 >= 3575
+[rawvideo @ 0x22d257c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1 >= 1
+[rawvideo @ 0x22d257c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 117 >= 117
+[rawvideo @ 0x22d257c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 156 >= 156
+[rawvideo @ 0x22d257c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 171 >= 171
+[rawvideo @ 0x22d257c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 176 >= 176
+[rawvideo @ 0x22d257c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 179 >= 179
+[rawvideo @ 0x22d257c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 238 >= 238
+[rawvideo @ 0x22d257c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1106 >= 1106
+[rawvideo @ 0x22d257c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2014 >= 2014
+[rawvideo @ 0x22d257c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2789 >= 2789
+[rawvideo @ 0x22d257c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 5211 >= 5211
+[rawvideo @ 0x22d257c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 5217 >= 5217
+[rawvideo @ 0x22d257c0] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 5237 >= 5237
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 32 >= 32
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 92 >= 92
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 152 >= 152
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 212 >= 212
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 272 >= 272
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 391 >= 391
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 451 >= 451
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 511 >= 511
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 571 >= 571
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 631 >= 631
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 691 >= 691
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 696 >= 696
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 968 >= 968
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1411 >= 1411
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1471 >= 1471
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1531 >= 1531
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1591 >= 1591
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1651 >= 1651
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1711 >= 1711
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1737 >= 1737
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1771 >= 1771
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1831 >= 1831
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1891 >= 1891
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1951 >= 1951
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2011 >= 2011
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2071 >= 2071
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2190 >= 2190
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2250 >= 2250
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2311 >= 2311
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2365 >= 2365
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2369 >= 2369
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2374 >= 2374
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2383 >= 2383
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2390 >= 2390
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2393 >= 2393
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2395 >= 2395
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2416 >= 2416
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2747 >= 2747
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2791 >= 2791
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2851 >= 2851
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3150 >= 3150
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3210 >= 3210
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3270 >= 3270
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3330 >= 3330
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3390 >= 3390
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3440 >= 3440
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3464 >= 3464
+[rawvideo @ 0x27e9ea40] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3511 >= 3511
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 30 >= 30
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 31 >= 31
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 90 >= 90
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 91 >= 91
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 331 >= 331
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 381 >= 381
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 385 >= 385
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 393 >= 393
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 395 >= 395
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 397 >= 397
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 403 >= 403
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 405 >= 405
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 408 >= 408
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 415 >= 415
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 421 >= 421
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 427 >= 427
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 432 >= 432
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 759 >= 759
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 811 >= 811
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 871 >= 871
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 931 >= 931
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1110 >= 1110
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1170 >= 1170
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1230 >= 1230
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1290 >= 1290
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1350 >= 1350
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1410 >= 1410
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1470 >= 1470
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1481 >= 1481
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1590 >= 1590
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1650 >= 1650
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1706 >= 1706
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1709 >= 1709
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1711 >= 1711
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1713 >= 1713
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1728 >= 1728
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1731 >= 1731
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1733 >= 1733
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1738 >= 1738
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1742 >= 1742
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1746 >= 1746
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1749 >= 1749
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1755 >= 1755
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1761 >= 1761
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1767 >= 1767
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1769 >= 1769
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1779 >= 1779
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1785 >= 1785
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1796 >= 1796
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1809 >= 1809
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 1828 >= 1828
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2250 >= 2250
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2462 >= 2462
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2490 >= 2490
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2550 >= 2550
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2610 >= 2610
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2670 >= 2670
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2730 >= 2730
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 2790 >= 2790
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3029 >= 3029
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3089 >= 3089
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3149 >= 3149
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3187 >= 3187
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3191 >= 3191
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3195 >= 3195
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3197 >= 3197
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3200 >= 3200
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3210 >= 3210
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3213 >= 3213
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3217 >= 3217
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3229 >= 3229
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3233 >= 3233
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3237 >= 3237
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3239 >= 3239
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3255 >= 3255
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3259 >= 3259
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3277 >= 3277
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3563 >= 3563
+[rawvideo @ 0x2d0b2800] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 3570 >= 3570
+| request | arm | ref | title | video verdict | V1 lead s | align off s (score, at 0) | episodes: frames, classes, s after first present, probe src / screen-off / H1 H5 H4 |
+|---|---|---|---|---|---|---|---|
+| 1792282757 | before | 7ea8b80e71 | Halo CE | VOID: no decodable frames (segment bytes [0]) | None | None (None, None) | none |
+| 0-1792284283 | before | 7ea8b80e71 | Halo CE | VALID; 4 episode(s), 254 frame(s) of static or green | 2.7 | 1.0667 (0.0012, 0.05) | 5 fr green @-0.677 s, - / 0 of 0 / 0 0 1; 20 fr noise @0.15 s, v / 12 of 19 / 1 1 1; 203 fr green @2.601 s, v / 205 of 205 / 1 1 0; 26 fr noise @5.922 s, v / 28 of 33 / 1 1 0 |
+| 0-1792284284 | before | 7ea8b80e71 | Top Spin | VOID: V1; 0 episode(s), 0 frame(s) of static or green | -1.69 | 0.2 (0.0066, 0.0502) | none |
+| 0-1792284285 | before | 7ea8b80e71 | GTA III | VOID: V1; 0 episode(s), 0 frame(s) of static or green | -0.31 | 0.7833 (0.0019, 0.0847) | none |
+| 0-1792284286 | after | 446e9abbed | Halo CE | VOID: V1; 0 episode(s), 0 frame(s) of static or green | -0.32 | 0.9667 (0.0011, 0.0373) | none |
+| 0-1792284287 | after | 446e9abbed | Top Spin | VOID: V1; 0 episode(s), 0 frame(s) of static or green | -0.32 | 0.85 (0.0064, 0.1362) | none |
+| 0-1792284288 | after | 446e9abbed | GTA III | VOID: V1; 0 episode(s), 0 frame(s) of static or green | -0.05 | 0.9333 (0.0024, 0.1067) | none |
+| 1792287441 | after | 2a012b14fc | Halo CE | VALID; 1 episode(s), 5 frame(s) of static or green | 2.32 | 0.5 (0.001, 0.0201) | 5 fr green @-0.813 s, - / 0 of 0 / 0 0 1 |
+| 1792287442 | after | 2a012b14fc | Top Spin | VOID: V1; 0 episode(s), 0 frame(s) of static or green | -1.74 | 0.25 (0.0065, 0.0614) | none |
+| 1792287443 | after | 2a012b14fc | GTA III | VOID: V1; 0 episode(s), 0 frame(s) of static or green | -0.85 | 1.1833 (0.0026, 0.1254) | none |
+
+0-1792284283 before Halo CE (first present at video +2.7 s):
+v00001.mp4: 1936 frames to 30.0 s
+picture   0.000- 1.530 s   183 frames    1547 ms
+black     1.538- 1.771 s    29 frames     250 ms
+picture   1.781- 1.964 s    20 frames     199 ms
+black     1.996- 3.982 s   122 frames    2003 ms
+logo      3.999- 4.216 s    15 frames     234 ms
+streaks   4.232- 7.520 s   203 frames    3304 ms
+picture   7.537- 7.963 s    27 frames     443 ms
+logo      7.971- 7.971 s     1 frames      17 ms
+black     7.988- 8.396 s    27 frames     425 ms
+picture   8.405-29.984 s  1309 frames   21596 ms
+
+0-1792284284 before Top Spin (first present at video +-1.69 s):
+v00001.mp4: 1812 frames to 30.0 s
+logo      0.000- 2.221 s   135 frames    2238 ms
+black     2.238- 2.371 s     9 frames     150 ms
+picture   2.388-12.345 s   600 frames    9973 ms
+black    12.362-12.378 s     2 frames      33 ms
+picture  12.395-20.340 s   480 frames    7962 ms
+black    20.357-20.974 s    39 frames     634 ms
+picture  20.991-26.541 s   337 frames    5567 ms
+black    26.558-27.209 s    41 frames     668 ms
+picture  27.226-29.989 s   169 frames    2779 ms
+
+0-1792284285 before GTA III (first present at video +-0.31 s):
+v00001.mp4: 1818 frames to 30.0 s
+logo      0.000- 1.397 s    88 frames    1413 ms
+picture   1.413- 3.148 s   109 frames    1752 ms
+black     3.165- 3.316 s    10 frames     167 ms
+picture   3.333- 5.217 s   114 frames    1902 ms
+black     5.234- 5.351 s     8 frames     133 ms
+picture   5.368-10.767 s   326 frames    5416 ms
+black    10.783-10.900 s     8 frames     134 ms
+picture  10.917-16.300 s   327 frames    5400 ms
+black    16.317-18.069 s   108 frames    1769 ms
+picture  18.085-21.331 s   198 frames    3263 ms
+black    21.348-23.134 s   110 frames    1803 ms
+picture  23.151-29.986 s   412 frames    6852 ms
+
+0-1792284286 after Halo CE (first present at video +-0.32 s):
+v00001.mp4: 1825 frames to 30.0 s
+black     0.000- 1.091 s    69 frames    1108 ms
+logo      1.108- 1.108 s     1 frames      17 ms
+black     1.125- 5.138 s   243 frames    4030 ms
+logo      5.155- 5.155 s     1 frames      17 ms
+black     5.172- 5.473 s    20 frames     318 ms
+picture   5.490-29.989 s  1491 frames   24516 ms
+
+0-1792284287 after Top Spin (first present at video +-0.32 s):
+v00001.mp4: 1820 frames to 30.0 s
+black     0.000- 2.887 s   178 frames    2904 ms
+logo      2.904- 2.904 s     1 frames      17 ms
+black     2.921- 3.038 s     8 frames     134 ms
+picture   3.055-13.010 s   608 frames    9972 ms
+black    13.027-13.095 s     5 frames      85 ms
+picture  13.110-21.072 s   484 frames    7978 ms
+black    21.089-21.690 s    37 frames     618 ms
+picture  21.706-27.256 s   335 frames    5566 ms
+black    27.272-27.940 s    41 frames     685 ms
+picture  27.957-29.994 s   123 frames    2054 ms
+
+0-1792284288 after GTA III (first present at video +-0.05 s):
+v00001.mp4: 1812 frames to 30.0 s
+black     0.000- 1.400 s    87 frames    1417 ms
+logo      1.417- 1.417 s     1 frames      17 ms
+picture   1.434- 3.219 s   110 frames    1802 ms
+black     3.236- 3.353 s     8 frames     134 ms
+picture   3.370- 5.256 s   116 frames    1902 ms
+black     5.272- 5.389 s     8 frames     133 ms
+picture   5.405-16.271 s   657 frames   10883 ms
+black    16.287-18.090 s   110 frames    1819 ms
+picture  18.107-21.353 s   197 frames    3263 ms
+black    21.370-23.172 s   109 frames    1819 ms
+picture  23.189-29.990 s   409 frames    6818 ms
+
+1792287441 after Halo CE (first present at video +2.32 s):
+v00001.mp4: 1936 frames to 30.0 s
+picture   0.000- 1.586 s   190 frames    1603 ms
+black     1.594- 8.677 s   453 frames    7099 ms
+picture   8.694-29.996 s  1293 frames   21319 ms
+
+1792287442 after Top Spin (first present at video +-1.74 s):
+v00001.mp4: 1819 frames to 30.0 s
+black     0.000- 2.321 s   143 frames    2337 ms
+picture   2.337-12.234 s   604 frames    9914 ms
+black    12.251-12.335 s     6 frames     101 ms
+picture  12.351-20.321 s   479 frames    7986 ms
+black    20.338-20.955 s    38 frames     634 ms
+picture  20.972-26.522 s   337 frames    5566 ms
+black    26.538-27.189 s    41 frames     668 ms
+picture  27.206-29.985 s   171 frames    2795 ms
+
+1792287443 after GTA III (first present at video +-0.85 s):
+v00001.mp4: 1820 frames to 30.0 s
+black     0.000- 0.281 s    19 frames     298 ms
+picture   0.298- 2.100 s   113 frames    1819 ms
+black     2.117- 2.234 s     8 frames     134 ms
+picture   2.250- 4.070 s   110 frames    1836 ms
+black     4.086- 4.203 s     8 frames     134 ms
+picture   4.219- 9.636 s   327 frames    5433 ms
+black     9.653- 9.769 s     8 frames     133 ms
+picture   9.786-15.185 s   327 frames    5416 ms
+black    15.202-16.954 s   107 frames    1769 ms
+picture  16.971-20.250 s   200 frames    3296 ms
+black    20.267-22.052 s   110 frames    1802 ms
+picture  22.069-29.988 s   483 frames    7936 ms
