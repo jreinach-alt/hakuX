@@ -8,8 +8,8 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `haloring1017` | claude-opus-5-5 | 1h 15m | haloring1017: Halo CE main-menu ring: the missing surface layer and the static inside surface (#939) |
-| `nearbar1017` | claude-sonnet-5 | 15 min | nearbar1017: three near-bar titles on the 0.5.2 build -- do they clear Playable now |
+| `haloring1017` | claude-opus-5-5 | 1h 30m | haloring1017: Halo CE main-menu ring: the missing surface layer and the static inside surface (#939) |
+| `nearbar1017` | claude-sonnet-5 | 30 min | nearbar1017: three near-bar titles on the 0.5.2 build -- do they clear Playable now |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `lane.nearbar1017`
@@ -122,6 +122,8 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Recently landed on master
 
+- 2026-10-17 release052c: the 0.5.2 release page tells the story since v0.3.1, and the driver notice says handheld (#433)
+- 2026-10-17 Halo CE: the ship's rear lights show through the hull after the cut to the front (opening cinematic)
 - 2026-10-17 haloshadow1017: Halo CE's dark squares under soldiers' feet: the stock Adreno driver, not the code (#1038)
 - 2026-10-17 release052b: versionCode 10, the driver link, and two known-issue lines for 0.5.2 (#433)
 - 2026-10-17 drivernotice1017: every release note names the one tested GPU driver (#433)
@@ -131,4 +133,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 release052: the 0.5.2 release commit (#433)
 - 2026-10-17 defaulton1017: S2T_CVT, REPORT_EARLY and FLDCW_CHAIN on by default, after one default-on screen
 
-_Updated 2026-10-17 18:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-17 19:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
