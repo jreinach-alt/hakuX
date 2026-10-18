@@ -6,7 +6,9 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Right now
 
-No lane session is running.
+| Lane | Model | Running for | Working on |
+|---|---|---|---|
+| `localdrive1018` | claude-sonnet-5 | 12 min | drive: local tools only, act-observe instead of wait-and-fail, learn what to press |
 
 - **Handhelds:** 1 connected.
   - Nova: free for the queue
@@ -119,7 +121,9 @@ No lane session is running.
 
 ## Work in progress
 
-No branch is being worked right now.
+| Branch | Topic | Tip | Last change |
+|---|---|---|---|
+| `lane/localdrive1018` | drive: local tools only, act-observe instead of wait-and-fail, learn what to press | `0b64654286` | 2026-10-18 14:25 |
 
 ## Recently landed on master
 
@@ -136,4 +140,4 @@ No branch is being worked right now.
 - 2026-10-18 Fable and Blinx 2: decompose the gameplay dips, find what the frame spends its time on
 - 2026-10-18 pathfind: a screen-reading agent that drives a title from boot into gameplay
 
-_Updated 2026-10-18 14:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 14:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
