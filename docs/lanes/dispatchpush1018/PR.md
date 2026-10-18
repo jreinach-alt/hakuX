@@ -47,6 +47,6 @@ beyond the one scratch-file push above.
 
 Release note (other): none -- a harness/dispatcher fix, not an emulator behavior change.
 
-Selftest: docs/testing/jobs/selftest.d/99-dev-push-wslpath.sh
+Selftest: 99-dev-push-wslpath
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
