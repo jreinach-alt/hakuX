@@ -8,8 +8,9 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `dispatchdoctor1017` | claude-sonnet-5 | 2h 13m | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what  |
-| `gta3fps1017` | claude-opus-5-5 | 14 min | gta3fps1017: GTA III fps, R2/R3 copy-count remedies from an on-foot census, with R1 (#1049) |
+| `compat1017` | claude-sonnet-5 | 6 min |  |
+| `dispatchdoctor1017` | claude-sonnet-5 | 2h 28m | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what  |
+| `gta3fps1017` | claude-opus-5-5 | 29 min | gta3fps1017: GTA III fps, R2/R3 copy-count remedies from an on-foot census, with R1 (#1049) |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `owner.gta3play-1017`
@@ -133,4 +134,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 drivernotice1017: every release note names the one tested GPU driver (#433)
 - 2026-10-17 bindpose1017: THPS4 and Max Payne 2 bind pose: the stock Adreno driver, not the code (#1043)
 
-_Updated 2026-10-17 21:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-17 22:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
