@@ -2982,3 +2982,9 @@ issues = ["433"]
 standing = false
 files = ["README.md", "CHANGELOG.md", "docs/COMPATIBILITY.md", "docs/gpu-driver.md", "docs/releases/README.md", "docs/releases/v0.4.0-j1.md", "docs/releases/v0.4.1-j1.md", "docs/releases/v0.5.0.md", "docs/releases/v0.5.1.md", "docs/releases/v0.5.2.md", "docs/testing/nightly_build.sh", "docs/testing/compat_page.py", "docs/lanes/release052c/**"]
 note = "STARTED lane.local 2026-10-17 ~17:30 PDT (docs, no device): owner 10-17: the 0.5.2 release page tells the whole story since v0.3.1 with title-specific fixes per version; the driver notice says handheld, not phone. Published after the fold by editing the GitHub release body."
+
+[lane.gta3fps1017]
+issues = ["1049"]
+standing = false
+files = ["docs/lanes/gta3fps1017/**", "docs/testing/predictions/gta3fps1017-*", "hw/xbox/nv2a/pgraph/vk/texture.c"]
+note = "STARTED lane.local 2026-10-17 ~21:50 PDT on the owner's word (GTA III fps, R2/R3 without waiting on R1): successor to the stopped lane.gta3drive1017. GRANTED vk/texture.c from [lane.fps1015] (folded, ancestor of master, no running session; its row still lists the file) -- x1port1012 had already released it. Base: lane/gta3drive1017 (R1 drain skip + the refusal census, never run). No scripted driving: two voids for one cause = stop and report. Brief: briefs/gta3fps1017.md."
