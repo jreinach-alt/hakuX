@@ -4,10 +4,10 @@ State: ready
 
 Lane: compat1017b             Issue: #433 (0.5: 50 Playable)
 Base: master @ ad567fae7e
-Files: docs/lanes/compat1017b/**, docs/testing/compat_notes.tsv, docs/compatibility.csv, docs/COMPATIBILITY.md, README.md
+Files: docs/lanes/compat1017b/**, docs/testing/compat_notes.tsv, docs/compatibility.csv, docs/COMPATIBILITY.md, README.md, docs/testing/title_registry.py, docs/testing/title_registry_selftest.py
 Prediction: none: analysis-only, docs-only lane, no device time
 Needs device: no    Needs NDK: no
-Selftest: none -- the change is data (two notes rows in compat_notes.tsv and the generated page/CSV/README count); no selftest.d fragment reads them. Covered instead by docs/testing/compat_page_selftest.py (19 tests, OK) and compat_page.py --check (up to date)
+Selftest: none -- data plus a page check no selftest.d fragment runs; title_registry_selftest.py (6 tests, run directly) covers the new README check.
 
 ## What this does
 
@@ -61,3 +61,7 @@ as measurement subjects, not compatibility-status claims, and outside this lane'
 Release note (none): docs-only compatibility-page update; nothing a player sees change in the emulator itself.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+## README line restored (found after the first push)
+
+compat1017 rewrote README line 15 into "**[88 Playable games](...)** so far ... 88 games rated Playable." host-tools/home_page.py matches the numberless line ("**Games rated Playable so far:** [the list, with progress charts](.../blob/home/STATUS.md).") and writes the count from STATUS.md into home; against the numbered line every home update since 23:00 PDT failed, so the public README and STATUS.md stayed at 88. This PR puts the numberless line back (the count is home's, owner 10-16) and makes `title_registry.py check --pages` require that exact line instead of reading a number out of the README (the old check was the reason the number was added). The Playable count itself is on home's STATUS.md and the compatibility page.
