@@ -3068,6 +3068,28 @@ static void setup_nvidia_profile(void)
 #endif
 
 #ifndef __ANDROID__
+/*
+ * #1039: a headless run (-display none) never reaches sdl2_display_init, so
+ * the main thread waits on display_init_sem for good and xemu_input_init never
+ * runs: no controller is bound and the guest sees no pad. With HAKUX_PAD_FILE
+ * set, input is set up once the machine is ready instead, so the pad file has
+ * a port to press on.
+ */
+static void headless_input_init(Notifier *n, void *data)
+{
+    bool held = bql_locked();
+    if (!held) {
+        bql_lock();
+    }
+    xemu_input_init();
+    if (!held) {
+        bql_unlock();
+    }
+    fprintf(stderr, "[pad1039] headless: input initialised\n");
+}
+
+static Notifier headless_input_notifier = { .notify = headless_input_init };
+
 int main(int argc, char **argv)
 {
     QemuThread thread;
@@ -3125,6 +3147,15 @@ int main(int argc, char **argv)
         exit(1);
     }
     atexit(xemu_settings_save);
+
+    for (int i = 1; i + 1 < argc; i++) {
+        const char *pad = getenv("HAKUX_PAD_FILE");
+        if (pad && pad[0] && argv[i] && argv[i + 1] &&
+            !strcmp(argv[i], "-display") && !strncmp(argv[i + 1], "none", 4)) {
+            qemu_add_machine_init_done_notifier(&headless_input_notifier);
+            break;
+        }
+    }
 
 #ifdef _WIN32
     if (g_config.display.setup_nvidia_profile) {
