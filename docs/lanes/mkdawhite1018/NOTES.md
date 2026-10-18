@@ -2,6 +2,16 @@
 
 Mortal Kombat: Deadly Alliance (4D57000C): arena floors and walls draw flat white.
 
+Status (10-18 10:55 PDT, attempt 2): the Step 1 Nova run is re-queued as
+`1792345978-mkdawhite1018-1601447` (section 7). It is the same request on the same ref, route
+and dump settings, and it waits behind lane.gta3car1018's Nova hold (to ~11:20 PDT).
+
+**Why attempt 1 did not finish:** it was blocked on the harness, not on this lane's work, and it
+ended with a WAITING marker on that block. The disc push (section 6) could not run until the
+`dev_push` fix landed. lane.dispatchpush1018 made the fix, it folded to master (127cf0f2c1),
+and the host dispatcher's copy carries it (`dispatch/bin/dispatcher.sh:1050`,
+`wsrc=$(wslpath -w "$src")`). Attempt 2 merged master and re-queued.
+
 Status (10-18, after Step 0): **blocked on the harness at Step 1** (section 6). The Nova run
 never started. The dispatcher's disc push hands Windows `adb.exe` a `/mnt/d/...` path, and
 `adb.exe` cannot open one, so every staged-disc push has failed since the fast path landed on
@@ -220,7 +230,12 @@ it does not run the real `adb.exe`.
 The run takes 420 s plus setup. The route reaches a round at about 84 s, and the dump starts
 at 170 s.
 
+## 7. Step 1, attempt 2 (10-18)
+
+Request `1792345978-mkdawhite1018-1601447`, queued 10:55 PDT. It has the same fields as
+`1792337550`: Nova pin, ref da6e8949dc, 420 s, route `mkda-arcade`,
+`XEMU_FRAME_DUMP=8,images,gd,after170,cap256`, `--pull 'framedump_*'`, and frames every 30 s.
+
 ## Questions
 
-- Who takes the `dev_push` fix (6.2)? It blocks every title missing from the Nova, not only this
-  one. Halo's 06:17 request was the first to hit it.
+- (answered) Who takes the `dev_push` fix (6.2)? lane.dispatchpush1018 did; it folded as 127cf0f2c1.

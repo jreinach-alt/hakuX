@@ -1,2 +1,2 @@
-# dev_push's /mnt/d adb.exe path fix (lane.dispatchpush1018, #433); then re-queue request 1792337550-mkdawhite1018-3995143 unchanged (request.json in the result dir). See NOTES.md section 6.
-fold dispatchpush1018
+# Step 1 Nova run (re-queued after the dev_push fix folded, 127cf0f2c1). See NOTES.md section 7.
+run 1792345978-mkdawhite1018-1601447
