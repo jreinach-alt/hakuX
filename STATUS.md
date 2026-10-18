@@ -1,6 +1,6 @@
 # hakuX status
 
-_updated 2026-10-18 00:38 PDT_
+_updated 2026-10-18 01:09 PDT_
 
 0.6: Measured 261 / 300 · Playable 91 / 110.
 
@@ -22,7 +22,7 @@ Playable **91** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓▓░░`
 | 0.7 | 425 | 2026-10-28 | 185 | 2026-11-01 |
 | 0.8 | 575 | 2026-11-07 | 300 | 2026-11-18 |
 | 0.9 | 725 | 2026-11-17 | 480 | 2026-12-14 |
-| 1.0 | 876 | 2026-11-27 | 789 | 2027-01-29 |
+| 1.0 | 876 | 2026-11-28 | 789 | 2027-01-29 |
 
 Measured: titles with a frame rate reading taken during gameplay, on either handheld. Playable: titles rated Playable. The charts place each title on the date it first qualified, and the projected dates in the table assume the last 7 days' pace continues.
 
