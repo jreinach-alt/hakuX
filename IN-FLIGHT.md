@@ -8,30 +8,26 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `haloring1017` | claude-opus-5-5 | 1h 15m | haloring1017: Halo CE main-menu ring: the missing surface layer and the static inside surface (#939) |
-| `pathfind` | claude-sonnet-5 | 33 min | pathfind: a screen-reading agent that drives a title from boot into gameplay |
+| `compat1018` | claude-sonnet-5 | 5 min |  |
+| `fpstel1018` | claude-sonnet-5 | 0 min |  |
+| `haloring1017` | claude-opus-5-5 | 1h 31m | haloring1017: Halo CE main-menu ring: the missing surface layer and the static inside surface (#939) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-offline`
-- **Device queue:** 1 waiting, 1 running.
+- **Device queue:** 0 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
 
-**100 titles are confirmed Playable** (9 today). Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
+**95 titles are confirmed Playable** (4 today). Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
 
 | Confirmed | Title | Result |
 |---|---|---|
-| 2026-10-18 | Tron 2.0: Killer App (USA, Europe) | Playable, 10-minute run, median 37.2 fps |
+| 2026-10-18 | Lemony Snicket's A Series of Unfortunate Events (USA) | Playable, 10-minute run, median 59.88 fps |
 | 2026-10-18 | Micro Machines (Europe) | Playable, 10-minute run, median 59.94 fps |
-| 2026-10-18 | Nickelodeon Avatar: The Last Airbender | Playable, 10-minute run, median 59.94 fps |
-| 2026-10-18 | Scooby-Doo: Mystery Mayhem (Europe) | Playable, 10-minute run, median 29.0 fps |
-| 2026-10-18 | Bad Boys: Miami Takedown | Playable, 10-minute run, median 59.94 fps |
 | 2026-10-18 | Cel Damage | Playable, 10-minute run, median 29.9 fps |
-| 2026-10-18 | RalliSport Challenge | Playable, 10-minute run, median 59.94 fps |
 | 2026-10-18 | Mortal Kombat: Shaolin Monks | Playable, 10-minute run, median 39.89 fps |
-| 2026-10-18 | Mortal Kombat: Deadly Alliance | Playable, 10-minute run, median 29.93 fps |
 | 2026-10-17 | NBA Live 07 | Playable, 10-minute run |
 | 2026-10-17 | Pac-Man World 2 | Playable, 10-minute run |
 | 2026-10-17 | Dead or Alive 3 | Playable, 10-minute run |
@@ -124,14 +120,13 @@ The harness dashboard, with each release's targets and the progress charts, is [
 | 2026-09-29 | KOF: Maximum Impact – Maniax | Playable, 10-minute run on the Nova |
 | 2026-09-26 | Alien Hominid | Playable, 10-minute run on the Thor |
 
-78 of these still await the owner's flicker check.
+73 of these still await the owner's flicker check.
 
 ## Work in progress
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
 | `lane/haloring1017` | haloring1017: Halo CE main-menu ring: the missing surface layer and the static inside surface (#939) | `60ce32f010` | 2026-10-18 06:33 |
-| `lane/pathfind` | pathfind: a screen-reading agent that drives a title from boot into gameplay | `da6e8949dc` | 2026-10-18 05:50 |
 
 ## Recently landed on master
 
@@ -146,4 +141,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 A title with one measured stall reaches the owner the same day
 - 2026-10-17 storydoc1017: a project history page, linked from the README's More table
 
-_Updated 2026-10-18 06:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 07:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
