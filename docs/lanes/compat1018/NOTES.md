@@ -92,14 +92,55 @@ playable	4156001F	Lemony Snicket's A Series of Unfortunate Events (USA)	USA	file
 
 ## Verification
 
-- `python3 docs/testing/compat_page.py --ledger /home/justin/hakux-work/pm/playable-accepted.tsv --registry /home/justin/hakux-work/pm/title-registry.tsv --notes docs/testing/compat_notes.tsv --check`: before the edit, refused naming all four titles as missing; after the edit, up to date.
-- `python3 docs/testing/compat_page.py ...` (no `--check`, writes the files): 95 playable.
-- `python3 docs/testing/compat_page_selftest.py`: pass.
-- `python3 docs/testing/title_registry.py check --pages`: see result below.
-- `bash docs/testing/preflight.sh`: see result below.
+- `python3 docs/testing/compat_page.py --ledger /home/justin/hakux-work/pm/playable-accepted.tsv --registry /home/justin/hakux-work/pm/title-registry.tsv --notes docs/testing/compat_notes.tsv --check`: before the edit, refused naming all four titles as missing; after the row insert, refused a **second, distinct** cause (see below); after resolving that, up to date.
+- `python3 docs/testing/compat_page.py ...` (no `--check`, writes the files): 95 playable / 18 below_bar / 11 not_playable.
+- `python3 docs/testing/compat_page_selftest.py`: 19 tests, OK.
+- `python3 docs/testing/title_registry.py check --pages`: exit 3 (not an error on this lane's files) -- `README.md`: numberless Playable line, OK. `COMPATIBILITY.md` header and table rows: 95, matches. `Wall`: 95, matches. `status page`: 95, matches (an earlier run before this edit finished showed 91 there; it caught up on its own, outside this lane, by the time the edit was done). The only remaining line is `STALE registry sources changed since it was built` -- `pm/title-registry.tsv`'s own `sources_digest` predates this session's edits to `compat_notes.tsv`, the same digest-staleness shape compat1017b/c both hit; not a defect in this lane's files, closes on the next rebuild.
+- `bash docs/testing/preflight.sh`: **territory FAILS** -- `territory.toml` double-claims `docs/testing/compat_notes.tsv`/`docs/compatibility.csv`/`docs/COMPATIBILITY.md` against the folded, `standing=false` `[lane.compat1017c]` (fold commit `440d148b7a`, confirmed an ancestor of `origin/master`), and `docs/testing/titles/targets.toml` against the folded, `standing=false` `[lane.topspinroute1018]` (fold commit `6bd7ed71f3`, also confirmed an ancestor). Neither lane ever released these rows. Filed `dispatch/board-requests/compat1018.md` asking the board to release all four, per the lane contract (never hand-edit `territory.toml`). Every other step -- `psh_differ`, `aci_vmstate`, `nv2a index`, `coverage`, `board files` -- passes.
 
-(Filled in below once each command has actually been run against the
-finished edit.)
+## A second, distinct generator failure: a BELOW_BAR title landed from concurrent work, and two others stopped qualifying
+
+After inserting the four playable rows, `compat_page.py` refused again, for a
+different, unlisted cause (not a repeat of the first -- the stop rule
+doesn't apply): `pm/title-registry.tsv` already carries a fifth title,
+Buffy the Vampire Slayer (`45410012`), with `status=BELOW_BAR` and
+`failing_all=fps` (the sole qualifying shape `below_bar_qualifies()`
+checks), and no `compat_notes.tsv` row -- the same "second, unlisted cause"
+shape compat1017 documented for its four below_bar titles. Added it the
+same way: no ledger entry, so `tested` uses the registry's `last_run_utc`
+date (`2026-10-18`) directly; `fps_median`/`time_at_bar`/`gameplay_s` from
+the registry's `fps_window_median`/`fps_ok_share`/`play_s` (`play_s` is
+blank in the registry for this run, so `gameplay_s` is left blank too, same
+as the existing ATV Quad Power Racing 2/Genma Onimusha/Family Guy rows);
+region `?`/`none` (no local archive/filename match found for `45410012` or
+"Buffy"; a well-known licensed AAA title, no websearch, same precedent
+compat1017/b/c used for Rayman 3/Marvel Nemesis/NBA Live 07); device `nova`.
+
+Regenerating again surfaced a **third**, also-distinct cause: `compat_notes.tsv`
+already listed two below_bar titles -- Amped 2 (`4D530041`) and Forza
+Motorsport (`4D53006E`) -- that no longer qualify against the live registry.
+Checked both: Amped 2's current registry row has `failing_all=duration+hitch`
+(not `fps` alone; was previously a pure-fps row, confirmed by the brief's own
+documented history for this title in its `hold_detail` field), Forza
+Motorsport's is `failing_all=duration+fps`. `below_bar_qualifies()` requires
+`failing_all == "fps"` exactly, so neither qualifies any more -- a fresh
+verdict landed in the shared registry (the same 2026-10-18 `z-1792324...`
+dispatch batch as Buffy's and Mortal Kombat: Shaolin Monks' rows, outside
+this lane, between when the brief was written and this session) that moved
+both from a clean fps-only failure to a combined cause. Removed both rows
+from `compat_notes.tsv`'s below_bar section: `build_below_bar_rows()` raises
+exactly this as a hard refusal (`compat_notes.tsv lists below_bar titles
+that no longer qualify against the registry`), it is not optional, and the
+same "a combined cause means gameplay was not cleanly confirmed, so it is
+correctly left off the page" rule compat1017c applied to Mortal Kombat:
+Deadly Alliance applies here -- neither title is CRASH_OR_HANG either, so
+both are simply absent from every section now, matching their real,
+unresolved state. Confirmed by `grep` that no stale copy of either row was
+left anywhere in `compat_notes.tsv`, `COMPATIBILITY.md` or `compatibility.csv`.
+
+This is still only two *distinct* causes beyond the brief's four titles (the
+missing-below_bar-row cause, and the no-longer-qualifies cause), not the
+same cause recurring -- the stop rule was not tripped.
 
 ## Selftest
 

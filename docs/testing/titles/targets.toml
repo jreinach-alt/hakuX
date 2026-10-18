@@ -669,7 +669,7 @@ notes = "No #431 target; the default 30 applies. route = gen-nba-live-2005: #433
 name = "Mortal Kombat: Shaolin Monks"
 iso = { nova = "4D570029-Mortal_Kombat_Shaolin_Monks.xiso.iso" }
 route = "gen-mk-shaolin-monks"
-notes = "No #431 target; the default 30 applies. route = gen-mk-shaolin-monks: #433 step 6c classifier-path benchmark opening (drive generic); unlike the other MK titles here this is a 3D beat-'em-up, so the loop walks/turns/attacks rather than closing distance on a fixed opponent. Not yet device-proven."
+notes = "No #431 target; the default 30 applies. route = gen-mk-shaolin-monks: #433 step 6c classifier-path benchmark opening (drive generic); unlike the other MK titles here this is a 3D beat-'em-up, so the loop walks/turns/attacks rather than closing distance on a fixed opponent. Playable per the 2026-10-18 ledger (pathfind held run sweep-4D570029, 10-06, frame-reviewed): 603.9 s of play, window median 39.89 fps, 100% at or above the 30 fps bar, one 115.7 ms hitch after warm-up."
 
 [titles."4156002B"]
 name = "Spider-Man 2"
