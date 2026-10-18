@@ -4,7 +4,7 @@ State: draft
 
 Lane: haloring1017            Issue: #939
 Base: master @ 9abd80e90c
-Files: docs/lanes/haloring1017/PR.md, docs/lanes/haloring1017/NOTES.md, docs/lanes/haloring1017/tools/constmove.py, docs/lanes/haloring1017/tools/otwrites.py, docs/lanes/haloring1017/tools/ringuv.py, docs/lanes/haloring1017/tools/deskrun.py, docs/lanes/haloring1017/tools/bandfit.py, docs/lanes/haloring1017/tools/bandsum.py, docs/lanes/haloring1017/tools/vidmap.py, docs/lanes/haloring1017/tools/clockfit.py, docs/lanes/haloring1017/tools/c13series.py, docs/lanes/haloring1017/tools/hullsw.py, docs/lanes/haloring1017/tools/swcheck.py, docs/lanes/haloring1017/tools/combwords.py, docs/lanes/haloring1017/tools/run13anchors.sh, docs/lanes/haloring1017/tools/run13map.sh
+Files: docs/lanes/haloring1017/PR.md, docs/lanes/haloring1017/NOTES.md, docs/lanes/haloring1017/tools/constmove.py, docs/lanes/haloring1017/tools/otwrites.py, docs/lanes/haloring1017/tools/ringuv.py, docs/lanes/haloring1017/tools/deskrun.py, docs/lanes/haloring1017/tools/bandfit.py, docs/lanes/haloring1017/tools/bandsum.py, docs/lanes/haloring1017/tools/vidmap.py, docs/lanes/haloring1017/tools/clockfit.py, docs/lanes/haloring1017/tools/c13series.py, docs/lanes/haloring1017/tools/hullsw.py, docs/lanes/haloring1017/tools/swcheck.py, docs/lanes/haloring1017/tools/combwords.py, docs/lanes/haloring1017/tools/photoreg.py, docs/lanes/haloring1017/tools/posefit.py, docs/lanes/haloring1017/tools/photojudge.py, docs/lanes/haloring1017/tools/photocal.py, docs/lanes/haloring1017/tools/run13anchors.sh, docs/lanes/haloring1017/tools/run13map.sh
 Prediction: none: analysis-only (so far)
 Needs device: no    Needs NDK: no
 

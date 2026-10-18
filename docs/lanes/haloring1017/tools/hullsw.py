@@ -341,8 +341,9 @@ def ppm_rgb(path):
     return np.frombuffer(parts[3][:w * h * 3], dtype=np.uint8).reshape(h, w, 3).astype(np.float64) / 255
 
 
-def render(dump, ram, frame, v4z=0.0, loaded=None):
-    """Everything per pixel for one frame. Returns a dict of full-screen arrays."""
+def render(dump, ram, frame, v4z=0.0, loaded=None, state=None):
+    """Everything per pixel for one frame. Returns a dict of full-screen arrays.
+    A dict passed as state gets each layer's constants and decoded textures, by layer id."""
     session, draws, frames, skips, shaders = loaded or g.load(dump)
     for d in draws:
         for k in ("f", "n", "count"):
@@ -378,7 +379,7 @@ def render(dump, ram, frame, v4z=0.0, loaded=None):
     lid, tid, bary = raster(layers)
     out = {"lid": lid}
     fields = {"t0": 4, "t1": 4, "t2": 4, "t3": 4, "oD0": 4, "oD1": 4, "final": 3, "diffuse": 3, "refl": 3,
-              "v0lit": 3, "lod0": 1, "lod1": 1, "lod3": 1, "face": 1, "R": 3}
+              "v0lit": 3, "lod0": 1, "lod1": 1, "lod3": 1, "face": 1, "R": 3, "T0": 2}
     for k, c in fields.items():
         out[k] = np.full((H, W, c), np.nan)
     for L, p in per.items():
@@ -409,12 +410,15 @@ def render(dump, ram, frame, v4z=0.0, loaded=None):
         cf = argb(st[(frame, fd[p["name"]]["n"])]["r"][0x19AC])           # SPECFOGFACTOR0
         rgb, terms = combine(ts[0], ts[1], ts[2], t3, oD0, oD1, p["c0"], p["c1"], cf)
         for k, v in (("t0", ts[0]), ("t1", ts[1]), ("t2", ts[2]), ("t3", t3), ("oD0", oD0), ("oD1", oD1),
-                     ("final", rgb), ("R", T3)):
+                     ("final", rgb), ("R", T3), ("T0", T0)):
             out[k][ys, xs] = v
         for k, v in terms.items():
             out[k][ys, xs] = v
         out["lod3"][ys, xs, 0] = lod3
         out["face"][ys, xs, 0] = face
+        p["cf"] = cf
+    if state is not None:
+        state.update(per)
     return out
 
 

@@ -312,6 +312,57 @@ It refuses a draw whose combiner words differ from the transcribed ones. It writ
 So the render is hakuX's hull to within a few hundredths. Any term it is missing against the console is missing in
 hakuX too, and swapping one term (k, the cube face, q, t1's strength) shows what hakuX would draw with that change.
 
+### M5: console photo 5 in frame pixels, at its own pose and scroll (`photoreg.py`, `posefit.py`, `photojudge.py`)
+
+Photo `console5-V-hull-right.jpg` (owner, 10-16) is put into the 640x480 frame in three steps, each checked by a
+measure the step before did not fit.
+
+1. **Registration on the overlays.** The menu's 2D overlays (HALO logo, menu text) are the same picture on both
+   machines wherever the ring is. The template is the per-pixel minimum over run 13's 120 video frames
+   (v00794-v01986), which keeps the overlays on black. A quadratic warp (12 terms) is fitted by Lucas-Kanade on the
+   template's edge pixels, from a blur of 8 px down to 1. NCC at the finest level is 0.755 on the logo rectangle and
+   0.716 on the menu text. A first try on a full hakuX frame was pulled 14 px off by the ring's own edges; the
+   overlay-only template fixed that.
+2. **Pose by silhouette.** The ring's geometry never moves; the camera does. Rasterising `n4`+`n5` at each frame of run
+   13's dump against the photo's ring mask (Otsu threshold, overlays out), the best IoU is 0.791 at f506. f504-f510
+   are all >= 0.785. f543, the frame used before, is lower.
+3. **Scroll phase, an independent check.** The hull's textures scroll by c13.w at 0.00078 per frame, one t0 period
+   every ~43 s. Nothing above fixed the photo's phase. Scanning a phase d added to oT0.x over the whole period
+   (500 steps), the console hull's luminance (3 px blur, overlays out, 65,106 px) correlates with each scrolled
+   texture as follows:
+
+| term at the hull's pixels | r at the best d | best d | mean r over d (sd) | z of the peak |
+|---|---|---|---|---|
+| t2.r (the reflection mask) | 0.635 | -0.001 | 0.375 (0.078) | 3.3 |
+| t0 (the base map) | 0.566 | -0.001 | 0.348 (0.060) | 3.6 |
+| t1 (detail, 10x finer) | 0.279 | flat | 0.260 (0.013) | 1.5: below the photo's resolution |
+| hakuX's final, as rendered | 0.592 | (d = 0 only) | | |
+
+   The peak is one sharp bump (r drops to 0.53 at d = +-0.006) at the dump's own phase, d = 0. So the photo and f507
+   share the scroll phase as well as the pose. The menu's scroll runs on the same clock as its camera loop, and the
+   registration and the pose are right: a wrong pose would not land the texture on its own phase.
+
+So photo 5 can be compared with the render at f507 pixel for pixel. Two first readings:
+- **The console's hull shows the same textures as hakuX's**: the crater streaks of t0 and t2.r line up in a zoom of
+  the upper hull. The layer is not a new picture, it is these maps drawn brighter and greyer.
+- **The console follows t2.r better than hakuX's own output does** (0.635 against 0.592). t2.r is the mask of the
+  reflection term, which hakuX draws only where the cube is bright (the hull's left edge at this pose). That is R1's
+  reading, and the owner's ("the sprite ... applied across the entire ring, including the dark portions").
+
+Mean luminance by region (photo units for the console; framebuffer units for the render):
+
+| region | px | console photo | hakuX final | hakuX diffuse | hakuX reflection |
+|---|---|---|---|---|---|
+| hull, y < 300 | 84,150 | 0.370 | 0.139 | 0.106 | 0.033 |
+| hull, y >= 300 | 21,367 | 0.438 | 0.164 | 0.144 | 0.020 |
+| band (`n4`) | 10,762 | 0.703 | 0.565 | 0.384 | 0.182 |
+
+The photo's tone curve (`photocal.py`, from the flat parts of the overlays over space) is steep in the mid-tones
+(green: framebuffer 0.21 -> photo 0.34, 0.32 -> 0.50, 0.56 -> 0.73) and the camera clips blue above 0.21. Read
+through it, the console's band is about hakuX's (photo 0.70 ~ framebuffer 0.55, hakuX 0.565) while the console's hull
+is about 1.6x hakuX's (photo 0.37-0.44 ~ framebuffer 0.23-0.26, hakuX 0.14-0.16). That curve rests on a few hundred
+overlay pixels per bin, so it sets the size of the gap, not the model; the model is decided by pattern (M6).
+
 ## Plan
 
 1. ~~(c) off the stock driver~~: done (M2, M2b). R4 holds.
