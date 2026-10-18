@@ -1,0 +1,22 @@
+display-clear: ee317437 Awake, no foreign overlay on display 0 (19 windows read)
+COOLDOWN: waited 0 s, xo 30.9 -> 30.9 C [xo-therm 30.9 C < 65 C]
+display-clear: ee317437 Awake, no foreign overlay on display 0 (19 windows read)
+PERF: regimen=default before=[0 4] running=[0 4]
+PERF: display at start {"displays":{"0":"ON"},"dual_screen_display_mode":"null","min_refresh_rate":120.00001,"peak_refresh_rate":120.00001,"screen_brightness":7,"screen_brightness_mode":0}
+FOREGROUND: waiting: foreground-unknown: ee317437 has no focused window on display 0 (app=com.jreinach.hakux.debug)
+in-front: ee317437 app=com.jreinach.hakux.debug focus=com.jreinach.hakux.debug display=0
+ROUTE started pid 1599487 from /home/justin/hakux-work/dispatch/results/z-1792324127-lanelocal-1592789/route.txt
+ROUTE 04:49:21.296 start route.txt serial=ee317437
+ROUTE 04:49:21.411 pad /dev/input/event7
+ROUTE 04:49:21.414 drive forza (480s, mark)
+ROUTE 04:57:39.527 drive forza: drive: window-done after 480 s; title at 18.4 s, play at 73.6 s; 41 inputs, 9 skips, 0 model calls
+ROUTE 04:57:39.532 done
+ROUTE 04:57:39.534 end
+ROUTE finished (rc 0) after 500s; holding without input
+adb_failures=0
+PERF: display at end {"displays":{"0":"ON"},"dual_screen_display_mode":"null","min_refresh_rate":120.00001,"peak_refresh_rate":120.00001,"screen_brightness":7,"screen_brightness_mode":0}
+THERMAL: no thermal-pause device above 0; 31 samples, 0 unread, hottest zone 95.5 C; battery +1.74 W (+ is discharging), usb in 6.29 W, net 8.04 W; clock MHz cpu0 902-2016 of 2016, cpu3 1651-2707 of 2707, cpu7 1843-3187 of 3187, gpu 401-401 of 680, gpu throttle-switch 0; fan duty 0-19574 of 50000 at fan_mode 4
+held 4D53006E-Forza_Motorsport.xiso.iso for 962s
+PERF: restored=[0 4] perf_restored=true
+
+ROUTE 04:51:28.204 mark gameplay
