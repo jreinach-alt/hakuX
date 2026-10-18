@@ -95,8 +95,8 @@ note = "STARTED lane.local 2026-10-16 19:50 PDT for lane.xbox (board request 10-
 issues = ["433"]
 standing = false
 files = ["docs/testing/compat_notes.tsv", "docs/testing/compat_page.py", "docs/compatibility.csv", "docs/testing/public_docs.txt", "docs/lanes/compat1016/**"]
-released = ["docs/testing/public_docs.txt", "docs/testing/compat_page.py"]
-note = "docs/testing/compat_page.py RELEASED to [lane.release052c] (lane.local 2026-10-17 ~17:35 PDT: no lane/compat1016 branch or worktree exists; one string, phone to handheld). || STARTED lane.local 2026-10-16 19:50 PDT for lane.xbox (board request 10-16 19:26, branch lane/compat1016, built after release051 folds). compat_notes.tsv and compat_page.py are released by titlekey1016; public_docs.txt released by folded docsfresh1012. docs/COMPATIBILITY.md is held by [lane.release051]: add it when released. Adds the three visitor docs to public_docs.txt, so fold after visitordocs1016 is on master at 0.5.1. Full selftest."
+released = ["docs/testing/public_docs.txt", "docs/testing/compat_page.py", "docs/testing/compat_notes.tsv", "docs/compatibility.csv"]
+note = "docs/testing/compat_notes.tsv and docs/compatibility.csv RELEASED to [lane.compat1017] (hostops 22:4x PDT, board request dispatch/board-requests/compat1017.md: no lane/compat1016 branch or worktree ever existed per git branch -a, these were simply never released when compat1017 was briefed to replace this row). docs/testing/compat_page.py RELEASED to [lane.release052c] (lane.local 2026-10-17 ~17:35 PDT: no lane/compat1016 branch or worktree exists; one string, phone to handheld). || STARTED lane.local 2026-10-16 19:50 PDT for lane.xbox (board request 10-16 19:26, branch lane/compat1016, built after release051 folds). compat_notes.tsv and compat_page.py are released by titlekey1016; public_docs.txt released by folded docsfresh1012. docs/COMPATIBILITY.md is held by [lane.release051]: add it when released. Adds the three visitor docs to public_docs.txt, so fold after visitordocs1016 is on master at 0.5.1. Full selftest."
 
 [lane.frontends1016c]
 issues = ["433"]
@@ -1075,6 +1075,7 @@ files = []
 note = 'RETIRED (lane.local 2026-10-12 21:38 PDT): folded as 01d5dc1a80 on master, no unit, nothing queued. Files RELEASED to [free]: docs/testing/owner_build.sh. v0.5.0 tagged on 6f560dc44e. || Was: READY 2ace3dec01 (lane.local 2026-10-12 19:29 PDT; also maps nova/thor to serials before device_env, which exited 2 on every real run). STARTED lane.local 2026-10-12 19:00 PDT (Sonnet): owner_build.sh builds assembleRelease in its private worktree with no android/key.properties, so the release apk i...'
 
 [free]
+# RELEASED (hostops, jam duty, 2026-10-18 05:33 UTC / 17-Oct 22:33 PDT) by retiring lane.storydoc1017 (folded 427164f2e0, no unit): docs/HISTORY.md, docs/lanes/storydoc1017/**. (README.md went onward to [lane.compat1017], the sole remaining claimant -- not here -- see [retired.storydoc1017].)
 # RELEASED (hostops, jam duty, 2026-10-18 03:11 UTC / 17-Oct 20:11 PDT) by retiring lane.haloship1017 (folded e810d97675, no unit, every file released): docs/testing/nv2a_index.json, hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/renderer.h, hw/xbox/nv2a/pgraph/vk/reports.c, ui/xemu-input.c. (renderer.c and ui/xemu.c went onward to [lane.bootstatic1017] in the same push, not here -- see that row and [retired.haloship1017].)
 # CLAIMED (lane.local 2026-10-17 PDT): docs/testing/jobs/selftest.d/86-nightly-notes.sh -> lane.drivernotice1017 (the nightly body carries the GPU-driver notice, #433). Back here when it retires.
 # CLAIMED (lane.local 2026-10-17 ~10:30 PDT): docs/testing/lane.sh -> lane.sparsewt1017 (lane worktrees created sparse, #433). Back here when it retires.
@@ -2981,7 +2982,8 @@ note = "RETIRED lane.local 2026-10-17 ~17:30 PDT: FOLDED as afde9a4677 (v0.5.2 t
 issues = ["433"]
 standing = false
 files = ["README.md", "CHANGELOG.md", "docs/COMPATIBILITY.md", "docs/gpu-driver.md", "docs/releases/README.md", "docs/releases/v0.4.0-j1.md", "docs/releases/v0.4.1-j1.md", "docs/releases/v0.5.0.md", "docs/releases/v0.5.1.md", "docs/releases/v0.5.2.md", "docs/testing/nightly_build.sh", "docs/testing/compat_page.py", "docs/lanes/release052c/**"]
-note = "STARTED lane.local 2026-10-17 ~17:30 PDT (docs, no device): owner 10-17: the 0.5.2 release page tells the whole story since v0.3.1 with title-specific fixes per version; the driver notice says handheld, not phone. Published after the fold by editing the GitHub release body."
+released = ["README.md", "docs/COMPATIBILITY.md", "docs/testing/compat_page.py"]
+note = "README.md, docs/COMPATIBILITY.md and docs/testing/compat_page.py RELEASED to [lane.compat1017] (hostops 22:4x PDT, board request dispatch/board-requests/compat1017.md: this lane folded a6ec42fadc 18:51 PDT with no released list at all, so the handoff this row's own note already describes -- \"README.md and targets.toml are taken from folded lanes (release052c, titlekey1016)\" -- was never recorded; unit inactive, no other open ask on these 3 files). Other files in this row (CHANGELOG.md, docs/gpu-driver.md, docs/releases/**, docs/testing/nightly_build.sh) are untouched, not raised by any request. || STARTED lane.local 2026-10-17 ~17:30 PDT (docs, no device): owner 10-17: the 0.5.2 release page tells the whole story since v0.3.1 with title-specific fixes per version; the driver notice says handheld, not phone. Published after the fold by editing the GitHub release body."
 
 [lane.gta3fps1017]
 issues = ["1049"]
@@ -2995,11 +2997,11 @@ standing = false
 files = ["docs/lanes/compat1017/**", "docs/testing/compat_notes.tsv", "docs/testing/compat_page.py", "docs/testing/compat_page_selftest.py", "docs/compatibility.csv", "docs/COMPATIBILITY.md", "README.md", "docs/testing/titles/targets.toml"]
 note = "STARTED lane.local 2026-10-17 ~22:05 PDT on the owner's word (move Marvel Nemesis to Playable in all references; lots of titles were tested before 0.5.2 and are not downgraded): bring the compatibility page, CSV and README in line with pm/playable-accepted.tsv (88 rows; the page stops at 57/72). compat_page.py refuses until the 31 ledger titles missing from compat_notes.tsv have rows. Replaces the never-started [lane.compat1016]. README.md and targets.toml are taken from folded lanes (release052c, titlekey1016); targets.toml is the Marvel notes line only. Brief: briefs/compat1017.md."
 
-[lane.storydoc1017]
+[retired.storydoc1017]
 issues = []
-standing = false
-files = ["README.md", "docs/HISTORY.md", "docs/lanes/storydoc1017/**"]
-note = "BRIEFED by lane.xbox 2026-10-17 on the owner's request ('On the story doc, lets get it into the readme, specifically, the More table.'), row added by lane.local 22:2x PDT: copy the owner-reviewed project history to docs/HISTORY.md unchanged and add one row to README.md's More table. Docs only, no device. README.md is SHARED with [lane.compat1017] (which edits the Playable count wording); the hunks are disjoint (one added table row here), whichever lane folds second rebases. Brief: briefs/storydoc1017.md."
+files = []
+retired_utc = "2026-10-18T05:33:34Z"
+note = "RETIRED (hostops, jam duty, 2026-10-18 05:33 UTC / 17-Oct 22:33 PDT): lane/storydoc1017 confirmed an ancestor of origin/master (FOLDED 427164f2e0, session log 10-17), no running unit. README.md RELEASED onward -- compat1017's own row already said this row's hunk was disjoint and compat1017 folds second and has already rebased it, so compat1017 is now the sole claimant (board request dispatch/board-requests/compat1017.md asked exactly this, 'optionally'). docs/HISTORY.md and docs/lanes/storydoc1017/** RELEASED to [free] below -- no live row needs them."
 
 [lane.stallraise1017]
 issues = []

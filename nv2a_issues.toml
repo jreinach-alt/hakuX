@@ -5930,10 +5930,10 @@ status_note = "Triaged 14:09 PDT (lane.local PM replan 14:00, applied by hostops
 
 [issue.851]
 title = "the hitch bar counts an all-idle host stall as a title hitch: Marvel Nemesis r3 fails on one 1.01 s stall at 167 s where guest and renderer are both idle (timer-woken, Ri 25 ms; decompose on runs/swee"
-status = "open"
-dispatch_state = "available"
+status = "closed"
+dispatch_state = "done"
 blocked_on = ""
-status_note = "Triaged 14:09 PDT (lane.local PM replan 14:00, applied by hostops): dispatchable to lane.pathfind, the Playable title runs; its brief is the reader. Forge issue, open (local-only)."
+status_note = "CLOSED (hostops 2026-10-18 05:33 UTC / 17-Oct 22:33 PDT, board request dispatch/board-requests/compat1017.md; verified gh issue view 851 -> CLOSED on the forge). The owner ruled 10-17 ~22:00 PDT (lane.xbox's session, pm/owner-holds.tsv marvel-851): 'Put Marvel Nemesis in the playables. A loading hitch is not a hitch, it's loading.' A stall with guest and renderer both idle counts as loading, not a hitch. Marvel Nemesis banked Playable on run marvel-1006 (pm/playable-accepted.tsv, 2026-10-17 21:55); lane.compat1017 moves it to Playable in every doc that names it. No bar change -- the hitch-bar rule itself is unedited; this just records the ruling on this one title."
 
 [issue.852]
 title = "fighting-game hold stalls on Character Select after a round, so the play share falls to 0.80 on Mortal Kombat Armageddon. The recovery needs a rule for returning from the grid to a live round, not one"
