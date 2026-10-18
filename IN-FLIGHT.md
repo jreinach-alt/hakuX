@@ -8,14 +8,13 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `bootstatic1017` | claude-opus-5-5 | 1h 23m | bootstatic1017: black while the guest has the screen off, no static or green at title start (#1045) |
-| `haloring1017` | claude-opus-5-5 | 1h 0m | haloring1017: Halo CE main-menu ring: the missing surface layer and the static inside surface (#939) |
-| `nearbar1017` | claude-sonnet-5 | 0 min |  |
+| `haloring1017` | claude-opus-5-5 | 1h 15m | haloring1017: Halo CE main-menu ring: the missing surface layer and the static inside surface (#939) |
+| `nearbar1017` | claude-sonnet-5 | 15 min | nearbar1017: three near-bar titles on the 0.5.2 build -- do they clear Playable now |
 
 - **Handhelds:** 2 connected.
-  - Nova: free for the queue
+  - Nova: held by `lane.nearbar1017`
   - Thor: held by `lanelocal-offline`
-- **Device queue:** 1 waiting, 1 running.
+- **Device queue:** 3 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -118,8 +117,8 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/bootstatic1017` | bootstatic1017: black while the guest has the screen off, no static or green at title start (#1045) | `57f3047756` | 2026-10-17 18:26 |
 | `lane/haloring1017` | haloring1017: Halo CE main-menu ring: the missing surface layer and the static inside surface (#939) | `312fac168f` | 2026-10-17 18:26 |
+| `lane/nearbar1017` | nearbar1017: three near-bar titles on the 0.5.2 build -- do they clear Playable now | `17f9652e01` | 2026-10-17 18:35 |
 
 ## Recently landed on master
 
@@ -132,4 +131,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 release052: the 0.5.2 release commit (#433)
 - 2026-10-17 defaulton1017: S2T_CVT, REPORT_EARLY and FLDCW_CHAIN on by default, after one default-on screen
 
-_Updated 2026-10-17 18:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-17 18:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
