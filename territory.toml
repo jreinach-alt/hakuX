@@ -2961,4 +2961,11 @@ note = "BRIEFED by lane.xbox 2026-10-17 14:40 PDT on the owner's request: the br
 issues = ["433"]
 standing = false
 files = ["android/app/build.gradle.kts", "KNOWN_ISSUES.md", "docs/gpu-driver.md", "docs/releases/v0.5.2.md", "docs/lanes/release052b/**"]
-note = "STARTED lane.local 2026-10-17 ~16:20 PDT (docs + one metadata line, no device): 0.5.2's last commit before the tag: versionCode 9 to 10 (0.5.0 and 0.5.1 both shipped as 9), the driver page link in docs/gpu-driver.md, #938/#939 no longer 'aimed at 0.5.2', and 'installs over 0.5.1' in the release note. offline_fold.py treats a versionCode-only diff of build.gradle.kts as non-code, so no device run."
+released = ["android/app/build.gradle.kts", "KNOWN_ISSUES.md", "docs/gpu-driver.md", "docs/releases/v0.5.2.md", "docs/lanes/release052b/**"]
+note = "RETIRED lane.local 2026-10-17 ~17:30 PDT: FOLDED as afde9a4677 (v0.5.2 tagged and published); every file released. || STARTED lane.local 2026-10-17 ~16:20 PDT (docs + one metadata line, no device): 0.5.2's last commit before the tag: versionCode 9 to 10 (0.5.0 and 0.5.1 both shipped as 9), the driver page link in docs/gpu-driver.md, #938/#939 no longer 'aimed at 0.5.2', and 'installs over 0.5.1' in the release note. offline_fold.py treats a versionCode-only diff of build.gradle.kts as non-code, so no device run."
+
+[lane.release052c]
+issues = ["433"]
+standing = false
+files = ["README.md", "CHANGELOG.md", "docs/COMPATIBILITY.md", "docs/gpu-driver.md", "docs/releases/README.md", "docs/releases/v0.4.0-j1.md", "docs/releases/v0.4.1-j1.md", "docs/releases/v0.5.0.md", "docs/releases/v0.5.1.md", "docs/releases/v0.5.2.md", "docs/testing/nightly_build.sh", "docs/testing/compat_page.py", "docs/lanes/release052c/**"]
+note = "STARTED lane.local 2026-10-17 ~17:30 PDT (docs, no device): owner 10-17: the 0.5.2 release page tells the whole story since v0.3.1 with title-specific fixes per version; the driver notice says handheld, not phone. Published after the fold by editing the GitHub release body."
