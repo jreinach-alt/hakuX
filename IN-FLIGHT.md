@@ -8,7 +8,8 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `dispatchdoctor1017` | claude-opus-5-5 | 40 min | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what  |
+| `dispatchdoctor1017` | claude-opus-5-5 | 55 min | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what  |
+| `snaptargets1018` | claude-sonnet-5 | 3 min |  |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `lane.xbox-fps1018`
@@ -136,4 +137,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 release052c: the 0.5.2 release page tells the story since v0.3.1, and the driver notice says handheld (#433)
 - 2026-10-17 Halo CE: the ship's rear lights show through the hull after the cut to the front (opening cinematic)
 
-_Updated 2026-10-18 01:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 01:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
