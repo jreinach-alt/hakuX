@@ -12,7 +12,7 @@ Snapdragon handhelds.
 [What's new](https://github.com/jreinach-alt/hakuX/blob/master/docs/releases/v0.5.2.md) ·
 [Sponsor](https://github.com/sponsors/jreinach-alt)
 
-**87 games rated Playable so far.** [The list, with progress charts.](STATUS.md)
+**88 games rated Playable so far.** [The list, with progress charts.](STATUS.md)
 
 ## Highlights
 
@@ -100,6 +100,7 @@ this build. Coming from the official hakuX?
 | [Release notes](https://github.com/jreinach-alt/hakuX/blob/master/docs/releases/README.md) | What changed in each version |
 | [Known issues](KNOWN_ISSUES.md) | What to expect before you report a bug |
 | [Roadmap](https://github.com/jreinach-alt/hakuX/blob/master/ROADMAP.md) | What is coming next |
+| [How we got here](https://github.com/jreinach-alt/hakuX/blob/master/docs/HISTORY.md) | The story of hakuX CE so far |
 | [ES-DE setup](https://github.com/jreinach-alt/hakuX/blob/master/docs/es-de/README.md) | Launching games from ES-DE |
 | [Moving from the official build](https://github.com/jreinach-alt/hakuX/blob/master/android/MIGRATING.md) | Bringing your saves across |
 | [Reporting a bug](https://github.com/jreinach-alt/hakuX/blob/master/docs/reporting-bugs.md) | What to include |

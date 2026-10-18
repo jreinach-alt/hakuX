@@ -1,14 +1,14 @@
 # hakuX status
 
-_updated 2026-10-17 21:30 PDT_
+_updated 2026-10-17 22:02 PDT_
 
-0.6: Measured 261 / 300 · Playable 87 / 110.
+0.6: Measured 261 / 300 · Playable 88 / 110.
 
 ## How close is 0.6?
 
 Measured **261** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓▓▓░`
 
-Playable **87** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓▓░░`
+Playable **88** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓▓░░`
 
 ![Titles over time](chart.svg)
 
@@ -20,13 +20,13 @@ Playable **87** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓▓░░`
 |---|---|---|---|---|
 | 0.6 | 300 | 2026-10-20 | 110 | 2026-10-21 |
 | 0.7 | 425 | 2026-10-28 | 185 | 2026-11-02 |
-| 0.8 | 575 | 2026-11-07 | 300 | 2026-11-21 |
-| 0.9 | 725 | 2026-11-17 | 480 | 2026-12-20 |
-| 1.0 | 876 | 2026-11-27 | 789 | 2027-02-09 |
+| 0.8 | 575 | 2026-11-07 | 300 | 2026-11-20 |
+| 0.9 | 725 | 2026-11-17 | 480 | 2026-12-19 |
+| 1.0 | 876 | 2026-11-27 | 789 | 2027-02-06 |
 
 Measured: titles with a frame rate reading taken during gameplay, on either handheld. Playable: titles rated Playable. The charts place each title on the date it first qualified, and the projected dates in the table assume the last 7 days' pace continues.
 
-Ships when both are met. At the last 48 h rate: about 2026-10-24.
+Ships when both are met. At the last 48 h rate: about 2026-10-23.
 
 Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/Nova handhelds.
 
@@ -82,6 +82,7 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | **KOF: Maximum Impact – Maniax** | 🟢 Playable | **59.9**<br>Nova, Oct 17 |
 | **Legacy of Kain: Defiance** | 🟢 Playable | **29.0**<br>Nova, Oct 11 |
 | **Manhunt** | 🟢 Playable |  |
+| **Marvel Nemesis: Rise of the Imperfects** | 🟢 Playable | **30.0**<br>Nova, Oct 6 |
 | **Mat Hoffman's Pro BMX 2** | 🟢 Playable |  |
 | **Max Payne** | 🟢 Playable |  |
 | **Max Payne 2: The Fall of Max Payne** | 🟢 Playable | **59.9**<br>Nova, Oct 11 |
@@ -219,7 +220,6 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | **Lemony Snicket s A Series of Unfortunate Events USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 12 |
 | **Lord of the Rings The The Fellowship of the Ring USA** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 7 |
 | **Manhunt USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 8 |
-| **Marvel Nemesis: Rise of the Imperfects** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 6 |
 | **Mat Hoffman s Pro BMX 2 USA** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 14 |
 | **Max Payne 2 The Fall of Max Payne USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 8 |
 | **MechAssault 2: Lone Wolf** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 8 |
@@ -662,5 +662,5 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 
 </details>
 
-620 titles: 87 Playable, 9 below 30 fps, 14 crash or hang, 152 measured but not rated yet, 358 not tested yet.
+620 titles: 88 Playable, 9 below 30 fps, 14 crash or hang, 151 measured but not rated yet, 358 not tested yet.
 
