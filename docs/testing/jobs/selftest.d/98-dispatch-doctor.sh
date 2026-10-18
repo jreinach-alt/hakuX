@@ -375,6 +375,24 @@ dd_route_run ensure_route_attached CAFE9999 "Some Unknown Game (USA).iso" "$DD/r
 check "s3 route none: says no recorded route exists and that the requested survey runs" \
       grep -qF "route: none: no proven or recorded route for CAFE9999 (no recorded or proven route); the generic survey does not reach gameplay for most titles; running the survey the request asked for" "$DD/rdir/inputs.txt"
 
+# the lookup itself crashes (a dispatcher snapshot with no targets.toml,
+# lane.snaptargets1018's defect): the line says the lookup failed, never
+# "no recorded route", and the request runs as queued.
+rt_reset; echo '{}' > "$DD/req1b.json"
+( export TITLE_TARGETS="$DD/route/no-such-targets.toml" TITLE_ROUTES="$DD/route/routes" \
+         DISPATCH_DIR="$DD/route/dispatch"
+  . "$DDT/dispatcher.sh" selftest-not-a-subcommand >/dev/null 2>&1
+  log() { printf '%s\n' "$*" >> "$DD/route.log"; }
+  ensure_route_attached CAFE1001 "Some Target Game (USA).iso" "$DD/rdir" "$DD/req1b.json" )
+rc=$?
+if [ "$rc" = 0 ] && [ "$(cat "$DD/req1b.json")" = '{}' ] \
+   && grep -qF "route: none: could not look up a route for CAFE1001, titlestate.py suggest-route failed (FileNotFoundError" "$DD/rdir/inputs.txt" \
+   && ! grep -qF "no proven or recorded route" "$DD/rdir/inputs.txt"; then
+    ok "s3 route lookup crash: inputs.txt says the lookup failed, not that no route exists"
+else
+    bad "s3 route lookup crash: rc=$rc req=[$(cat "$DD/req1b.json")] inputs=[$(cat "$DD/rdir/inputs.txt" 2>/dev/null)]"
+fi
+
 rt_reset; echo '{"route_name":"some-other-route"}' > "$DD/req1b.json"
 dd_route_run ensure_route_attached CAFE1001 "Some Target Game (USA).iso" "$DD/rdir" "$DD/req1b.json"
 check "s3 route named: a requester's own route is recorded as theirs, untouched" \

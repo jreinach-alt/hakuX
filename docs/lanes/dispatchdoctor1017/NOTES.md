@@ -542,6 +542,18 @@ queue-time attach already exited 2 on the same `--check` failure (line
 ~1273), so both paths now agree. `fix attach-route` in the doctor reports
 the refusal as "a route lane's to repair, not a retry".
 
+**A crashed route lookup says so.** `suggest-route` prints JSON whether or
+not it finds a route. When it crashed instead, for example on a dispatcher
+snapshot with no `targets.toml` (lane.snaptargets1018's defect; it raises
+FileNotFoundError), the attach parsed nothing and wrote "no proven or
+recorded route". That is a claim nobody checked. It now writes `route:
+none: could not look up a route for <TID>, titlestate.py suggest-route
+failed (<last line>); running … as queued` and logs `ROUTE LOOKUP FAILED`.
+The request still runs as queued, since the lookup's failure is not the
+request's. The 98 leg "s3 route lookup crash" points `TITLE_TARGETS` at a
+missing file. It rejects the old wording, so it would have failed before
+the fix.
+
 **Two latent faults found while finishing.**
 - The doctor never ran from the dispatcher as committed in 75b1d3475d
   (mode 644 behind `[ -x ]`; see Attempt 4 above). Fixed: `[ -f ]`, 755.
@@ -590,6 +602,22 @@ PR.md names the fold's fragments (`Selftest:`): the 51 fragments whose grep
 hit on a changed file is a real source/run/copy/lint, plus 50-arms-requeue
 (51's fixture) and 99-title-state; PR.md lists the 11 prose-only hits and
 66 that were left out, and why.
+
+After the lookup-crash change (one function, `ensure_route_attached`), I
+re-ran the fragments that drive it. 98, 99-iso-roots, 99-profile-gate and
+97-dispatch-deploy: 184 passed, 0 failed. 57-vsh-disc, 61-soakvideo1011,
+62-routerefs-soakvideo1011, 85-savestate, 97-dispatch-snapshot-drive,
+99-display-covered, 99-folder-pref, 99-hdd-split and 99-title-state: 235
+passed, 0 failed.
+
+**preflight.sh --allow-tracker:** every gate is ok except `territory`.
+That gate reads `origin/board:territory.toml` and fails on four double
+claims, all the board's. The one touching this lane: `docs/testing/dispatcher.sh`
+is claimed by both dispatchdoctor1017 and snaptargets1018 (STARTED by
+lane.local 2026-10-18 ~01:45 PDT, to ship `targets.toml` in the dispatcher
+snapshot). `--allow-tracker` cannot clear a territory overlap, and a lane
+may not edit `territory.toml`. Fold order resolves it; snaptargets1018's
+change is to the snapshot file list, not the functions this lane edits.
 
 **Not done, and not this lane's:** no live device run. Done means #1-#4 are
 shown against the fake adb/claude fixtures, not a device; the first real

@@ -1310,6 +1310,16 @@ ensure_route_attached() {
         return 0
     fi
     sug=$(python3 "$TITLESTATE" suggest-route --title-id "$ttid" 2>&1)
+    # suggest-route prints JSON whether or not it found one; anything else is
+    # a crash (a snapshot missing targets.toml raises FileNotFoundError), and
+    # "no recorded route" would then be a claim nobody checked. Say it failed
+    # and run as queued: the lookup's failure is not the request's.
+    if ! python3 -c 'import json,sys; json.loads(sys.argv[1])' "$sug" 2>/dev/null; then
+        note=$(printf '%s\n' "$sug" | grep -v '^[[:space:]]*$' | tail -1)
+        log "  ROUTE LOOKUP FAILED for $ttid: titlestate.py suggest-route: ${note:-no output}"
+        inputs_note "$rdir" route "none: could not look up a route for $ttid, titlestate.py suggest-route failed (${note:-no output}); $([ -n "$cur" ] && echo 'running the survey the request asked for' || echo 'running with no scripted input, as queued')"
+        return 0
+    fi
     name=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("name") or "")' "$sug" 2>/dev/null)
     if [ -z "$name" ]; then
         note=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("note") or "no recorded or proven route")' "$sug" 2>/dev/null)
