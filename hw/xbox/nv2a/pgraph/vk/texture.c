@@ -36,6 +36,7 @@ static void texture_cache_release_node_resources(PGRAPHVkState *r, TextureBindin
 static bool image_pool_acquire(PGRAPHVkState *r, const TextureImageConfig *config,
                                VkImage *out_image, VmaAllocation *out_allocation);
 static void image_pool_drain(PGRAPHVkState *r);
+static void s2t_share_end_for(PGRAPHState *pg, TextureBinding *node);
 
 /*
  * #461's attribution counters (g_opt_stats.txh_*, txu_*, txk_*, txr_*):
@@ -750,6 +751,7 @@ static void upload_texture_image(PGRAPHState *pg, int texture_idx,
     OPT_STAT_INC(tex_cache_uploads);
     TEX_PERF(g_opt_stats.txu_b += binding->key.texture_length +
                                   binding->key.palette_length);
+    s2t_share_end_for(pg, binding);
     NV2A_PHASE_TIMER_BEGIN_EXCL(texture_upload);
     PGRAPHVkState *r = pg->vk_renderer_state;
     TextureShape *state = &binding->key.state;
@@ -1272,6 +1274,7 @@ static void copy_surface_to_texture(PGRAPHState *pg, SurfaceBinding *surface,
                                     TextureBinding *texture)
 {
     TEX_PERF(g_opt_stats.txr_s2tc++);
+    s2t_share_end_for(pg, texture);
     if (!surface->color) {
         copy_zeta_surface_to_texture(pg, surface, texture);
         return;
@@ -2246,6 +2249,7 @@ static void texscan_apply(PGRAPHState *pg, TextureBinding *snode,
     PGRAPHVkState *r = pg->vk_renderer_state;
     static bool logged;
 
+    s2t_share_end_for(pg, snode);
     int m = texscan_memo_find(snode);
     if (m < 0) {
         m = texscan_memo_next++ % TEXSCAN_MEMO;
@@ -2590,6 +2594,8 @@ static struct {
     uint32_t overflow;
     uint32_t why[S2C__N];
     uint32_t cp, dup, srf;
+    uint32_t r2[S2C__N];     /* #1049: copies R2 bound instead, by reason */
+    uint32_t r3;             /* #1049: copies R3 shared instead */
     int frame;               /* the flip seen_* describe */
     int nseen;
     const SurfaceBinding *seen_s[S2C_SEEN];
@@ -2704,9 +2710,10 @@ static void s2c_log_window(unsigned int frames)
     char buf[640];
     int len = snprintf(buf, sizeof(buf),
         "[s2c] f%u cp%u dup%u srf%u why[zs%u pad%u fmt%u map%u none%u] "
-        "ovf%u |",
+        "ovf%u r2[map%u pad%u] r3[share%u] |",
         frames, s2c.cp, s2c.dup, s2c.srf, s2c.why[S2C_ZS], s2c.why[S2C_PAD],
-        s2c.why[S2C_FMT], s2c.why[S2C_MAP], s2c.why[S2C_NONE], s2c.overflow);
+        s2c.why[S2C_FMT], s2c.why[S2C_MAP], s2c.why[S2C_NONE], s2c.overflow,
+        s2c.r2[S2C_MAP], s2c.r2[S2C_PAD], s2c.r3);
     for (int i = 0; i < S2C_MAX; i++) {
         if (!s2c.used[i]) {
             continue;
@@ -2728,8 +2735,423 @@ static void s2c_log_window(unsigned int frames)
 #endif
     s2c.overflow = s2c.cp = s2c.dup = s2c.srf = 0;
     memset(s2c.why, 0, sizeof(s2c.why));
+    memset(s2c.r2, 0, sizeof(s2c.r2));
+    s2c.r3 = 0;
 }
 #endif
+
+/*
+ * #1049 (lane.gta3fps1017b), R2 and R3: two ways to make fewer of the plain
+ * colour surface-to-texture copies GTA III makes while driving (~73 a flip on
+ * the Nova, each one breaking a render pass). Both are off unless switched
+ * on, independently of each other and of HAKUX_S2T_DRAIN (R1). The census
+ * line counts what each saved: r2[] by the reason the direct bind was refused,
+ * r3 the copies shared. The pixel arguments are in
+ * docs/lanes/gta3fps1017b/NOTES.md.
+ */
+static void s2t_log(const char *msg)
+{
+#ifdef __ANDROID__
+    __android_log_print(ANDROID_LOG_INFO, "hakuX", "%s", msg);
+#else
+    fprintf(stderr, "%s\n", msg);
+#endif
+}
+
+/*
+ * R2, HAKUX_S2T_WIDEN=1: a surface whose only mismatch with the texture is
+ * the component map -- an X8R8G8B8 surface read as a texture format whose
+ * view forces alpha to ONE ("map0002") -- is bound directly through a view of
+ * the surface's image with the mapping the texture's own view would apply,
+ * instead of being copied into the texture and read through that view. The
+ * copy is bit-exact into the same VkFormat, so the two read the same texels.
+ * Narrow on purpose: same VkFormat in surface, texture and node image, one
+ * level, one layer, 2D, the node image exactly the surface's (scaled) size.
+ * The pad-alpha swizzle is folded in by the same rule as the node's view.
+ */
+static int s2t_widen_state = -1;
+
+static bool s2t_widen_on(void)
+{
+    if (s2t_widen_state < 0) {
+        const char *e = getenv("HAKUX_S2T_WIDEN");
+        s2t_widen_state = e && e[0] == '1';
+        if (s2t_widen_state) {
+            s2t_log("[s2twiden] on");
+        }
+    }
+    return s2t_widen_state;
+}
+
+/*
+ * R3, HAKUX_S2T_SHARE=1: a copy of a surface at one draw_time is shared by
+ * every later node that would copy the same surface at the same draw_time
+ * into an image of the same shape and decode. The later node's slot samples
+ * the first node's view; the first node is pinned while it is shared.
+ */
+static int s2t_share_state = -1;
+
+static bool s2t_share_on(void)
+{
+    if (s2t_share_state < 0) {
+        const char *e = getenv("HAKUX_S2T_SHARE");
+        s2t_share_state = e && e[0] == '1';
+        if (s2t_share_state) {
+            s2t_log("[s2tshare] on");
+        }
+    }
+    return s2t_share_state;
+}
+
+/* A view retired into the current frame slot, as the LRU retires a node's,
+ * so a draw recorded or in flight that names it still finds it. */
+static void s2t_defer_view(PGRAPHVkState *r, VkImageView view)
+{
+    if (view == VK_NULL_HANDLE) {
+        return;
+    }
+    if (!r->deferred_texture_releases[r->current_frame]) {
+        vkDestroyImageView(r->device, view, NULL);
+        return;
+    }
+    DeferredTextureRelease retired = { .image_view = view };
+    g_array_append_val(r->deferred_texture_releases[r->current_frame],
+                       retired);
+}
+
+/* A slot samples or pushes this view. */
+static bool s2t_view_in_use(const PGRAPHVkState *r, VkImageView view)
+{
+    for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
+        if ((r->tex_surface_direct[i] &&
+             r->tex_surface_direct_views[i] == view) ||
+            r->push_tex_infos[i].imageView == view) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/*
+ * R2's views, keyed by the surface view they alias and the mapping. At most
+ * 2 * NV2A_MAX_TEXTURES of them are named by a slot at once (direct, pushed),
+ * so a victim not in use always exists.
+ */
+#define S2T_WIDEN_VIEWS 32
+static struct {
+    VkImageView surf_view;      /* VK_NULL_HANDLE: free */
+    VkComponentMapping map;
+    VkImageView view;
+} s2t_widen_views[S2T_WIDEN_VIEWS];
+static unsigned int s2t_widen_next;
+
+/* The R2 view for this surface and node, or VK_NULL_HANDLE when R2 does not
+ * apply. Deterministic in (surface, node, pad) while the switch is set: the
+ * same-draw_time rebind relies on getting a view whenever the bind did. */
+static VkImageView s2t_widen_view(PGRAPHState *pg,
+                                  const SurfaceBinding *surface,
+                                  const TextureBinding *snode,
+                                  VkComponentSwizzle pad)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    const TextureShape *shape = &snode->key.state;
+    const TextureImageConfig *cfg = &snode->image_config;
+
+    if (!s2t_widen_on() || !surface->color ||
+        surface->image_view == VK_NULL_HANDLE) {
+        return VK_NULL_HANDLE;
+    }
+
+    VkColorFormatInfo tex_vkf = kelvin_color_format_vk_map[shape->color_format];
+    VkComponentMapping map = tex_vkf.component_map;
+    if (pad != VK_COMPONENT_SWIZZLE_IDENTITY) {
+        map.a = pad;
+    }
+    static const VkComponentMapping identity = { 0 };
+    if (!memcmp(&map, &identity, sizeof(map))) {
+        return VK_NULL_HANDLE;
+    }
+    if (surface->host_fmt.vk_format != tex_vkf.vk_format ||
+        cfg->format != tex_vkf.vk_format || shape->cubemap ||
+        shape->dimensionality != 2 || shape->levels != 1 ||
+        cfg->image_type != VK_IMAGE_TYPE_2D || cfg->mip_levels != 1 ||
+        cfg->array_layers != 1) {
+        return VK_NULL_HANDLE;
+    }
+    unsigned int w = surface->width, h = surface->height;
+    pgraph_apply_scaling_factor(pg, &w, &h);
+    if (cfg->width != w || cfg->height != h) {
+        return VK_NULL_HANDLE;
+    }
+    if (pgraph_vk_s2t_cvt_on() &&
+        pgraph_texture_format_expands_by_replication(shape->color_format)) {
+        return VK_NULL_HANDLE;
+    }
+
+    int slot = -1;
+    for (int i = 0; i < S2T_WIDEN_VIEWS; i++) {
+        if (s2t_widen_views[i].surf_view == surface->image_view &&
+            !memcmp(&s2t_widen_views[i].map, &map, sizeof(map))) {
+            return s2t_widen_views[i].view;
+        }
+        if (slot < 0 && s2t_widen_views[i].surf_view == VK_NULL_HANDLE) {
+            slot = i;
+        }
+    }
+    if (slot < 0) {
+        for (int n = 0; n < S2T_WIDEN_VIEWS && slot < 0; n++) {
+            int i = (s2t_widen_next + n) % S2T_WIDEN_VIEWS;
+            if (!s2t_view_in_use(r, s2t_widen_views[i].view)) {
+                slot = i;
+            }
+        }
+        assert(slot >= 0);
+        s2t_widen_next = slot + 1;
+        VkImageView old = s2t_widen_views[slot].view;
+        s2t_widen_views[slot].surf_view = VK_NULL_HANDLE;
+        s2t_widen_views[slot].view = VK_NULL_HANDLE;
+        pgraph_vk_texture_surface_view_retired(pg, old);
+        s2t_defer_view(r, old);
+    }
+
+    VkImageViewCreateInfo info = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image = surface->image,
+        .viewType = VK_IMAGE_VIEW_TYPE_2D,
+        .format = surface->host_fmt.vk_format,
+        .subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+        .subresourceRange.baseMipLevel = 0,
+        .subresourceRange.levelCount = 1,
+        .subresourceRange.baseArrayLayer = 0,
+        .subresourceRange.layerCount = 1,
+        .components = map,
+    };
+    VkImageView view;
+    VK_CHECK(vkCreateImageView(r->device, &info, NULL, &view));
+    s2t_widen_views[slot].surf_view = surface->image_view;
+    s2t_widen_views[slot].map = map;
+    s2t_widen_views[slot].view = view;
+    return view;
+}
+
+/* Once per process: the first copy R2 replaced with a bind. */
+static void s2t_widen_note_bind(void)
+{
+    static bool noted;
+
+    if (!noted) {
+        noted = true;
+        s2t_log("[s2twiden] first bind");
+    }
+}
+
+/*
+ * R3's record of the copies made: the surface, its view and draw_time at the
+ * copy, and the node the copy went into with the view, image shape and format
+ * it had then. An entry is a lookup only; a slot sharing a node pins it
+ * through s2t_share_src[], which outlives the entry.
+ */
+#define S2T_SHARES 16
+typedef struct S2tShare {
+    const SurfaceBinding *s;
+    VkImageView s_view;
+    int t;
+    TextureBinding *node;       /* NULL: free */
+    VkImageView view;
+    TextureImageConfig cfg;
+    unsigned int color_format;
+} S2tShare;
+static S2tShare s2t_share[S2T_SHARES];
+static unsigned int s2t_share_next;
+static TextureBinding *s2t_share_src[NV2A_MAX_TEXTURES];
+static bool s2t_share_rescan;
+static PGRAPHState *s2t_share_pg;
+
+/* The shape R3 shares: a 2D, one-level, one-layer image exactly the size of
+ * the copied region, so the copy writes every texel the view can read. */
+static bool s2t_share_fits(PGRAPHState *pg, const SurfaceBinding *surface,
+                           const TextureBinding *snode, VkComponentSwizzle pad)
+{
+    const TextureShape *shape = &snode->key.state;
+    const TextureImageConfig *cfg = &snode->image_config;
+
+    if (!s2t_share_on() || !surface->color ||
+        pad != VK_COMPONENT_SWIZZLE_IDENTITY || shape->cubemap ||
+        shape->dimensionality != 2 || shape->levels != 1 ||
+        cfg->image_type != VK_IMAGE_TYPE_2D || cfg->mip_levels != 1 ||
+        cfg->array_layers != 1) {
+        return false;
+    }
+    if (pgraph_vk_s2t_cvt_on() &&
+        pgraph_texture_format_expands_by_replication(shape->color_format)) {
+        return false;
+    }
+    unsigned int w = surface->width, h = surface->height;
+    pgraph_apply_scaling_factor(pg, &w, &h);
+    return cfg->width == w && cfg->height == h;
+}
+
+static bool s2t_cfg_equal(const TextureImageConfig *a,
+                          const TextureImageConfig *b)
+{
+    return a->format == b->format && a->image_type == b->image_type &&
+           a->width == b->width && a->height == b->height &&
+           a->depth == b->depth && a->mip_levels == b->mip_levels &&
+           a->array_layers == b->array_layers && a->flags == b->flags;
+}
+
+/* After a plain colour copy into snode: record it for the nodes after it. */
+static void s2t_share_record(PGRAPHState *pg, const SurfaceBinding *surface,
+                             TextureBinding *snode, VkComponentSwizzle pad)
+{
+    if (!s2t_share_fits(pg, surface, snode, pad) ||
+        snode->image_view == VK_NULL_HANDLE ||
+        snode->current_layout != VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+        return;
+    }
+    s2t_share_pg = pg;
+
+    int slot = -1;
+    for (int i = 0; i < S2T_SHARES && slot < 0; i++) {
+        if (s2t_share[i].node == snode) {
+            slot = i;
+        }
+    }
+    for (int i = 0; i < S2T_SHARES && slot < 0; i++) {
+        if (!s2t_share[i].node) {
+            slot = i;
+        }
+    }
+    if (slot < 0) {
+        slot = s2t_share_next++ % S2T_SHARES;
+    }
+    s2t_share[slot] = (S2tShare){
+        .s = surface,
+        .s_view = surface->image_view,
+        .t = surface->draw_time,
+        .node = snode,
+        .view = snode->image_view,
+        .cfg = snode->image_config,
+        .color_format = snode->key.state.color_format,
+    };
+}
+
+/*
+ * The copy snode would make, already made into another node. THE GUARD: the
+ * surface is the one copied, through the same view, and has not been drawn,
+ * cleared or uploaded to since (every one of those moves its draw_time past
+ * the copy's); the copy's node still holds that copy (its view, its
+ * draw_time, read-only layout -- any write into it, or its release, drops
+ * the entry first); and snode would decode it the same way (format, shape,
+ * colour format and so mapping, no pad override).
+ */
+static const S2tShare *s2t_share_find(PGRAPHState *pg,
+                                      const SurfaceBinding *surface,
+                                      const TextureBinding *snode,
+                                      VkComponentSwizzle pad)
+{
+    if (!s2t_share_fits(pg, surface, snode, pad)) {
+        return NULL;
+    }
+    for (int i = 0; i < S2T_SHARES; i++) {
+        const S2tShare *e = &s2t_share[i];
+
+        if (e->node && e->node != snode && e->s == surface &&
+            e->s_view == surface->image_view && e->t == surface->draw_time &&
+            e->node->image_view == e->view &&
+            e->node->draw_time == (unsigned int)e->t &&
+            e->node->current_layout ==
+                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL &&
+            s2t_cfg_equal(&e->cfg, &e->node->image_config) &&
+            s2t_cfg_equal(&e->cfg, &snode->image_config) &&
+            e->color_format == snode->key.state.color_format) {
+            return e;
+        }
+    }
+    return NULL;
+}
+
+/* Point slot idx at e's copy instead of copying into snode. snode's image is
+ * not written, so its draw_time can no longer say what it holds: it is set to
+ * a value no surface reaches, and the next bind of snode decides again. */
+static void s2t_share_bind(PGRAPHVkState *r, int idx, TextureBinding *snode,
+                           const S2tShare *e)
+{
+    static bool noted;
+
+    r->tex_surface_direct[idx] = true;
+    r->tex_surface_direct_views[idx] = e->view;
+    r->tex_surface_direct_layout[idx] =
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    r->texture_bindings_changed = true;
+    s2t_share_src[idx] = e->node;
+    snode->draw_time = UINT_MAX;
+    TEX_PERF(s2c.r3++);
+    if (!noted) {
+        noted = true;
+        s2t_log("[s2tshare] first share");
+    }
+}
+
+/*
+ * node is about to be written or released. Its entries go, and a slot that
+ * samples its view through a share is retired the way a surface view is, and
+ * bound again on this bind_textures pass (see the rescan there).
+ */
+static void s2t_share_end_for(PGRAPHState *pg, TextureBinding *node)
+{
+    if (s2t_share_state != 1 || !node) {
+        return;
+    }
+    for (int i = 0; i < S2T_SHARES; i++) {
+        if (s2t_share[i].node == node) {
+            s2t_share[i].node = NULL;
+        }
+    }
+    if (!pg) {
+        return;
+    }
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    bool shared = false;
+    for (int k = 0; k < NV2A_MAX_TEXTURES; k++) {
+        if (s2t_share_src[k] == node) {
+            s2t_share_src[k] = NULL;
+            r->tex_reg_cache[k].valid = false;
+            shared = true;
+        }
+    }
+    if (shared && node->image_view != VK_NULL_HANDLE) {
+        pgraph_vk_texture_surface_view_retired(pg, node->image_view);
+        s2t_share_rescan = true;
+    }
+}
+
+/* A surface view is being retired: the R2 views of it go with it, and so do
+ * R3's records of copies made from it. */
+static void s2t_view_retired(PGRAPHState *pg, VkImageView view)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    if (s2t_widen_state == 1) {
+        for (int i = 0; i < S2T_WIDEN_VIEWS; i++) {
+            if (s2t_widen_views[i].surf_view != view) {
+                continue;
+            }
+            VkImageView v = s2t_widen_views[i].view;
+            s2t_widen_views[i].surf_view = VK_NULL_HANDLE;
+            s2t_widen_views[i].view = VK_NULL_HANDLE;
+            pgraph_vk_texture_surface_view_retired(pg, v);
+            s2t_defer_view(r, v);
+        }
+    }
+    if (s2t_share_state == 1) {
+        for (int i = 0; i < S2T_SHARES; i++) {
+            if (s2t_share[i].node && s2t_share[i].s_view == view) {
+                s2t_share[i].node = NULL;
+            }
+        }
+    }
+}
 
 static void create_dummy_texture(PGRAPHState *pg)
 {
@@ -3024,6 +3446,7 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
     bool possibly_dirty_checked = false;
     bool surface_to_texture = false;
     r->tex_surface_direct[texture_idx] = false;
+    s2t_share_src[texture_idx] = NULL;
 
     /*
      * A texture or palette that runs past the end of VRAM binds the dummy
@@ -3474,6 +3897,8 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
                      !(surface->host_fmt.aspect &
                        VK_IMAGE_ASPECT_STENCIL_BIT)) &&
                     surface_view_decodes_as_texture(surface, &snode->key.state);
+                VkImageView wv;
+                const S2tShare *sh;
 
                 if (can_direct_bind) {
                     VkImageLayout direct_layout;
@@ -3492,6 +3917,24 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
                         surface->image_view;
                     r->tex_surface_direct_layout[texture_idx] = direct_layout;
                     r->texture_bindings_changed = true;
+                } else if ((wv = s2t_widen_view(pg, surface, snode,
+                                                pad_alpha_override))) {
+                    /* #1049 R2: the bind above, through a view that applies
+                     * the texture's component map; see s2t_widen_view(). */
+                    TXW_BEGIN(BS);
+                    bind_surface_as_texture(pg, surface, snode);
+                    TXW_END(BS);
+                    r->tex_surface_direct[texture_idx] = true;
+                    r->tex_surface_direct_views[texture_idx] = wv;
+                    r->tex_surface_direct_layout[texture_idx] =
+                        VK_IMAGE_LAYOUT_GENERAL;
+                    r->texture_bindings_changed = true;
+                    TEX_PERF(s2c.r2[s2c_reason(surface, &snode->key.state)]++);
+                    s2t_widen_note_bind();
+                } else if ((sh = s2t_share_find(pg, surface, snode,
+                                                pad_alpha_override))) {
+                    /* #1049 R3: this draw_time's copy is already made */
+                    s2t_share_bind(r, texture_idx, snode, sh);
                 } else {
                     /*
                      * #474: only the copy writes the node's image, so only
@@ -3528,6 +3971,7 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
                     TXW_BEGIN(CP);
                     copy_surface_to_texture(pg, surface, snode);
                     TXW_END(CP);
+                    s2t_share_record(pg, surface, snode, pad_alpha_override);
                 }
                 did_s2t_copy = true;
             } else if ((surface->color ||
@@ -3539,6 +3983,24 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
                 r->tex_surface_direct[texture_idx] = true;
                 r->tex_surface_direct_views[texture_idx] =
                     surface->image_view;
+                /* #1049: with R3 on, the layout the bind left, not the
+                 * read-only layout an earlier share of this slot set */
+                if (s2t_share_state == 1) {
+                    r->tex_surface_direct_layout[texture_idx] =
+                        surface->color ?
+                            VK_IMAGE_LAYOUT_GENERAL :
+                            VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+                }
+            } else {
+                /* #1049 R2: same draw_time, the same view the bind used */
+                VkImageView wv = s2t_widen_view(pg, surface, snode,
+                                                pad_alpha_override);
+                if (wv) {
+                    r->tex_surface_direct[texture_idx] = true;
+                    r->tex_surface_direct_views[texture_idx] = wv;
+                    r->tex_surface_direct_layout[texture_idx] =
+                        VK_IMAGE_LAYOUT_GENERAL;
+                }
             }
         } else {
             bool vram_changed = possibly_dirty && content_hash != snode->hash;
@@ -3984,6 +4446,8 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
             (surface->color ||
              !(surface->host_fmt.aspect & VK_IMAGE_ASPECT_STENCIL_BIT)) &&
             surface_view_decodes_as_texture(surface, &snode->key.state);
+        VkImageView wv;
+        const S2tShare *sh;
 
         if (can_direct_bind) {
             VkImageLayout direct_layout;
@@ -4000,11 +4464,28 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
             r->tex_surface_direct[texture_idx] = true;
             r->tex_surface_direct_views[texture_idx] = surface->image_view;
             r->tex_surface_direct_layout[texture_idx] = direct_layout;
+        } else if ((wv = s2t_widen_view(pg, surface, snode,
+                                        pad_alpha_override))) {
+            /* #1049 R2, as on a cache hit */
+            TXW_BEGIN(BS);
+            bind_surface_as_texture(pg, surface, snode);
+            TXW_END(BS);
+            r->tex_surface_direct[texture_idx] = true;
+            r->tex_surface_direct_views[texture_idx] = wv;
+            r->tex_surface_direct_layout[texture_idx] =
+                VK_IMAGE_LAYOUT_GENERAL;
+            TEX_PERF(s2c.r2[s2c_reason(surface, &snode->key.state)]++);
+            s2t_widen_note_bind();
+        } else if ((sh = s2t_share_find(pg, surface, snode,
+                                        pad_alpha_override))) {
+            /* #1049 R3, as on a cache hit */
+            s2t_share_bind(r, texture_idx, snode, sh);
         } else {
             TEX_PERF(s2c_note(pg, surface, &snode->key.state));
             TXW_BEGIN(CP);
             copy_surface_to_texture(pg, surface, snode);
             TXW_END(CP);
+            s2t_share_record(pg, surface, snode, pad_alpha_override);
         }
     } else {
         TXW_BEGIN(UP);
@@ -4045,6 +4526,10 @@ static void update_timestamps(PGRAPHVkState *r)
     for (int i = 0; i < ARRAY_SIZE(r->texture_bindings); i++) {
         if (r->texture_bindings[i]) {
             r->texture_bindings[i]->submit_time = r->submit_count;
+        }
+        /* #1049 R3: a slot sharing another node's copy samples that node */
+        if (s2t_share_src[i]) {
+            s2t_share_src[i]->submit_time = r->submit_count;
         }
     }
 }
@@ -4135,6 +4620,15 @@ void pgraph_vk_bind_textures(NV2AState *d)
     resolve_possibly_dirty_textures(d);
     TXW_END(RES);
 
+    /*
+     * #1049 R3: a slot's create_texture can write or release a node that an
+     * earlier slot samples through a share (s2t_share_end_for), which sends
+     * that slot back through the loop. Each pass binds at least the slot
+     * that ended the share, so the passes are bounded.
+     */
+    int s2t_passes = 0;
+s2t_rescan:
+    s2t_share_rescan = false;
     for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
         if (!pgraph_is_texture_enabled(pg, i) ||
             !pgraph_is_texture_descriptor_decodable(pg, i)) {
@@ -4282,6 +4776,9 @@ void pgraph_vk_bind_textures(NV2AState *d)
 
         pg->texture_dirty[i] = false;
     }
+    if (s2t_share_rescan && ++s2t_passes <= NV2A_MAX_TEXTURES) {
+        goto s2t_rescan;
+    }
 
     if (r->texture_bindings_changed) {
         r->pipeline_state_dirty = true;
@@ -4408,6 +4905,7 @@ static void texture_cache_release_node_resources(PGRAPHVkState *r, TextureBindin
      * case. The image goes back to the pool at the same point, so it is
      * not handed to a new texture while the old draw may still read it.
      */
+    s2t_share_end_for(s2t_share_pg, snode);
     DeferredTextureRelease retired = {
         .image_view = snode->image_view,
         .sampler = sampler_cached ? VK_NULL_HANDLE : snode->sampler,
@@ -4457,7 +4955,7 @@ static bool texture_cache_entry_pre_evict(Lru *lru, LruNode *node)
     TextureBinding *snode = container_of(node, TextureBinding, node);
 
     for (int i = 0; i < ARRAY_SIZE(r->texture_bindings); i++) {
-        if (r->texture_bindings[i] == snode) {
+        if (r->texture_bindings[i] == snode || s2t_share_src[i] == snode) {
             return false;
         }
     }
@@ -4535,6 +5033,7 @@ void pgraph_vk_texture_surface_view_retired(PGRAPHState *pg, VkImageView view)
     if (view == VK_NULL_HANDLE) {
         return;
     }
+    s2t_view_retired(pg, view);
     for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
         bool direct = r->tex_surface_direct[i] &&
                       r->tex_surface_direct_views[i] == view;
@@ -4609,6 +5108,14 @@ static void texture_cache_init(PGRAPHVkState *r)
 
 static void texture_cache_finalize(PGRAPHVkState *r)
 {
+    /* #1049: R3's pins and records, and R2's views, go before the nodes */
+    memset(s2t_share_src, 0, sizeof(s2t_share_src));
+    memset(s2t_share, 0, sizeof(s2t_share));
+    for (int i = 0; i < S2T_WIDEN_VIEWS; i++) {
+        s2t_defer_view(r, s2t_widen_views[i].view);
+        s2t_widen_views[i].surf_view = VK_NULL_HANDLE;
+        s2t_widen_views[i].view = VK_NULL_HANDLE;
+    }
     lru_flush(&r->texture_cache);
     /* Everything retired above lands in the pool; drain that afterwards. */
     for (int i = 0; i < NUM_SUBMIT_FRAMES; i++) {
