@@ -8,9 +8,10 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `compat1017` | claude-sonnet-5 | 6 min |  |
-| `dispatchdoctor1017` | claude-sonnet-5 | 2h 28m | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what  |
-| `gta3fps1017` | claude-opus-5-5 | 29 min | gta3fps1017: GTA III fps, R2/R3 copy-count remedies from an on-foot census, with R1 (#1049) |
+| `compat1017` | claude-sonnet-5 | 21 min |  |
+| `dispatchdoctor1017` | claude-sonnet-5 | 2h 43m | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what  |
+| `gta3fps1017` | claude-opus-5-5 | 44 min | gta3fps1017: GTA III fps, R2/R3 copy-count remedies from an on-foot census, with R1 (#1049) |
+| `stallraise1017` | claude-sonnet-5 | 10 min |  |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `owner.gta3play-1017`
@@ -124,6 +125,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Recently landed on master
 
+- 2026-10-17 storydoc1017: a project history page, linked from the README's More table
 - 2026-10-17 nearbar1017b: three more near-cap titles on the 0.5.2 build -- two clear, one inconclusive
 - 2026-10-17 bootstatic1017: black while the guest has the screen off, no static or green at title start (#1045)
 - 2026-10-17 nearbar1017: three near-bar titles on the 0.5.2 build -- two clear Playable now
@@ -134,4 +136,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 drivernotice1017: every release note names the one tested GPU driver (#433)
 - 2026-10-17 bindpose1017: THPS4 and Max Payne 2 bind pose: the stock Adreno driver, not the code (#1043)
 
-_Updated 2026-10-17 22:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-17 22:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
