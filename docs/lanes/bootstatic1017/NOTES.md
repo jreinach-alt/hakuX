@@ -460,7 +460,8 @@ committed before the data (`judge_nova.py`, `stale_logo.py`, `judge_video.py`), 
 
 ## Nova results: probe, every present from n0 (`tools/nova_table.py`, `tools/stale_logo.py`)
 
-Turnip in every run (3 `GPU: PurpleVK`-class lines, 0 stock). C1 holds in all ten (n from 0, no gaps, 2401 presents).
+Turnip in every run (3 `GPU: PurpleVK`-class lines, 0 stock). C1 holds in all twelve (n from 0, no gaps; the first ten
+total 2401 presents; a verdict other than VOID requires C1).
 
 | request | arm (ref) | title | verdict | title's first picture | screen-off presents to it | M1 | M2 | M3 | M4 |
 |---|---|---|---|---|---|---|---|---|---|
@@ -474,6 +475,8 @@ Turnip in every run (3 `GPU: PurpleVK`-class lines, 0 stock). C1 holds in all te
 | 1792287441 | R5 (`2a012b14fc`) | Halo CE | CLEAN | n417, 6.9 s | 264 | 0 | 0 | 0 | 0 (vacuous, below) |
 | 1792287442 | R5 | Top Spin | CLEAN | n260, 4.3 s | 196 | 0 | 0 | 0 | **0** |
 | 1792287443 | R5 | GTA III | CLEAN | n140, 2.3 s | 83 | 0 | 0 | 0 | **0** |
+| 1792291608 | R5, retry (video) | Top Spin | CLEAN | n356, 5.9 s | 214 | 0 | 0 | 0 | **0** |
+| 1792291609 | R5, retry (video) | GTA III | CLEAN | n149, 2.5 s | 93 | 0 | 0 | 0 | **0** |
 
 The before arm's M1 episodes are the account above, in all three titles: the static at start 0 with the screen off
 (Halo n9-20, 200 ms; Top Spin n9-10 and GTA III n10-11, 2 presents each), then the logo held, or the title's
@@ -503,6 +506,8 @@ as in every earlier run. R5 adds no wait there.
 |---|---|---|---|---|---|
 | 1792284283 | before | Halo CE | +2.70 | VALID | 5 frames "green" at -0.68 s (the launcher, below); **20 frames static** at +0.15 s (src v, screen off); **203 frames green streaks** at +2.6 s (src v, 205 of 205 screen off); **26 frames static** at +5.9 s (src v, 28 of 33 screen off) |
 | 1792287441 | R5 | Halo CE | +2.32 | VALID | 5 frames "green" at -0.81 s (the launcher, below); nothing else |
+| 1792291608 | R5, retry, `--video-after 7` | Top Spin | +2.50 | VALID | 5 frames "green" at -0.75 s (the launcher: grn max 0.484, nb 1.5-2.3, the same numbers as 1792287441's); nothing else |
+| 1792291609 | R5, retry, `--video-after 7` | GTA III | +1.95 | VOID: V1 (bar 2.0 s, missed by 0.05 s) | 5 frames "green" at -0.68 s (the launcher, `pre_1609.png`); nothing else |
 | 1792284284/85/86/87/88, 1792287442/43 | all | Top Spin, GTA III, Halo R1+R2 | -1.74 to -0.05 | VOID: V1 | none, but these videos start after the first present, so they cannot see the static |
 
 The five "green" frames before the first present, in both valid videos, are **the device's launcher**, not a flash
@@ -528,8 +533,23 @@ Why these videos started late: the dispatcher starts the video `--video-after` s
 +12.7 to +13.7 s for Halo, so `--video-after 10` started inside the launch for the first two. The logcat stream,
 started after the cool-down gate's wake (`soak_title.sh:577`) and before `am start` (`:640`), opens by mark +8.6 s.
 So the gap from the wake to the first present is about 1-2 s for these titles. One retry, R5 only, `--video-after 7`
-(`queue_nova.sh` `ONLY`), is queued below. If its video is empty (started before the wake) or still starts late,
-that is the route's limit: the probe's coverage from n0 stands, and the video's coverage of the static stays Halo's.
+(`queue_nova.sh` `ONLY`), was queued: 1792291608 Top Spin and 1792291609 GTA III (rows above).
+
+**The retries.** Probe: CLEAN in both, M1 = M2 = M3 = 0, and **M4 = 0 with the kernel's logo shown** (698586ab at
+the kernel's start in both). Top Spin's first picture is n356, 5.9 s, after 214 screen-off presents. GTA III's is
+n149, 2.5 s, after 93. The judge lists 2 and 1 window hashes it did not dump before those pictures, so their look
+comes from the video. Video, frame by frame:
+- Top Spin (VALID): the launcher, then black 2.5 s, then the kernel's logo for 1 frame, then black 3.5 s while the
+  title loads, then Top Spin.
+- GTA III: the launcher, then black 0.6 s, the logo 0.47 s, black 1.5 s, then GTA III.
+No static, no streaks, and no logo frame at the title's start, in either. GTA III's video is VOID by the committed
+V1 bar (it starts 1.95 s before the first present, and the bar is 2.0 s). The bar is not moved after the data. What
+those 1.95 s hold is on record instead: the launcher, its transition to the hakuX splash, and the splash's fade to
+black (`pre_1609.png`), so the video does start before the app's window.
+
+**After-arm (R5) coverage on video, from the tap to the title's first picture: Halo CE and Top Spin VALID, GTA III
+VOID on V1 by 0.05 s with the launcher in frame.** Every after-arm video, valid or not, shows no static or green
+frame other than the launcher's robot. The probe covers every present from n0 in all twelve runs.
 
 ## Root cause
 
@@ -550,10 +570,10 @@ does. Both drivers show it because it never reaches the Vulkan driver: the VGA v
 
 | # | static | green | evidence |
 |---|---|---|---|
-| H1+H5 | **0.97** | **0.95** | Static: d2 RAM match r 0.976; Nova n10-21 `src=v` start 0 SR01=21. Green: Nova n153-357 `src=v` start 0x03d04000 SR01=21, RAM dump = the frame; desktop h1b n529 is the same green, one refresh late. After the fix: desktop CLEAN 3/3. The remainder waits on the Nova after arm and the video (H4) |
-| H2 | 0.01 | 0.02 | every flash present is `src=v`; the nv2a image shows only the logo |
+| H1+H5 | **0.99** | **0.98** | Static: d2 RAM match r 0.976; Nova n10-21 `src=v` start 0 SR01=21. Green: Nova n153-357 `src=v` start 0x03d04000 SR01=21, RAM dump = the frame; desktop h1b n529 is the same green, one refresh late. After the fix: desktop CLEAN 3/3, Nova CLEAN 8/8 (R1+R2 and R5, three titles, and R5's two retries), and the before Halo video's static and streak episodes are `src=v` with the screen off (H1, H5 true in each) |
+| H2 | 0.01 | 0.01 | every flash present is `src=v`; the nv2a image shows only the logo (held, or one frame stale: M4, which R5 removes) |
 | H3 | 0 | 0 | `pv=0` on every present |
-| H4 | 0.02 | 0.03 | until the Nova video shows nothing before n0 |
+| H4 | 0 | 0.01 | both videos that start before the tap are black from the splash's fade to the first present; the only "green" before it is the launcher's Android robot (`pre_7441.png`) |
 | H6 | 0 | 0 | both decode at the logged geometry |
 | H7 | 0 | 0 | — |
 
@@ -561,22 +581,33 @@ does. Both drivers show it because it never reaches the Vulkan driver: the VGA v
 
 | # | remedy | P | win | status |
 |---|---|---|---|---|
-| **R1** | Android honours screen-off | 0.95 (both looks: every flash present on the Nova has SR01=21) | both looks, every launch, the shipped app | **built**, `446e9abbed`; Nova after arm queued |
+| **R1** | Android honours screen-off | 0.98 (both looks: every flash present on the Nova has SR01=21) | both looks, every launch, the shipped app | **built**, `446e9abbed`; **measured**: Nova M1 0 in 3 of 3 titles (before 249 / 193 / 95) |
 | **R2** | the desktop reads the VGA view before drawing it | 0.95 (desktop 3/3 CLEAN) | one present per launch, desktop | **built**, `446e9abbed`, measured |
+| **R5** | the first present after a screen-off interval waits for a render of the current scan-out | 0.95 (M4 0 in the two titles that showed the logo) | the one-frame logo that R1 exposed before each title's first picture | **built**, `2a012b14fc` (`renderer.c`); **measured**: M4 1 -> 0 in Top Spin and GTA III, and gone from their videos |
 | R3 | black until the first nv2a frame | 0.5 for the green: n153-357 come after nv2a frames, so the rule would need to be "since the last mode set" | as R1 | not chased: R1 removes it by the guest's own register, as silicon does |
 | R4 | clear a new display image | 0 | — | refuted: no flash present is an nv2a image |
 
 ## pgraph suites the change touches
 
-None. The suites' captures are written by the guest to E: (`pgraph` tests save their own framebuffer), and never
-pass through `sdl2_gl_refresh`, the only function R1 and R2 change. No golden can move, so `Prediction: none`.
-The present path is measured instead by the probe, before and after, as above.
+None. The suites' captures are written by the guest to E: (`pgraph` tests save their own framebuffer to
+`e:\nxdk_pgraph_tests`, AGENTS.md "Working with a device"), and never pass through `sdl2_gl_refresh`, the only
+function R1 and R2 change. R5 changes `pgraph_vk_get_framebuffer_surface`, which the UI thread calls per refresh: it
+makes that thread wait, once per screen-on edge, for the sync the fast path already kicks on every refresh. The guest
+is not blocked by it and draws nothing differently. No golden can move, so `Prediction: none`. The present path is
+measured instead by the probe, before and after, as above.
 
 ## Waiting / blocked
 
-Waiting on the six Nova requests 1792284283-1792284288 (dispatch results). They are queued behind gta3drive's
-running request, two foldqueue requests and a dispatch.restore. Each is judged by `tools/judge_nova.py` and
-`tools/judge_video.py`. Then PR.md goes ready.
+Nothing. Every Nova request is judged (eleven runs and the empty-video 1792282757; `nova_ids.tsv`). origin/master is
+merged (`4b1ac4965e`); the merged tree builds on the desktop and `preflight.sh` passes. PR.md is ready.
+
+What the next lane should not repeat:
+- `--video-after 10` starts a Nova video after the first present for titles whose wake-to-launch gap is short; 7 was
+  enough for Top Spin and 0.05 s short for GTA III. `--video-after 0` records nothing (the cool-down gate's sleep).
+- `judge_video`'s green class fires on the launcher's Android robot. Read the frames (`tools/preframes.py`) before
+  counting a pre-launch "green" episode.
+- The kernel's own logo frame at the screen-off edge (one present, Halo) is the guest's picture, not a stale one;
+  M4 counts only a logo present at the title's first scan-out.
 
 ## Questions (for lane.xbox / the owner; work continues meanwhile)
 
