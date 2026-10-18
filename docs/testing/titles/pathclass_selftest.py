@@ -19,6 +19,7 @@ paused-overlay frame from this run to replay. What protects that case is structu
 frame-specific -- act() never presses START for state == play or stalled -- and the mutant
 test below checks that a regression there would be caught, not assumed.
 """
+import glob
 import os
 import sys
 import tempfile
@@ -30,6 +31,30 @@ import drive  # noqa: E402
 
 PROF = os.path.join(HERE, "drive-profiles")
 RESULTS = os.path.join(os.environ.get("DISPATCH_DIR", "/home/justin/hakux-work/dispatch"), "results")
+
+# #433: the owner's ask was "drop the API key path entirely" -- not reworded,
+# removed. Scoped to drive.py's own runtime loop and the files it reads
+# (classify.py, pathclass.py, drive-profiles/*.toml), not pathfind.py or
+# pathknow/classifier/label.py, which are separate, intentionally
+# model-driven tools (cold-boot path discovery and offline frame labelling)
+# that this lane's brief never asked to touch and whose files are not on
+# this lane's edit list.
+GREP_GATE_FILES = (
+    [os.path.join(HERE, "drive.py"), os.path.join(HERE, "classify.py"), os.path.join(HERE, "pathclass.py")]
+    + sorted(glob.glob(os.path.join(PROF, "*.toml")))
+)
+GREP_GATE_STRINGS = ("anthropic", "ask_model", "claude -p", "model_calls_max", "unknown_before_model")
+
+
+def grep_gate():
+    hits = []
+    for path in GREP_GATE_FILES:
+        with open(path) as f:
+            text = f.read().lower()
+        for s in GREP_GATE_STRINGS:
+            if s in text:
+                hits.append("%s: %r" % (os.path.relpath(path, HERE), s))
+    return hits
 
 SIM_RUN = "1-1791745785-nfsdefault1011-877404"
 # frame -> (pathclass state, confidence), recorded via pathclass.Classifier(ocr=False)
@@ -186,6 +211,16 @@ def problems(drv, tsv):
 
 def main(argv):
     fails = 0
+
+    # #433 Part A: no API key path anywhere in drive.py's runtime loop or the files it
+    # reads. A reintroduced `ask_model`/ANTHROPIC_API_KEY/etc. (even just a string naming
+    # them) fails this, not just a wired-up call -- the owner's ask was to remove the path,
+    # not leave it dormant.
+    hits = grep_gate()
+    ok0 = not hits
+    fails += not ok0
+    print("%s  grep gate: no API key path in drive.py/classify.py/pathclass.py/drive-profiles/*.toml  %s" %
+          ("ok  " if ok0 else "FAIL", "" if ok0 else "; ".join(hits)))
 
     # fail-closed: classify.Unavailable (no venv/GPU/serve) ends the route, not a blind
     # press and not a model call.

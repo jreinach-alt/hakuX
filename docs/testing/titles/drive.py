@@ -21,9 +21,8 @@ THE LOOP, per capture:
   1. `adb exec-out screencap -p` to a scratch file (its wall time is in the
      timeline: that is the capture's cost on the host side).
   2. classify.py names the state from the frame, the previous capture and
-     the states already seen. `unknown` for `unknown_before_model`
-     consecutive captures asks the model (MODEL FALLBACK, below) when
-     ANTHROPIC_API_KEY is set; with no key nothing is ever sent anywhere.
+     the states already seen. Local tools only (pathclass's SigLIP2 head and
+     EasyOCR crops, both on this host's GPU): no network call, ever (#433).
   3. The state's policy (POLICY, below) decides the input.
   4. A state CHANGE is logged to logcat as `I/hakuX-route: state=<s> t=<s>`
      (device clock: title_verdict.py reads play time from these), a row goes
@@ -90,8 +89,7 @@ for a cursor the d-pad does not move (Castlevania's save prompt).
                          input.stall_cycles, a list of cycles, plays
                          escape n with cycle (n-1) mod len: one run tries
                          several escapes, one per stall.
-  unknown                wait; the model after `unknown_before_model`
-                         captures; `unknown_fail_s` of it is ROUTE FAIL.
+  unknown                wait (ACT-OBSERVE below replaces this in #433 step B).
 A state seen after a later one in the profile's `order` (a main_menu after
 play) is logged as `anomaly`.
 
@@ -115,22 +113,17 @@ every state that would not skip), time to `title` and to `play`, and which
 captures each classifier source named. `drive.py learn` turns its skips into
 the profile's [skip.<state>] tables, so the next run tries the winner first.
 
-MODEL FALLBACK. Claude Haiku 4.5 (`claude-haiku-4-5-20251001`), one JPEG
-downscaled to 512 px, asked for {"screen_class", "button"}. Capped at
-`model_calls_max` per run (default 20) and cached by frame hash. Every call
-goes to <out>/classify-model-calls.jsonl with its token counts and cost.
-Its answer names a state; its button is used only for a menu-like state and
-never when the state is play. No key, no call: the default is zero calls.
+LOCAL TOOLS ONLY (owner, #433, 2026-10-18). No network call anywhere in this
+file, ever, and no external CLI invoked to ask a model about a frame.
+Everything this loop knows about a frame comes from classify.py/
+pathclass.py, both running on this host's own GPU.
 
 EXIT: 0 the window ran out or (--find) play was reached; 1 ROUTE FAIL
 (the reason is the last line printed and the summary in route-state.tsv);
 2 usage/profile error.
 """
 import argparse
-import base64
 import datetime as dt
-import hashlib
-import io
 import json
 import os
 import shutil
@@ -140,13 +133,10 @@ import sys
 import tempfile
 import threading
 import time
-import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import classify  # noqa: E402
-sys.path.insert(0, os.path.join(HERE, "..", "jobs"))
-import models  # noqa: E402  (the one model table/reader, #433)
 
 PAD = os.path.join(HERE, "..", "perf", "pad.sh")
 SKIPPABLE = ("logo", "intro_video", "cutscene")
@@ -156,25 +146,10 @@ NEVER = {"BACK", "SELECT"}            # BACK exits to the dashboard on some titl
 
 DEFAULTS = dict(
     fast_s=1.0, slow_s=5.0, skip_settle_s=1.5, skip_passes=3, menu_gap_s=2.0, menu_max_presses=25,
-    resume_tries=3, stall_fail_s=40.0, unknown_before_model=3, unknown_fail_s=90.0,
-    model_calls_max=20, find_play_s=20.0, confirm_play_s=6.0, keep_every_s=30.0, screencap_fail_s=60.0,
+    resume_tries=3, stall_fail_s=40.0, unknown_fail_s=90.0,
+    find_play_s=20.0, confirm_play_s=6.0, keep_every_s=30.0, screencap_fail_s=60.0,
     hud_memory_s=20.0, escape_max=6, escape_capture_s=0.0, escape_reset_s=0.0,
     progress_bar=0.0, progress_window_s=10.0, stall_clear_s=0.0, keep_all=0,
-)
-
-MODEL = models.model_for("drive")   # a screen classifier, not reasoning -- Haiku in every mode (#433)
-# USD per million tokens, Haiku 4.5 list price when this was written. The
-# cost logged per call is tokens x these; check them against the current
-# price list before reading the dollars as a bill.
-MODEL_USD_PER_MTOK = (1.0, 5.0)
-MODEL_PROMPT = (
-    "This is a screenshot of an original-Xbox game running in an emulator, taken during an "
-    "unattended playtest that is trying to reach live gameplay. Answer with ONLY a JSON object: "
-    '{"screen_class": one of "logo","intro_video","title","main_menu","profile","loading",'
-    '"cutscene","ingame_menu","paused","play","black", '
-    '"button": the ONE gamepad button (A, B, X, Y or START) that makes progress toward live '
-    'gameplay from this screen, or "" if waiting is right}. "play" means the player is in '
-    "control of a character or vehicle right now; a pause overlay over the game is \"paused\"."
 )
 
 
@@ -347,7 +322,6 @@ class Driver:
         self.screen_presses = {}         # (state, source) -> presses this visit
         self.resume_tries = 0
         self.unknown_since = None
-        self.unknown_streak = 0
         self.stalled_since = None
         self.escapes = 0                 # stall_cycle runs so far
         self.esc_frames = 0
@@ -375,8 +349,6 @@ class Driver:
         self.play_frames = []
         self.marked = False
         self.last_keep = -1e9
-        self.model_calls = 0
-        self.model_cache = {}
         self.sources = {}
         self.anomalies = []
         self.time_to = {}
@@ -679,49 +651,6 @@ class Driver:
         shutil.copyfile(frame, os.path.join(self.frames_dir, name))
         return name
 
-    # -- the model ---------------------------------------------------------
-    def ask_model(self, frame):
-        key = os.environ.get("ANTHROPIC_API_KEY")
-        if not key or self.model_calls >= self.cfg["model_calls_max"]:
-            return None
-        with open(frame, "rb") as f:
-            h = hashlib.sha256(f.read()).hexdigest()[:16]
-        if h in self.model_cache:
-            return self.model_cache[h]
-        from PIL import Image
-        im = Image.open(frame).convert("RGB")
-        im.thumbnail((512, 512))
-        buf = io.BytesIO()
-        im.save(buf, format="JPEG", quality=85)
-        body = dict(model=MODEL, max_tokens=100, messages=[dict(role="user", content=[
-            dict(type="image", source=dict(type="base64", media_type="image/jpeg",
-                                           data=base64.b64encode(buf.getvalue()).decode())),
-            dict(type="text", text=MODEL_PROMPT)])])
-        rec = dict(t=round(self.t(), 1), frame_hash=h, model=MODEL)
-        self.model_calls += 1
-        try:
-            req = urllib.request.Request("https://api.anthropic.com/v1/messages",
-                                         data=json.dumps(body).encode(),
-                                         headers={"x-api-key": key, "anthropic-version": "2023-06-01",
-                                                  "content-type": "application/json"})
-            with urllib.request.urlopen(req, timeout=30) as r:
-                resp = json.load(r)
-            text = "".join(b.get("text", "") for b in resp.get("content", []) if b.get("type") == "text")
-            ans = json.loads(text[text.find("{"):text.rfind("}") + 1])
-            u = resp.get("usage", {})
-            rec.update(answer=ans, input_tokens=u.get("input_tokens"), output_tokens=u.get("output_tokens"))
-            rec["usd"] = round((u.get("input_tokens", 0) * MODEL_USD_PER_MTOK[0]
-                                + u.get("output_tokens", 0) * MODEL_USD_PER_MTOK[1]) / 1e6, 6)
-            st = ans.get("screen_class")
-            out = dict(state=st if st in classify.STATES else None, button=str(ans.get("button") or "").upper())
-        except Exception as exc:                       # an API failure is an unknown, not a crash
-            rec["error"] = str(exc)[:200]
-            out = None
-        with open(os.path.join(self.out, "classify-model-calls.jsonl"), "a") as f:
-            f.write(json.dumps(rec) + "\n")
-        self.model_cache[h] = out
-        return out
-
     # -- one capture -------------------------------------------------------
     def classify(self, frame):
         r = classify.classify_frame(frame, self.prev, self.p, self.seen, self.last_play_luma, self.state)
@@ -743,14 +672,6 @@ class Driver:
         else:
             self.scene_hist = []
         self.recovering(r)
-        if r["state"] == "unknown":
-            self.unknown_streak += 1
-            if self.unknown_streak >= self.cfg["unknown_before_model"]:
-                m = self.ask_model(frame)
-                if m and m["state"]:
-                    r.update(state=m["state"], source="model", model_button=m["button"])
-        else:
-            self.unknown_streak = 0
         return r
 
     def progress(self, frame, r):
@@ -990,9 +911,7 @@ class Driver:
         if self.unknown_since is None:
             self.unknown_since = t
         if t - self.unknown_since >= cfg["unknown_fail_s"]:
-            raise Fail("unknown screen for %.0f s (%s)" % (t - self.unknown_since,
-                                                             "model unavailable" if not os.environ.get("ANTHROPIC_API_KEY")
-                                                             else "%d model calls" % self.model_calls))
+            raise Fail("unknown screen for %.0f s" % (t - self.unknown_since))
         return "wait (unknown)"
 
     def interval(self):
@@ -1030,8 +949,8 @@ class Driver:
                 try:
                     r = self.classify(cur)
                 except classify.Unavailable as e:
-                    # #433 step 3: the generic fallback fails closed. Never a blind
-                    # press, never a model call (no ANTHROPIC_API_KEY on this host).
+                    # #433: the generic fallback fails closed. Never a blind press
+                    # when the classifier itself cannot answer (pathclass/GPU down).
                     self.result = "ROUTE FAIL drive %s: pathclass unavailable (%s)" % (self.p.get("name"), e)
                     return 1
                 st = r["state"]
@@ -1114,15 +1033,15 @@ class Driver:
                    result=res, seconds=round(t, 1), time_to_title_s=self.time_to.get("title"),
                    time_to_play_s=self.time_to.get("play"), states_seen=self.seen, skips=self.skips,
                    inputs=self.inputs, anomalies=self.anomalies, classifier_sources=self.sources,
-                   model_calls=self.model_calls, play_stretch_frames=self.play_frames,
+                   play_stretch_frames=self.play_frames,
                    written_utc=dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
         tmp = os.path.join(self.out, ".route-solution.json.tmp")
         with open(tmp, "w") as f:
             json.dump(sol, f, indent=1)
         os.replace(tmp, os.path.join(self.out, "route-solution.json"))
-        print("drive: %s after %.0f s; title at %s s, play at %s s; %d inputs, %d skips, %d model calls"
+        print("drive: %s after %.0f s; title at %s s, play at %s s; %d inputs, %d skips"
               % (res, t, self.time_to.get("title"), self.time_to.get("play"), len(self.inputs),
-                 len(self.skips), self.model_calls))
+                 len(self.skips)))
 
 
 class Fail(Exception):

@@ -43,6 +43,38 @@ state the generic loop can't act on today" (`unknown`, and a named state the pro
 removes the dead-end model call, and adds a persistent cross-run table so the ladder gets smarter instead
 of repeating. That generalization, and the learned table, are new.
 
+## Part A -- done (commit, this lane)
+Removed from `drive.py`: `ask_model()`, `MODEL`/`MODEL_USD_PER_MTOK`/`MODEL_PROMPT`, the
+`import models`/`models.model_for("drive")` call and its now-unused `jobs/` sys.path insert,
+the now-dead `base64`/`hashlib`/`io`/`urllib.request` imports, `model_calls_max` and
+`unknown_before_model` from `DEFAULTS`, `self.model_calls`/`self.model_cache`, the
+`unknown_streak`/`ask_model` branch in `classify()`, and every `model_calls`/
+`ANTHROPIC_API_KEY` reference in `act()`'s unknown-branch Fail message and `finish()`
+(route-solution.json field and the printed summary). `unknown_fail_s`'s wait-then-Fail
+behavior is otherwise unchanged in this commit -- replacing it with act-observe is Part B,
+landing separately. Reworded the stale ask_model/ANTHROPIC_API_KEY comments in
+`drive-profiles/generic.toml` (lines that documented the old fail-closed/floor rationale).
+
+Added a grep gate to `pathclass_selftest.py` (`grep_gate()`, wired into `main()`): no
+`anthropic`/`ask_model`/`claude -p`/`model_calls_max`/`unknown_before_model` (case-
+insensitive) anywhere in `drive.py`, `classify.py`, `pathclass.py`, or
+`drive-profiles/*.toml`. Ran `pathclass_selftest.py` and `classify_selftest.py` after the
+edit: both 0 failures, including the gate and the pre-existing START-in-play mutant.
+
+Two corrections to the research above and to the brief's own text:
+- `pathfind.py` DOES still call the model (`claude -p`, line 8 of its module doc,
+  `model_calls` bookkeeping) -- my first grep pass missed the `claude -p` form, only
+  checking `ANTHROPIC_API_KEY`/`ask_model`. It is a *separate* tool from `drive.py`
+  (cold-boot path discovery, not the screen-aware play loop this issue is about), it is
+  not on this lane's edit list, and the brief's four acceptance criteria say "no ... call
+  from `drive`" -- scoped to this tool. Left untouched, on purpose, not missed.
+- `docs/testing/jobs/models.toml`'s `[kinds.drive]` entry is left in place:
+  `pathknow/classifier/label.py:110` (`models.model_for("drive")`, an offline frame-
+  labelling tool, unrelated to drive.py's runtime loop) still reads it as its own
+  default model. The brief's own wording made this conditional ("drop the `drive` entry
+  if nothing else reads it") -- something else does, so it stays. `route.sh` has no
+  matches at all, confirmed again, no edit needed there either.
+
 ## Plan
 - A: delete ask_model/MODEL/model_calls_max/unknown_before_model/model cache/ANTHROPIC_API_KEY from
   drive.py, drive-profiles/*.toml comments, models.toml's `drive` entry (check jobs/models.py first),
