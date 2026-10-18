@@ -96,6 +96,29 @@ for name, L in (("hull n5", 1), ("band n4", 0)):
     print(f"   R1 : console = D + X0 + {kR1:.2f} t2.r {bR1:+.3f}   R2 {r2(pR1):.3f}")
     print(f"   free: {free[0]:.2f} D + {free[1]:.2f} X0 + {free[2]:.2f} t2.r {free[3]:+.3f}   R2 {r2(pF):.3f}")
     print(f"   corr(D, t2.r) {np.corrcoef(D, t2r)[0, 1]:.3f}, corr(D, oD0) {np.corrcoef(D, v['oD0'])[0, 1]:.3f}")
+    # both at once, X0 kept at hakuX's weight: console - X0 = g D + k t2.r + b. R10 is (g ~1.4, k 0),
+    # R1/R9 (g 1, k > 0). Neighbouring pixels share texels and blur, so the spread is a bootstrap over
+    # 24 px blocks, not the per-pixel standard error.
+    ys, xs = np.nonzero(core)
+    blk = (ys // 24) * 1000 + xs // 24
+    ub, inv = np.unique(blk, return_inverse=True)
+
+    def boot(A, y):
+        rng = np.random.default_rng(939)
+        bs = []
+        for _ in range(400):
+            sw = np.sqrt(np.bincount(rng.integers(0, len(ub), len(ub)), minlength=len(ub))[inv].astype(float))
+            bs.append(np.linalg.lstsq(A * sw[:, None], y * sw, rcond=None)[0])
+        return np.linalg.lstsq(A, y, rcond=None)[0], np.percentile(np.array(bs), [2.5, 97.5], axis=0)
+
+    (g2, k2, b2), (lo, hi) = boot(np.stack([D, t2r, np.ones_like(D)], 1), c - X0)
+    print(f"   joint: console - X0 = {g2:.2f} D + {k2:.2f} t2.r {b2:+.3f}; {len(ub)} blocks, 95%: "
+          f"g {lo[0]:.2f}..{hi[0]:.2f}, k {lo[1]:.2f}..{hi[1]:.2f}")
+    # X0 free as well: a console response convex in hakuX's own value would load on X0 (weight > 1),
+    # which is t2.r-weighted, rather than on t2.r alone
+    fr, (lo, hi) = boot(np.stack([D, X0, t2r, np.ones_like(D)], 1), c)
+    print(f"   free, bootstrapped: D {fr[0]:.2f} ({lo[0]:.2f}..{hi[0]:.2f}), X0 {fr[1]:.2f} ({lo[1]:.2f}..{hi[1]:.2f}),"
+          f" t2.r {fr[2]:.2f} ({lo[2]:.2f}..{hi[2]:.2f})")
     for key in ("oD0", "D", "X0"):
         x = v[key]
         qs = np.quantile(x, np.linspace(0, 1, 6))
@@ -105,6 +128,16 @@ for name, L in (("hull n5", 1), ("band n4", 0)):
             cm, hm = c[s].mean(), h[s].mean()
             print(f"      {a:.3f}-{b:.3f} {s.sum():6d}   {cm:.3f}   {hm:.3f}  {cm / max(hm, 1e-6):5.2f} {cm - hm:+.3f}  "
                   f"{t2r[s].mean():.3f}   {(c - pR10)[s].mean():+.4f}    {(c - pR1)[s].mean():+.4f}")
+    # within each D bin, the pixels split at that bin's t2.r median: under R10 the excess c - h is
+    # D's alone and the two halves agree; under R1/R9 the high-t2.r half carries more
+    qs = np.quantile(D, np.linspace(0, 1, 6))
+    print("   within D bins, t2.r low half | high half:  t2.r        c-h")
+    for a, b in zip(qs[:-1], qs[1:]):
+        s = (D >= a) & (D <= b)
+        m = np.median(t2r[s])
+        lo_, hi_ = s & (t2r <= m), s & (t2r > m)
+        print(f"      D {a:.3f}-{b:.3f}: {t2r[lo_].mean():.3f} | {t2r[hi_].mean():.3f}   "
+              f"{(c - h)[lo_].mean():+.3f} | {(c - h)[hi_].mean():+.3f}")
     # the discriminating pixels: D low, t2.r high (and the reverse)
     dq, tq = np.quantile(D, [0.3, 0.7]), np.quantile(t2r, [0.3, 0.7])
     for lab, s in (("D low, t2.r high", (D <= dq[0]) & (t2r >= tq[1])),
