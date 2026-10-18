@@ -1,6 +1,14 @@
 # lane.gta3fps1017b -- GTA III fps: R2 and R3 written, default off, for the owner's driving session (#1049, #433)
 
-Status (10-17, attempt 3): Step 0 committed; code being written.
+Status (10-18, attempt 4): R2 and R3 written (8e42fa1058); building, suites, write-up.
+
+**Why attempt 3 did not finish.** It hit the 300-turn cap (`terminal_reason: max_turns`, session
+20261018T061841Z) after committing R2 and R3 in `texture.c` (8e42fa1058, 510 lines) and merging master twice,
+but before building them, running the suites, or writing the pixel arguments and the three-title dip table; its
+two analysis scripts (`tools/dip_table.py`, `tools/suite_band.py`) were left untracked. The host's resume note says
+"no R2/R3 code has landed": that read the working tree against HEAD, not HEAD against master -- the code is on the
+branch. The cause is turn budget spent on scope that grew twice (San Andreas, Blinx 2), not a void; attempt 4
+builds and tests the committed code first and writes up after, committing at each step.
 
 **Why attempts 1 and 2 did not finish.** Attempt 1 (session 05:55Z) committed Step 0 (b1828311f2) and the merge of
 `origin/lane/gta3fps1017` (a6680ef37e), then ended before any code. Attempt 2 (session 06:14Z) ended within four minutes,
