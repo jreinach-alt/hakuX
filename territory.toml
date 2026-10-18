@@ -3023,4 +3023,11 @@ note = "STARTED lane.local 2026-10-17 ~23:05 PDT on the owner's word (R2 and R3 
 issues = ["433"]
 standing = false
 files = ["docs/lanes/compat1017b/**", "docs/testing/compat_notes.tsv", "docs/testing/compat_page.py", "docs/testing/compat_page_selftest.py", "docs/compatibility.csv", "docs/COMPATIBILITY.md", "README.md", "docs/testing/titles/targets.toml", "docs/testing/title_registry.py", "docs/testing/title_registry_selftest.py"]
+released = ["docs/lanes/compat1017b/**", "docs/testing/compat_notes.tsv", "docs/testing/compat_page.py", "docs/testing/compat_page_selftest.py", "docs/compatibility.csv", "docs/COMPATIBILITY.md", "README.md", "docs/testing/titles/targets.toml", "docs/testing/title_registry.py", "docs/testing/title_registry_selftest.py"]
 note = "STARTED lane.local 2026-10-17 ~23:30 PDT on the owner's ruling (DOA3, MK:DA, Pac-Man World 2 make Playable; GTA SA does not): the compatibility page, CSV and README go from 88 to 91 Playable. Follows lane.compat1017 (folded)."
+
+[lane.compat1017c]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/compat1017c/**", "docs/testing/compat_notes.tsv", "docs/compatibility.csv", "docs/COMPATIBILITY.md", "docs/testing/titles/targets.toml"]
+note = "STARTED lane.local 2026-10-17 ~23:55 PDT (Sonnet, docs): NBA Live 07 banked Playable from the owner's Nova play session; the compatibility page, CSV and targets.toml catch up (90 -> 91). README stays numberless (home sets the count)."
