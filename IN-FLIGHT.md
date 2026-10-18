@@ -8,12 +8,13 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `dispatchdoctor1017` | claude-sonnet-5 | 3h 13m | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what  |
+| `dispatchdoctor1017` | claude-sonnet-5 | 3h 28m | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what  |
+| `gta3fps1017b` | claude-opus-5-5 | 4 min | gta3fps1017b: GTA III fps -- R2 (bind the forced-alpha surface view) and R3 (share one copy between nodes), bo |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `owner.gta3play-1017`
   - Thor: held by `lanelocal-offline`
-- **Device queue:** 0 waiting, 0 running.
+- **Device queue:** 2 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -117,10 +118,12 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/dispatchdoctor1017` | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what stops a ru | `439feb72b2` | 2026-10-17 19:45 |
+| `lane/dispatchdoctor1017` | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what stops a ru | `0c33d7db0c` | 2026-10-17 22:58 |
+| `lane/gta3fps1017b` | gta3fps1017b: GTA III fps -- R2 (bind the forced-alpha surface view) and R3 (share one copy between nodes), both off by  | `b1828311f2` | 2026-10-17 22:56 |
 
 ## Recently landed on master
 
+- 2026-10-17 compat1017: catch up the compatibility page to the 88-row Playable ledger
 - 2026-10-17 A title with one measured stall reaches the owner the same day
 - 2026-10-17 storydoc1017: a project history page, linked from the README's More table
 - 2026-10-17 nearbar1017b: three more near-cap titles on the 0.5.2 build -- two clear, one inconclusive
@@ -132,4 +135,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 release052b: versionCode 10, the driver link, and two known-issue lines for 0.5.2 (#433)
 - 2026-10-17 drivernotice1017: every release note names the one tested GPU driver (#433)
 
-_Updated 2026-10-17 22:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-17 23:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
