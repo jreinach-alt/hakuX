@@ -6,9 +6,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Right now
 
-| Lane | Model | Running for | Working on |
-|---|---|---|---|
-| `homeroot1018` | claude-sonnet-5 | 32 min |  |
+No lane session is running.
 
 - **Handhelds:** 1 connected.
   - Nova: free for the queue
@@ -125,6 +123,7 @@ No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-18 home branch root: move chart.svg/chart2.svg/COPYING.LIB under docs (#433)
 - 2026-10-18 holdcap1018: an owner-play hold starts a host logcat capture
 - 2026-10-18 README Highlights: drop GTA III/VC from the Playable list, name TimeSplitters 2, Mortal Kombat: Shaolin Monks and Burnout Revenge, and add two fix bullets
 - 2026-10-18 perflog1016: a pause-menu switch for the perflog telemetry tier, and a "Mark this moment" button (#433)
@@ -136,6 +135,5 @@ No branch is being worked right now.
 - 2026-10-18 GTA III: where the 46 ms parked frame goes once every copy is removed
 - 2026-10-18 Fable and Blinx 2: decompose the gameplay dips, find what the frame spends its time on
 - 2026-10-18 pathfind: a screen-reading agent that drives a title from boot into gameplay
-- 2026-10-18 fpstel1018: Forza and Buffy missed the bar -- decompose the frame, name the lever
 
-_Updated 2026-10-18 12:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 12:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
