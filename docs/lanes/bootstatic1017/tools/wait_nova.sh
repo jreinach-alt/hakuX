@@ -8,7 +8,8 @@ set -u
 MAX="$1"
 D=/home/justin/hakux-work/dispatch
 IDS="$(dirname "$0")/../nova_ids.tsv"
-want=$(grep -o '17922842[0-9][0-9]-lane.bootstatic1017-[0-9]*' "$IDS" | sort -u)
+# 1792282758-62 were withdrawn before they ran (NOTES, attempt 2 step 3).
+want=$(grep -o '[0-9]\{10\}-lane.bootstatic1017-[0-9]*' "$IDS" | grep -v '^17922827' | sort -u)
 # The dispatcher may rename a request with a priority prefix ("0-", "1-"), so
 # each id is looked up with any prefix.
 find_in() { ls -d "$D/$1/"*"$2"* 2>/dev/null | head -n 1; }

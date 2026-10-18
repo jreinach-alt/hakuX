@@ -4,7 +4,10 @@
 # (after). Every run: video from before `am start`, the present probe on for
 # 40 s, its files pulled. Judged by tools/judge_video.py and tools/judge_nova.py.
 #
-#   [VIDEO_AFTER=10] queue_nova.sh BEFORE_SHA AFTER_SHA OUT_IDS_FILE
+#   [VIDEO_AFTER=10] [ARMS="before after"] queue_nova.sh BEFORE_SHA AFTER_SHA OUT_IDS_FILE
+#
+# ARMS=after queues only the after arm: R5 (2a012b14fc) is judged against the
+# R1+R2 after runs and the probe-only before runs already in OUT_IDS_FILE.
 #
 # VIDEO_AFTER is 10, not 0: soak_title.sh puts the screen out for its cool-down
 # gate (KEYCODE_SLEEP, line 493) and wakes it after (line 577), and a recording
@@ -18,12 +21,13 @@
 set -u
 BEFORE="$1"; AFTER="$2"; OUT="$3"
 VIDEO_AFTER="${VIDEO_AFTER:-10}"
+ARMS="${ARMS:-before after}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 REQ="$HERE/../../../testing/request.sh"
 TITLES=("Halo Combat Evolved.iso|Halo CE (Blam)" \
         "4D530035-Top_Spin.xiso.iso|Top Spin (PAM)" \
         "5454000E-Grand_Theft_Auto_III.xiso.iso|GTA III (RenderWare)")
-for arm in before after; do
+for arm in $ARMS; do
     ref="$BEFORE"; [ "$arm" = after ] && ref="$AFTER"
     for t in "${TITLES[@]}"; do
         iso="${t%%|*}"; name="${t#*|}"

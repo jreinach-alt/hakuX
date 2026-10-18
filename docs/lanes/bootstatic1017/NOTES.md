@@ -418,6 +418,36 @@ lands between them. The probe's data from that run stand; only the video is miss
 
 `--env` stays in the app's pref until the next request. Both arms carry the same probe env, which only writes files.
 
+## R5: the logo for one present at the title's first scan-out (`2a012b14fc`)
+
+Found in the Nova after arm (R1+R2): through every screen-off present the window is black, and then, at the title's
+first present at its own start, it shows the kernel logo's window hash (698586ab) for one present. That happens in all
+three titles (Halo n387 @022c4000, Top Spin n245 @03b58000, GTA III n144 @03bd8000; `tools/nspans.py`). The before
+arm has the same present (Halo n380, Top Spin n247, GTA III n150), but there the logo was already on screen, held
+through the screen-off interval, so it did not show as a change. R1 turned it into a one-frame logo blink after
+1.5-4 s of black.
+
+**Why.** `pgraph_vk_get_framebuffer_surface` (`renderer.c`), with external memory (the Nova), returns the display
+image rendered at the previous sync and kicks a new one without waiting. So every present on the Nova is one render
+behind the scan-out: the Halo log shows the hash following the start one present late at every flip (n389-407). In
+play that is one refresh of latency and invisible. Across a screen-off interval, the previous render is the kernel's
+logo.
+
+**R5.** The first present with the screen on, after any present that found it off, takes the existing waiting path
+(kick, wait for `sync_complete`, the image rendered for the current start). The refresh that read its image with the
+screen off draws black (`read_off` in `ui/xemu.c`), which closes the race in which the guest turns the screen on
+between the read and the draw. The pfifo thread services the sync on every loop pass (`pfifo_thread`,
+`pgraph_process_pending`), and the same wait already runs on each boot's first nv2a present, when no image is valid.
+It costs one wait per screen-on edge, which is once or twice per launch; play never turns the screen off.
+
+**Judge, before the data:** `tools/stale_logo.py` (M4). It counts presents with the screen on, at a start other than 0
+and the kernel's, whose window hash is a lit hash seen at the kernel's start. Over the seven runs so far: **M4 = 1 in
+every one** (1792282757 n358, 83 n380, 84 n247, 85 n150, 86 n387, 87 n245, 88 n144). **Predicted for R5: M4 = 0 in all
+three titles, with M1 = M2 = M3 = 0 as for R1+R2.** A run with M4 > 0 refutes R5's mechanism.
+
+R5 is not on the desktop's path there: lavapipe has no external memory, so every desktop present is `src=v` and never
+reaches the fast path.
+
 ## Root cause
 
 Both looks have one cause. **The present path showed QEMU's VGA view of guest RAM while the guest had the VGA screen

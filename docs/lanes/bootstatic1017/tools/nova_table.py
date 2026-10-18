@@ -20,8 +20,9 @@ EXTRA = [("before", "7ea8b80e71", "Halo CE (Blam), first run", "1792282757-lane.
 def rows_of_ids():
     out = list(EXTRA)
     for line in open(IDS):
-        m = re.search(r"(17922842\d\d-lane\.bootstatic1017-\d+)", line)
-        if m:
+        m = re.search(r"(\d{10}-lane\.bootstatic1017-\d+)", line)
+        # 1792282758-62 were withdrawn before they ran; 1792282757 is in EXTRA.
+        if m and not m.group(1).startswith("17922827"):
             f = line.split("\t")
             out.append((f[0], f[1], f[2], m.group(1)))
     return out
