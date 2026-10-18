@@ -6,10 +6,11 @@ Brief: `/home/justin/hakux-work/briefs/haloring1017.md`.
 The owner's goal is the ring the way the console draws it. Every surface turns with the ring, and the bright mottled
 grey layer covers the whole ring, the unlit side included.
 
-[lane.haloring1017] working: (c) is answered. The inside band turns on screen off the stock driver: slope 0.88 on the
+[lane.haloring1017] waiting: (c) is answered. The inside band turns on screen off the stock driver: slope 0.88 on the
 desktop, 1.02 on Turnip (run 13, PurpleVK confirmed from its log). The lane narrows to (a). (a) is made inside the
 hull draw (M3). A software render reproduces hakuX's hull to r 0.977 (M4), and it is the judge for the console
-photos.
+photos. Photo 5 is exhausted (M9): the console's hull is brighter on every cube face, and the cube's mask is hakuX's.
+The lane waits on the Nova dump at photos 1-4's poses (1792329678-haloring1017-2242539).
 
 ## Attempt 1 did not finish: the turn cap
 
@@ -102,8 +103,9 @@ console's brightness.
 | R7 | `n5` follows `n4` in the same shader with only c13 changed; the second draw's constants never reach the GPU | (c) | 0.05 -> 0 off the stock driver (M2, M2b: each scrolls at its own rate) | new (M1). Code read: `vsh.c:1213` copies all of c[] every draw; `shaders.c:2108-2138` marks the upload by dirty flag or by layout hash, so a c13 change is caught either way | on screen, one of `n4`/`n5` scrolls at the other's rate or not at all | each scrolls at its own c13.w rate | M2 (`bandfit.py`) |
 | R6 | unwritten VP outputs take the attribute registers' current values on hardware (Cxbx-R PR #2109); hakuX sets them to (0,0,0,1). The hull never writes oT0/oT1/oT2.zw (the PROJECT2D q), oT3.w, oB0, oB1 | (a), perhaps (c) | 0.1 -> 0.03 (M5: t0 and t2.r land on the console at the dump's own scale and phase, which a q != 1 would move) | new: searched hakuX git and `vsh.c`, nothing; Cxbx-R PR #2109 | inline attribute values for v9-v12 (or the slots each output maps to) give q != 1, and a render with that q matches the console | q = 1 under that model | the `gd` dump's inline attribute values; a software render |
 | R8 | the cube's LOD: on hardware the hull's reflection samples a coarse mip of the 64x64 cube (near each face's mean) where hakuX samples a fine one, so the reflection is t2.r times a near-constant over the whole hull, not only where a bright face is hit | (a), and (b)'s flicker source | 0.3 (new, M6) -> 0.01 (M7: each face's mean is the same at every mip, and the screen LOD is 0) | new: M6's t2.r-without-cube fit | the reflection with the cube at a coarse LOD fits the console's rank and level better than at hakuX's LOD | no LOD bias raises the fit over D + c·t2.r's | `termfit.py` with an LOD bias on t3 |
-| R9 | the fresnel oD1 differs on hardware (its inputs: v5/v6's formats, or an unwritten register), so oD1.rgb·oD1.a is near-constant | (a) | 0.15 (new, M6) -> 0.2 (M7: on the pixels where t2.r and D disagree, the excess follows t2.r) | new | a near-constant oD1 with the cube at hakuX's or a coarse LOD fits the console | the fresnel-shaped term fits as well as a flat one | `termfit.py`; the VP's oD1 inputs read from the dump |
-| R10 | the hull's diffuse counts for ~1.4x more on hardware (the detail map t1 at a higher level, or the s6 sum t0·t1 + t0·t1 scaled differently) | (a) | 0.3 (new, M7: D x 1.5 + X0 is the best joint fit; the hull's gain is flat over hakuX's mid-range) | M7 `texregs.py`: no LOD bias or clamp; t1's mips cap the lift at x1.39 | the unlit hull stays dark on the console, and a desktop render with D x k matches photo 5 | the console lights the unlit hull | a console photo of the unlit side; `hullsw.py` with D x k |
+| R9 | the fresnel oD1 differs on hardware (its inputs: v5/v6's formats, or an unwritten register), so oD1.rgb·oD1.a is near-constant | (a) | 0.15 (new, M6) -> 0.2 (M7: on the pixels where t2.r and D disagree, the excess follows t2.r) -> 0.07 (M9: hakuX's mask t2.r·oD1.rgb·oD1.a fits best, a flat or t2.r-only mask worse; the pooled t2.r loading is one screen region, face 3, flat in t2.r inside it) | new | a near-constant oD1 with the cube at hakuX's or a coarse LOD fits the console | the fresnel-shaped term fits as well as a flat one | `termfit.py`; the VP's oD1 inputs read from the dump |
+| R10 | the hull's diffuse counts for ~1.4x more on hardware (the detail map t1 at a higher level, or the s6 sum t0·t1 + t0·t1 scaled differently) | (a) | 0.3 (new, M7: D x 1.5 + X0 is the best joint fit; the hull's gain is flat over hakuX's mid-range) -> 0.3 (M9: rejected pooled at 95%, but inside each cube face the console is hakuX's own pattern at 1.07-1.50x; the gain is not one constant across faces) | M7 `texregs.py`: no LOD bias or clamp; t1's mips cap the lift at x1.39 | the unlit hull stays dark on the console, and a desktop render with D x k matches photo 5 | the console lights the unlit hull | a console photo of the unlit side; `hullsw.py` with D x k |
+| R11 | part of photo 5's hull excess is the photo, not the console: the camera or TV reads brighter on the right, where cube face 3 falls at that pose | (a)'s size, not its presence | 0.4 that it is part, 0.05 that it is all (new, M9: the background reads +0.013, and +0.046 in its bright half, at x 480-640 against -0.03 at the left; face 3's flat +0.115 sits there) | new | at photos 1-4 the excess follows the photo's position, not the cube face or the lighting | the excess follows a face or a term wherever it falls on the photo | `facefit.py` and `spatial.py` at photos 1-4 (dump 1792329678) |
 
 ## Measurements
 
@@ -648,12 +650,142 @@ end. The run's own video
 (35-95 s) is pose-matched to the photos again, and its frames map to the dump by M2b's clock fit. The request is
 under "Waiting" below.
 
+**That request failed at install** (1792328946-haloring1017-2104088, 10-18 06:16). It never reached the title. Its ref
+5d4b689ed9 predates 8b49e941bd (versionCode 10). The Nova carries master's build, and the dispatcher installs with
+`adb install -r` without `-d` (`dispatcher.sh:1669`), so Android refuses the downgrade. The dispatch doctor read it as
+an ISO push failure and gave up. **Every request on a ref older than 8b49e941bd now fails the same way.**
+
+This lane merged origin/master (f53752f4fe) and requeued the same dump on master da6e8949dc, whose emulator code is the
+merge head's: **1792329678-haloring1017-2242539**. FIST_ROUND is on by default there; the env keeps it for parity with
+run 13.
+
+### M9: photo 5 split by cube face: the pooled t2.r term is a screen region, not a term (`unlitjudge.py` bootstrap; `swapfit.py`, `spatial.py`, `facefit.py`, `texfit.py`, `maskfit.py`, `facemap.py`)
+
+This is step 3 on photo 5, the only photo with a dump at its pose. The render is `hullsw.py`'s f507
+(`render_507.npz`). The photo is `reg5`, read in fb units through `cal5v1806` (M7). The judged region is the hull's
+core: 51,515 px at blur 3.
+
+**Pooled over the hull, pure R10 is rejected.** `unlitjudge.py` now bootstraps its fits over 24 px blocks, 400 draws.
+Neighbouring pixels share texels and blur, so the per-pixel error would be too small.
+
+| blur | joint: c - X0 = g·D + k·t2.r + b | free: D, X0, t2.r weights | R² R10 / R1 / free |
+|---|---|---|---|
+| 3 | g 1.16 (0.77-1.53), k 0.17 (0.06-0.27) | 1.00 (0.65-1.36), 0.67 (0.43-0.86), 0.25 (0.16-0.34) | 0.563 / 0.580 / 0.594 |
+| 8 | g 1.20 (0.69-1.72), k 0.24 (0.12-0.36) | 0.93 (0.45-1.53), 0.63 (0.42-0.82), 0.34 (0.21-0.46) | 0.638 / 0.667 / 0.688 |
+
+The sets that part the accounts, at blur 3:
+
+| set | n | console | hakuX | R10 predicts | R1 predicts |
+|---|---|---|---|---|---|
+| D low, t2.r high | 204 | 0.310 | | 0.249 | 0.306 |
+| D high, t2.r low | 247 | 0.161 | 0.195 | 0.292 | 0.220 |
+
+k grows with blur, so it is not t1's fine detail lost to the photo's resolution.
+
+**No structural variant of the combiner fits better** (`swapfit.py`: console = a·variant + b, hull R²):
+
+| variant | R² |
+|---|---|
+| hakuX as drawn, D + X0 | **0.532** |
+| t2.r added to the lighting (self-lit) | 0.508 |
+| the cube term with oD1.rgb only (no oD1.a) | 0.485 |
+| t2.r and t2.g swapped | 0.455 |
+| the cube term without the fresnel | 0.438 |
+| D alone | 0.426 |
+| the cube forced to 1 (fresnel kept) | 0.392 |
+
+**The cube term keeps hakuX's mask** (`maskfit.py`). The model is console = a·D + b·t3·MASK + c over the hull. Its
+control, the same fit on hakuX's own final, returns a 1.00 and b 1.00.
+
+| MASK | R² |
+|---|---|
+| t2.r·oD1.rgb·oD1.a (hakuX's), with a 1.69, b 0.92 | **0.564** |
+| t2.r·oD1.a | 0.559 |
+| t2.r·oD1.rgb | 0.548 |
+| t2.r | 0.525 |
+| oD1.rgb·oD1.a, oD1.a or oD1.rgb alone | 0.466-0.480 |
+| none | 0.449 |
+
+So the console's reflection is not ungated by the fresnel, or by t2.r. **R9's near-constant fresnel fits worse than
+hakuX's.**
+
+**Split by the cube face hakuX's R lands on, the t2.r term goes away** (`facefit.py`, `texfit.py`, `facemap.py`). At
+this pose the hull's R lands on three faces.
+
+| face | px | where on screen | hakuX | console | c - h | c - h on t2.r inside the face | console's slope on hakuX's own pattern |
+|---|---|---|---|---|---|---|---|
+| 0 (mean texel 0.651) | 10,497 | x 259-422, the left strip | 0.221 | 0.263 | +0.042 | +0.231, R² 0.134 | 1.50 |
+| 3 (0.130) | 16,487 | x 400-590, y 131-384, lower right | 0.145 | 0.260 | **+0.115** | **+0.009, R² 0.000** | 1.28 |
+| 5 (0.143) | 24,531 | x 328-572, y 0-339, upper middle | 0.116 | 0.143 | +0.027 | +0.117, R² 0.057 | 1.07 |
+
+The last column is corr(c, h) × sd(c) / sd(h).
+
+- **Face 3 carries 63% of the summed excess.** Its pixels have the highest t2.r (0.372; faces 0 and 5 have 0.359 and
+  0.221). So across faces the excess lines up with t2.r. Inside face 3 it is flat in t2.r, in W = t2.r·oD1.rgb·oD1.a
+  and in D (each R² ≤ 0.025). **The pooled k measures the region, not a term.**
+- **On face 3, hakuX is dark and the console is a mottled grey, which is the owner's description.** There the console
+  follows hakuX's own pattern (corr 0.55) at 1.28x, plus a flat lift (maskfit on face 3 alone: a 1.20, c +0.08). The
+  cube term on face 3 is 0.005 and carries no information. The excess correlates only faintly with the cube's own
+  texels (t3.b 0.19, t3.g 0.16).
+- **Face 0** fits b 1.95 with a 0.79 (R² 0.724): on the bright face, the console's reflection is about twice
+  hakuX's. D and X are collinear there, so that split is loose.
+- **Face 5** is about a D gain of 1.8 with X at 0.26 (R² 0.458).
+
+The gains by face (1.50, 1.28, 1.07, plus the lift on face 3) are not one gain. Neither account fits all three faces
+with one constant.
+
+**Face 3 is the photo's right side, and the photo itself reads brighter there** (`spatial.py`). Off the ring, the
+photo in fb units minus hakuX's video frame (`v01806`):
+
+| screen band | median diff | its bright half |
+|---|---|---|
+| y bands, top to bottom | -0.015 to -0.031 | |
+| x 15-160 | -0.031 | -0.040 |
+| x 160-320 | -0.031 | -0.039 |
+| x 320-480 | -0.013 | -0.017 |
+| x 480-640 | **+0.013** | **+0.046** |
+
+Relative to the left, that is up to about 0.05-0.08 of face 3's +0.115. On the hull by x band, c - h is +0.03 to
++0.04 up to x 480, and +0.093 / +0.108 at x 480-540 / 540-640. The t2.r slope inside an x band is about 0.2 (x
+320-540). Bands mix faces, though, so the split by face is the stricter control.
+
+**Where (a) stands after photo 5.**
+- Photo 5 does not part R10 and R1/R9, and **the pooled rejection of pure R10 does not survive the split by face**.
+- On every face the console's hull is brighter than hakuX's: 1.1-1.5x on hakuX's own pattern, plus a flat +0.08 to
+  +0.12 on the lower right. There hakuX's R reads cube face 3 and the hull renders dark.
+- Part of that lift is the photo's right side. How much is not separable on one photo.
+- No re-weighting of hakuX's own terms fits the console better than R² 0.59 (0.69 at blur 8).
+- **The cube's mask is hakuX's.** That retires an ungated t2.r layer as the form of R1/R9.
+
+What is left of (a) is a level: a gain, or a lift that varies over the screen. It needs poses where the same cube faces
+fall elsewhere on the photo, which photos 1-4 give. The dump for them is 1792329678.
+
+**A different LOD for the detail map is not the gain.** On face 5 the excess grows toward grazing angles (corr with
+oD1.a -0.43), which is how a coarser t1 mip would look: t1's mip means rise 0.255 to 0.423. But TEXCTL0 is
+0x4003ffc0 on every hull stage, so its anisotropy field (bits 4-5) is 0. hakuX passes that through
+(`texture.c:3440`, `4399-4415`), so both machines filter isotropically. The gains of 1.07-1.50 would need t1 at mip
+1.5-5, against p50 0.85 here. A different isotropic LOD formula moves it by half a mip at most.
+
 ## Plan
 
 1. ~~(c) off the stock driver~~: done (M2, M2b). R4 holds.
 2. ~~(a): which draw~~: `n5` itself (M3).
 3. (a): the software render of `n5` with R3's k, R1's forced face and mirror, and R6's q, judged by region against
    the pose-matched console photos. Then fix A7's crash and check the leaders on the desktop.
+   - Photo 5: done (M5-M9). It does not part R10 from R1/R9. R9 and the ungated t2.r layer are down (M9).
+   - Photos 1-4: posed (M8). Their dump is request 1792329678-haloring1017-2242539 (Nova, master da6e8949dc). When it
+     lands: check its log for `GPU: PurpleVK`; run `vidpose.py` for each photo on its video; map frames to the dump
+     by M2b's clock; run `hullsw.py` at each pose, then `photocal.py`, `unlitjudge.py`, `facefit.py`,
+     `maskfit.py` and `spatial.py`. The question is whether the excess follows a cube face, a term or the photo's
+     position (R10, R1, R11).
+   - The console side: a board request to lane.xbox for a fixed-camera clip of the menu (below, "Waiting").
+4. The desktop (A7's PSHDBG crash, the leaders): paused while C: is under 40 GB free (38 GB on 10-18).
+
+## Waiting
+
+[lane.haloring1017] waiting: the Nova `gd` dump at the console photos' poses, request
+1792329678-haloring1017-2242539 (its result dir under `dispatch/results/`). Also a console clip from lane.xbox
+(board request, 10-18). C: needs to be back at 40 GB free before desktop runs resume.
 
 Before every desktop run that may crash, `df -B1G /mnt/c` must show at least 40 GB free. After every run, delete only
 this run's own dumps in `wsl-crashes/`, by exact name, and log each crash here.
