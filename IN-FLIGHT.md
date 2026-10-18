@@ -8,14 +8,14 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `bootstatic1017` | claude-opus-5-5 | 23 min | bootstatic1017: the brief static or green flash at every title start (#1045) |
-| `gta3drive1017` | claude-opus-5-5 | 27 min | gta3drive1017: Grand Theft Auto III drops into the teens while driving (#433) |
-| `haloring1017` | claude-opus-5-5 | 0 min | haloring1017: Halo CE main-menu ring: the missing surface layer and the static inside surface (#939) |
+| `bootstatic1017` | claude-opus-5-5 | 38 min | bootstatic1017: the brief static or green flash at every title start (#1045) |
+| `gta3drive1017` | claude-opus-5-5 | 42 min | gta3drive1017: Grand Theft Auto III drops into the teens while driving (#433) |
+| `haloring1017` | claude-opus-5-5 | 15 min | haloring1017: Halo CE main-menu ring: the missing surface layer and the static inside surface (#939) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-offline`
-- **Device queue:** 6 waiting, 1 running.
+- **Device queue:** 7 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -119,8 +119,8 @@ The harness dashboard, with each release's targets and the progress charts, is [
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
 | `lane/bootstatic1017` | bootstatic1017: the brief static or green flash at every title start (#1045) | `cc8f4ff1e1` | 2026-10-17 17:19 |
-| `lane/gta3drive1017` | gta3drive1017: Grand Theft Auto III drops into the teens while driving (#433) | `bd2bf354bb` | 2026-10-17 17:25 |
-| `lane/haloring1017` | haloring1017: Halo CE main-menu ring: the missing surface layer and the static inside surface (#939) | `948dc20f1c` | 2026-10-17 15:49 |
+| `lane/gta3drive1017` | gta3drive1017: Grand Theft Auto III drops into the teens while driving (#433) | `36e30f85fd` | 2026-10-17 17:35 |
+| `lane/haloring1017` | haloring1017: Halo CE main-menu ring: the missing surface layer and the static inside surface (#939) | `bdd69df910` | 2026-10-17 17:32 |
 
 ## Recently landed on master
 
@@ -133,4 +133,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 release052: the 0.5.2 release commit (#433)
 - 2026-10-17 defaulton1017: S2T_CVT, REPORT_EARLY and FLDCW_CHAIN on by default, after one default-on screen
 
-_Updated 2026-10-17 17:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-17 17:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
