@@ -39,8 +39,9 @@
 # passenger seat by then: 1-1792282254-...-1563459's onfoot frame (clock
 # 05:12) shows him in it before the Y press.
 #
-# Warm-up, before `mark gameplay`: the scored loop's cycle six times (~85 s),
-# with three frames a cycle (mid-throttle, after the Y, after the reverse).
+# Warm-up, before `mark gameplay`: the scored loop's cycle six times (~70 s),
+# with three frames a cycle (mid-throttle, end of the forward stretch, after
+# the reverse).
 # In 1563459 the gate and the entry worked (matched at 0 s, in after one Y),
 # but the mission restarted within ~30 s of the throttle (clock 05:25 in the
 # car at 17:14:12, 04:18 on foot beside the Kuruma at 17:14:46), and no frame
@@ -68,21 +69,24 @@
 #   wall and over (175130-warmy.png, 05:39). The Y re-entry below worked
 #   (175156 -> 175201), but each re-entry reversed toward the burning wreck,
 #   and the car flipped again every 30-40 s.
+# - 1-1792285072-...-2477310: RT 14000 with LX -4000 took the bend with no
+#   flip (180239-warm.png, 4 s in, heading down the ramp). But the Y at the
+#   end of every 8 s forward stretch stopped the car and got Claude out
+#   (180245-warmy.png, "Hey! Get back in the vehicle!" at 180250), so he
+#   spent the warm-up and the scored window mostly on foot. Two flips came
+#   after on-foot re-entries pointed the car at a wall (180512, 180540).
 # So:
 # - Slow: RT 14000. A sloped wall turns a slow car instead of rolling it.
 # - A small left bias going forward (LX -4000), for the ramp's left bend; in
 #   the streets it makes wide left arcs. No other steering going forward. Each
 #   cycle: 8 s forward, brake straight 2 s, reverse 1.5 s with the wheel
 #   turned, alternately right and left.
-# - A Y at the end of each forward stretch. GTA III, unlike Vice City, lets
-#   the player leave a car only at low speed or at a stop (Grand Theft Wiki,
-#   "Bail Out"), so at speed the press does nothing. After a restart it walks
-#   Claude back into the Kuruma (8-Ball waits in it, 8.3). Where the car is
-#   slow (a wall, or under the exit threshold) it gets out, and the next
-#   cycle's Y gets back in. The warm-up's `warmy` frames, taken right after
-#   each Y, show which.
-# - A frame every cycle (~13 s), so a restart or a wreck in the scored window
-#   shows in the frames and goes to drive_judge.py's --exclude.
+# - No Y after the entry. At RT 14000 a Y exits the car (2477310), and no
+#   route step can press it only when Claude is on foot. A restart in the
+#   scored window leaves him on foot and voids the rest of the run; the
+#   frames show it.
+# - A frame every half-cycle (~12 s), so a restart or a wreck in the scored
+#   window shows in the frames and goes to drive_judge.py's --exclude.
 #
 wait 55
 repeat 4 {
@@ -106,8 +110,7 @@ repeat 3 {
     wait 4
     shot warm
     wait 4
-    press Y 300
-    shot warmy
+    shot warmf
     axis RT min
     axis LX mid
     axis LT max
@@ -122,8 +125,7 @@ repeat 3 {
     wait 4
     shot warm
     wait 4
-    press Y 300
-    shot warmy
+    shot warmf
     axis RT min
     axis LX mid
     axis LT max
@@ -139,7 +141,6 @@ repeat forever {
     axis LX -4000
     axis RT 14000
     wait 8
-    press Y 300
     shot drive
     axis RT min
     axis LX mid
@@ -152,7 +153,6 @@ repeat forever {
     axis LX -4000
     axis RT 14000
     wait 8
-    press Y 300
     shot drive
     axis RT min
     axis LX mid

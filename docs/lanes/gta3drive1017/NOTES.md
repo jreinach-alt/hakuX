@@ -1,6 +1,6 @@
 # lane.gta3drive1017 -- GTA III drops into the teens while driving (#433)
 
-Status (attempt 3, 10-17 18:05 PDT): the wait is located (section 6). R1 is built (c6ca5296fd, section 7). Its
+Status (attempt 3, 10-17 18:15 PDT): the wait is located (section 6). R1 is built (c6ca5296fd, section 7). Its
 arms are registered (section 8).
 - Step 1, the pixel suites, is judged (8.1): the same code ran in both arms, and every mover is run-to-run variance.
 - Drive pair 1 is VOID (8.2): the help-box gate never matched, so neither run entered the car. The gate is now the
@@ -11,8 +11,10 @@ arms are registered (section 8).
   bridge ramp, which bends left about 5 s from the start. A steering pulse takes it into a lamp post (full lock or a
   third of it); no steering takes it up the sloped right-hand wall. Either way the mission fails ("You flipped your
   wheels!") and restarts with Claude on foot.
-- Try 5 proved the re-entry: a Y each cycle gets Claude back in after a restart. The route now drives slower (RT
-  14000) with a small left bias for the bend. B goes alone first again.
+- Try 5 proved the re-entry: a Y each cycle gets Claude back in after a restart.
+- Try 6 (8.7) is VOID. Driving slower (RT 14000) with a small left bias took the bend with no flip, but at that
+  speed each cycle's Y stopped the car and got Claude out, and the flips came after his re-entries. The route now
+  has no Y after the entry. B goes alone first again.
 - R2/R3's census (the copy refusal reasons, dups per flip) is in texture.c, perflog only, for a later run if R1
   falls short.
 
@@ -586,6 +588,38 @@ each cycle). It is VOID as a drive.
   - `route.sh --check` passes.
 - **Next: B alone again, the same request.** If its warm-up frames show the car down the ramp and moving at the
   mark, A follows at once.
+
+### 8.7 Sixth try: the slow drive takes the bend; the Y gets Claude out
+
+B `1-1792285072-lane.gta3drive1017-2477310` ran alone, 17:59-18:10 (RT 14000, LX -4000 forward, reverse turns, Y
+each cycle). PurpleVK (Turnip) and `[s2tdrain] first skip` are in its log. It is VOID as a drive.
+
+| frame | clock | what |
+|---|---|---|
+| 180234 incar | 05:31 | in the Kuruma after one Y |
+| 180239 warm | 05:35 | +4 s: heading down the ramp toward the left bend, upright |
+| 180245 warmy | 05:41 | right after the cycle's Y: the car stopped, Claude getting out |
+| 180250 | -- | "Hey! Get back in the vehicle!" |
+| 180255-180330 | -- | on foot, running; at the car door |
+| 180335, 180340 | -- | in the Kuruma on the ramp |
+| 180345 warmy | -- | the Y gets him out again |
+| 180406 gameplay | 07:00 | `mark gameplay`, on foot by a fallen lamp post; no restart since the entry |
+| 180415-180458 drive | 07:10-07:51 | on foot, except 180430 (07:24), in the car on the ramp |
+| 180512 drive | 08:05 | "MISSION FAILED!", "You flipped your wheels!" |
+| 180526-180608 drive | 04:10-04:25 | two restarts, each with a flip within 15 s of the re-entry |
+
+- **The slow, biased drive takes the bend.** For 90 s, from the entry at 05:31 to 07:00, the clock ran on with no
+  restart. That covered the throttle stretch that flipped tries 3 to 5 ~5 s in.
+- **At RT 14000 the Y gets Claude out.** GTA III stops the car and lets him out at this speed, so every cycle's Y
+  turned a drive into a walk and the next one into a re-entry. The flips came after the re-entries, each of which
+  left the car pointing at a wall on the ramp.
+- **No step can press Y only when he is on foot.** route.sh's `waitfor` and `press-until` abort the route when they
+  fail, and `drive` (drive.py) captures about once a second, which costs the scored window's frame rate.
+- **The route's next shape: the same drive with no Y after the entry.** The frames move from after the Y to the end
+  of each forward stretch (`warmf`). A restart in the scored window now leaves Claude on foot for the rest of the
+  run, and the frames show it. The bet is that a car nobody gets out of stays upright: try 6's only flips came
+  after re-entries. `route.sh --check` passes.
+- **Next: B alone again, the same request.** A follows once B's warm-up frames show the car driving at the mark.
 
 ## Questions
 

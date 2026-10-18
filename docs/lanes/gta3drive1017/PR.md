@@ -45,9 +45,9 @@ if this change falls short of the bar (NOTES.md 7).
 - gta3drive1017-pixels.json: drain474's seven surface-as-texture pgraph suites.
 - gta3drive1017-drive.json:
   - two runs per arm on the driving route (`routes/gta-3-drive.route`, gated on the scene beside the Kuruma, with a
-    warm-up drive ahead of the scored window. It drives slowly with a small left bias, and a Y each cycle gets
-    Claude back in after a mission restart. The help-box gate voided the first pair. A flip on the bridge ramp
-    failed the mission in the next four tries: NOTES.md 8.2-8.6);
+    warm-up drive ahead of the scored window. It drives slowly with a small left bias and never gets out. The
+    help-box gate voided the first pair. A flip on the bridge ramp failed the mission in the next four tries, and in
+    the sixth a Y each cycle got Claude out of the car: NOTES.md 8.2-8.7);
   - then one per arm on the on-foot gta-3 route.
 - The bar: B's driving at >= 28.5 fps for >= 90% of the moving window, with on foot not regressed.
 
