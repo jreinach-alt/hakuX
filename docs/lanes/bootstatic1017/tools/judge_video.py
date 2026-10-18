@@ -23,6 +23,9 @@ centre half in each axis, the probe's own window numbers: nb (mean |horizontal n
 lit (max channel > 24), grn (g >= 48 and g > r + 32 and g > b + 32). Classes as judge_boot.py: black lit < 0.01;
 green grn >= 0.25; noise nb >= nb_bar and lit >= 0.10; picture otherwise. nb_bar = max(20, 2 x the largest nb among
 lit frames in the last quarter of the video's time), from the run's own clean spread; the verdict prints that spread.
+Then, added after 1792282757 and before any decodable video: a frame the centre half calls black or picture is noise
+if the whole frame's look is static, green if it is streaks (full_look(); the green look on Halo lies outside the
+centre half). A 0-byte or undecodable segment is skipped, and a run with no decodable frame is VOID.
 
 Alignment. A frame's wall time is its segment's start_wall plus its pts, which is good to about a second
 (start_wall is a whole device second taken before screenrecord starts). The offset is then found by content: over
@@ -73,17 +76,39 @@ def frame_metrics(px):
     r, g, bl = a[..., 0], a[..., 1], a[..., 2]
     lit = float((np.maximum(np.maximum(r, g), bl) > 24).mean())
     grn = float(((g >= 48) & (g > r + 32) & (g > bl + 32)).mean())
-    return nb, lit, grn
+    return nb, lit, grn, full_look(px)
+
+
+def full_look(px):
+    """Added after 1792282757 and before any decodable video (its only segment was 0 bytes): the whole frame's look,
+    as judge_nova.py's for the probe dumps, because the green look on Halo lies outside the centre half. static: nbh >=
+    20 and lit >= 0.10; streaks: nbv >= 5, nbv >= 4 x nbh, lit >= 0.05; "" otherwise. Taken on every other pixel of
+    the decoded frame, so its neighbours are as far apart as the probe dumps' are in the window."""
+    a = px[::2, ::2].astype(np.int16)
+    r, g, b = a[..., 0], a[..., 1], a[..., 2]
+    lit = float((np.maximum(np.maximum(r, g), b) > 24).mean())
+    nbh = float(np.abs(a[:, 1:] - a[:, :-1]).mean())
+    nbv = float(np.abs(a[1:] - a[:-1]).mean())
+    if nbh >= 20 and lit >= 0.10:
+        return "static"
+    if nbv >= 5 and nbv >= 4 * nbh and lit >= 0.05:
+        return "streaks"
+    return ""
 
 
 def decode(path):
-    """[(pts_s, nb, lit, grn)] for every frame of one segment."""
+    """[(pts_s, nb, lit, grn, look)] for every frame of one segment; ([], 0) for an empty or undecodable file."""
+    if os.path.getsize(path) == 0:
+        return [], 0
     pr = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "frame=pts_time",
                          "-of", "csv=p=0", path], capture_output=True, text=True)
     pts = [float(x.split(",")[0]) for x in pr.stdout.split() if x.strip() and x.split(",")[0] not in ("", "N/A")]
     pr = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height",
                          "-of", "csv=p=0", path], capture_output=True, text=True)
-    w, h = (int(x) for x in pr.stdout.strip().split(",")[:2])
+    try:
+        w, h = (int(x) for x in pr.stdout.strip().split(",")[:2])
+    except ValueError:
+        return [], 0
     dh = (h * DECODE_W // w) // 2 * 2
     p = subprocess.Popen(["ffmpeg", "-v", "error", "-i", path, "-fps_mode", "passthrough", "-vf",
                           "scale=%d:%d:flags=neighbor" % (DECODE_W, dh), "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
@@ -103,8 +128,11 @@ def decode(path):
     return out, len(pts)
 
 
-def classify(nb, lit, grn, nb_bar):
-    return judge_boot.classify({"lit": lit, "grn": grn, "nb": nb}, nb_bar)
+def classify(nb, lit, grn, nb_bar, look=""):
+    c = judge_boot.classify({"lit": lit, "grn": grn, "nb": nb}, nb_bar)
+    if c in ("noise", "green"):
+        return c
+    return {"static": "noise", "streaks": "green"}.get(look, c)
 
 
 def judge(rd):
@@ -151,11 +179,12 @@ def judge(rd):
         if not os.path.exists(p):
             continue
         fr, npts = decode(p)
-        for t, nb, lit, grn in fr:
-            frames.append({"seg": s["file"], "pts": t, "wall": s["start_wall"] + t, "nb": nb, "lit": lit, "grn": grn})
+        for t, nb, lit, grn, look in fr:
+            frames.append({"seg": s["file"], "pts": t, "wall": s["start_wall"] + t, "nb": nb, "lit": lit, "grn": grn,
+                           "look": look})
     res["frames"] = len(frames)
     if not frames:
-        res["verdict"] = "VOID: no decodable frames"
+        res["verdict"] = "VOID: no decodable frames (segment bytes %s)" % [s.get("bytes") for s in segs]
         return res
     t_end = frames[-1]["wall"]
     t0 = frames[0]["wall"]
@@ -166,7 +195,7 @@ def judge(rd):
     res["clean_nb_max"] = clean_max
     res["clean_grn_max"] = max((f["grn"] for f in tail), default=0.0)
     for f in frames:
-        f["cls"] = classify(f["nb"], f["lit"], f["grn"], nb_bar)
+        f["cls"] = classify(f["nb"], f["lit"], f["grn"], nb_bar, f["look"])
 
     # V1, V2.
     first_start = segs[0]["start_wall"]
