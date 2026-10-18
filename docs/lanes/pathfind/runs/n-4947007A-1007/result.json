@@ -1,0 +1,80 @@
+{
+ "title_id": "4947007A",
+ "name": "Dragon Ball Z Sagas",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/4947007A-Dragon_Ball_Z_Sagas.xiso.iso",
+ "result": "gameplay",
+ "tool": "3624b0a01d",
+ "started": "2026-10-07 16:52:13 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4947007A-1007/frames/014-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4947007A-1007/frames/014-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4947007A-1007/frames/014-probe-c.jpg"
+ ],
+ "minutes": 1.82,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4947007A-1007/frames/013-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4947007A-1007/frames/015-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4947007A-1007/frames/016-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4947007A-1007/frames/017-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4947007A-1007/frames/018-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4947007A-1007/frames/019-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4947007A-1007/frames/020-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4947007A-1007/frames/021-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4947007A-1007/frames/022-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4947007A-1007/frames/023-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-4947.md"
+ ],
+ "hold": {
+  "genre": "attack",
+  "why": "Goku standing in a field in character-control mode typical of DBZ Sagas' exploration/melee combat, not a vehicle or shooter.",
+  "ok": false,
+  "play_s": 611.9,
+  "need_s": 600.0,
+  "hold_s": 990.7,
+  "model_navs": 5,
+  "frames": 27,
+  "still_windows": 9,
+  "shed": [],
+  "reversals": 0,
+  "reason": "verdict stops the hold: fps_ok 0.5701, crash False, hang False",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 94,
+    "median": 29.0,
+    "share": 0.862,
+    "at_s": 190.3,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 151,
+    "median": 29.0,
+    "share": 0.894,
+    "at_s": 305.5,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "verdict": "VERDICT Dragon Ball Z Sagas ? FAIL(menu time: 61.8% of the scored window in `play` (bar 90%; play 612 s, still 340 s, cutscene 17 s, menu 12 s)) gameplay=991.0s fps_ok=0.5715 crash=False hang=False audio_short=0.0 hitches=1/0.064pm worst_ms=101.4 static_frac=0.002 play_share=0.6175 fps_excluded=375.6s"
+ },
+ "model_calls": 29,
+ "calls_by_model": {
+  "claude-sonnet-5": 29
+ },
+ "steps": 14,
+ "seconds": 1147.3,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4947007A-1007/frames/108-hold.jpg",
+ "last_state": "probe",
+ "replayed": 1,
+ "sib_replayed": 0,
+ "guide": [
+  "4947007A"
+ ],
+ "cheap": 1,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4947007A-1007/strip.jpg"
+}

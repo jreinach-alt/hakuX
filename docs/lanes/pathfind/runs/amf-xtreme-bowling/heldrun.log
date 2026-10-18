@@ -1,0 +1,40 @@
+taken: nova by lane.pathfind
+NOT IDLE: nova is held but busy -- do not touch it yet:
+dispatcher pid 518495 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+running: 1-1791221184-lane.gpuclock-2660193 on nova
+run: hold.sh wait-idle nova <timeout_s>, and touch the device only on exit 0
+waiting for nova: dispatcher pid 518495 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+running: 1-1791221184-lane.gpuclock-2660193 on nova
+idle: nova is held and runs nothing
+held at 15:55:44
+pathfind: AMF Xtreme Bowling (None) on nova: /storage/E6C6-D7AA/Games/XBox/AMF_Xtreme_Bowling.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: - any, loaded all goldens (title not identified)
+[  10.1s] #  1 publisher_logo    fast    A                        Early boot: a splash/logo screen with nothing to select yet. Per the hints, skip with A fi
+[  21.3s] #  2 publisher_logo    fast    A                        Blank brushed-metal screen with nothing to select, most likely a logo or fade stage during
+[  26.0s] #  3 publisher_logo    repeat  A                        repeat A: it advanced the publisher_logo
+[  34.6s] #  4 main_menu         fast    A                        Title is past logos at the main menu. Goal route is a Start New Game style entry, but this
+[  43.6s] #  5 profile_creation  fast    A                        Profile select with existing profiles listed; M.Peters is already highlighted. Accepting t
+[  52.3s] #  6 profile_creation  fast    START                    Profile select; A on the lit M.Peters did nothing, so I'll pick Add Profile to make a new 
+[  60.1s] #  7 profile_creation  fast    RIGHT A                  A and START did nothing. Accept is greyed out, so the profile list is not confirming. Add 
+[  71.8s] #  8 profile_creation  fast    R1 A                     Accept is greyed because no bowler is assigned in the Bowlers (R) column, which reads SLOT
+[  83.6s] #  9 profile_creation  fast    R1                       Accept is greyed because no bowler is assigned in the Bowlers (R) column. A, START, RIGHT+
+[  92.3s] # 10 profile_creation  fast    STICK:right:0.5 A        Accept is greyed because no bowler is assigned to the Bowlers (R) column. Tried A, START, 
+[ 101.0s] # 11 submenu           fast    A                        Venue select is a menu past profile selection. Hollywood is already highlighted, so accept
+[ 111.2s] # 12 submenu           fast    A                        Oil pattern setup menu before play. None is highlighted, which is the default, so A accept
+[ 118.6s] # 13 loading           fast    wait                     Loading bar is showing after the oil pattern setup was accepted; no input needed, wait for
+[ 128.9s] # 14 submenu           fast    A                        Pre-game info card for Practice with the bowler, venue and oil pattern set. The prompt ask
+[ 138.4s] # 15 gameplay          fast    wait                     Lane is up with the pins standing and the bowler in position behind the foul line, the aim
+[ 151.6s] # 16 probe             probe   STICK:right:1.5          control 0.083, under input 0.252
+hold-play: genre bowl, need 600 s of play
+hold-play: fps at 183 s: median 59.0, share>=30 0.994 over 165 samples
+hold-play: fps at 302 s: median 59.0, share>=30 0.996 over 281 samples
+hold-play: HELD 606/600 s of play; 
+held AMF Xtreme Bowling for 731s
+VERDICT AMF Xtreme Bowling ? FAIL(menu time: 83.2% of the scored window in `play` (bar 90%; play 607 s, menu 68 s, still 37 s, loading 10 s)) gameplay=729.6s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=3/0.269pm worst_ms=238.8 static_frac=0.0 play_share=0.8322 fps_excluded=123.0s
+{"name": "AMF Xtreme Bowling", "device": "nova", "result": "gameplay", "minutes": 2.53, "model_calls": 43, "steps": 16, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-xtreme-bowling/hold/frames/015-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4253
+pathfind rc=0 at 16:11:10
+released: nova by lane.pathfind
+released rc=0

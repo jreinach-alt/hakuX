@@ -1,0 +1,1 @@
+NOT-PLAYABLE: car wrecked and stationary for the whole window (speed 0, odometer 000000-000001, POS 4/4, race clock running to 15:19). Verdict FAIL on audio only (0.23% short vs 0.1%), but the frames show the player never drove: same never-drives pattern as Auto Modellista.

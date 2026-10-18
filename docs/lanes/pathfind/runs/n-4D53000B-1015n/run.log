@@ -1,0 +1,56 @@
+pathfind: NBA Inside Drive 2004 USA (4D53000B) on nova: /storage/E6C6-D7AA/Games/XBox/4D53000B-NBA_Inside_Drive_2004_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4D53000B any, loaded none
+[   9.9s] #  1 black             fast    wait                     Game is still initializing right after cold boot; no logos or menu text visible yet, just 
+[  19.5s] #  2 intro_video       fast    START A                  This looks like an atmospheric intro cinematic (lightning, power plant) rather than gamepl
+[  27.8s] #  3 publisher_logo    fast    START A                  Standard audio format logo screen shown before title; skip with START then A
+[  37.3s] #  4 publisher_logo    fast    START A                  Legal disclaimer screen before title; skip with START then A
+[  45.5s] #  5 publisher_logo    fast    START A                  NBA league logo splash before title screen, skip with START then A
+[  53.9s] #  6 publisher_logo    fast    START A                  Another logo splash (Sports branding) before title screen; skip with START then A per conv
+[  62.7s] #  7 main_menu         fast    A                        Single Game is already highlighted (yellow) and is the fastest path to default gameplay; p
+[  77.2s] #  8 submenu           fast    RIGHT A                  Controllers sit in the middle column unassigned to either team; need to move controller 1 
+[  85.3s] #  9 submenu           fast    A                        Teams are set (Nets vs Spurs), controller assignment was handled in prior step; A Advance 
+[  93.2s] # 10 submenu           fast    A                        Uniform selection submenu; A Advance is the labeled default action to proceed toward gamep
+[ 103.3s] # 11 submenu           fast    A                        This is the uniform selection screen that keeps returning after A; both teams show Ready a
+[ 115.9s] # 12 submenu           fast    DOWN DOWN RIGHT RIGHT RIGHT RIGHT Owner rule: before first whistle set Quarter Length to the LONGEST value. Currently only 6
+[ 125.8s] # 13 submenu           fast    RIGHT RIGHT RIGHT RIGHT RIGHT RIGHT Quarter Length is highlighted at 10 Min; owner rule requires the longest value, so press R
+[ 147.9s] # 14 submenu           fast    RIGHT RIGHT RIGHT RIGHT RIGHT RIGHT Quarter Length is still highlighted but shows only 4 Min, lower than the 10-12 Min seen be
+[ 160.1s] # 15 submenu           fast    RIGHT RIGHT              Quarter Length is highlighted at 10 Min; previous large RIGHT presses overshot and wrapped
+[ 167.1s] # 16 submenu           fast    A                        Quarter Length is already at 12 Min, the max per the owner rule (previous overshoots wrapp
+[ 175.1s] # 17 loading           fast    wait                     This is a control-tips/loading screen before the game starts; no input needed, just wait f
+[ 184.1s] # 18 loading           fast    wait                     This is a pre-game team matchup/intro screen before tip-off; no menu options visible, just
+[ 192.5s] # 19 loading           fast    wait                     This is a team intro/matchup card before tip-off, not yet interactive gameplay; no menu or
+[ 202.2s] # 20 loading           fast    wait                     pre-tip-off team intro card, not yet interactive; no HUD controls or menu to select, just 
+[ 210.5s] # 21 loading           fast    wait                     This is a pre-tip-off team intro/matchup card, not yet interactive gameplay; no menu optio
+[ 218.6s] # 22 loading           fast    wait                     Pre-tip-off team intro/matchup card, not yet interactive; no menu or HUD controls present,
+[ 226.7s] # 23 loading           fast    wait                     Pre-tip-off team intro/matchup card, not yet interactive gameplay; no menu or HUD controls
+[ 236.8s] # 24 loading           fast    wait                     Still a pre-tip-off player intro card, no HUD scoreboard or play controls visible yet, so 
+[ 244.1s] # 25 loading           fast    wait                     Still a pre-tip-off player introduction card, not interactive; no menu or play controls to
+[ 251.2s] # 26 loading           fast    wait                     Still a pre-tip-off player introduction card, not interactive gameplay; no HUD scoreboard 
+[ 259.5s] # 27 loading           fast    wait                     Still a pre-tip-off player introduction close-up, no scoreboard HUD or controllable play v
+[ 266.9s] # 28 loading           fast    wait                     Pre-tip-off player introduction cutscene, not yet interactive; no gameplay HUD or controls
+[ 277.2s] # 29 loading           fast    wait                     Still a pre-tip-off team lineup/intro screen with no scoreboard HUD or controllable play; 
+[ 285.6s] # 30 loading           fast    wait                     Still the pre-game player intro cutscene sequence, not interactive; waiting for it to tran
+[ 294.1s] # 31 loading           fast    wait                     Still the pre-tip-off player introduction cutscene sequence seen in prior steps, not inter
+[ 303.9s] # 32 loading           fast    wait                     Still the pre-tip-off player introduction cutscene sequence; no scoreboard/game HUD presen
+[ 312.5s] # 33 loading           fast    wait                     Still the same pre-tip-off player introduction cutscene seen in the last several steps, no
+[ 321.8s] # 34 loading           fast    wait                     Still the pre-tip-off player introduction sequence, not interactive; no scoreboard/clock H
+[ 331.4s] # 35 loading           fast    wait                     Still the pre-tip-off arena/scoreboard cinematic sequence with no game HUD or scoreboard c
+[ 346.0s] # 36 loading           fast    wait                     This is the tip-off formation moment just before the jump ball is thrown; still appears to
+[ 353.9s] # 37 gameplay          fast    STICK:up:1.5             Game clock is actively running (11:53), scoreboard HUD is up, and a player is highlighted 
+[ 372.6s] # 38 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.336, under input 0.750
+[ 377.8s] # 39 gameplay          fast    STICK:up:1.5             Game clock running (11:45), scoreboard HUD up, player-controlled character highlighted wit
+[ 398.2s] # 40 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.746, under input 0.671
+[ 405.9s] # 41 gameplay          fast    STICK:up:1.5             Game clock running (11:34), scoreboard HUD up, a player (Nesterovic) is marked/highlighted
+[ 421.2s] # 42 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.067, under input 0.564
+hold-play: sports look {'clock': '11:34', 'period': '1st', 'human_controlled': False, 'why': 'No controller icon or highlighted player marker visible under either team on the scoreboard'}
+hold-play: genre team, need 630 s of play
+hold-play: fps at 190 s: median 31.0, share>=30 0.865 over 96 samples
+hold-play: fps at 301 s: median 31.0, share>=30 0.856 over 153 samples
+hold-play: validity check stop 0 s (hold 638 s of play, verdict 638.6)
+hold-play: not held 638/630 s of play; verdict stops the hold: fps_ok 0.704, crash False, hang False
+held NBA Inside Drive 2004 USA for 641s
+VERDICT NBA Inside Drive 2004 USA ? FAIL(fps: 70.5% of gameplay at >= 30 fps (bar 90%)) gameplay=639.2s fps_ok=0.7048 crash=False hang=False audio_short=0.0 hitches=47/4.868pm worst_ms=181.4 static_frac=0.0 play_share=0.9996 fps_excluded=1.9s
+{"name": "NBA Inside Drive 2004 USA", "device": "nova", "result": "gameplay", "minutes": 7.02, "model_calls": 51, "steps": 42, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D53000B-1015n/frames/041-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

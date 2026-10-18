@@ -1,0 +1,80 @@
+{
+ "title_id": "4D4A0008",
+ "name": "Blowout",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/4D4A0008-Blowout.xiso.iso",
+ "result": "gameplay",
+ "tool": "e812c5e325",
+ "started": "2026-10-06 16:42:50 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/blowout-rev/frames/010-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/blowout-rev/frames/010-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/blowout-rev/frames/010-probe-c.jpg"
+ ],
+ "minutes": 1.3,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/blowout-rev/frames/009-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/blowout-rev/frames/011-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/blowout-rev/frames/012-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/blowout-rev/frames/013-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/blowout-rev/frames/014-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/blowout-rev/frames/015-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/blowout-rev/frames/016-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/blowout-rev/frames/017-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/blowout-rev/frames/018-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/blowout-rev/frames/019-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-4D4A.md"
+ ],
+ "hold": {
+  "genre": "shooter",
+  "why": "A armored character stands in a metal corridor holding a gun, with an ammo/weapon HUD at the bottom, so it is a third-person gun game walking through a level.",
+  "ok": false,
+  "play_s": 806.2,
+  "need_s": 600.0,
+  "hold_s": 1052.6,
+  "model_navs": 3,
+  "frames": 31,
+  "still_windows": 6,
+  "shed": [],
+  "reversals": 1,
+  "reason": "share short by 1379 s with no budget left",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 95,
+    "median": 29.0,
+    "share": 1.0,
+    "at_s": 188.4,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 153,
+    "median": 29.0,
+    "share": 1.0,
+    "at_s": 305.3,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "verdict": "VERDICT Blowout ? FAIL(menu time: 76.9% of the scored window in `play` (bar 90%; play 810 s, still 225 s, other 12 s, pause 6 s)) gameplay=1052.7s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.3805 play_share=0.7691 fps_excluded=242.3s"
+ },
+ "model_calls": 24,
+ "calls_by_model": {
+  "claude-sonnet-5": 24
+ },
+ "steps": 10,
+ "seconds": 1178.1,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/blowout-rev/frames/105-hold.jpg",
+ "last_state": "probe",
+ "replayed": 4,
+ "sib_replayed": 0,
+ "guide": [
+  "4D4A0008"
+ ],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/blowout-rev/strip.jpg"
+}

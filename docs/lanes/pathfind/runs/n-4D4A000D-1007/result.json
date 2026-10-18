@@ -1,0 +1,78 @@
+{
+ "title_id": "4D4A000D",
+ "name": "BloodRayne 2 USA",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/4D4A000D-BloodRayne_2_USA.xiso.iso",
+ "result": "gameplay",
+ "tool": "3624b0a01d",
+ "started": "2026-10-08 07:27:17 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D4A000D-1007/frames/010-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D4A000D-1007/frames/010-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D4A000D-1007/frames/010-probe-c.jpg"
+ ],
+ "minutes": 1.37,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D4A000D-1007/frames/009-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D4A000D-1007/frames/011-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D4A000D-1007/frames/012-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D4A000D-1007/frames/013-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D4A000D-1007/frames/014-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D4A000D-1007/frames/015-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D4A000D-1007/frames/016-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D4A000D-1007/frames/017-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D4A000D-1007/frames/018-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D4A000D-1007/frames/019-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-4D4A.md"
+ ],
+ "hold": {
+  "genre": "attack",
+  "why": "BloodRayne 2 is a melee combat character-action game, even though this screenshot shows exploration in a hallway",
+  "ok": false,
+  "play_s": 607.7,
+  "need_s": 600.0,
+  "hold_s": 1082.7,
+  "model_navs": 0,
+  "frames": 30,
+  "still_windows": 13,
+  "shed": [],
+  "reversals": 1,
+  "reason": "share short by 3661 s with no budget left",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 95,
+    "median": 29.0,
+    "share": 0.989,
+    "at_s": 189.8,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 152,
+    "median": 29.0,
+    "share": 0.987,
+    "at_s": 303.1,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "verdict": "VERDICT BloodRayne 2 USA ? FAIL(menu time: 56.2% of the scored window in `play` (bar 90%; play 610 s, still 474 s, no-timeline 0 s)) gameplay=1083.9s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=109.5 static_frac=0.0002 play_share=0.5623 fps_excluded=474.7s"
+ },
+ "model_calls": 24,
+ "calls_by_model": {
+  "claude-sonnet-5": 24
+ },
+ "steps": 10,
+ "seconds": 1213.9,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D4A000D-1007/frames/125-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D4A000D-1007/strip.jpg"
+}

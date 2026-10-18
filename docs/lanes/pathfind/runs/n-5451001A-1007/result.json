@@ -1,0 +1,79 @@
+{
+ "title_id": "5451001A",
+ "name": "Nickelodeon SpongeBob SquarePants Battle for Bikini Bottom USA",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/5451001A-Nickelodeon_SpongeBob_SquarePants_Battle_for_Bikini_Bottom_USA.xiso.iso",
+ "result": "gameplay",
+ "tool": "3624b0a01d",
+ "started": "2026-10-07 14:27:22 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5451001A-1007/frames/039-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5451001A-1007/frames/039-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5451001A-1007/frames/039-probe-c.jpg"
+ ],
+ "minutes": 5.83,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5451001A-1007/frames/038-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5451001A-1007/frames/040-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5451001A-1007/frames/041-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5451001A-1007/frames/042-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5451001A-1007/frames/043-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5451001A-1007/frames/044-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5451001A-1007/frames/045-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5451001A-1007/frames/046-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5451001A-1007/frames/047-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-5451.md"
+ ],
+ "hold": {
+  "genre": "other",
+  "why": "SpongeBob standing idle in his pineapple house interior, not moving through a world or fighting - likely a menu/dialogue/exploration pause",
+  "ok": false,
+  "play_s": 602.3,
+  "need_s": 600.0,
+  "hold_s": 602.7,
+  "model_navs": 0,
+  "frames": 17,
+  "still_windows": 0,
+  "shed": [],
+  "reversals": 0,
+  "reason": "verdict stops the hold: fps_ok 1.0, crash False, hang False",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 186,
+    "median": 59.0,
+    "share": 1.0,
+    "at_s": 186.0,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 307,
+    "median": 59.0,
+    "share": 1.0,
+    "at_s": 307.5,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "verdict": "VERDICT Nickelodeon SpongeBob SquarePants Battle for Bikini Bottom USA ? PASS None gameplay=602.6s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0 play_share=0.9997 fps_excluded=2.0s"
+ },
+ "model_calls": 37,
+ "calls_by_model": {
+  "claude-sonnet-5": 37
+ },
+ "steps": 39,
+ "seconds": 996.8,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5451001A-1007/frames/108-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [
+  "54510105"
+ ],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5451001A-1007/strip.jpg"
+}

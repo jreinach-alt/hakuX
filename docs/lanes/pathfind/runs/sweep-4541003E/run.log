@@ -1,0 +1,59 @@
+pathfind: The Lord of the Rings The Return of the King (4541003E) on nova: /storage/E6C6-D7AA/Games/XBox/4541003E-The_Lord_of_the_Rings_The_Return_of_the_King.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4541003E any, loaded none
+[   8.9s] #  1 loading           fast    wait                     A white screen with a rotating green logo-like shape looks like a publisher or loading spl
+[  14.4s] #  2 black             black   wait                     black frame
+[  21.0s] #  3 publisher_logo    fast    START                    THX logo is a publisher/studio splash before the title; nothing to skip with A yet and the
+[  30.0s] #  4 publisher_logo    fast    START                    THX certification logo is a publisher/studio splash before the title; not skippable with A
+[  35.2s] #  5 black             black   wait                     black frame
+[  42.9s] #  6 publisher_logo    fast    START                    Studio/publisher logo animation before the title; not yet a title screen. Per the notes, a
+[  48.2s] #  7 black             black   wait                     black frame
+[  51.6s] #  8 black             black   wait                     black frame
+[  55.1s] #  9 black             black   wait                     black frame
+[  59.3s] # 10 black             black   wait                     black frame
+[  62.8s] # 11 black             black   wait                     black frame
+[  69.3s] # 12 publisher_logo    fast    A                        A studio logo before the title; skip with A, then re-read. Cursor/highlight: none.
+[  73.5s] # 13 black             black   wait                     black frame
+[  80.2s] # 14 publisher_logo    fast    A                        Studio/title logo card before the title screen; skip with A and re-read. No cursor present
+[  84.4s] # 15 black             black   wait                     black frame
+[  87.9s] # 16 black             black   wait                     black frame
+[  95.1s] # 17 cutscene          fast    START A                  A dim letterboxed cinematic close-up with no HUD or menu is an in-engine cutscene; the pre
+[ 101.3s] # 18 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 107.6s] # 19 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 114.0s] # 20 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 124.6s] # 21 cutscene          fast    START A                  In-engine letterboxed cinematic with no HUD or menu, same as the previous steps; START adv
+[ 134.5s] # 22 cutscene          fast    B                        In-engine letterboxed cinematic with no HUD or menu; START+A repeatedly only advanced it. 
+[ 139.2s] # 23 cutscene          repeat  B                        repeat B: it advanced the cutscene
+[ 143.9s] # 24 cutscene          repeat  B                        repeat B: it advanced the cutscene
+[ 152.9s] # 25 cutscene          fast    B                        Letterboxed in-engine cinematic with no HUD or menu, the same as the previous steps; START
+[ 162.2s] # 26 cutscene          fast    B                        Letterboxed in-engine cinematic with no HUD or menu, same as the previous steps; START and
+[ 170.2s] # 27 cutscene          fast    B                        Same letterboxed in-engine cinematic as the previous steps; START and A only advanced it, 
+[ 175.8s] # 28 cutscene          repeat  B                        repeat B: it advanced the cutscene
+[ 181.4s] # 29 cutscene          repeat  B                        repeat B: it advanced the cutscene
+[ 187.3s] # 30 cutscene          repeat  B                        repeat B: it advanced the cutscene
+[ 193.5s] # 31 cutscene          repeat  B                        repeat B: it advanced the cutscene
+[ 199.0s] # 32 cutscene          repeat  B                        repeat B: it advanced the cutscene
+[ 204.7s] # 33 cutscene          repeat  B                        repeat B: it advanced the cutscene
+[ 214.5s] # 34 cutscene          fast    B                        Letterboxed cinematic with no HUD or player control; the same cutscene has been advancing 
+[ 219.1s] # 35 cutscene          repeat  B                        repeat B: it advanced the cutscene
+[ 229.3s] # 36 gameplay          fast    wait                     HUD (portrait, health bar, combo/kill meter) is up and the player character is in the worl
+[ 242.2s] # 37 probe             probe   STICK:up:1.5             control 0.123, under input 0.421
+[ 250.2s] # 38 gameplay          fast    wait                     HUD and health bar are up and the player-controlled Gandalf is in the world, with no menu,
+[ 272.1s] # 39 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.365, under input 0.313
+[ 279.1s] # 40 gameplay          fast    X                        HUD, health bar and a player-controlled Gandalf are in the world, with no menu or letterbo
+[ 298.1s] # 41 probe             probe   X HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.493, under input 0.694
+[ 304.3s] # 42 gameplay          fast    wait                     Combat HUD is up and the player-controlled Gandalf is in the world with no menu, pause or 
+[ 328.0s] # 43 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.264, under input 0.428
+[ 333.1s] # 44 gameplay          fast    wait                     HUD and health bar are up with a player-controlled Gandalf in the world, no menu, pause or
+[ 356.6s] # 45 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 STICK:left:1.2 STICK:right:1.2 control 0.170, under input 0.367
+[ 361.1s] # 46 gameplay          fast    wait                     Player-controlled Gandalf is in the world with the combat HUD and a Fierce prompt; no menu
+[ 376.8s] # 47 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.106, under input 0.383
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 188 s: median 27.0, share>=30 0.256 over 86 samples
+hold-play: fps at 307 s: median 27.0, share>=30 0.266 over 139 samples
+hold-play: HELD 607/600 s of play; 
+held The Lord of the Rings The Return of the King for 609s
+VERDICT The Lord of the Rings The Return of the King ? FAIL(fps: 33.3% of gameplay at >= 30 fps (bar 90%)) gameplay=606.9s fps_ok=0.3329 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=123.6 static_frac=0.1881 play_share=0.9997 fps_excluded=0.0s
+{"name": "The Lord of the Rings The Return of the King", "device": "nova", "result": "gameplay", "minutes": 6.28, "model_calls": 33, "steps": 47, "replayed": 0, "reason": "four probes refused", "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541003E/frames/046-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

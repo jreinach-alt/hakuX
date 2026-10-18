@@ -1,0 +1,42 @@
+pathfind: Ty the Tasmanian Tiger Night of the Quinkan USA Australia (41560055) on nova: /storage/E6C6-D7AA/Games/XBox/41560055-Ty_the_Tasmanian_Tiger_Night_of_the_Quinkan_USA_Australia.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 41560055 any, loaded none
+[   9.5s] #  1 loading           fast    wait                     A spinning logo/loading graphic appears right after cold boot before any publisher logo or
+[  18.9s] #  2 publisher_logo    fast    START A                  Static legal/copyright logo screen before title; skip with START then A per convention.
+[  31.1s] #  3 cutscene          fast    START A                  This is an intro cinematic showing flying creatures/ships in the world with no HUD or play
+[  36.3s] #  4 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[  45.2s] #  5 submenu           fast    B                        No save data exists, so Load Game is a dead end; press B to back out to the main menu and 
+[  53.0s] #  6 main_menu         fast    DOWN A                   Backed out of empty Load Game to main menu; need New Game which is one row down from the c
+[  63.9s] #  7 submenu           fast    A                        Game 1 slot is highlighted and empty; press A to accept/create this new save and proceed i
+[  73.6s] #  8 loading           fast    A                        Save confirmation/info screen with explicit prompt 'Press A to continue'; this is a one-ti
+[  84.1s] #  9 cutscene          fast    START A                  This is a dialogue cutscene with subtitles and letterbox bars, no player HUD or control; a
+[  94.4s] # 10 submenu           fast    A                        This is a mission briefing/callsheet screen before gameplay starts; need to press Select (
+[ 118.2s] # 11 submenu           fast    START                    A did nothing on this Callsheet screen last try; the 'Select' icon is not the standard A g
+[ 132.2s] # 12 submenu           fast    X                        Mission briefing screen; A and START already tried with no change, so the 'Select' icon (g
+[ 146.1s] # 13 submenu           fast    L1                       The Select icon is a grey cross/plus shape distinct from A/X/START which were already trie
+[ 157.7s] # 14 submenu           fast    Y                        Mission briefing waiting on the 'Select' prompt; tried A/X/START/L1 already, trying Y next
+[ 174.1s] # 15 submenu           fast    RIGHT                    The 'Select' icon is a grey cross/plus shape, distinct from the round A/X/Y/START glyphs a
+[ 194.7s] # 16 submenu           fast    R1 B                     Still on the Callsheet screen; A/START/X/L1/Y/RIGHT already tried with no change. The red 
+[ 227.4s] # 17 pause             fast    B                        This is the game's pause menu radial wheel with 'Callsheet' highlighted; A/START/X/L1/Y/RI
+[ 236.6s] # 18 cutscene          fast    A                        Letterboxed cinematic with dialogue subtitles, distinct from the prior pause/briefing scre
+[ 244.5s] # 19 cutscene          fast    A                        Dialogue cutscene with subtitles following the Callsheet/briefing screen; continue skippin
+[ 249.4s] # 20 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 254.8s] # 21 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 263.3s] # 22 cutscene          fast    A                        Letterboxed dialogue cutscene continuing from prior steps; keep skipping with A.
+[ 270.7s] # 23 cutscene          fast    A                        Dialogue cutscene with subtitles, same sequence as recent steps; continue skipping with A.
+[ 279.5s] # 24 cutscene          fast    A A                      Dialogue cutscene continuing from previous steps, same subtitle pattern; keep skipping wit
+[ 289.8s] # 25 cutscene          fast    A A                      Dialogue cutscene with subtitles continuing from previous steps; keep skipping with A.
+[ 299.6s] # 26 cutscene          fast    A A                      Letterboxed dialogue cutscene with subtitles continuing from prior steps; keep skipping wi
+[ 307.8s] # 27 cutscene          fast    A A A                    Dialogue cutscene continuing from prior steps; keep skipping with A.
+[ 320.5s] # 28 gameplay          fast    STICK:up:1.5             No letterbox or subtitles present (cutscene ended), player character Ty is visible in thir
+[ 332.6s] # 29 probe             probe   STICK:up:1.5 STICK:up:1.5 control 0.023, under input 0.272
+hold-play: genre other, need 600 s of play
+hold-play: fps at 186 s: median 43.0, share>=30 0.908 over 130 samples
+hold-play: fps at 309 s: median 44.0, share>=30 0.852 over 209 samples
+hold-play: validity check stop 0 s (hold 607 s of play, verdict 606.0)
+hold-play: not held 607/600 s of play; verdict stops the hold: fps_ok 0.7852, crash False, hang False
+held Ty the Tasmanian Tiger Night of the Quinkan USA Australia for 609s
+VERDICT Ty the Tasmanian Tiger Night of the Quinkan USA Australia ? FAIL(fps: 78.6% of gameplay at >= 30 fps (bar 90%)) gameplay=607.3s fps_ok=0.7856 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0159 play_share=0.9996 fps_excluded=1.1s
+{"name": "Ty the Tasmanian Tiger Night of the Quinkan USA Australia", "device": "nova", "result": "gameplay", "minutes": 5.54, "model_calls": 34, "steps": 29, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-41560055-1007/frames/028-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "41560055": "5318d8f8944e", "4156005D": "a1647bf6ddb4", "4253

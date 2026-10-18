@@ -1,0 +1,88 @@
+taken: nova by lane.pathfind
+idle: nova is held and runs nothing
+held at 19:24:59
+pathfind: Guilty Gear XX Reload The Midnight Carnival (53410002) on nova: /storage/E6C6-D7AA/Games/XBox/53410002-Guilty_Gear_XX_Reload_The_Midnight_Carnival.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 53410002 any, loaded golden 6f0d8fc26eb7
+[   5.9s] #  1 publisher_logo    replay  A                        replay step 0: replay step 0: Early boot (0.1 min) showing a logo animation with no title 
+[  10.0s] #  2 black             black   wait                     black frame
+[  17.1s] #  3 publisher_logo    fast    A                        Publisher logo still up; per hints skip with A once and re-read rather than mashing or wai
+[  24.3s] #  4 publisher_logo    fast    A                        Another publisher logo after the earlier A press changed the screen; a new logo is progres
+[  33.9s] #  5 black             fast    wait                     Opening art with no logo, title, or prompt; it looks like a fade or transition between log
+[  42.2s] #  6 cutscene          fast    START                    Opening art with letterbox bars and no menu or prompt. Per the cutscene guidance, try STAR
+[  50.5s] #  7 publisher_logo    fast    A                        This is the copyright/logo screen just before the title; per the recorded path and hints, 
+[  58.7s] #  8 main_menu         fast    A                        Main menu with ARCADE highlighted in the center; Arcade is the fastest route to play and t
+[  68.7s] #  9 submenu           fast    A                        Character select is a menu, not gameplay. Per the hints and recorded path, accept the defa
+[  77.2s] # 10 title_screen      fast    START                    Title/attract prompt reading 'PRESS START'; the recorded path and hints for this title say
+[  88.2s] # 11 submenu           fast    A                        This is a fighting-game select screen with a 'PRESS START' label over the 1P slot. Per the
+[ 100.9s] # 12 title_screen      fast    START                    This is an attract or join prompt inside the fight, not player control: both fighters are 
+[ 109.3s] # 13 pause             fast    A                        Pause menu over a live match; RETURN is highlighted, so A resumes play. Avoiding Controlle
+[ 120.9s] # 14 gameplay          fast    wait                     Full fighting HUD with a counting timer (90) and the fighters in mid-action, so the round 
+[ 141.5s] # 15 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.158, under input 0.112
+[ 160.9s] # 16 unknown           fast    wait                     The timer is counting down (90, 73, 62), so the round is live, but earlier stick probes go
+[ 173.0s] # 17 gameplay          fast    wait                     Full fighting HUD with a counting timer (90, 73, 62, now 38) and fighters mid-action, so t
+[ 196.3s] # 18 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.857, under input 0.883
+[ 207.2s] # 19 gameplay          fast    wait                     Full fighting HUD with a counting timer (77, down from earlier readings) and both fighters
+[ 226.6s] # 20 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.177, under input 0.130
+[ 242.0s] # 21 unknown           fast    wait                     A round-start '3' countdown with PLEASE WAIT is showing, so the round is not live yet and 
+[ 250.3s] # 22 continue          fast    START                    Continue countdown after a lost round, not gameplay. Per the continue rule and the Guilty 
+[ 258.6s] # 23 submenu           fast    A                        Character select is a menu, not gameplay. Per the title notes, accept the highlighted defa
+[ 270.0s] # 24 submenu           fast    A                        This is a character select screen, not gameplay. Per the select-screen rule, A on the high
+[ 289.4s] # 25 unknown           fast    wait                     Full HUD but the timer sits at 99 with both fighters idle and no round start, and 'PRESS S
+[ 299.4s] # 26 gameplay          fast    wait                     A round is in progress: attacks and hit effects are on screen with a combo counter, so the
+[ 318.6s] # 27 probe             probe   STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.785, under input 0.682
+[ 336.7s] # 28 gameplay          fast    wait                     Full HUD with a counting timer (99 earlier, now 56) and the 1P fighter on the playfield, s
+[ 348.3s] # 29 probe             probe   STICK:right:1.5          control 0.134, under input 0.703
+[ 357.0s] # 30 gameplay          fast    wait                     Live round with a counting timer, combo counter and hit text, so play is running. The 'PRE
+[ 379.5s] # 31 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.183, under input 0.599
+[ 384.4s] # 32 gameplay          fast    wait                     Live round with timer counting (57) and full fighting HUD; the fighter is player-controlle
+[ 400.2s] # 33 probe             probe   STICK:up:2 STICK:left:1.2 STICK:right:1.2 control 0.656, under input 0.243
+[ 412.7s] # 34 cutscene          fast    A                        Character portrait with a dialogue box is a win-quote or results illustration, not live pl
+[ 421.1s] # 35 continue          fast    START                    Continue countdown after a lost match. Per the title's notes, A did not take it before, so
+[ 425.3s] # 36 black             black   wait                     black frame
+[ 428.8s] # 37 black             black   wait                     black frame
+[ 438.6s] # 38 black             fast    wait                     A transient save-completion notice on a black frame. No menu to navigate and no prompt to 
+[ 446.4s] # 39 results           fast    A                        High-score / total ranking table after the match, not live play. No cursor visible; A adva
+[ 454.3s] # 40 title_screen      fast    START                    Title screen with a PRESS START prompt; START is the required input per the recorded path 
+[ 462.6s] # 41 main_menu         fast    A                        Main menu with ARCADE highlighted, the fastest route to play per the recorded path and hin
+[ 472.4s] # 42 submenu           fast    A                        This is a character select grid (a menu, not gameplay); per the hints, accept the default 
+[ 480.0s] # 43 title_screen      fast    START                    Title/attract prompt reads PRESS START; per the recorded path and hints START is the requi
+[ 484.1s] # 44 black             black   wait                     black frame
+[ 491.9s] # 45 title_screen      fast    START                    This is the arcade-style 'PRESS START' prompt for 1P, the same screen the recorded path fo
+[ 513.2s] # 46 title_screen      fast    START                    This is the attract/join 'PRESS START' prompt inside the match, not live play: the round h
+[ 521.3s] # 47 pause             fast    A                        Pause menu over the match with RETURN lit; the recorded path and hints say A on RETURN res
+[ 533.7s] # 48 gameplay          fast    wait                     Full fighting HUD with P1's character in the arena and a counting timer, so the round look
+[ 553.9s] # 49 probe             probe   STICK:up:2 STICK:left:1.2 STICK:right:1.2 control 0.505, under input 0.719
+[ 562.3s] # 50 gameplay          fast    wait                     A live round with the full fighting HUD and a timer that keeps dropping (64 to 53), so the
+[ 581.8s] # 51 probe             probe   STICK:down:1.5 STICK:left:1.2 STICK:right:1.2 control 0.740, under input 0.531
+[ 590.9s] # 52 gameplay          fast    wait                     Full fighting HUD with a live round timer (98) and P1's fighter in the arena. The 'PRESS S
+[ 613.7s] # 53 probe             probe   RT:3 RT+left:1.2 RT+right:1.2 control 0.167, under input 0.569
+[ 628.9s] # 54 unknown           fast    STICK:right:1.5          The HUD is up, but 'PRESS START' over the empty P2 slot is a join/attract prompt, and earl
+[ 650.1s] # 55 unknown           fast    STICK:right:1.5          The HUD and round timer are up, but the 'PRESS START' over the empty P2 slot is a join/att
+[ 659.1s] # 56 cutscene          fast    A                        A character story or pre-fight dialogue panel with no playfield or controllable character.
+[ 667.0s] # 57 continue          fast    A                        A CONTINUE countdown after a lost match; the recorded path and title hint say A accepts Co
+[ 677.6s] # 58 game_over         fast    A                        The continue countdown ran out, so this is the GAME OVER screen, not gameplay. No menu is 
+[ 684.7s] # 59 game_over         fast    A                        Continue countdown has run out and this is the GAME OVER screen, not gameplay. No menu cur
+[ 693.2s] # 60 results           fast    A                        This is a Guilty Gear XX high-score / name-entry style ranking screen (RANK IN AAA with a 
+[ 702.1s] # 61 name_entry        fast    START                    High-score name entry, not gameplay. A has already done nothing on this screen, so I'm cha
+[ 711.7s] # 62 title_screen      fast    START                    Title screen with a PRESS START prompt; the title hint and recorded path say START is the 
+[ 719.4s] # 63 main_menu         fast    A                        Main menu with ARCADE centered and highlighted; Arcade is the fastest route to play per th
+[ 728.0s] # 64 submenu           fast    A                        Character select menu, not gameplay. The hint says never START on a select screen; A on th
+[ 736.1s] # 65 title_screen      fast    START                    Title/attract screen with a PRESS START prompt. The recorded path and prior steps show STA
+[ 746.4s] # 66 title_screen      fast    START                    Arcade-style PRESS START join prompt on the title/attract screen, not gameplay. The record
+[ 765.5s] # 67 unknown           fast    STICK:right:1.5          A fight HUD is up, but the timer is still at 99 and P2 shows a PRESS START join prompt, so
+[ 776.4s] # 68 gameplay          fast    wait                     Full fighting HUD with a timer counting down across steps (99 to 83) and both fighters in 
+[ 798.2s] # 69 probe             probe   RT:3 RT+left:1.2 RT+right:1.2 control 0.531, under input 0.119
+[ 815.5s] # 70 gameplay          fast    wait                     Live round with the full HUD and the timer counting (99 to 56 over steps), so the match is
+[ 833.3s] # 71 probe             probe   HOLD:X:3 STICK:left:1.2 STICK:right:1.2 control 0.643, under input 0.662
+[ 842.2s] # 72 gameplay          fast    wait                     Full fighting HUD with a counting timer (72, down from 99) and both fighters in the arena,
+[ 865.7s] # 73 probe             probe   HOLD:X:3 STICK:left:1.2 STICK:right:1.2 control 0.581, under input 0.503
+[ 873.1s] # 74 gameplay          fast    wait                     Live round with the HUD up and the timer counting down (72 to 40 over recent steps), so th
+[ 892.5s] # 75 probe             probe   LT:2 LT+left:1.2 LT+right:1.2 control 0.225, under input 0.648
+[ 897.6s] # 76 cutscene          fast    A                        Post-match character dialogue box over a portrait, not live play. Advancing it with A is t
+{"name": "Guilty Gear XX Reload The Midnight Carnival", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 81, "steps": 76, "replayed": 1, "reason": "budget 15 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256
+pathfind rc=1 at 19:40:04
+released: nova by lane.pathfind
+released rc=0

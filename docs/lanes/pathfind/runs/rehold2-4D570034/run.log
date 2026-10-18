@@ -1,0 +1,33 @@
+pathfind: Mortal Kombat: Armageddon (4D570034) on nova: /storage/E6C6-D7AA/Games/XBox/4D570034-Mortal_Kombat_Armageddon.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4D570034 any, loaded none
+[   5.6s] #  1 publisher_logo    replay  A                        replay step 0: replay step 0: replay step 0: Early boot logo-style splash with no title or
+[   9.7s] #  2 publisher_logo    replay  A                        replay step 1: replay step 1: Series logo splash before any title or menu; per hints, skip
+[  13.9s] #  3 publisher_logo    replay  A                        replay step 2: Middleware (Sofdec) logo and legal text before any title or menu; per the h
+[  21.3s] #  4 publisher_logo    fast    A                        Animated intro splash before any title or menu; per the hints, skip with A and re-read rat
+[  28.9s] #  5 publisher_logo    fast    A                        Still a logo/splash before any title or menu; per hints skip with A and re-read. Cursor no
+[  33.1s] #  6 save_load_prompt  replay  START                    replay step 5: replay step 3: replay step 4: Storage/profile status screen with no profile
+[  41.2s] #  7 main_menu         fast    A                        Main menu with KOMBAT highlighted at top; the recorded path confirms A on KOMBAT is the fa
+[  50.0s] #  8 main_menu         fast    A                        Main menu with ARCADE highlighted, the fastest route to a fight with defaults; the recorde
+[  54.6s] #  9 main_menu         replay  A                        replay step 8: replay step 6: replay step 7: Character select screen, not gameplay. Per th
+[  66.1s] # 10 gameplay          fast    wait                     HUD is up with a player-side fighter in the arena and no menu, banner or cutscene. The tim
+[  81.8s] # 11 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.370, under input 0.366
+[  87.9s] # 12 gameplay          fast    wait                     The HUD is up with a counting timer (87) and both fighters in the arena, with no round ban
+[ 103.1s] # 13 probe             probe   STICK:left:1.5 STICK:left:1.5 STICK:left:1.5 control 0.138, under input 0.175
+[ 107.8s] # 14 gameplay          fast    wait                     Live round with HUD and counting timer (67), both fighters in the arena, no banner or menu
+[ 128.4s] # 15 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.270, under input 0.299
+[ 132.6s] # 16 gameplay          fast    wait                     Round is live: HUD with a counting timer (42) and both fighters in the arena, no round ban
+[ 154.3s] # 17 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 STICK:left:1.2 STICK:right:1.2 control 0.245, under input 0.241
+[ 158.4s] # 18 gameplay          fast    wait                     Live round with HUD and a counting timer (88) and both fighters in the arena; the previous
+[ 177.1s] # 19 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.266, under input 0.294
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 183 s: median 59.0, share>=30 1.0 over 176 samples
+hold-play: fps at 307 s: median 59.0, share>=30 1.0 over 292 samples
+hold-play: off play for 12 steps (menu): ladder round 1
+hold-play: validity check share 833 s (hold 604 s of play, verdict 603.7)
+hold-play: not held 604/600 s of play; share short by 833 s with no budget left
+held Mortal Kombat: Armageddon for 765s
+VERDICT Mortal Kombat: Armageddon ? FAIL(menu time: 79.1% of the scored window in `play` (bar 90%; play 604 s, menu 135 s, other 8 s, black 6 s)) gameplay=764.0s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=1/0.085pm worst_ms=194.3 static_frac=0.0001 play_share=0.7911 fps_excluded=161.6s
+{"name": "Mortal Kombat: Armageddon", "device": "nova", "result": "gameplay", "minutes": 2.95, "model_calls": 47, "steps": 19, "replayed": 5, "reason": "four probes refused", "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold2-4D570034/frames/018-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

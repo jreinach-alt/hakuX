@@ -1,0 +1,82 @@
+{
+ "title_id": "454100A1",
+ "name": "NBA Live 07",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/454100A1-NBA_Live_07.xiso.iso",
+ "result": "gameplay",
+ "tool": "3624b0a01d",
+ "started": "2026-10-06 23:31:16 PDT",
+ "team_claim_extra_s": 600,
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nbalive07-1006/frames/024-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nbalive07-1006/frames/024-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nbalive07-1006/frames/024-probe-left.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nbalive07-1006/frames/024-probe-right.jpg"
+ ],
+ "reason": "four probes refused",
+ "claim_live_selfmove": 3,
+ "minutes": 4.45,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nbalive07-1006/frames/023-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nbalive07-1006/frames/025-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nbalive07-1006/frames/026-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nbalive07-1006/frames/027-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nbalive07-1006/frames/028-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nbalive07-1006/frames/029-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nbalive07-1006/frames/030-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nbalive07-1006/frames/031-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nbalive07-1006/frames/032-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-4541.md"
+ ],
+ "hold": {
+  "genre": "team",
+  "why": "Basketball court view with players lined up for a free throw in an NBA game.",
+  "sports": {
+   "clock": "11:33",
+   "period": "1st",
+   "human_controlled": true,
+   "why": "Bottom player (Williams) has a selection reticle and glow under him, marking him as the human-controlled player"
+  },
+  "ok": false,
+  "play_s": 189.3,
+  "need_s": 600.0,
+  "hold_s": 190.2,
+  "model_navs": 0,
+  "frames": 6,
+  "still_windows": 0,
+  "shed": [],
+  "reversals": 0,
+  "reason": "fps gate at 3:10: median 19 < 22, 3% of 63 samples at >= 28.5",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 63,
+    "median": 19.0,
+    "share": 0.032,
+    "at_s": 190.2,
+    "floor": 22.0,
+    "stop": true
+   }
+  ],
+  "verdict": "VERDICT NBA Live 07 ? FAIL(duration: 190 s of gameplay < 600 s confirmation) gameplay=189.9s fps_ok=0.011 crash=False hang=False audio_short=0.0 hitches=9/4.157pm worst_ms=129.2 static_frac=0.0013 play_share=0.999 fps_excluded=0.0s"
+ },
+ "model_calls": 27,
+ "calls_by_model": {
+  "claude-sonnet-5": 27
+ },
+ "steps": 24,
+ "seconds": 505.7,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nbalive07-1006/frames/048-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 1,
+ "guide": [
+  "45410038",
+  "45410050"
+ ],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nbalive07-1006/strip.jpg"
+}

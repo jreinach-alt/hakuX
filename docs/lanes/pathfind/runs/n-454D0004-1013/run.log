@@ -1,0 +1,66 @@
+pathfind: Ghost Master The Gravenville Chronicles Europe En Fr De Es It (454D0004) on nova: /storage/E6C6-D7AA/Games/XBox/454D0004-Ghost_Master_The_Gravenville_Chronicles_Europe_En_Fr_De_Es_It.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 454D0004 any, loaded none
+[  17.2s] #  1 publisher_logo    fast    A                        Publisher logo appears before title screen. Skippable with A or START.
+[  28.1s] #  2 title_screen      fast    START                    Title screen with explicit 'Press START to continue' prompt. This is the standard intro to
+[  48.6s] #  3 main_menu         fast    A                        Menu with game options displayed. 'New Game' is already highlighted (brightest item with a
+[  65.3s] #  4 loading           fast    A                        This is a loading screen or intro animation following the New Game selection. The animated
+[ 109.9s] #  5 loading           fast    A                        Continuation of loading sequence after New Game selection; animated pumpkin suggests activ
+[ 158.2s] #  6 loading           fast    START                    Animated intro/loading screen after New Game selection; A button did not advance the scree
+[ 184.1s] #  7 loading           fast    HOLD:A:3                 Animated intro after New Game selection; A and START both failed on previous steps. Learne
+[ 227.1s] #  8 loading           fast    B                        Loading/intro animation with explicit 'Press A To Finish' prompt. A, START, and HOLD:A:3 a
+[ 254.1s] #  9 main_menu         fast    A                        'New Game' is highlighted (brightest item with decorative arrows); 'Select A' prompt indic
+[ 308.7s] # 10 loading           fast    A                        Post-New Game animated intro/loading screen showing pumpkin character in space (Ghost Mast
+[ 327.0s] # 11 loading           fast    A                        Animated intro with explicit 'Press A To Finish' prompt; prior step 10 also tried A on a s
+[ 367.7s] # 12 loading           fast    START                    Loading animation with explicit finish prompt, but A failed on the previous identical scre
+[ 385.8s] # 13 loading           fast    B                        Animated intro with explicit finish prompt. A and START both failed on this unchanged scre
+[ 449.0s] # 14 main_menu         fast    START                    Back at main menu after loading screens failed to progress with A, START, HOLD:A:3, and B.
+[ 480.9s] # 15 loading           fast    wait                     Animated intro sequence that has not responded to A (steps 11, 13) or START (steps 12, 14)
+[ 502.1s] # 16 loading           fast    wait                     This is an animated intro screen following New Game selection. The animation is still play
+[ 530.3s] # 17 submenu           fast    A                        A selection menu with Back and Select prompts visible; the pumpkin is the focal point and 
+[ 548.4s] # 18 submenu           fast    START                    Selection menu with navigation prompts; A failed on the identical previous screen (step 17
+[ 598.3s] # 19 submenu           fast    RIGHT A                  This is a navigable menu with multiple options indicated at the bottom (Back, center optio
+[ 633.6s] # 20 submenu           fast    X                        Navigable menu with three options: Back (left), a center option with explicit 'Press X To 
+[ 692.9s] # 21 submenu           fast    DOWN A                   Menu asking to select a save slot; need to navigate into the slot list (DOWN) and confirm 
+[ 705.5s] # 22 save_load_prompt  fast    wait                     Game is saving to the virtual hard drive after slot selection; cannot input during save, m
+[ 727.6s] # 23 cutscene          fast    START                    Post-save game showing a cinematic with character models in dialogue; no gameplay controls
+[ 758.9s] # 24 cutscene          fast    A                        Cinematic scene of game world with overlay title and interactive prompts; continuing from 
+[ 763.8s] # 25 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 768.7s] # 26 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 780.5s] # 27 cutscene          fast    A                        Continuation of introductory cinematic sequence; A has advanced each cutscene frame in ste
+[ 784.2s] # 28 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 799.7s] # 29 cutscene          fast    STICK:up:2               Interactive tutorial overlay instructing camera control; 3D game world visible but this is
+[ 831.7s] # 30 cutscene          fast    A                        Tutorial overlay instructing camera zoom; game world visible but still part of intro tutor
+[ 843.6s] # 31 cutscene          fast    RSTICK:up:2              Interactive tutorial overlay still active; game world visible but we are in the introducto
+[ 864.0s] # 32 cutscene          fast    RSTICK:left:2            Interactive tutorial overlay instructing right-stick input; game world visible but still p
+[ 880.6s] # 33 cutscene          fast    LT:3                     Interactive tutorial overlay with explicit instruction to use left trigger; game world vis
+[ 887.3s] # 34 cutscene          repeat  LT:3                     repeat LT:3: it advanced the cutscene
+[ 901.6s] # 35 cutscene          fast    R1                       Interactive tutorial overlay with explicit on-screen instruction; game world visible but t
+[ 914.6s] # 36 cutscene          fast    A                        Interactive tutorial overlay with explicit on-screen instruction ('press the A button'); g
+[ 919.4s] # 37 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 933.7s] # 38 cutscene          fast    A                        Interactive tutorial overlay with explicit on-screen instruction to press A button; game w
+[ 946.9s] # 39 cutscene          fast    A                        Interactive tutorial overlay with explicit on-screen instruction; game world visible but p
+[ 950.7s] # 40 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 954.5s] # 41 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 958.3s] # 42 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 977.5s] # 43 cutscene          fast    UP                       Interactive tutorial overlay with explicit on-screen instruction; game world visible but t
+[ 981.1s] # 44 cutscene          repeat  UP                       repeat UP: it advanced the cutscene
+[ 984.8s] # 45 cutscene          repeat  UP                       repeat UP: it advanced the cutscene
+[ 988.4s] # 46 cutscene          repeat  UP                       repeat UP: it advanced the cutscene
+[1035.7s] # 47 cutscene          fast    X                        This is a tutorial overlay with explicit on-screen instruction overlaying the game world. 
+[1039.5s] # 48 cutscene          repeat  X                        repeat X: it advanced the cutscene
+[1043.3s] # 49 cutscene          repeat  X                        repeat X: it advanced the cutscene
+[1047.0s] # 50 cutscene          repeat  X                        repeat X: it advanced the cutscene
+[1064.7s] # 51 gameplay          fast    A                        The 3D game world with HUD (ability icons, health bars, character) is visible and interact
+[1099.8s] # 52 probe             probe   A STICK:up:1.5           control 0.070, under input 0.776
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 183 s: median 58.0, share>=30 1.0 over 169 samples
+hold-play: fps at 320 s: median 57.0, share>=30 1.0 over 293 samples
+hold-play: 3 still looks: walk reversed (back) at 543 s
+hold-play: 3 still looks: walk reversed (forward) at 786 s
+hold-play: not held 46/600 s of play; budget 42 min with 46 s of play
+held Ghost Master The Gravenville Chronicles Europe En Fr De Es It for 1357s
+VERDICT Ghost Master The Gravenville Chronicles Europe En Fr De Es It ? FAIL(menu time: 3.4% of the scored window in `play` (bar 90%; still 1092 s, menu 189 s, play 46 s, gameplay 28 s)) gameplay=1355.5s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0394 play_share=0.0342 fps_excluded=1310.3s
+{"name": "Ghost Master The Gravenville Chronicles Europe En Fr De Es It", "device": "nova", "result": "gameplay", "minutes": 18.33, "model_calls": 63, "steps": 52, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454D0004-1013/frames/051-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

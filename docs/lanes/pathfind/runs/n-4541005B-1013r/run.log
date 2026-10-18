@@ -1,0 +1,68 @@
+pathfind: Burnout 3: Takedown (4541005B) on nova: /storage/E6C6-D7AA/Games/XBox/4541005B-Burnout_3_Takedown.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4541005B any, loaded golden 3853ca5a2387
+[  39.8s] #  1 loading           fast    wait                     Early boot (~0.2 min); screen shows plain gradient with unrendered FPS counter ('--'), sug
+[  58.8s] #  2 intro_video       fast    A                        Early boot (0.7 min); heavy motion blur and cinematic angle indicate a video, not real-tim
+[  91.6s] #  3 title_screen      fast    START                    Screen explicitly prompts 'Press START to continue', the standard title screen pattern for
+[ 109.9s] #  4 submenu           fast    A                        Language selection screen after title; English is already highlighted. Per Burnout 3 hints
+[ 129.0s] #  5 submenu           fast    LEFT                     Profile selection menu; the profiles shown are marked unusable and cannot be loaded. Must 
+[ 133.0s] #  6 submenu           plan    A                        plan: submenu (from the guide)
+[ 192.8s] #  7 submenu           fast    A                        Profile selection/creation interface within Burnout 3 menus. All visible profiles are dama
+[ 257.2s] #  8 submenu           fast    LEFT                     All visible profiles are marked damaged/unusable and cannot be loaded. Per Burnout 3 hints
+[ 341.4s] #  9 submenu           fast    UP                       Still in profile selection menu with damaged profiles. Per Burnout 3 hints, need to escape
+[ 369.2s] # 10 submenu           fast    B                        All visible profiles are marked unusable; cannot load them. Per Burnout hints, damaged pro
+[ 385.1s] # 11 submenu           fast    DOWN A                   Profile selection menu. LOAD PROFILE is currently highlighted but all profiles tried were 
+[ 403.7s] # 12 name_entry        fast    A                        Burnout 3 profile name entry keyboard with cursor on Done button (highlighted in red); pre
+[ 429.4s] # 13 save_load_prompt  fast    UP A                     Profile save confirmation dialog. NO is highlighted; per Burnout 3 hints, move UP to YES, 
+[ 471.3s] # 14 submenu           fast    A                        This is a profile management screen showing that existing profiles are corrupted/unusable.
+[ 525.5s] # 15 submenu           fast    UP A                     After successfully creating and saving the new profile in the previous steps, I'm now on a
+[ 579.3s] # 16 submenu           fast    A                        Profile selection screen after creating and saving the new profile. The 'NEW PROFILE' head
+[ 629.1s] # 17 submenu           fast    B                        This is a profile selection/management screen, but all visible profiles are marked unusabl
+[ 646.6s] # 18 save_load_prompt  fast    UP A                     Profile save confirmation dialog with NO highlighted. Per Burnout 3 hints, this sits on NO
+[ 716.7s] # 19 submenu           fast    A                        Profile management screen during NEW PROFILE creation flow in Burnout 3; existing profiles
+[ 754.1s] # 20 submenu           fast    A                        Profile management screen during NEW PROFILE creation flow. Existing profiles are all corr
+[ 784.1s] # 21 submenu           fast    X                        Profile selection screen during NEW PROFILE creation, showing only corrupted/unusable prof
+[ 853.3s] # 22 submenu           fast    B                        This is a profile management dialog during NEW PROFILE creation in Burnout 3. The dialog i
+[ 895.7s] # 23 save_load_prompt  fast    UP A                     Profile save prompt with NO highlighted. Per Burnout 3 hints, this defaults to NO but pres
+[ 911.5s] # 24 submenu           fast    B                        Profile selection dialog showing corrupted profiles. All existing profiles are marked unus
+[ 933.0s] # 25 save_load_prompt  fast    UP A                     Burnout 3 save prompt after new profile name entry; NO is highlighted by default but we ne
+[ 971.2s] # 26 submenu           fast    B                        Profile selection dialog during NEW PROFILE creation showing only corrupted profiles. Sinc
+[ 985.3s] # 27 save_load_prompt  fast    UP A                     Burnout 3 profile save prompt with NO highlighted; per series hints, must move UP to YES t
+[1009.5s] # 28 submenu           fast    B                        All existing profiles are marked unusable/corrupted. During new profile creation, back out
+[1027.1s] # 29 save_load_prompt  fast    UP A                     Profile save confirmation after entering driver name. NO is highlighted; per Burnout 3 hin
+[1094.6s] # 30 submenu           fast    X                        Stuck in loop: save prompt → corrupted profile menu → save prompt. All existing profiles m
+[1184.5s] # 31 submenu           fast    X                        Corrupted profile management submenu blocking NEW PROFILE creation; per hints, delete dama
+[1205.7s] # 32 submenu           fast    B                        Profile management dialog; all existing profiles marked unusable/corrupted. Step 30-31 got
+[1246.1s] # 33 save_load_prompt  fast    UP A                     Profile save confirmation with NO highlighted; Burnout 3 series hints are explicit: move U
+[1323.2s] # 34 submenu           fast    RIGHT                    Stuck in corrupted profile loop (steps 28-33 show repeating save/profile cycle). Per Burno
+[1346.8s] # 35 submenu           fast    B                        Trapped in corrupted profile loop (steps 28-34 cycled through save/profile dialogs). All p
+[1388.1s] # 36 save_load_prompt  fast    UP A                     Burnout 3 hints are explicit: this prompt sits on NO by default; pressing A on NO loops ba
+[1467.6s] # 37 submenu           fast    RIGHT                    All existing profiles are marked unusable/corrupted; NEW PROFILE is shown as an option on 
+[1492.3s] # 38 submenu           fast    RIGHT                    Profile management screen with corrupted profiles listed. NEW PROFILE is visible as a sect
+[1509.5s] # 39 submenu           fast    RIGHT A                  Two-column profile menu; currently on DRIVER DETAILS showing unusable profiles. Per Burnou
+[1555.6s] # 40 submenu           fast    A                        Profile management dialog showing corrupted profiles. The 'Select A' prompt at the bottom 
+[1589.8s] # 41 submenu           fast    RIGHT                    All existing profiles are marked corrupted/unusable. The NEW PROFILE section is visible on
+[1680.7s] # 42 submenu           fast    B                        Profile management submenu with dialog blocking access to NEW PROFILE. The dialog shows co
+[1713.8s] # 43 save_load_prompt  fast    UP A                     Game asks whether to save the new profile. NO is highlighted, but per Burnout 3 hints, A o
+[1789.9s] # 44 submenu           fast    RIGHT                    Still in the profile management submenu, blocked by the corrupted profile dialog. The NEW 
+[1852.8s] # 45 submenu           fast    B RIGHT                  Still in profile management submenu with a modal dialog showing damaged profiles. The NEW 
+[1873.5s] # 46 save_load_prompt  fast    UP A                     After creating a new profile, the game asks whether to save it. NO is highlighted by defau
+[1931.4s] # 47 submenu           fast    X                        Modal dialog blocking access to NEW PROFILE section. Corrupted profiles have prevented for
+[1964.6s] # 48 submenu           fast    B                        Modal dialog blocking access to create new profile. Previous X attempt (step 47) cycled th
+[1988.8s] # 49 save_load_prompt  fast    UP A                     Burnout 3 save dialog defaults to NO. Per hints, A on NO loops with 'Autosave disabled' pr
+[2003.6s] # 50 submenu           fast    B                        Still in profile management menu system, trapped by a corrupted profile notification dialo
+[2017.5s] # 51 save_load_prompt  fast    UP A                     Save profile dialog defaults to NO; per Burnout 3 hints, A on NO loops with 'Autosave disa
+[2062.1s] # 52 submenu           fast    X                        Corrupted profile dialog blocking access to create a new profile. Per Burnout hints, delet
+[2109.2s] # 53 submenu           fast    X                        Profile management screen showing corrupted/unusable profile blocking progress; per Burnou
+[2131.4s] # 54 submenu           fast    X                        Still in profile selection dialog with corrupted/unusable entries; the highlighted '- Unus
+[2160.3s] # 55 submenu           fast    B                        Still trapped in corrupted profile list despite deleting attempts. Dialog shows multiple u
+[2205.3s] # 56 save_load_prompt  fast    UP A                     Must move from NO to YES and confirm; per Burnout 3 hints, A on NO loops with autosave war
+[2222.1s] # 57 submenu           fast    B                        Corrupted profile dialog blocking progress; step 55 notes we are trapped in corrupted prof
+[2238.4s] # 58 save_load_prompt  fast    UP A                     Profile save prompt with NO highlighted; Burnout 3 hints: NO loops with autosave warning, 
+[2295.1s] # 59 submenu           fast    RIGHT A                  Corrupted profile selection dialog; NEW PROFILE section is visible on the right side of th
+[2343.2s] # 60 submenu           fast    DOWN                     Profile management dialog showing corrupted profiles. The 'Change' button with directional
+[2390.2s] # 61 submenu           fast    UP UP UP A               Profile slot selection screen in NEW PROFILE flow. PROFILE 3 is currently highlighted but 
+[2425.6s] # 62 submenu           fast    B                        Profile selection dialog blocking progress; the previous UP UP UP A selected an unusable p
+{"name": "Burnout 3: Takedown", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 61, "steps": 62, "replayed": 0, "reason": "budget 40 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

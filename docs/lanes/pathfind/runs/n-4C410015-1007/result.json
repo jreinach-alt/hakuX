@@ -1,0 +1,24 @@
+{
+ "title_id": "4C410015",
+ "name": "Mercenaries USA Europe",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/4C410015-Mercenaries_USA_Europe.xiso.iso",
+ "result": "gave-up",
+ "tool": "3624b0a01d",
+ "started": "2026-10-08 09:14:19 PDT",
+ "reason": "budget 40 min",
+ "last_state": "unknown",
+ "model_calls": 523,
+ "calls_by_model": {
+  "claude-sonnet-5": 523
+ },
+ "steps": 524,
+ "seconds": 2402.1,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4C410015-1007/frames/524-unknown.jpg",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 1,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4C410015-1007/strip.jpg"
+}

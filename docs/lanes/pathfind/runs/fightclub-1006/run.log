@@ -1,0 +1,38 @@
+pathfind: Fight Club (5655002F) on nova: /storage/E6C6-D7AA/Games/XBox/5655002F-Fight_Club.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 5655002F any, loaded none
+[  14.0s] #  1 unknown           fast    wait                     Not a logo, title, or menu I recognize; a green object on white could be a logo or sequenc
+[  18.5s] #  2 publisher_logo    replay  A                        replay step 1: Copyright/trademark legal text card in the publisher-logo sequence; skip wi
+[  22.6s] #  3 publisher_logo    replay  A                        replay step 2: ESRB rating card is a publisher/legal logo in the boot sequence, not a menu
+[  29.8s] #  4 publisher_logo    fast    A                        Vivendi Universal publisher logo in the boot sequence; per hints, skip with A and re-read.
+[  36.7s] #  5 publisher_logo    fast    A                        Genuine Games publisher logo in the boot sequence; per hints, skip with A and re-read. No 
+[  40.8s] #  6 black             black   wait                     black frame
+[  49.0s] #  7 publisher_logo    fast    A                        Abstract animated intro flourish, likely a logo or intro sequence still playing after the 
+[  53.5s] #  8 title_screen      replay  START                    replay step 5: Title-style 'PRESS START' prompt in a dimmed scene with no HUD and no menu;
+[  58.9s] #  9 save_load_prompt  replay  A                        replay step 6: Save prompt with Yes highlighted (default). Per hints, Yes to a new save re
+[  66.7s] # 10 loading           fast    wait                     A save is in progress after the save prompt; the game is busy writing, so no input is need
+[  76.1s] # 11 main_menu         fast    A                        Main menu with GAME MODES already highlighted; A accepts it and is the fastest route towar
+[  85.9s] # 12 main_menu         fast    A                        Main menu with ARCADE highlighted, the quickest route to play with defaults. A accepts it.
+[  93.9s] # 13 profile_creation  fast    A                        Character select (not a title or menu to skip). Tyler is already highlighted as 1P, the de
+[ 105.1s] # 14 cutscene          fast    START                    The previous screen was character select, and the game has now moved to a rendered alley s
+[ 116.9s] # 15 gameplay          fast    wait                     Live one-on-one fight with both health bars and names on the HUD and no menu, banner or cu
+[ 133.4s] # 16 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.401, under input 0.308
+[ 137.5s] # 17 gameplay          fast    wait                     Live fight with both health bars, names and no banner or menu; the previous probe was refu
+[ 155.6s] # 18 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.312, under input 0.388
+[ 159.5s] # 19 gameplay          fast    wait                     Live fight with HUD and both health bars and no menu or banner. Previous stick probes were
+[ 178.5s] # 20 probe             probe   STICK:left:1.5 STICK:right:1.2 STICK:left:1.2 STICK:right:1.2 control 0.265, under input 0.345
+claim: 3 live reads with self-moving refused probes: entering the hold
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 183 s: median 49.0, share>=30 0.98 over 148 samples
+hold-play: fps at 306 s: median 47.0, share>=30 0.979 over 239 samples
+hold-play: validity check share 78 s (hold 611 s of play, verdict 611.8)
+hold-play: verdict short on share by 78 s; holding on (budget 1493 s left)
+hold-play: validity check share 17 s (hold 671 s of play, verdict 672.4)
+hold-play: verdict short on share by 17 s; holding on (budget 1432 s left)
+hold-play: validity check stop 0 s (hold 732 s of play, verdict 734.7)
+hold-play: not held 732/600 s of play; verdict stops the hold: fps_ok 0.937, crash False, hang False
+held Fight Club for 812s
+VERDICT Fight Club ? PASS None gameplay=812.1s fps_ok=0.9372 crash=False hang=False audio_short=0.000156 hitches=9/0.718pm worst_ms=339.6 static_frac=0.0 play_share=0.9057 fps_excluded=77.4s
+{"name": "Fight Club", "device": "nova", "result": "gameplay", "minutes": 2.98, "model_calls": 38, "steps": 20, "replayed": 4, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/fightclub-1006/frames/019-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

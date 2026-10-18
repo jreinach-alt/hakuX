@@ -1,0 +1,62 @@
+pathfind: Harry Potter and the Philosopher s Stone (45410037) on nova: /storage/E6C6-D7AA/Games/XBox/45410037-Harry_Potter_and_the_Philosopher_s_Stone.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 45410037 any, loaded none
+[  20.1s] #  1 black             fast    A                        Cold boot of Harry Potter and the Philosopher's Stone (EA title 4541xxxx); blank screen wi
+[  32.7s] #  2 publisher_logo    fast    A                        Publisher logo after black screen; EA/WB logos skip with A
+[  45.7s] #  3 main_menu         fast    A                        New Game is highlighted at the top of the menu; this is the fastest path to gameplay for E
+[  59.3s] #  4 loading           fast    wait                     Progress bar visible at bottom; this is a loading screen following the New Game selection.
+[  74.0s] #  5 cutscene          fast    START                    In-game dialogue cutscene with subtitles and character conversation; not player-controlled
+[  87.9s] #  6 cutscene          fast    A                        In-game dialogue with subtitles and fixed camera angle; narrative, not player-controlled. 
+[  91.6s] #  7 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[  95.4s] #  8 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[  99.2s] #  9 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 103.4s] # 10 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 107.2s] # 11 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 111.1s] # 12 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 123.6s] # 13 cutscene          fast    A                        Letterboxed cinematic with dialogue subtitle; previous A presses advanced it (step 7-12 al
+[ 136.1s] # 14 cutscene          fast    A                        Letterboxed cinematic with dialogue subtitle. Previous steps (7-13) all advanced through c
+[ 141.3s] # 15 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 146.0s] # 16 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 150.6s] # 17 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 155.4s] # 18 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 160.1s] # 19 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 173.4s] # 20 cutscene          fast    A                        Letterbox bars + character in cinematic presentation, not interactive HUD. Previous 6 step
+[ 177.6s] # 21 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 181.6s] # 22 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 198.9s] # 23 cutscene          fast    START                    Cinematic appears stuck; repeated A did nothing per history. Trying START next per hints f
+[ 220.7s] # 24 gameplay          fast    A                        3D game environment with interactive HUD visible; hint is an in-game tutorial overlay, not
+[ 238.2s] # 25 probe             probe   A STICK:up:1.5           control 0.034, under input 0.083
+[ 254.3s] # 26 submenu           fast    B                        This is a task/quest selection menu overlay, not real gameplay. The BACK option at top-lef
+[ 274.7s] # 27 submenu           fast    B                        Menu overlay blocking the game world. BACK button (B) at top-left is the exit option. Need
+[ 301.8s] # 28 submenu           fast    B                        This is a quest/task selection menu overlay blocking the game world. BACK button (B) at to
+[ 348.4s] # 29 submenu           fast    START                    Menu overlay blocks gameplay. BACK (B) was pressed 3 times (steps 26-28) without closing t
+[ 377.0s] # 30 submenu           fast    L1                       Menu overlay blocking gameplay. BACK (B) pressed 3 times without effect; START once withou
+[ 400.4s] # 31 submenu           fast    A                        Task/quest menu overlay blocking the game world. B (BACK) failed 3 times (steps 26-28), ST
+[ 426.6s] # 32 submenu           fast    Y                        Quest/task menu overlay still blocking gameplay. B (BACK) failed 3 times (steps 26–28), ST
+[ 471.4s] # 33 submenu           fast    X                        Quest/task menu overlay blocking gameplay. Recent attempts at B (3 times), START, L1, A, a
+[ 488.6s] # 34 submenu           fast    RIGHT                    Task selection menu blocking gameplay. Tried B (3×), START, L1, A, Y, X—none closed it. Th
+[ 508.2s] # 35 submenu           fast    LEFT                     Task menu overlay blocking gameplay. B (BACK) was tried 3× without closing; UP/DOWN/LEFT n
+[ 534.1s] # 36 submenu           fast    UP                       The task menu overlay is still blocking the game world. B (BACK), START, L1, A, Y, X, RIGH
+[ 555.1s] # 37 submenu           fast    DOWN                     Task/quest overlay still blocking gameplay. B (BACK), START, L1, A, Y, X, RIGHT, LEFT, UP 
+[ 614.4s] # 38 submenu           fast    A                        Task/quest selection overlay still blocking gameplay. Every D-pad direction, face button, 
+[ 658.2s] # 39 submenu           fast    R1                       The menu persists after B, START, L1, A, Y, X, UP, DOWN, LEFT, RIGHT have all been tried. 
+[ 722.0s] # 40 submenu           fast    STICK:right:1            Task menu overlay persists; all standard button inputs (A, B, X, Y, START, L1, R1, D-pad) 
+[ 765.7s] # 41 submenu           fast    LEFT A                   Task/quest overlay persists; standard inputs and D-pad directions have been exhausted (ste
+[ 789.2s] # 42 submenu           fast    RIGHT                    Task/quest menu blocking gameplay. Previous inputs (B, START, L1, A, Y, X, UP, DOWN, LEFT,
+[ 844.7s] # 43 submenu           fast    STICK:up:1               Task overlay blocking gameplay; all D-pad, face buttons, L1, R1, and one stick direction (
+[ 884.1s] # 44 submenu           fast    STICK:left:1             Task menu overlay blocking gameplay. D-pad, face buttons, L1, R1, START, and STICK:up/righ
+[ 907.1s] # 45 submenu           fast    STICK:down:1             Task menu overlay persists; D-pad, face buttons, START, L1, R1, and stick directions up/ri
+[ 923.0s] # 46 submenu           fast    BACK                     This is a quest/task overlay menu blocking gameplay. The 'BACK' label at the top suggests 
+[ 948.4s] # 47 submenu           fast    A                        Tutorial hint overlay blocking the game world. The 'Continue' button with A icon is the cl
+[ 966.8s] # 48 gameplay          fast    wait                     Player character visible in a 3D game world (corridor interior); HUD present; no menu, let
+[ 983.1s] # 49 probe             probe   STICK:up:1.5             control 0.001, under input 0.329
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 188 s: median 44.0, share>=30 0.922 over 129 samples
+hold-play: fps at 310 s: median 45.0, share>=30 0.931 over 217 samples
+hold-play: validity check share 2737 s (hold 615 s of play, verdict 619.6)
+hold-play: not held 615/600 s of play; share short by 2737 s with no budget left
+held Harry Potter and the Philosopher s Stone for 994s
+VERDICT Harry Potter and the Philosopher s Stone ? FAIL(menu time: 62.5% of the scored window in `play` (bar 90%; play 620 s, still 352 s, menu 20 s, no-timeline 0 s)) gameplay=993.5s fps_ok=0.9513 crash=False hang=False audio_short=0.0 hitches=1/0.064pm worst_ms=119.1 static_frac=0.0583 play_share=0.6246 fps_excluded=373.9s
+{"name": "Harry Potter and the Philosopher s Stone", "device": "nova", "result": "gameplay", "minutes": 16.38, "model_calls": 49, "steps": 49, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45410037-1013r/frames/048-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

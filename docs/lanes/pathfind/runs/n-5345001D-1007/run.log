@@ -1,0 +1,148 @@
+pathfind: Rent a Hero No 1 Japan (5345001D) on nova: /storage/E6C6-D7AA/Games/XBox/5345001D-Rent_a_Hero_No_1_Japan.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 5345001D any, loaded none
+[  11.4s] #  1 publisher_logo    fast    START A                  An animating geometric logo on a blank background right after cold boot is a publisher/stu
+[  21.2s] #  2 publisher_logo    fast    START A                  Publisher splash screen after cold boot; skip with START then A per convention
+[  30.2s] #  3 publisher_logo    fast    START A                  Another publisher/codec logo splash after cold boot; skip with START then A per convention
+[  39.6s] #  4 publisher_logo    fast    START A                  Another logo/splash screen shown right after cold boot sequence; skip per convention with 
+[  49.4s] #  5 title_screen      fast    START A                  This is the game's title screen after the publisher logos; press START to advance past it.
+[  59.3s] #  6 title_screen      fast    A                        Title screen with menu options now showing; NewGame is the brighter/highlighted option, se
+[  73.1s] #  7 name_entry        fast    START                    Name already defaults to やまだ; try START to jump to confirm/accept per convention rather th
+[  89.8s] #  8 name_entry        fast    DOWN DOWN DOWN DOWN DOWN DOWN Name already defaults to やまだ; START did nothing on this screen, so navigate the grid curso
+[ 106.6s] #  9 name_entry        fast    RIGHT RIGHT RIGHT RIGHT RIGHT RIGHT RIGHT RIGHT Cursor is on ま in the bottom row; need to move RIGHT along the row to reach 決定 (confirm) s
+[ 132.7s] # 10 name_entry        fast    STICK:down:0.3 STICK:down:0.3 STICK:down:0.3 STICK:down:0.3 STICK:down:0.3 STICK:down:0.3 STICK:right:0.3 STICK:right:0.3 D-pad presses (DOWN x6, RIGHT x8) produced no change per history, so the D-pad is inert on
+[ 150.2s] # 11 name_entry        fast    A                        Previous DOWN/RIGHT/STICK presses all produced no change per history, so the D-pad/stick a
+[ 159.8s] # 12 name_entry        fast    A                        決定 (confirm) is the highlighted red item on the grid; pressing A should confirm the alread
+[ 218.4s] # 13 name_entry        fast    START                    Repeated A presses on the apparently-highlighted 決定 produced almost no screen change and l
+[ 248.5s] # 14 name_entry        fast    LEFT A LEFT A            There are two distinct controls: the letter grid (already showing 決定 highlighted, but A th
+[ 317.3s] # 15 name_entry        fast    B                        Repeated A/START/dpad/stick combos on this screen have all looped back per history; the na
+[ 408.6s] # 16 name_entry        fast    STICK:right:0.3          Previous large D-pad/stick bursts (DOWN x6 RIGHT x8) assumed row lengths that don't match 
+[ 440.7s] # 17 name_entry        fast    RIGHT RIGHT RIGHT RIGHT A Default surname 'やまだ' already appears filled in the name field; dpad RIGHT (plain d-pad, n
+[ 477.7s] # 18 name_entry        fast    DOWN DOWN DOWN DOWN DOWN DOWN The cursor is actually on the grid character 'や' (row1 col6), not on 決定 as previously assu
+[ 521.1s] # 19 name_entry        fast    RIGHT RIGHT RIGHT RIGHT RIGHT RIGHT RIGHT RIGHT Surname やまだ already appears complete in the name field; grid cursor sits on 'ま' at the sta
+[ 538.5s] # 20 name_entry        fast    START                    All dpad/stick bursts and A on this screen produced no change per history; name field alre
+[ 551.7s] # 21 name_entry        fast    A                        Surname やまだ is already complete in the field and the grid highlight sits on 決定 (confirm), 
+[ 578.9s] # 22 name_entry        fast    A                        Surname やまだ already filled in the field and grid cursor is clearly on 決定 (confirm); need t
+[ 623.6s] # 23 name_entry        fast    LEFT A                   Repeated A presses on 決定 only produced tiny changes, consistent with confirming into a Yes
+[ 654.1s] # 24 name_entry        fast    DOWN DOWN DOWN DOWN DOWN DOWN Surname やまだ not actually present (name shows たろう), need to navigate grid cursor down to bo
+[ 720.9s] # 25 name_entry        fast    DOWN DOWN DOWN DOWN DOWN DOWN RIGHT RIGHT Default given name たろう is already filled; need to move the grid cursor down to the bottom 
+[ 793.7s] # 26 name_entry        fast    START                    Given name たろう is already filled; previous grid-navigation attempts (DOWN x6 then RIGHT x2
+[ 836.7s] # 27 name_entry        fast    DOWN                     Given name is already filled; need to move the grid cursor down to 決定 to confirm, but prio
+[ 858.9s] # 28 name_entry        fast    DOWN DOWN DOWN DOWN DOWN Grid cursor is actually on か (row2,col1), not near 決定 as previously assumed. Need to move 
+[ 875.8s] # 29 name_entry        fast    RIGHT RIGHT RIGHT RIGHT RIGHT RIGHT RIGHT RIGHT Name たろう already entered; cursor is on ま at the bottom-left of the grid, needs to move rig
+[ 892.0s] # 30 name_entry        fast    A                        Name たろう is already entered and the grid cursor is highlighted on 決定 (confirm) per the red
+[ 906.6s] # 31 name_entry        fast    A                        A confirmation dialog has appeared asking whether to also input a kanji name; いいえ (No) is 
+[ 955.6s] # 32 name_entry        fast    LEFT LEFT A              This exact screen (たろう entered, 決定 highlighted) has recurred after repeatedly confirming w
+[ 970.2s] # 33 name_entry        fast    RIGHT RIGHT A            Cursor is on 戻る (back), not 決定 (confirm); need to move right twice to reach 決定 then press 
+[1022.2s] # 34 name_entry        fast    A                        Cursor is on 決定 (confirm) in the kana grid with たろう already entered; previous attempts con
+[1060.8s] # 35 name_entry        fast    B                        This exact 決定-highlighted kanji entry screen has recurred repeatedly despite A, LEFT+A, RI
+[1084.5s] # 36 name_entry        fast    START                    Same recurring kanji-name-entry screen; A and B on 決定/戻る haven't progressed it. Trying STA
+[1104.4s] # 37 name_entry        fast    DOWN DOWN DOWN RIGHT RIGHT RIGHT RIGHT RIGHT Cursor has reset to the kana grid at 'た' instead of 決定; need to navigate down to the botto
+[1121.5s] # 38 name_entry        fast    RIGHT RIGHT RIGHT A      Cursor is currently on 削除 (delete), not 決定 (confirm) as previously assumed. Need to move R
+[1162.6s] # 39 name_entry        fast    R1                       A on 決定 has looped back to this exact screen repeatedly per history; the prompt explicitly
+[1189.5s] # 40 name_entry        fast    LEFT A                   Stuck on this same kanji name-entry screen through many prior inputs (A, B, START, R1 all 
+[1197.2s] # 41 loading           fast    wait                     A loading screen after the name entry was finally accepted; just wait for it to finish.
+[1209.4s] # 42 cutscene          fast    A A A                    Narrative dialogue box with story text follows the loading screen after name entry; this i
+[1219.6s] # 43 cutscene          fast    A A A                    Dialogue box with story text indicates an ongoing narrative cutscene, not player control y
+[1230.1s] # 44 cutscene          fast    A A A                    Narrative dialogue box with story text is still playing out (mic test monologue); advance 
+[1239.8s] # 45 cutscene          fast    A A A                    Ongoing dialogue box with story text (introduction speech) is still playing; advance it wi
+[1253.4s] # 46 cutscene          fast    A                        Dialogue text has changed to a new party-welcome line, so progress is happening but slowly
+[1257.2s] # 47 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[1266.5s] # 48 cutscene          fast    A A A                    Narrative scene with grouped NPCs and no HUD/stats visible; likely mid-dialogue cutscene t
+[1277.4s] # 49 cutscene          fast    A A A                    Dialogue box with story text still playing; this is a narrative introduction scene, advanc
+[1287.5s] # 50 cutscene          fast    A A A                    Narrative dialogue box still present, same party scene; advancing with A to progress throu
+[1298.2s] # 51 cutscene          fast    A A A                    Narrative dialogue box with story text is still present over the party scene; this is an i
+[1313.9s] # 52 cutscene          fast    A                        Dialogue box still present; previous triple-A bursts looped back to this same screen, so t
+[1318.2s] # 53 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[1322.3s] # 54 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[1326.5s] # 55 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[1336.6s] # 56 cutscene          fast    A A                      This is a continuation of the narrative introduction sequence at the party; previous A pre
+[1346.8s] # 57 cutscene          fast    A                        Dialogue box still present; single A presses have been advancing text, so continue with on
+[1350.9s] # 58 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[1355.1s] # 59 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[1359.2s] # 60 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[1370.8s] # 61 cutscene          fast    START                    Repeated single A presses have been advancing this intro sequence incrementally but the vi
+[1380.6s] # 62 pause             fast    A                        The PAUSE overlay is explicitly shown; the previous START press opened this pause menu ins
+[1390.2s] # 63 pause             fast    START                    The PAUSE overlay appeared after the previous START press; A did nothing on this screen, s
+[1401.0s] # 64 gameplay          fast    STICK:up:1.5             The pause overlay from the previous screen is gone; this shows the player character in a f
+[1415.1s] # 65 probe             probe   STICK:up:1.5 STICK:up:1.5 control 0.008, under input 0.030
+[1430.9s] # 66 cutscene          fast    A                        Characters are posed around a table in what looks like a scripted scene; prior probes here
+[1435.1s] # 67 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[1439.8s] # 68 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[1444.1s] # 69 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[1452.4s] # 70 cutscene          fast    A                        Dialogue box is present, same scripted scene; repeat A has been advancing dialogue steadil
+[1456.5s] # 71 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[1460.6s] # 72 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[1464.8s] # 73 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[1475.8s] # 74 cutscene          fast    A                        This looks like a static scripted scene (family gathering) with no HUD/dialogue box visibl
+[1480.1s] # 75 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[1484.2s] # 76 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[1488.6s] # 77 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[1497.6s] # 78 cutscene          fast    A A A                    Dialogue-driven scripted scene with text box, same as recent repeated steps; advancing wit
+[1509.2s] # 79 cutscene          fast    B                        Dialogue box with partial text is still being typed or waiting for advance; A x3 did nothi
+[1513.4s] # 80 cutscene          repeat  B                        repeat B: it advanced the cutscene
+[1517.4s] # 81 cutscene          repeat  B                        repeat B: it advanced the cutscene
+[1521.4s] # 82 cutscene          repeat  B                        repeat B: it advanced the cutscene
+[1530.6s] # 83 cutscene          fast    B B B                    Scripted dialogue box with advance arrow, same as recent repeated steps; B has been advanc
+[1541.8s] # 84 cutscene          fast    A                        Dialogue box with visible advance arrow; B just worked for several prior steps, but it's n
+[1546.0s] # 85 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[1550.0s] # 86 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[1554.2s] # 87 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[1564.2s] # 88 cutscene          fast    B B A                    This looks like a scripted scene with NPCs converging on a dinner table rather than a dial
+[1574.9s] # 89 cutscene          fast    A A A                    Scripted dialogue box with Japanese text is present; A has reliably advanced this cutscene
+[1593.9s] # 90 cutscene          fast    A                        This is a repeating NPC dialogue trigger; mashing A/B combos looped back to the same promp
+[1598.1s] # 91 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[1602.1s] # 92 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[1606.9s] # 93 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[1617.5s] # 94 cutscene          fast    A A A                    No menu or HUD controls visible, this is a scripted scene with NPCs; previous A presses ha
+[1627.9s] # 95 cutscene          fast    A A A                    Scripted dialogue box is present, not a HUD gameplay state; A has been advancing this repe
+[1638.7s] # 96 cutscene          fast    A A A                    Scripted NPC dialogue box present, no HUD controls; continuing to advance with A as before
+[1652.4s] # 97 cutscene          fast    A                        Scripted dialogue box present; last triple-A input produced no change, so trying a single 
+[1656.5s] # 98 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[1660.8s] # 99 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[1664.9s] #100 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[1677.3s] #101 cutscene          fast    A                        Same NPC dinner scene as before; previous single-A presses produced small changes (deltas 
+[1681.4s] #102 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[1685.5s] #103 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[1689.7s] #104 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[1698.4s] #105 cutscene          fast    A A A                    Dialogue box with Japanese text is advancing via A each press (deltas shown in history); c
+[1709.3s] #106 cutscene          fast    A                        Dialogue box present, same scene type as prior steps where A advanced the text; try A agai
+[1713.5s] #107 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[1717.6s] #108 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[1721.7s] #109 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[1732.3s] #110 cutscene          fast    A A A                    Same room/scene as recent steps where A advanced dialogue; continuing to press A to progre
+[1742.7s] #111 cutscene          fast    A A A                    Dialogue box present, consistent with recent steps where A advanced the text; continuing t
+[1752.3s] #112 cutscene          fast    A A A                    Same dialogue scene as recent steps; A has been advancing the text each time, continuing t
+[1774.7s] #113 cutscene          fast    A                        A dialogue box is active over the scene; repeated triple-A presses have looped back to thi
+[1778.7s] #114 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[1782.9s] #115 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[1786.8s] #116 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[1799.3s] #117 cutscene          fast    START                    No menu or HUD controls visible, characters are posed in a scripted family scene with no t
+[1805.0s] #118 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[1810.2s] #119 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[1815.2s] #120 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[1824.8s] #121 cutscene          fast    A                        Scripted family scene with posed characters, no HUD controls; START was repeated 3 times w
+[1832.8s] #122 cutscene          fast    A A START A START A START A Scripted family party scene with dialogue box, no menu/HUD; advancing with A/START as befo
+[1848.6s] #123 cutscene          fast    A A START A              Scripted dialogue box with no player control indicators; advancing dialogue with A as befo
+[1859.2s] #124 pause             fast    START                    The screen explicitly shows a PAUSE banner, meaning gameplay was reached and then paused; 
+[1871.7s] #125 gameplay          fast    STICK:up:1.5             The pause banner from the previous step is gone; the character is freely positioned in the
+[1891.7s] #126 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 control 0.013, under input 0.013
+[1901.9s] #127 gameplay          fast    UP UP UP                 Pause banner is gone and the character stands freely in the room, but four STICK:up presse
+[1915.7s] #128 probe             probe   UP UP UP UP UP HOLD:A:3  control 0.007, under input 0.020
+[1921.8s] #129 cutscene          fast    A A A                    Dialogue box with text and a continue indicator (triangle) is showing, same scripted dialo
+[1933.0s] #130 cutscene          fast    A A A                    A dialogue box with text and continue indicator is showing, same scripted NPC conversation
+[1945.8s] #131 cutscene          fast    START A A                Dialogue box with NPC text is showing; previous A presses produced no change, so trying ST
+[1962.0s] #132 gameplay          fast    STICK:left:1.5           No dialogue box present and no continue-indicator triangle visible; this is the free-roam 
+[1991.7s] #133 probe             probe   STICK:left:1.5 STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.167, under input 0.235
+[2002.3s] #134 gameplay          fast    STICK:up:1.5 A           No dialogue box, free third-person view with HUD-less exploration; previous left-stick pre
+[2018.6s] #135 probe             probe   STICK:up:1.5 A HOLD:A:3  control 0.046, under input 0.108
+hold-play: genre other, need 600 s of play
+hold-play: fps at 186 s: median 59.0, share>=30 1.0 over 182 samples
+hold-play: fps at 301 s: median 59.0, share>=30 1.0 over 295 samples
+hold-play: validity check share 1144 s (hold 600 s of play, verdict 600.0)
+hold-play: not held 600/600 s of play; share short by 1144 s with no budget left
+held Rent a Hero No 1 Japan for 796s
+VERDICT Rent a Hero No 1 Japan ? FAIL(menu time: 75.6% of the scored window in `play` (bar 90%; play 601 s, cutscene 123 s, still 71 s, no-timeline 0 s)) gameplay=794.6s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.1667 play_share=0.7561 fps_excluded=195.2s
+{"name": "Rent a Hero No 1 Japan", "device": "nova", "result": "gameplay", "minutes": 33.64, "model_calls": 110, "steps": 135, "replayed": 0, "reason": "four probes refused", "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5345001D-1007/frames/134-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

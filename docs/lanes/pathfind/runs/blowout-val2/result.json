@@ -1,0 +1,80 @@
+{
+ "title_id": "4D4A0008",
+ "name": "Blowout",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/4D4A0008-Blowout.xiso.iso",
+ "result": "gameplay",
+ "tool": "d1c4b8d885",
+ "started": "2026-10-06 17:48:41 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/blowout-val2/frames/008-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/blowout-val2/frames/008-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/blowout-val2/frames/008-probe-c.jpg"
+ ],
+ "minutes": 1.08,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/blowout-val2/frames/007-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/blowout-val2/frames/009-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/blowout-val2/frames/010-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/blowout-val2/frames/011-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/blowout-val2/frames/012-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/blowout-val2/frames/013-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/blowout-val2/frames/014-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/blowout-val2/frames/015-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/blowout-val2/frames/016-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/blowout-val2/frames/017-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-4D4A.md"
+ ],
+ "hold": {
+  "genre": "shooter",
+  "why": "A gun-armed figure walks through a dark industrial corridor in a side-on view, which fits walking through a level and firing a weapon.",
+  "ok": false,
+  "play_s": 607.8,
+  "need_s": 600.0,
+  "hold_s": 619.4,
+  "model_navs": 2,
+  "frames": 18,
+  "still_windows": 0,
+  "shed": [],
+  "reversals": 12,
+  "reason": "verdict stops the hold: fps_ok 1.0, crash False, hang False",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 96,
+    "median": 29.0,
+    "share": 1.0,
+    "at_s": 191.8,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 154,
+    "median": 29.0,
+    "share": 0.994,
+    "at_s": 308.5,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "verdict": "VERDICT Blowout ? FAIL(static window: 44% of pixels never moved more than 10/255 from the window's first frame, over 17 sampled frames from route-frames (bar 20%)) gameplay=620.4s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=1/0.107pm worst_ms=102.0 static_frac=0.4381 play_share=0.9811 fps_excluded=14.0s"
+ },
+ "model_calls": 20,
+ "calls_by_model": {
+  "claude-sonnet-5": 20
+ },
+ "steps": 8,
+ "seconds": 732.9,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/blowout-val2/frames/069-hold.jpg",
+ "last_state": "probe",
+ "replayed": 4,
+ "sib_replayed": 0,
+ "guide": [
+  "4D4A0008"
+ ],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/blowout-val2/strip.jpg"
+}

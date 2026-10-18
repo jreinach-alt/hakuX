@@ -1,0 +1,46 @@
+pathfind: Crazy Taxi 3 High Roller USA (53450004) on nova: /storage/E6C6-D7AA/Games/XBox/53450004-Crazy_Taxi_3_High_Roller_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 53450004 any, loaded none
+[  29.0s] #  1 publisher_logo    fast    START                    Green star is the Sega publisher logo; skipping with START as per learned Sega pattern
+[  43.3s] #  2 publisher_logo    fast    A                        The Crazy Taxi 3 title logo with SEGA copyright is a publisher splash; following the Sega 
+[  58.0s] #  3 publisher_logo    fast    START                    This is the Crazy Taxi 3 title splash screen showing the game branding. A did not change i
+[  79.0s] #  4 publisher_logo    fast    B                        Sega title splash; START and A each tried once and remained unchanged three times, suggest
+[ 130.5s] #  5 publisher_logo    fast    wait                     Sega splash remained unchanged after START (×2), A, and B over 4 steps; per hint guidance,
+[ 182.4s] #  6 title_screen      fast    START                    After publisher logos, now showing the game world but without any HUD (no passenger, desti
+[ 205.9s] #  7 title_screen      fast    A                        Post-publisher-logo splash showing the game's title branding; the last step was START whic
+[ 241.0s] #  8 title_screen      fast    START                    The screen displays 'PRESS START' prompt. Previous A input did not advance it. Title scree
+[ 270.2s] #  9 publisher_logo    fast    B                        Sega copyright splash screen. START and A both failed in recent steps (8 and 7). The hint 
+[ 327.6s] # 10 title_screen      fast    RT:1                     Clear title screen with 'PRESS START' text; START, A, and B inputs have all been tried and
+[ 409.6s] # 11 title_screen      fast    START A                  This is the title screen with 'PRESS START' prompt. Previous single inputs (START, A, B, R
+[ 458.4s] # 12 title_screen      fast    BACK                     Splash screen with the game's title logo. Previous inputs (START, A, B, RT:1, START+A) all
+[ 495.8s] # 13 publisher_logo    fast    wait                     This is a Sega/Hitmaker copyright splash. START, A, B, BACK, and START+A have all been att
+[ 556.6s] # 14 gameplay          fast    wait                     Game world fully loaded and rendered; taxi in ready position as expected at start of Crazy
+[ 586.2s] # 15 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.902, under input 0.952
+[ 608.2s] # 16 gameplay          fast    wait                     Full game world rendered with player vehicle (taxi) and passenger ready to be picked up; n
+[ 626.8s] # 17 probe             probe   RT:1.5 RT+left:1.2 RT+right:1.2 control 0.833, under input 0.937
+[ 687.1s] # 18 loading           fast    wait                     Game world is fully rendered with stable 59 FPS, but critical interactive elements are abs
+[ 702.7s] # 19 loading           fast    wait                     Game world is fully rendered and stable at 58 FPS, but critical HUD elements (passenger in
+[ 707.4s] # 20 black             black   wait                     black frame
+[ 719.7s] # 21 title_screen      fast    START                    Logo displayed with 'PRESS START' prompt; classic title screen state
+[ 736.2s] # 22 publisher_logo    fast    A                        Logo screen after title_screen press; no interactive prompt visible; this is a publisher/g
+[ 750.6s] # 23 publisher_logo    fast    START                    Logo screen; A was just tried and produced no change; per hints, try START when A fails on
+[ 793.2s] # 24 publisher_logo    fast    B                        START and A both produced no change on this logo; per hints, after two failed skip attempt
+[ 853.6s] # 25 title_screen      fast    wait                     Game's own logo displayed with 'PRESS START' prompt. START, A, and B already tried on this
+[ 873.1s] # 26 gameplay          fast    wait                     Player-controlled taxi vehicle with HUD active; passenger loaded; interactive game world w
+[ 894.2s] # 27 probe             probe   RT:1.5 RT+left:1.2 RT+right:1.2 control 0.835, under input 0.869
+claim: 3 live reads with self-moving refused probes: entering the hold
+hold-play: genre drive, need 600 s of play
+hold-play: 3 still looks: walk reversed (back) at 35 s
+hold-play: 3 still looks: walk reversed (forward) at 64 s
+hold-play: off play for 12 steps (menu): ladder round 1
+hold-play: stuck (menu/pause/other unchanged for 4 consecutive samples): unstick B LT+left:3 RT+right:3 at 146 s
+hold-play: fps at 185 s: median 59.0, share>=30 0.956 over 160 samples
+hold-play: stuck (scene unchanged for 5 consecutive samples (genre drive)): unstick LT+right:3 RT+left:3 at 185 s
+hold-play: 3 still looks: walk reversed (back) at 221 s
+hold-play: stuck_abort: scene unchanged for 6 consecutive samples (genre drive); 2 unstick rung(s) tried, still stuck
+hold-play: not held 42/600 s of play; stuck_abort: scene unchanged for 6 consecutive samples (genre drive); 2 unstick rung(s) tried, still stuck
+held Crazy Taxi 3 High Roller USA for 232s
+VERDICT Crazy Taxi 3 High Roller USA ? FAIL(duration: 231 s of gameplay < 600 s confirmation) gameplay=231.0s fps_ok=0.7696 crash=False hang=False audio_short=0.0 hitches=27/9.472pm worst_ms=247.1 static_frac=0.9934 play_share=0.1477 fps_excluded=198.3s
+{"name": "Crazy Taxi 3 High Roller USA", "device": "nova", "result": "gameplay", "minutes": 14.9, "model_calls": 46, "steps": 27, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-53450004-1013/frames/026-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

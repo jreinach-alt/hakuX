@@ -1,0 +1,60 @@
+taken: nova by lane.pathfind
+idle: nova is held and runs nothing
+held at 13:25:32
+pathfind: MLB SlugFest 2003 (None) on nova: /storage/E6C6-D7AA/Games/XBox/MLB_SlugFest_2003.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: - any, loaded all goldens (title not identified)
+[   9.7s] #  1 publisher_logo    fast    A                        A green publisher logo is on screen, early in boot, before any title. Per hints, skip with
+[  17.5s] #  2 publisher_logo    fast    A                        Early publisher logo (Midway Sports). Per hints, A skipped the previous logo; a new logo i
+[  25.7s] #  3 loading           fast    wait                     Hard disk check progress screen with no input needed; wait for it to finish and reach the 
+[  31.8s] #  4 loading           static  wait                     load still on screen (barely changed)
+[  41.1s] #  5 publisher_logo    fast    START                    This is the title logo still fading in or out, not a playable menu or gameplay. Per the hi
+[  49.3s] #  6 title_screen      fast    START                    Title screen with 'PRESS START' prompt; per hints START advances the title. No menu cursor
+[  59.1s] #  7 main_menu         fast    A                        Main menu with QUICKPLAY already highlighted; it is the fastest route to a game and its te
+[  67.6s] #  8 submenu           fast    LEFT                     Team select with no controller assigned, so the CPU plays both sides. Moving controller 1 
+[  76.3s] #  9 submenu           fast    A                        Controller 1 is already assigned to AWAY, so a human controls that team and HOME is CPU. P
+[  86.2s] # 10 submenu           fast    A                        Team select on MLB SlugFest 2003; the previous step assigned controller 1 to the left (AWA
+[  95.8s] # 11 submenu           fast    A                        Team select, the right side is the highlighted selector and no controller icon is visible.
+[ 106.2s] # 12 submenu           fast    A                        This is a match-up confirmation screen after team select, not gameplay. The team and contr
+[ 114.6s] # 13 loading           fast    wait                     A loading screen with a progress bar after team select; the game is still loading into the
+[ 123.9s] # 14 loading           fast    wait                     Game is loading into the match after team select; a loading screen with a progress bar, no
+[ 130.1s] # 15 loading           static  wait                     load still on screen (barely changed)
+[ 135.1s] # 16 loading           static  wait                     load still on screen (barely changed)
+[ 147.1s] # 17 gameplay          fast    wait                     Live field with batter/pitcher TURBO meters, count and inning HUD, no menu up. The loading
+[ 165.3s] # 18 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.667, under input 0.176
+[ 174.7s] # 19 gameplay          fast    wait                     Full game HUD with player 1 batting controls and no menu. The pitch has not been thrown ye
+[ 196.3s] # 20 probe             probe   STICK:right:1.5 STICK:right:1.5 STICK:right:1.5 control 0.100, under input 0.141; 3 of 3 idle/input rounds won
+[ 205.1s] # 21 gameplay          fast    wait                     Full in-game HUD with no menu, so this is live play. The pitch has not been thrown yet, so
+[ 216.5s] # 22 probe             probe   STICK:left:1.5           control 0.068, under input 0.682
+[ 224.1s] # 23 gameplay          fast    wait                     Full in-game HUD with the batter in the box and no menu. Earlier left-stick probes moved n
+[ 247.5s] # 24 probe             probe   RSTICK:right:1.5 RSTICK:right:1.5 RSTICK:right:1.5 control 0.113, under input 0.136; 2 of 3 idle/input rounds won
+[ 255.3s] # 25 gameplay          fast    wait                     Live batting view with HUD, count and inning showing and no menu. The pitch has not been t
+[ 271.1s] # 26 probe             probe   HOLD:A:3 HOLD:A:3 HOLD:A:3 control 0.114, under input 0.110
+[ 279.7s] # 27 gameplay          fast    wait                     Live batting view with the HUD and the batter in the box, no menu; the pitch has not been 
+[ 298.0s] # 28 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.576, under input 0.490
+[ 306.6s] # 29 gameplay          fast    wait                     Live batting view with HUD, count and batting controls, no menu. The pitch has not been th
+[ 322.1s] # 30 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 control 0.079, under input 0.057
+[ 337.2s] # 31 unknown           fast    wait                     The inning card ('MID OF THE 1ST' with DUE UP FOR) is a transient overlay over the field, 
+[ 348.7s] # 32 gameplay          fast    wait                     Live batting view with the HUD up and no menu. The batter is in the box and the stick can 
+[ 364.0s] # 33 probe             probe   HOLD:A:3 HOLD:A:3 HOLD:A:3 control 0.033, under input 0.038
+[ 372.8s] # 34 gameplay          fast    wait                     HUD, scoreboard and batting controls are up with no menu, and the pitcher is on the mound 
+[ 388.1s] # 35 probe             probe   RT:3 RT:3 RT:3           control 0.044, under input 0.051
+[ 406.4s] # 36 gameplay          fast    wait                     Live batting view with the HUD up and no menu. Earlier probes did not move the scene, so I
+[ 419.0s] # 37 probe             probe   RT:3                     control 0.010, under input 0.514
+[ 429.2s] # 38 gameplay          fast    wait                     HUD, scoreboard and batting controls are up with no menu, and the pitcher is on the mound,
+[ 450.6s] # 39 probe             probe   HOLD:X:3 STICK:left:1.2 STICK:right:1.2 control 0.254, under input 0.482
+[ 460.2s] # 40 gameplay          fast    A                        The HUD, scoreboard and PLAYER 1 pitch/bat prompts are up with no menu, so this is live pl
+[ 487.8s] # 41 probe             probe   A A HOLD:X:3 HOLD:X:3 HOLD:X:3 control 0.140, under input 0.056; 2 of 3 idle/input rounds won
+hold-play: sports look {'clock': 'none', 'period': '1st', 'human_controlled': True, 'why': "Top-left shows an inning indicator '▼1ST' (bottom/top arrow plus 1st inning, score ANA 0-0), no game clock in baseball; the batter is ANA and the 'PLAYER 1' bat"}
+hold-play: genre team, need 600 s of play
+hold-play: fps at 184 s: median 59.0, share>=30 1.0 over 185 samples
+hold-play: fps at 305 s: median 59.0, share>=30 1.0 over 306 samples
+hold-play: HELD 606/600 s of play; 
+held MLB SlugFest 2003 for 689s
+VERDICT MLB SlugFest 2003 ? FAIL(menu time: 88.3% of the scored window in `play` (bar 90%; play 607 s, still 74 s, other 7 s, no-timeline 0 s)) gameplay=687.3s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0099 play_share=0.8826 fps_excluded=83.1s
+{"name": "MLB SlugFest 2003", "device": "nova", "result": "gameplay", "minutes": 8.13, "model_calls": 51, "steps": 41, "replayed": 0, "reason": "four probes refused", "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/mlb-slugfest-2003/hold/frames/040-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256
+pathfind rc=0 at 13:45:59
+released: nova by lane.pathfind
+released rc=0

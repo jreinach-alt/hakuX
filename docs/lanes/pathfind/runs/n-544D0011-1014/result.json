@@ -1,0 +1,81 @@
+{
+ "title_id": "544D0011",
+ "name": "Gene Troopers Europe En Fr De Es It",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/544D0011-Gene_Troopers_Europe_En_Fr_De_Es_It.xiso.iso",
+ "result": "gameplay",
+ "tool": "35c0856bf1",
+ "started": "2026-10-14 04:55:38 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544D0011-1014/frames/023-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544D0011-1014/frames/023-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544D0011-1014/frames/023-probe-left.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544D0011-1014/frames/023-probe-right.jpg"
+ ],
+ "minutes": 3.74,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544D0011-1014/frames/022-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544D0011-1014/frames/024-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544D0011-1014/frames/025-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544D0011-1014/frames/026-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544D0011-1014/frames/027-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544D0011-1014/frames/028-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544D0011-1014/frames/029-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544D0011-1014/frames/030-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544D0011-1014/frames/031-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-544D.md"
+ ],
+ "hold": {
+  "genre": "shooter",
+  "why": "Aiming reticle visible on a giant insect enemy; fixed camera angle suggests on-rails or arena shooting gameplay.",
+  "ok": false,
+  "play_s": 634.6,
+  "need_s": 630.0,
+  "hold_s": 635.9,
+  "model_navs": 0,
+  "frames": 15,
+  "still_windows": 0,
+  "shed": [],
+  "reversals": 9,
+  "reason": "verdict stops the hold: fps_ok 0.9147, crash False, hang False",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 94,
+    "median": 29.0,
+    "share": 0.83,
+    "at_s": 189.3,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 152,
+    "median": 29.0,
+    "share": 0.882,
+    "at_s": 306.3,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "stuck_abort": false,
+  "verdict": "VERDICT Gene Troopers Europe En Fr De Es It ? FAIL(hitches: a 530 ms stall after the first 60 s (bar 500 ms)) gameplay=636.3s fps_ok=0.9147 crash=False hang=False audio_short=0.0 hitches=1/0.104pm worst_ms=529.5 static_frac=0.0038 play_share=0.9996 fps_excluded=2.0s"
+ },
+ "model_calls": 12,
+ "calls_by_model": {
+  "claude-haiku-4-5-20251001": 12
+ },
+ "steps": 23,
+ "seconds": 912.6,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544D0011-1014/frames/069-hold.jpg",
+ "last_state": "probe",
+ "replayed": 1,
+ "sib_replayed": 0,
+ "guide": [
+  "544D0011"
+ ],
+ "cheap": 16,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544D0011-1014/strip.jpg"
+}

@@ -1,0 +1,70 @@
+{
+ "title_id": "454D001D",
+ "name": "Ultimate Pro Pinball Europe",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/454D001D-Ultimate_Pro_Pinball_Europe.xiso.iso",
+ "result": "gameplay",
+ "tool": "920a61de3c",
+ "started": "2026-10-16 04:38:23 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454D001D-1015n/frames/015-probe-a2.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454D001D-1015n/frames/015-probe-b2.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454D001D-1015n/frames/015-probe-c2.jpg"
+ ],
+ "minutes": 3.47,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454D001D-1015n/frames/014-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454D001D-1015n/frames/016-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454D001D-1015n/frames/017-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454D001D-1015n/frames/018-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454D001D-1015n/frames/019-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454D001D-1015n/frames/020-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454D001D-1015n/frames/021-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454D001D-1015n/frames/022-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454D001D-1015n/frames/023-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-454D.md"
+ ],
+ "hold": {
+  "genre": "other",
+  "why": "pinball table view with flippers and ball, not a car/shooter/sport",
+  "ok": false,
+  "play_s": 182.1,
+  "need_s": 630.0,
+  "hold_s": 227.0,
+  "model_navs": 0,
+  "frames": 7,
+  "still_windows": 1,
+  "shed": [],
+  "reversals": 0,
+  "reason": "stuck_abort: scene unchanged for 7 consecutive samples (genre other); 3 unstick rung(s) tried, still stuck",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 191,
+    "median": 59.0,
+    "share": 1.0,
+    "at_s": 190.1,
+    "floor": 22.0,
+    "stop": false
+   }
+  ],
+  "stuck_abort": true,
+  "verdict": "VERDICT Ultimate Pro Pinball Europe ? FAIL(duration: 227 s of gameplay < 600 s confirmation) gameplay=227.1s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=1/0.359pm worst_ms=125.7 static_frac=0.8593 play_share=0.8286 fps_excluded=40.0s"
+ },
+ "model_calls": 19,
+ "calls_by_model": {
+  "claude-sonnet-5": 19
+ },
+ "steps": 15,
+ "seconds": 477.7,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454D001D-1015n/frames/045-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454D001D-1015n/strip.jpg"
+}

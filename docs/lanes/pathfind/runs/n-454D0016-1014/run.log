@@ -1,0 +1,27 @@
+pathfind: Bad Boys Miami Takedown USA (454D0016) on nova: /storage/E6C6-D7AA/Games/XBox/454D0016-Bad_Boys_Miami_Takedown_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 454D0016 any, loaded none
+[  16.4s] #  1 publisher_logo    fast    A                        Very early boot (0.1 min), blank screen with a fading shape suggests an intro video or pub
+[  48.9s] #  2 cutscene          fast    START                    Intro cinematic after the publisher logo with letterbox framing, character dialogue, and n
+[  52.3s] #  3 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[  64.2s] #  4 save_load_prompt  fast    A                        Dialog asking to load a saved game; 'No' is highlighted, which avoids loading and starts f
+[  96.9s] #  5 save_load_prompt  fast    LEFT A                   Same dialog as step 4; A on the highlighted 'No' option produced no change. The options ar
+[ 109.1s] #  6 save_load_prompt  fast    B                        Result of selecting 'Yes' to load a save: no saves exist. Must go back and choose 'No' to 
+[ 121.4s] #  7 main_menu         fast    A                        Main menu with New Game highlighted; A confirms selection, the fastest path to gameplay wi
+[ 173.0s] #  8 submenu           fast    DOWN A                   After selecting 'New Game' from the main menu, we're now at a mode-select screen. 'Target 
+[ 186.8s] #  9 cutscene          fast    START                    Letterbox bars and cinematic framing indicate intro cutscene after mode selection; skip wi
+[ 191.7s] # 10 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 248.6s] # 11 cutscene          fast    A                        Progression from skip sequence (steps 9-10 used START twice). 3D game environment shown bu
+[ 265.6s] # 12 gameplay          fast    wait                     HUD visible with health bar, ammo counter, and objective markers; 3D interactive game envi
+[ 282.3s] # 13 probe             probe   STICK:up:1.5             control 0.003, under input 0.550
+hold-play: genre shooter, need 630 s of play
+hold-play: fps at 186 s: median 59.0, share>=30 1.0 over 187 samples
+hold-play: fps at 319 s: median 59.0, share>=30 1.0 over 319 samples
+hold-play: play disagrees: hold 633.6 s, verdict 640.1 s (verdict trusted)
+hold-play: validity check stop 0 s (hold 634 s of play, verdict 640.1)
+hold-play: not held 634/630 s of play; verdict stops the hold: fps_ok 1.0, crash False, hang False
+held Bad Boys Miami Takedown USA for 657s
+VERDICT Bad Boys Miami Takedown USA ? PASS None gameplay=656.1s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0123 play_share=0.9765 fps_excluded=17.0s
+{"name": "Bad Boys Miami Takedown USA", "device": "nova", "result": "gameplay", "minutes": 4.7, "model_calls": 20, "steps": 13, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454D0016-1014/frames/012-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

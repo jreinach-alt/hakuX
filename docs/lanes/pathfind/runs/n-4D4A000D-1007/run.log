@@ -1,0 +1,24 @@
+pathfind: BloodRayne 2 USA (4D4A000D) on nova: /storage/E6C6-D7AA/Games/XBox/4D4A000D-BloodRayne_2_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4D4A000D any, loaded none
+[  11.0s] #  1 publisher_logo    fast    A                        Early boot logo still forming/rendering before any title screen; wait briefly then skip wi
+[  18.4s] #  2 publisher_logo    fast    A                        Standard Xbox boot splash before any game content loads; wait for it to finish then skip a
+[  25.5s] #  3 publisher_logo    fast    A                        Engine credit splash before game content; skip with A
+[  32.2s] #  4 main_menu         fast    A                        New Game is highlighted red/selected; confirm with A to start fastest path to gameplay
+[  39.5s] #  5 cutscene          fast    START A                  Narrative text card before gameplay begins; try to skip with START then A
+[  45.3s] #  6 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[  54.4s] #  7 gameplay          fast    STICK:up:1.5             HUD visible with health meter, player character in explorable environment, and control hin
+[  65.2s] #  8 probe             probe   STICK:up:1.5 STICK:up:1.5 control 0.000, under input 0.070
+[  70.2s] #  9 gameplay          fast    STICK:up:1.5             HUD with health/weapon icon visible, player character in explorable environment, control h
+[  82.1s] # 10 probe             probe   STICK:up:1.5 STICK:up:1.5 control 0.000, under input 0.013
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 190 s: median 29.0, share>=30 0.989 over 95 samples
+hold-play: fps at 303 s: median 29.0, share>=30 0.987 over 152 samples
+hold-play: 3 still looks: walk reversed (back) at 591 s
+hold-play: validity check share 3661 s (hold 608 s of play, verdict 608.8)
+hold-play: not held 608/600 s of play; share short by 3661 s with no budget left
+held BloodRayne 2 USA for 1085s
+VERDICT BloodRayne 2 USA ? FAIL(menu time: 56.2% of the scored window in `play` (bar 90%; play 610 s, still 474 s, no-timeline 0 s)) gameplay=1083.9s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=109.5 static_frac=0.0002 play_share=0.5623 fps_excluded=474.7s
+{"name": "BloodRayne 2 USA", "device": "nova", "result": "gameplay", "minutes": 1.37, "model_calls": 24, "steps": 10, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D4A000D-1007/frames/009-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

@@ -1,0 +1,28 @@
+pathfind: Mercenaries USA Europe (4C410015) on nova: /storage/E6C6-D7AA/Games/XBox/4C410015-Mercenaries_USA_Europe.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4C410015 any, loaded golden d17c32a300cf
+[  13.9s] #  1 loading           fast    wait                     This is an Android boot animation, not the emulator or game yet; need to wait for the devi
+[  22.9s] #  2 publisher_logo    fast    START A                  Publisher logo screen before title; skip with START per hint guidance.
+[  32.0s] #  3 loading           fast    wait                     Loading screen with spinner shown mid-boot narrative text; no input needed, just wait for 
+[  41.8s] #  4 publisher_logo    fast    START A                  LucasArts publisher logo screen before title; skip with START per hint guidance.
+[  52.2s] #  5 main_menu         fast    A                        NEW GAME is highlighted with the A button icon next to it; confirm with A to start a new g
+[  61.3s] #  6 submenu           fast    A                        Agent select screen; JACOBS is highlighted with the A icon, confirm the default agent to p
+[  70.3s] #  7 submenu           fast    A                        Bio confirmation popup for the selected agent; ACCEPT is highlighted with A icon, confirmi
+[  81.4s] #  8 cutscene          fast    START A                  Dark scene with no HUD or menu text, looks like a cinematic transition after the bio ACCEP
+[  90.6s] #  9 loading           fast    wait                     LOADING text and spinner visible, this is a loading screen after bio confirmation, no inpu
+[ 102.1s] # 10 cutscene          fast    START A                  Location/time caption typical of a mission intro cinematic; no player HUD or controls visi
+[ 107.6s] # 11 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 114.2s] # 12 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 120.0s] # 13 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 129.6s] # 14 gameplay          fast    Y                        Player character with HUD prompt controlling action (Y to stand up) in the game world; thi
+[ 140.5s] # 15 probe             probe   Y STICK:up:1.5           control 0.056, under input 0.346
+hold-play: genre other, need 600 s of play
+hold-play: fps at 188 s: median 53.0, share>=30 0.994 over 161 samples
+hold-play: fps at 316 s: median 54.5, share>=30 0.996 over 270 samples
+hold-play: validity check stop 0 s (hold 602 s of play, verdict 603.7)
+hold-play: not held 602/600 s of play; verdict stops the hold: fps_ok 1.0, crash False, hang False
+held Mercenaries USA Europe for 606s
+VERDICT Mercenaries USA Europe ? PASS None gameplay=604.9s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=239.1 static_frac=0.0037 play_share=0.9996 fps_excluded=2.5s
+{"name": "Mercenaries USA Europe", "device": "nova", "result": "gameplay", "minutes": 2.34, "model_calls": 20, "steps": 15, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4C410015-1011/frames/014-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

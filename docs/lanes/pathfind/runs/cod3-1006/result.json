@@ -1,0 +1,60 @@
+{
+ "title_id": "4156005D",
+ "name": "Call of Duty 3",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/4156005D-Call_of_Duty_3.xiso.iso",
+ "result": "gameplay",
+ "tool": "3624b0a01d",
+ "started": "2026-10-06 20:39:52 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/cod3-1006/frames/032-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/cod3-1006/frames/032-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/cod3-1006/frames/032-probe-c.jpg"
+ ],
+ "minutes": 4.0,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/cod3-1006/frames/031-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/cod3-1006/frames/033-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/cod3-1006/frames/034-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/cod3-1006/frames/035-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/cod3-1006/frames/036-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/cod3-1006/frames/037-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/cod3-1006/frames/038-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/cod3-1006/frames/039-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/cod3-1006/frames/040-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-4156.md"
+ ],
+ "hold": {
+  "genre": "shooter",
+  "why": "First-person view of a WWII village walking through a level toward a weapon pickup, with the HUD compass and a 'Walk over to the M1 Garand' objective.",
+  "ok": false,
+  "play_s": 140.4,
+  "need_s": 600.0,
+  "hold_s": 140.7,
+  "model_navs": 0,
+  "frames": 4,
+  "still_windows": 0,
+  "shed": [],
+  "reversals": 3,
+  "reason": "hakuX left the foreground during the hold",
+  "title_hold": false,
+  "fps_checks": [],
+  "verdict": "VERDICT Call of Duty 3 ? FAIL(duration: 141 s of gameplay < 600 s confirmation) gameplay=141.2s fps_ok=0.9848 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.1954 play_share=0.999 fps_excluded=0.0s"
+ },
+ "model_calls": 20,
+ "calls_by_model": {
+  "claude-sonnet-5": 20
+ },
+ "steps": 32,
+ "seconds": 427.2,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/cod3-1006/frames/050-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/cod3-1006/strip.jpg"
+}

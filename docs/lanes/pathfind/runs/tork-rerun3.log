@@ -1,0 +1,72 @@
+taken: nova by lane.pathfind
+NOT IDLE: nova is held but busy -- do not touch it yet:
+dispatcher pid 518495 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+run: hold.sh wait-idle nova <timeout_s>, and touch the device only on exit 0
+waiting for nova: dispatcher pid 518495 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+idle: nova is held and runs nothing
+held at 07:03:45
+pathfind: Tork: Prehistoric Punk (55530040) on nova: /storage/E6C6-D7AA/Games/XBox/Tork - Prehistoric Punk (USA).iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 55530040 any, loaded golden 6cb2e3c07c9e
+[   6.8s] #  1 publisher_logo    replay  START A                  replay step 0: replay step 0: replay step 0: replay step 0: Ubisoft-style logo/splash on w
+[  14.0s] #  2 publisher_logo    replay  START A                  replay step 1: replay step 1: replay step 1: Ubisoft publisher logo, not yet the title. Pe
+[  25.5s] #  3 title_screen      fast    START                    Title card is up with no menu yet; the title hint and recorded path say START advances the
+[  31.3s] #  4 title_screen      replay  A                        replay step 3: replay step 4: replay step 3: replay step 3: Tork 'START GAME' menu with Em
+[  43.4s] #  5 submenu           fast    A                        Save-slot select on an existing profile. Continue is the highlighted default, and the reco
+[  49.8s] #  6 publisher_logo    replay  START                    replay step 5: replay step 6: replay step 5: This is the Tork title logo card, not a menu 
+[  58.3s] #  7 title_screen      fast    START                    Title card is up with no visible prompt. Per the title hint and recorded path, START advan
+[  63.7s] #  8 cutscene          replay  START                    replay step 7: replay step 8: Scenic letterboxed shot with no HUD or menu, so it is not ga
+[  68.3s] #  9 cutscene          replay  START A                  replay step 8: Letterboxed scenic shot with no HUD and no player control, so it is a cinem
+[  78.0s] # 10 cutscene          fast    START A                  Dim letterboxed in-engine scene with no HUD and no player control shown; per the title's r
+[  83.7s] # 11 cutscene          replay  START A                  replay step 10: Scenic camera shot with no HUD or control prompt, so not confirmed gamepla
+[  94.5s] # 12 gameplay          fast    wait                     Full-frame third-person playfield with the player's character in the world and no letterbo
+[  98.6s] # 13 probe             probe   STICK:up:1.5             control 0.685, under input 0.047
+[  99.3s] # 14 cutscene          replay  START A                  replay step 12: Letterboxed, no HUD, camera-framed scene with a fade-dimmed look; this is 
+[ 109.7s] # 15 cutscene          fast    START A                  Letterboxed in-engine shot with no HUD and no control, so it is not gameplay. Skipping wit
+[ 115.1s] # 16 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 120.7s] # 17 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 126.1s] # 18 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 131.9s] # 19 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 137.5s] # 20 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 142.9s] # 21 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 154.1s] # 22 gameplay          fast    wait                     Full-frame third-person view with the player's character in the foreground and enemies nea
+[ 158.9s] # 23 probe             probe   STICK:up:1.5             control 0.357, under input 0.549
+[ 164.2s] # 24 cutscene          fast    START A                  Letterboxed scripted scene with two characters framed close and no HUD or player control, 
+[ 169.4s] # 25 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 174.8s] # 26 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 180.0s] # 27 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 185.3s] # 28 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 190.9s] # 29 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 196.3s] # 30 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 205.9s] # 31 cutscene          fast    START A                  Scripted in-engine scene with no HUD and no control prompt, so not gameplay. The recorded 
+[ 217.9s] # 32 cutscene          fast    A                        A dialogue box is waiting for advance, and no player control is confirmed yet. Dismiss it 
+[ 227.1s] # 33 gameplay          fast    wait                     Player character and HUD are on screen with no menu or dialogue box; the recorded path's l
+[ 242.3s] # 34 probe             probe   HOLD:A:3 HOLD:A:3 HOLD:A:3 control 0.016, under input 0.018
+[ 249.1s] # 35 gameplay          fast    wait                     Player character and HUD are on screen with no menu, dialogue or cutscene bars. The previo
+[ 264.1s] # 36 probe             probe   HOLD:A:3 HOLD:A:3 HOLD:A:3 control 0.028, under input 0.019
+[ 268.5s] # 37 gameplay          fast    wait                     Player character and HUD (health hearts, counter) are on screen with no menu, dialogue or 
+[ 283.3s] # 38 probe             probe   RT:3 RT:3 RT:3           control 0.019, under input 0.017
+[ 290.3s] # 39 gameplay          fast    wait                     Player character and HUD are on screen with no menu, dialogue or cutscene bars. Earlier A/
+[ 305.3s] # 40 probe             probe   RT:3 RT:3 RT:3           control 0.012, under input 0.013
+[ 312.7s] # 41 gameplay          fast    wait                     Player character and HUD are on screen with no menu or cutscene bars. Earlier A and RT pro
+[ 327.7s] # 42 probe             probe   HOLD:X:3 HOLD:X:3 HOLD:X:3 control 0.020, under input 0.020
+[ 333.6s] # 43 gameplay          fast    wait                     Player character and HUD (health, counter) are on screen with no menu or cutscene bars. Ea
+[ 348.6s] # 44 probe             probe   HOLD:X:3 HOLD:X:3 HOLD:X:3 control 0.020, under input 0.023
+[ 356.0s] # 45 gameplay          fast    wait                     Player character and HUD (hearts, counter) are up with no menu or cutscene bars. The earli
+[ 371.1s] # 46 probe             probe   LT:2 LT:2 LT:2           control 0.019, under input 0.017
+[ 375.3s] # 47 gameplay          fast    wait                     Player character and HUD (hearts, counter) are on screen with no menu or cutscene; earlier
+[ 390.3s] # 48 probe             probe   LT:2 LT:2 LT:2           control 0.026, under input 0.015
+[ 397.7s] # 49 gameplay          fast    wait                     Player character and HUD (hearts, counter) are up with no letterbox bars or subtitles. Ear
+[ 409.2s] # 50 probe             probe   STICK:left:1.5           control 0.022, under input 0.472
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 193 s: median 29.0, share>=30 1.0 over 97 samples
+hold-play: fps at 317 s: median 29.0, share>=30 1.0 over 159 samples
+hold-play: HELD 602/600 s of play; 
+held Tork: Prehistoric Punk for 704s
+VERDICT Tork: Prehistoric Punk ? FAIL(menu time: 85.7% of the scored window in `play` (bar 90%; play 603 s, still 100 s, no-timeline 0 s)) gameplay=703.0s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=105.0 static_frac=0.564 play_share=0.8572 fps_excluded=102.1s
+{"name": "Tork: Prehistoric Punk", "device": "nova", "result": "gameplay", "minutes": 6.82, "model_calls": 28, "steps": 50, "replayed": 8, "reason": "four probes refused", "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/tork-rerun3/frames/049-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256
+pathfind rc=0 at 07:23:17
+released: nova by lane.pathfind
+released rc=0

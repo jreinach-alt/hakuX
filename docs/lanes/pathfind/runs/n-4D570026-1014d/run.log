@@ -1,0 +1,34 @@
+pathfind: Blitz The League USA (4D570026) on nova: /storage/E6C6-D7AA/Games/XBox/4D570026-Blitz_The_League_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4D570026 any, loaded none
+[  19.6s] #  1 publisher_logo    fast    A                        publisher logo at cold boot (0.2 min); Midway title; learned data shows other Midway title
+[  32.0s] #  2 loading           fast    wait                     Loading screen in progress; must wait for the game to finish loading before sending input
+[  47.2s] #  3 publisher_logo    fast    A                        Publisher and engine logos appearing in sequence after the loading screen; Midway titles s
+[  60.1s] #  4 publisher_logo    fast    A                        Still in the logo sequence after loading; Midway titles skip with A; this appears to be th
+[  74.3s] #  5 title_screen      fast    START                    Title screen displaying the game's main logo with explicit 'Press START' prompt; Midway ti
+[  92.5s] #  6 profile_creation  fast    A                        Profile selection screen after title screen. The 'CHOOSE PROFILE' and 'ACCEPT' UI match th
+[ 109.1s] #  7 submenu           fast    A                        Configuration submenu asking player count before gameplay; '1' is selected; ACCEPT button 
+[ 123.4s] #  8 submenu           fast    A                        Team/side selection menu (HOME vs AWAY) before gameplay; HOME is the default highlighted o
+[ 133.3s] #  9 loading           fast    wait                     Explicit 'LOADING GAME DATA' text with progress indicator; game is loading after team sele
+[ 164.9s] # 10 profile_creation  fast    UP A                     Stuck in a loop: the existing profile (Cash: 0 Wins: 0 Loss: 0) was selected with A, loade
+[ 188.7s] # 11 name_entry        fast    START A                  Profile name input keyboard. Need to enter a name and confirm with ACCEPT. START may jump 
+[ 265.4s] # 12 name_entry        fast    A DOWN DOWN DOWN DOWN DOWN RIGHT A Keyboard input screen for profile name; previous empty-name entry was rejected. Must type 
+[ 314.1s] # 13 name_entry        fast    BACK                     Error message dismissed from rejected empty-name attempt; BACK to return to the keyboard a
+[ 416.6s] # 14 name_entry        fast    A RIGHT A DOWN DOWN DOWN DOWN DOWN Profile name keyboard is displayed and waiting for input. Previous attempt to enter an emp
+[ 486.3s] # 15 name_entry        fast    START A                  Profile name 'AC' is entered. Previous attempts at explicit D-pad navigation failed. Per h
+[ 498.1s] # 16 save_load_prompt  fast    A                        Save confirmation dialog displayed; the profile with name 'AC' saved successfully. Dismiss
+[ 523.1s] # 17 submenu           fast    A                        Team selection screen after profile creation; SELECT TEAM option is highlighted with A but
+[ 591.8s] # 18 submenu           fast    Y                        We are on a matchup preview screen within team selection. Per the owner's sports setup rul
+[ 635.1s] # 19 submenu           fast    UP UP UP                 Game options screen opened by Y press. Per owner's sports setup rule (10-05), must set QTR
+[ 707.5s] # 20 submenu           fast    UP RIGHT RIGHT RIGHT     QTR LENGTH at 2/5 must reach 5/5 for longest quarter per owner's 10-05 sports setup rule. 
+[ 788.9s] # 21 submenu           fast    UP UP UP UP UP UP UP UP  Still in options menu. QTR LENGTH is at 2/5 but must reach 5/5 per owner's sports setup ru
+[ 853.6s] # 22 submenu           fast    RIGHT RIGHT RIGHT        Game options screen is open; UP navigation failed in the previous step. QTR LENGTH is show
+[ 907.4s] # 23 submenu           fast    A                        QTR LENGTH must be increased from 2/5 to 5/5 per owner's sports setup rule (10-05). UP and
+[ 951.3s] # 24 submenu           fast    STICK:up:1               On game options; QTR LENGTH is at 2/5 and must reach 5/5 per owner's sports setup rule (10
+[1002.5s] # 25 submenu           fast    DOWN                     Sports setup menu where QTR LENGTH must be changed from 2/5 to 5/5 per owner rule. Previou
+[1101.3s] # 26 submenu           fast    LEFT                     QTR LENGTH must be set to 5/5 (longest) per owner's sports setup rule. D-pad UP/DOWN and S
+[1144.8s] # 27 submenu           fast    X                        Still in game options. QTR LENGTH must be 5/5 per owner rule (10-05), currently 2/5. All D
+[1224.7s] # 28 submenu           fast    Y                        QTR LENGTH must be set to 5/5 per owner's sports setup rule (10-05), currently 2/5. D-pad 
+{"name": "Blitz The League USA", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 28, "steps": 28, "replayed": 0, "reason": "budget 20 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

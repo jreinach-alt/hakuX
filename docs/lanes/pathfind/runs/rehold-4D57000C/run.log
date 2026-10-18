@@ -1,0 +1,86 @@
+pathfind: Mortal Kombat Deadly Alliance (4D57000C) on nova: /storage/E6C6-D7AA/Games/XBox/4D57000C-Mortal_Kombat_Deadly_Alliance.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4D57000C any, loaded none
+[   5.7s] #  1 publisher_logo    replay  A                        replay step 0: sibling 4D570034 step 0: Early boot logo-style splash with no title or menu
+[  10.2s] #  2 publisher_logo    replay  A                        replay step 1: Title logo and copyright notice are a publisher-style splash before the tit
+[  14.5s] #  3 save_load_prompt  replay  START                    replay step 2: Storage status screen with no memory unit; the hint says 'no storage device
+[  18.8s] #  4 publisher_logo    replay  A                        replay step 3: Publisher logo before the title; skip with A per hints, then re-read. Curso
+[  24.9s] #  5 title_screen      replay  START                    replay step 4: Title screen with a 'PRESS START' prompt; the hint for Midway titles and th
+[  29.6s] #  6 main_menu         replay  A                        replay step 5: Previous step pressed START on the title and we landed on the main menu wit
+[  34.2s] #  7 main_menu         replay  A                        replay step 6: This is a select screen, not gameplay. Per the select-screen rule, START is
+[  38.4s] #  8 black             black   wait                     black frame
+[  42.3s] #  9 cutscene          replay  START                    replay step 8: This is the pre-fight stage/opponent intro card in Arcade, not a live round
+[  49.8s] # 10 loading           fast    wait                     Game is loading the next screen; no input should be sent while the loading bar is filling.
+[  60.2s] # 11 gameplay          fast    wait                     HUD with health bars and a counting timer (59), fighters standing in the arena, no menu op
+[  78.9s] # 12 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.205, under input 0.192
+[  84.0s] # 13 gameplay          fast    wait                     Live round with HUD and a ticking timer (40), no menu open. Earlier stick probes were refu
+[ 106.7s] # 14 probe             probe   UP STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.365, under input 0.327
+[ 112.7s] # 15 gameplay          fast    UP STICK:left:1.5        Live round with HUD, health bars and a ticking timer (19), fighters standing in the arena,
+[ 140.1s] # 16 probe             probe   UP STICK:left:1.5 HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.279, under input 0.339
+[ 144.9s] # 17 gameplay          fast    wait                     The round looks over: one fighter is down and the centre timer reads 00, but the name plat
+[ 165.3s] # 18 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.265, under input 0.343
+[ 170.5s] # 19 gameplay          fast    wait                     Live round with HUD, health bars and a counting timer, no menu open. Earlier stick probes 
+[ 191.5s] # 20 probe             probe   UP STICK:left:1.5 STICK:right:1.2 STICK:right:1.2 STICK:right:1.2 control 0.120, under input 0.141
+[ 198.9s] # 21 gameplay          fast    wait                     Live round with HUD, health bars and a counting timer (25), no menu open. Earlier probes w
+[ 216.3s] # 22 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.279, under input 0.280
+[ 250.4s] # 30 retracted         probe   wait                     retracted after 30 s: This is the post-round 'CONTINUE?' prompt over the fight arena; the 
+[ 254.8s] # 31 continue          fast    START                    Post-round CONTINUE countdown prompt. Per the continue rule, one START then A if it stays;
+[ 263.9s] # 32 title_screen      fast    START                    Title screen with a 'PRESS START' prompt; hints say this Midway title needs START, not A. 
+[ 272.2s] # 33 main_menu         fast    A                        Main menu with ARCADE already highlighted at the top, the recorded fastest route. A select
+[ 280.7s] # 34 submenu           fast    A                        Character select screen, not gameplay. The 'PLAYER 2 PRESS START' prompt is a join prompt 
+[ 288.5s] # 35 cutscene          fast    A                        This is the pre-fight stage intro card in Arcade (stage name and medallion over a dimmed s
+[ 294.1s] # 36 black             black   wait                     black frame
+[ 300.9s] # 37 cutscene          fast    START                    The FIGHT! round-start banner is still up, so the round is not yet live; wait 2 s and look
+[ 307.3s] # 38 pause             fast    A                        A pause panel opened over a live round; RESUME is the lit line, so A resumes the fight wit
+[ 315.9s] # 39 gameplay          fast    wait                     Live round with HUD, full health bars and a counting timer, no menu or round banner up. Pr
+[ 333.6s] # 40 probe             probe   STICK:up:2 STICK:left:1.2 STICK:right:1.2 control 0.265, under input 0.411
+[ 340.7s] # 41 gameplay          fast    wait                     Live round: HUD with health bars and a counting timer (44), fighters in the arena, no menu
+[ 364.3s] # 42 probe             probe   LEFT LEFT LEFT RT:3 RT+left:1.2 RT+right:1.2 control 0.472, under input 0.246
+[ 368.4s] # 43 gameplay          fast    wait                     Live round with HUD, both health bars full, counting timer, no menu open; the fighters are
+[ 386.9s] # 44 probe             probe   RT:3 RT+left:1.2 RT+right:1.2 control 0.303, under input 0.503
+[ 422.7s] # 53 retracted         probe   wait                     retracted after 30 s: This is a fighting-match intro/versus-style frame: the Snake vs. Lui
+[ 428.2s] # 54 gameplay          fast    wait                     HUD with health bars and a ticking timer, fighters standing in the arena, no menu or round
+[ 444.6s] # 55 probe             probe   HOLD:X:3 STICK:left:1.2 STICK:right:1.2 control 0.427, under input 0.497
+[ 448.9s] # 56 gameplay          fast    wait                     Live round with HUD, health bars and a counting timer, no menu open. Prior probes were ref
+[ 469.0s] # 57 probe             probe   STICK:left:1.5 HOLD:X:3 STICK:left:1.2 STICK:right:1.2 control 0.387, under input 0.466
+[ 475.7s] # 58 gameplay          fast    wait                     HUD, health bars and a ticking timer (34) with both fighters in the arena and no menu open
+[ 497.1s] # 59 probe             probe   LEFT LEFT LT:2 LT+left:1.2 LT+right:1.2 control 0.522, under input 0.535
+[ 501.3s] # 60 gameplay          fast    wait                     Live round with HUD, health bars and a counting timer, no menu open. Earlier stick probes 
+[ 516.3s] # 61 probe             probe   LT:2 LT+left:1.2 LT+right:1.2 control 0.234, under input 0.445
+[ 520.5s] # 62 gameplay          fast    wait                     Live round with HUD, health bars and a counting timer; no pause panel or round banner. Ear
+[ 537.9s] # 63 probe             probe   X HOLD:B:3 STICK:left:1.2 STICK:right:1.2 control 0.316, under input 0.345
+[ 541.8s] # 64 cutscene          fast    START                    A 'LI MEI WINS!' round-end banner is up, so the round is over and this is not live control
+[ 549.2s] # 65 continue          fast    START                    A CONTINUE countdown after a lost round; per the rule, one START, then A if it stays. Not 
+[ 561.8s] # 66 submenu           fast    A                        Character select, not gameplay. The PRESS START here is a player-2 join prompt over an emp
+[ 571.6s] # 67 cutscene          fast    START                    A stage-title card over a fade, not live control. The frame is dimmed and no menu is highl
+[ 581.6s] # 68 cutscene          fast    START                    A round-start banner ('ROUND 1' over the fighters) is up, so the round is not live yet. Pe
+[ 588.3s] # 69 pause             fast    A                        A pause menu is open over a live round with RESUME highlighted; A resumes the fight withou
+[ 596.5s] # 70 gameplay          fast    wait                     HUD with health bars and a ticking timer, fighters in the arena, no menu open. Probing wit
+[ 613.9s] # 71 probe             probe   HOLD:B:3 STICK:left:1.2 STICK:right:1.2 control 0.329, under input 0.508
+[ 620.6s] # 72 gameplay          fast    wait                     Live round with HUD and a counting timer, no menu or banner. Earlier stick probes were ref
+[ 639.9s] # 73 probe             probe   LEFT LEFT LEFT STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.640, under input 0.583
+[ 647.4s] # 74 gameplay          fast    wait                     Live round with HUD and a counting timer, fighters in the arena, no menu open. Earlier sti
+[ 666.0s] # 75 probe             probe   A STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.498, under input 0.412
+[ 670.2s] # 76 gameplay          fast    wait                     Live round with HUD, health bars and a counting timer (11), no menu or banner up. Earlier 
+[ 690.2s] # 77 probe             probe   UP STICK:left:1.5 STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.250, under input 0.405
+[ 704.3s] # 78 unknown           fast    wait                     The opponent is down on the floor, which looks like a KO or round-end moment rather than c
+[ 714.7s] # 79 gameplay          fast    wait                     Live round with a full HUD and a counting timer (55); no menu open. The gold name banner m
+[ 731.8s] # 80 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.345, under input 0.378
+[ 736.3s] # 81 gameplay          fast    wait                     Live round with HUD, health bars and a ticking timer (39), no menu or banner up. Previous 
+[ 754.5s] # 82 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.331, under input 0.332
+[ 758.6s] # 83 gameplay          fast    wait                     Live round with HUD, health bars and a ticking timer (23), no menu open. Previous stick pr
+[ 776.1s] # 84 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.431, under input 0.434
+[ 784.4s] # 85 gameplay          fast    wait                     Live round with HUD, health bars and a counting timer, and no menu or round banner up. Ear
+[ 805.2s] # 86 probe             probe   RIGHT STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.395, under input 0.465
+[ 809.1s] # 87 continue          fast    START                    A CONTINUE countdown after a lost round; per the continue rule, one START then A if it sta
+[ 821.3s] # 88 gameplay          fast    A                        Wrong call: this is the character select grid with a 'PLAYER 2 PRESS START' join prompt, n
+[ 838.5s] # 89 probe             probe   A STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.902, under input 0.582
+[ 844.7s] # 90 gameplay          fast    wait                     Live round with HUD, health bars and a timer, no menu or banner up. Previous probes were r
+[ 864.3s] # 91 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.470, under input 0.371
+[ 871.0s] # 92 gameplay          fast    wait                     Live round with HUD, health bars and a counting timer (45), fighters in the arena, no menu
+[ 883.2s] # 93 probe             probe   STICK:left:1.5 STICK:left:1.5 STICK:left:1.5 control 0.104, under input 0.120
+[ 887.6s] # 94 gameplay          fast    wait                     HUD with health bars and a counting timer (33), fighters in the arena, no pause panel or m
+[ 908.1s] # 95 probe             probe   STICK:left:1.5 STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.283, under input 0.376
+{"name": "Mortal Kombat Deadly Alliance", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 71, "steps": 80, "replayed": 8, "reason": "budget 15 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

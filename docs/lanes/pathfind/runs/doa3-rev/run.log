@@ -1,0 +1,48 @@
+pathfind: Dead or Alive 3 (54430001) on nova: /storage/E6C6-D7AA/Games/XBox/54430001-Dead_or_Alive_3.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 54430001 any, loaded golden 220536a66fe2
+[   8.1s] #  1 publisher_logo    fast    A                        A white screen with only a green logo mark and no prompt is a publisher or intro logo, not
+[  15.1s] #  2 intro_video       fast    START                    This is the DOA3 federal/copyright warning scroll on a cold boot; per the Tecmo hints STAR
+[  24.6s] #  3 intro_video       fast    START                    This is the DOA3 federal/copyright warning scroll on a cold boot; hints say START and A do
+[  32.6s] #  4 intro_video       repeat  START                    repeat START: it advanced the intro_video
+[  42.0s] #  5 intro_video       fast    START                    This is the DOA3 federal/copyright warning scroll on a cold boot. Hints say START and A do
+[  52.4s] #  6 publisher_logo    fast    START                    The Tecmo logo is a new publisher logo after the DOA3 copyright scroll, which is progress.
+[  57.7s] #  7 black             black   wait                     black frame
+[  68.0s] #  8 cutscene          fast    START                    Logo over a night castle backdrop with no prompt or HUD, the same screen the recorded DOA3
+[  76.1s] #  9 title_screen      fast    START                    The DOA3 title with 'PRESS START BUTTON'; the hints and recorded path say START is the onl
+[  86.0s] # 10 main_menu         fast    A                        Mode select with STORY MODE highlighted in the centre; Story is the fastest route to a fig
+[  95.0s] # 11 submenu           fast    A                        Story-mode character select; per the select-screen rule, A on the highlighted character (K
+[ 105.5s] # 12 submenu           fast    A                        Story-mode character select; the last A on Kasumi changed little (0.02), so the pick may n
+[ 113.3s] # 13 submenu           fast    A                        Story-mode character select. The select-screen rule says A on the highlighted character ac
+[ 121.4s] # 14 cutscene          fast    A                        A subtitled line of dialogue over a 3D scene with no HUD is a story cutscene, not player c
+[ 129.6s] # 15 gameplay          fast    wait                     Live fighting round with HUD (health bars, infinity timer) and no round-start banner, KO o
+[ 147.3s] # 16 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.191, under input 0.123
+[ 153.9s] # 17 gameplay          fast    wait                     Live DOA3 round with HUD and health bars, no round-start banner, KO banner or prompt. Kasu
+[ 168.6s] # 18 probe             probe   STICK:upright:1.5        control 0.087, under input 0.486
+[ 207.0s] # 27 retracted         probe   wait                     retracted after 30 s: The 'YOU LOSE' overlay with 'God is on my side' text is a post-match
+[ 211.1s] # 28 continue          fast    START                    CONTINUE countdown after a lost round; per the rule, one START, then A if it stays. No cur
+[ 218.3s] # 29 cutscene          fast    A                        A subtitled line of dialogue over a 3D scene with no HUD is a story cutscene, not player c
+[ 226.4s] # 30 gameplay          fast    wait                     Live fighting round with HUD and both fighters in the arena, no round-start banner, KO ban
+[ 246.2s] # 31 probe             probe   STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.193, under input 0.588
+[ 253.4s] # 32 gameplay          fast    wait                     Round HUD with health bars and infinity timer is up, and Helena is knocked down mid-round,
+[ 273.4s] # 33 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.623, under input 0.681
+claim: 3 live reads with self-moving refused probes: entering the hold
+[ 307.7s] # 41 retracted         probe   wait                     retracted after 30 s: Shows a 'CONTINUE ?6' countdown with 'Press start to continue' and a
+[ 311.7s] # 42 continue          fast    START                    A CONTINUE countdown with 'Press start to continue' is on screen; per the continue rule, o
+[ 319.8s] # 43 title_screen      fast    START                    Title with 'PRESS START BUTTON'; hints say START is the only key that passes this prompt (
+[ 328.8s] # 44 main_menu         fast    A                        Mode select with STORY MODE highlighted in the centre. Story is the fastest route to a fig
+[ 339.1s] # 45 submenu           fast    A                        Story-mode character select. Per the select-screen rule, A on the highlighted Kasumi accep
+[ 348.0s] # 46 submenu           fast    A                        Story-mode character select; per the select-screen rule, A on the highlighted Kasumi accep
+[ 355.8s] # 47 submenu           fast    A                        Character select on the Story path. Per the select-screen rule, A on the highlighted chara
+[ 364.3s] # 48 cutscene          fast    A                        A subtitled line of dialogue over a 3D scene with no HUD is a story cutscene, not player c
+[ 376.9s] # 49 gameplay          fast    wait                     Live round with HUD, health bars and infinity timer, and a fighter airborne mid-combo. Not
+[ 393.8s] # 50 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.506, under input 0.355
+[ 427.5s] # 58 retracted         probe   wait                     retracted after 30 s: The 'REPLAY' overlay indicates a replay playback of a fight rather t
+[ 431.1s] # 59 cutscene          fast    A                        The REPLAY banner marks a replay of a finished moment, not live control, so this is not ga
+[ 440.9s] # 60 continue          fast    START                    A round has been lost (YOU LOSE banner), so a CONTINUE countdown or game-over path follows
+[ 449.9s] # 61 gameplay          fast    wait                     A round-start banner ('GET READY') is shown, which the rules say is not yet live. Wait 2 s
+[ 465.3s] # 62 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.646, under input 0.660
+[ 466.1s] # 63 diverged          diverged wait                     replay diverged at recorded step 0 (loading: Only a centered green logo animation on white
+{"name": "Dead or Alive 3", "device": "nova", "result": "diverged", "minutes": 7.77, "model_calls": 38, "steps": 41, "replayed": 0, "reason": "replay diverged at recorded step 0 (loading: Only a centered green logo animation on white with no prompt; not a title or menu. Nothing to press yet, so wait and loo)", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

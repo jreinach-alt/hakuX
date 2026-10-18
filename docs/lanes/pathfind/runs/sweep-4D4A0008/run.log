@@ -1,0 +1,20 @@
+pathfind: Blowout (4D4A0008) on nova: /storage/E6C6-D7AA/Games/XBox/4D4A0008-Blowout.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4D4A0008 any, loaded none
+[  17.8s] #  1 loading           fast    wait                     Blank white screen with a rotating green 3D logo-like object and no menu or prompt; this l
+[  30.6s] #  2 title_screen      fast    START                    Title screen with 'Press START' prompt; START advances past it per the title hint.
+[  43.8s] #  3 main_menu         fast    UP A                     Main menu with New Game available; New Game is the fastest route to play per the hints. Cu
+[  58.0s] #  4 submenu           fast    UP A                     Confirmation dialog for New Game. Yes starts the game; the highlight is unclear (No looks 
+[  69.2s] #  5 main_menu         fast    A                        Game's main menu; 'Next Mission' is the top, highlighted item and is the fastest route int
+[  82.0s] #  6 main_menu         fast    A                        Start Mission is the highlighted item and leads straight into play; Options should be avoi
+[  95.5s] #  7 gameplay          fast    wait                     Player-controlled character visible in the game world with a dim HUD-less 3D playfield aft
+[ 108.4s] #  8 probe             probe   STICK:right:1.5          control 0.092, under input 0.185
+hold-play: genre shooter, need 600 s of play
+hold-play: fps at 185 s: median 29.0, share>=30 1.0 over 93 samples
+hold-play: fps at 315 s: median 29.0, share>=30 1.0 over 158 samples
+hold-play: HELD 604/600 s of play; 
+held Blowout for 780s
+VERDICT Blowout ? FAIL(menu time: 77.6% of the scored window in `play` (bar 90%; play 605 s, still 175 s, no-timeline 0 s)) gameplay=779.9s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.3564 play_share=0.7759 fps_excluded=176.2s
+{"name": "Blowout", "device": "nova", "result": "gameplay", "minutes": 1.81, "model_calls": 25, "steps": 8, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4D4A0008/frames/007-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

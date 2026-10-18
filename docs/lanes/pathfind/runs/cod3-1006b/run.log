@@ -1,0 +1,44 @@
+pathfind: Call of Duty 3 (4156005D) on nova: /storage/E6C6-D7AA/Games/XBox/4156005D-Call_of_Duty_3.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4156005D any, loaded golden a1647bf6ddb4
+[   5.4s] #  1 publisher_logo    replay  START                    replay step 0: A publisher/splash logo before the title; no skip prompt visible, so wait f
+[  13.5s] #  2 loading           fast    wait                     Loading screen with a countdown spinner, not a menu or prompt; nothing to press. Wait for 
+[  23.2s] #  3 publisher_logo    fast    START                    This is an animated publisher/splash logo still in motion, not a title or menu; the record
+[  29.0s] #  4 title_screen      replay  START                    replay step 3: Title screen with 'PRESS START' prompt; START advances it. No menu cursor y
+[  37.1s] #  5 main_menu         fast    A                        Main menu with SINGLE PLAYER already highlighted and a profile selected; A on it starts th
+[  41.7s] #  6 main_menu         replay  A                        replay step 5: Submenu under Single Player with NEW GAME highlighted; New Game is the fast
+[  48.0s] #  7 save_load_prompt  replay  UP A                     replay step 6: Overwrite-save warning defaults to No, which would loop back; Yes must be c
+[  59.9s] #  8 submenu           fast    A                        Difficulty prompt for New Game with NORMAL (the default) highlighted; A accepts the defaul
+[  65.2s] #  9 cutscene          replay  START                    replay step 8: New Game was already confirmed, so this is the opening cinematic in the wor
+[  73.5s] # 10 cutscene          fast    START                    Scripted scene with letterbox bars and no HUD or player control. Not gameplay. The recorde
+[  78.8s] # 11 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[  84.2s] # 12 cutscene          replay  START                    replay step 9: repeat START: it advanced the cutscene
+[  90.3s] # 13 cutscene          replay  START                    replay step 12: repeat START: it advanced the cutscene
+[  94.7s] # 14 cutscene          replay  START                    replay step 13: repeat START: it advanced the cutscene
+[  99.0s] # 15 cutscene          replay  START                    replay step 14: repeat START: it advanced the cutscene
+[ 103.4s] # 16 cutscene          replay  START                    replay step 15: Letterboxed scripted march with no HUD or menu; not playable. Prior cutsce
+[ 112.8s] # 17 cutscene          fast    START                    A map-title card between scripted scenes, with letterbox bars and no HUD or player control
+[ 120.1s] # 18 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 125.2s] # 19 cutscene          replay  START                    replay step 18: Mission-briefing title card between scripted scenes, no HUD or player cont
+[ 133.5s] # 20 cutscene          fast    START                    Mission-title card between scripted scenes, not playable and not a menu. Earlier title car
+[ 138.7s] # 21 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 144.1s] # 22 cutscene          replay  START                    replay step 19: repeat START: it advanced the cutscene
+[ 149.4s] # 23 cutscene          replay  START                    replay step 20: repeat START: it advanced the cutscene
+[ 162.1s] # 24 cutscene          fast    START                    A scripted in-world scene with no HUD and no player control is not gameplay. The recorded 
+[ 166.4s] # 25 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 170.9s] # 26 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 175.1s] # 27 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 179.7s] # 28 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 183.9s] # 29 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 194.1s] # 30 gameplay          fast    wait                     HUD (radar, objective, ammo counters) is up and the tutorial caption asks for stick moveme
+[ 203.7s] # 31 probe             probe   STICK:up:1.5             control 0.000, under input 0.387
+hold-play: genre shooter, need 600 s of play
+hold-play: fps at 190 s: median 29.0, share>=30 0.753 over 93 samples
+hold-play: fps at 310 s: median 29.0, share>=30 0.75 over 152 samples
+hold-play: validity check stop 0 s (hold 603 s of play, verdict 602.8)
+hold-play: not held 603/600 s of play; verdict stops the hold: fps_ok 1.0, crash False, hang False
+held Call of Duty 3 for 605s
+VERDICT Call of Duty 3 ? PASS None gameplay=603.4s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0092 play_share=0.9998 fps_excluded=0.0s
+{"name": "Call of Duty 3", "device": "nova", "result": "gameplay", "minutes": 3.4, "model_calls": 18, "steps": 31, "replayed": 13, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/cod3-1006b/frames/030-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "6f0bdeb80c1d", "42530009": "1b96f2b25d76", "4256

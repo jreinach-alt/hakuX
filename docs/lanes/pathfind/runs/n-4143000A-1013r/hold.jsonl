@@ -1,0 +1,66 @@
+{"n": 20, "hold_s": 1.1, "play_s": 7.4, "changed": null, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": true}
+{"n": 21, "hold_s": 8.7, "play_s": 15.7, "changed": 0.3932, "off": false, "shift_look": 2.24, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 22, "hold_s": 17.1, "play_s": 24.1, "changed": 0.4668, "off": false, "shift_look": 1.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 23, "hold_s": 25.4, "play_s": 32.1, "changed": 0.2309, "off": false, "shift_look": 1.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 24, "hold_s": 33.5, "play_s": 40.4, "changed": 0.222, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.6447, "kept": true}
+{"n": 25, "hold_s": 41.9, "play_s": 49.0, "changed": 0.2739, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 26, "hold_s": 50.5, "play_s": 57.4, "changed": 0.2833, "off": false, "shift_look": 3.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 27, "hold_s": 58.9, "play_s": 65.9, "changed": 0.2035, "off": false, "shift_look": 1.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 28, "hold_s": 67.4, "play_s": 74.2, "changed": 0.1179, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.322, "kept": true}
+{"n": 29, "hold_s": 75.8, "play_s": 82.4, "changed": 0.1611, "off": false, "shift_look": 1.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 30, "hold_s": 84.0, "play_s": 90.9, "changed": 0.1621, "off": false, "shift_look": 1.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 31, "hold_s": 92.5, "play_s": 110.2, "changed": 0.1692, "off": false, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "ATV actively racing on track in lap 1 of 3, other vehicles visible, speedometer and position HUD active", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 32, "hold_s": 111.8, "play_s": 118.3, "changed": 0.1127, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.2021, "kept": true}
+{"n": 33, "hold_s": 120.0, "play_s": 126.3, "changed": 0.181, "off": false, "shift_look": 1.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 34, "hold_s": 128.0, "play_s": 134.2, "changed": 0.1765, "off": false, "shift_look": 1.41, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 35, "hold_s": 135.9, "play_s": 142.4, "changed": 0.0961, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 36, "hold_s": 144.1, "play_s": 150.6, "changed": 0.0869, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.1458, "kept": true}
+{"n": 37, "hold_s": 152.4, "play_s": 159.1, "changed": 0.1691, "off": false, "shift_look": 1.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 38, "hold_s": 161.0, "play_s": 167.2, "changed": 0.1702, "off": false, "shift_look": 1.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 39, "hold_s": 169.1, "play_s": 175.6, "changed": 0.1614, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 40, "hold_s": 177.5, "play_s": 183.7, "changed": 0.0802, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.2043, "kept": true}
+{"n": 41, "hold_s": 185.6, "play_s": 207.2, "changed": 0.1541, "off": false, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Player's ATV is actively racing on track with lap counter and position indicator visible; vehicle is on-track in the game world", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 42, "hold_s": 209.2, "play_s": 215.7, "changed": 0.1165, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.0829, "kept": true}
+{"n": 43, "hold_s": 218.0, "play_s": 224.0, "changed": 0.2033, "off": false, "shift_look": 2.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 44, "hold_s": 226.2, "play_s": 232.4, "changed": 0.198, "off": false, "shift_look": 2.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 45, "hold_s": 234.7, "play_s": 241.0, "changed": 0.0438, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 46, "hold_s": 243.2, "play_s": 249.1, "changed": 0.0543, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.0749, "kept": true}
+{"n": 47, "hold_s": 251.5, "play_s": 257.4, "changed": 0.1313, "off": false, "shift_look": 1.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 48, "hold_s": 259.7, "play_s": 265.5, "changed": 0.1144, "off": false, "shift_look": 1.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 49, "hold_s": 267.8, "play_s": 273.7, "changed": 0.0664, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 50, "hold_s": 276.1, "play_s": 302.0, "changed": 0.0939, "off": false, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "ATV in active race at position 4/11, lap 3 of sandy track with HUD visible, vehicle on course", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.0721, "stuck": {"menu": false, "run": 4, "reason": "scene unchanged for 4 consecutive samples (genre drive)", "action": ["LT+left:3", "RT+right:3"], "abort": false}, "kept": true}
+{"n": 51, "hold_s": 312.6, "play_s": 310.4, "changed": 0.7889, "off": false, "shift_look": 2.83, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.7877, "kept": true}
+{"n": 52, "hold_s": 321.1, "play_s": 318.5, "changed": 0.4231, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 53, "hold_s": 329.1, "play_s": 326.6, "changed": 0.3837, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 54, "hold_s": 337.2, "play_s": 334.6, "changed": 0.4535, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 55, "hold_s": 345.2, "play_s": 342.7, "changed": 0.385, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.5091, "kept": true}
+{"n": 56, "hold_s": 353.5, "play_s": 351.0, "changed": 0.4889, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 57, "hold_s": 361.8, "play_s": 359.0, "changed": 0.5568, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 58, "hold_s": 369.8, "play_s": 359.0, "changed": 0.5581, "off": false, "shift_look": 0.0, "src": "check", "state": "results", "why": "Post-race prompt 'RACE AGAIN?' with YES/NO menu; game world visible but not running", "action": ["A"], "kept": false}
+{"n": 59, "hold_s": 381.4, "play_s": 359.0, "changed": 0.5202, "off": true, "shift_look": 21.93, "src": "check", "state": "continue", "why": "Continue prompt overlay with A button indicator at bottom center; game world (Dunes Lagoon track) visible but player not in active control", "continue": 1, "action": ["START"], "kept": true}
+{"n": 60, "hold_s": 392.2, "play_s": 359.0, "changed": 0.6178, "off": true, "shift_look": 18.03, "src": "check", "state": "pause", "why": "Pause menu displayed with PAUSED text at top; RESUME/QUIT options visible; game world frozen behind menu", "action": ["START"], "kept": false}
+{"n": 61, "hold_s": 405.4, "play_s": 398.6, "changed": 0.8596, "off": true, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Player's ATV actively racing against competitors in a 3-lap event; position 6th on sandy desert track", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 62, "hold_s": 444.9, "play_s": 406.6, "changed": 0.4811, "off": false, "shift_look": 1.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.8558, "kept": true}
+{"n": 63, "hold_s": 452.9, "play_s": 414.3, "changed": 0.5082, "off": false, "shift_look": 2.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 64, "hold_s": 460.7, "play_s": 422.2, "changed": 0.2977, "off": false, "shift_look": 2.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 65, "hold_s": 468.7, "play_s": 430.2, "changed": 0.2671, "off": false, "shift_look": 1.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 66, "hold_s": 476.7, "play_s": 438.3, "changed": 0.2803, "off": false, "shift_look": 2.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.5898, "kept": true}
+{"n": 67, "hold_s": 484.8, "play_s": 445.9, "changed": 0.213, "off": false, "shift_look": 1.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 68, "hold_s": 492.5, "play_s": 453.6, "changed": 0.2741, "off": false, "shift_look": 1.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 69, "hold_s": 500.2, "play_s": 470.5, "changed": 0.2209, "off": false, "shift_look": 1.0, "src": "check", "state": "gameplay", "why": "Player's ATV quad is in the game world on the racing track, lap 1/3, position 3rd; game HUD shows active speedometer and race state", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 70, "hold_s": 517.0, "play_s": 477.9, "changed": 0.2122, "off": false, "shift_look": 1.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.2993, "kept": true}
+{"n": 71, "hold_s": 524.6, "play_s": 485.9, "changed": 0.2474, "off": false, "shift_look": 2.24, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 72, "hold_s": 532.6, "play_s": 493.8, "changed": 0.1912, "off": false, "shift_look": 2.24, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 73, "hold_s": 540.5, "play_s": 501.5, "changed": 0.1554, "off": false, "shift_look": 1.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 74, "hold_s": 548.1, "play_s": 509.0, "changed": 0.1354, "off": false, "shift_look": 1.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.1713, "kept": true}
+{"n": 75, "hold_s": 555.7, "play_s": 516.5, "changed": 0.2082, "off": false, "shift_look": 1.41, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 76, "hold_s": 563.3, "play_s": 524.2, "changed": 0.2329, "off": false, "shift_look": 1.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 77, "hold_s": 571.0, "play_s": 532.0, "changed": 0.1843, "off": false, "shift_look": 1.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 78, "hold_s": 578.7, "play_s": 539.9, "changed": 0.1625, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.2144, "kept": true}
+{"n": 79, "hold_s": 586.8, "play_s": 548.0, "changed": 0.1692, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 80, "hold_s": 594.9, "play_s": 569.2, "changed": 0.2304, "off": false, "shift_look": 1.0, "src": "check", "state": "gameplay", "why": "Player actively racing lap 1/3 in 8th position; ATV on track with race HUD, position, score, and lap counter visible", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 81, "hold_s": 616.0, "play_s": 577.0, "changed": 0.2115, "off": false, "shift_look": 1.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.2381, "kept": true}
+{"n": 82, "hold_s": 624.0, "play_s": 585.0, "changed": 0.1837, "off": false, "shift_look": 0.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 83, "hold_s": 631.9, "play_s": 592.7, "changed": 0.2329, "off": false, "shift_look": 1.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 84, "hold_s": 639.7, "play_s": 600.6, "changed": 0.2095, "off": false, "shift_look": 1.0, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"check": "stop", "short_s": 0.0, "hold_play_s": 600.6, "verdict_play_s": 586.4, "gameplay_s": 646.7}

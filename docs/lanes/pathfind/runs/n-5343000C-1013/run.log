@@ -1,0 +1,33 @@
+pathfind: Conflict Global Terror USA (5343000C) on nova: /storage/E6C6-D7AA/Games/XBox/5343000C-Conflict_Global_Terror_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 5343000C any, loaded none
+[  46.3s] #  1 black             fast    wait                     Very early in boot (0.1 min), screen appears to be mostly empty with a fading gradient sha
+[  62.0s] #  2 cutscene          fast    START                    Intro cinematic at 0.9 min post-boot, showing game world but not playable (letterboxed, da
+[  76.1s] #  3 profile_creation  fast    A                        Profile menu with CREATE NEW PROFILE highlighted; cursor is on the option to select. Xbox 
+[ 143.5s] #  4 name_entry        fast    START A                  On a name entry keyboard for profile creation. No default name visible in text field. Per 
+[ 177.8s] #  5 name_entry        fast    START A                  On keyboard with one letter 'a' already entered. Per instructions: press START to jump to 
+[ 233.4s] #  6 name_entry        fast    DOWN DOWN DOWN RIGHT A   On keyboard after typing profile name 'aa'; need to navigate to ACCEPT button to confirm t
+[ 254.8s] #  7 main_menu         fast    DOWN A                   Menu reached after profile creation. Cursor on TRAINING; moving down to SINGLE PLAYER (fas
+[ 272.3s] #  8 submenu           fast    A                        NEW GAME is highlighted on the Single Player submenu; selecting it reaches gameplay fastes
+[ 288.9s] #  9 submenu           fast    A                        Difficulty selection before campaign gameplay. NORMAL is already highlighted (the bright g
+[ 303.0s] # 10 cutscene          fast    START                    Intro cinematic after difficulty selection; atmospheric letterboxed scene before gameplay 
+[ 315.4s] # 11 loading           fast    wait                     Loading bar in progress; not yet at gameplay. Wait for load to complete.
+[ 328.2s] # 12 gameplay          fast    wait                     HUD elements present (objective banner, compass, squad indicator, status bars) and player 
+[ 343.8s] # 13 probe             probe   STICK:up:1.5             control 0.001, under input 0.553
+hold-play: genre shooter, need 600 s of play
+hold-play: fps at 191 s: median 29.0, share>=30 1.0 over 95 samples
+hold-play: fps at 303 s: median 29.0, share>=30 0.987 over 151 samples
+hold-play: off play for 12 steps (game_over): ladder round 1
+hold-play: off play for 12 steps (game_over): ladder round 2
+hold-play: 3 still looks: walk reversed (forward) at 989 s
+hold-play: 3 still looks: walk reversed (back) at 1163 s
+hold-play: off play for 12 steps (game_over): ladder round 3
+hold-play: off play for 12 steps (game_over): ladder round 4
+hold-play: off play for 12 steps (game_over): ladder round 5
+hold-play: 3 still looks: walk reversed (forward) at 1998 s
+hold-play: not held 182/600 s of play; budget 40 min with 182 s of play
+held Conflict Global Terror USA for 2043s
+VERDICT Conflict Global Terror USA ? FAIL(menu time: 8.8% of the scored window in `play` (bar 90%; game_over 1714 s, play 181 s, results 94 s, menu 44 s)) gameplay=2042.1s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=1/0.03pm worst_ms=247.6 static_frac=0.0003 play_share=0.0885 fps_excluded=1862.5s
+{"name": "Conflict Global Terror USA", "device": "nova", "result": "gameplay", "minutes": 5.73, "model_calls": 96, "steps": 13, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5343000C-1013/frames/012-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

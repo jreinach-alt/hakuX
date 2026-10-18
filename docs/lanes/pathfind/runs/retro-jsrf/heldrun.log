@@ -1,0 +1,41 @@
+taken: nova by lane.pathfind
+NOT IDLE: nova is held but busy -- do not touch it yet:
+dispatcher pid 3235567 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+running: 1791167617-lane.accuracy804-3666473 on nova
+run: hold.sh wait-idle nova <timeout_s>, and touch the device only on exit 0
+waiting for nova: dispatcher pid 3235567 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+running: 1791167617-lane.accuracy804-3666473 on nova
+idle: nova is held and runs nothing
+held at 20:06:34
+pathfind: JSRF - Jet Set Radio Future (USA) (None) on nova: /storage/E6C6-D7AA/Games/XBox/JSRF - Jet Set Radio Future (USA).xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: - first-run, loaded all goldens (title not identified)
+[  11.3s] #  1 publisher_logo    fast    A                        Early boot, no title or menu yet; a logo-like graphic is on screen, so per hints I skip wi
+[  16.6s] #  2 publisher_logo    repeat  A                        repeat A: it advanced the publisher_logo
+[  24.8s] #  3 publisher_logo    fast    A                        ADX publisher/middleware logo, still early boot; per hints skip with A, and A has advanced
+[  32.4s] #  4 publisher_logo    fast    A                        This is a SEGA legal/anti-graffiti notice in early boot, not a title or menu yet. Per the 
+[  41.4s] #  5 loading           fast    wait                     Loading screen with a spinner-style 'Now Loading' indicator; nothing to press, so wait for
+[  50.0s] #  6 loading           fast    wait                     Still early boot, the game's title art is assembling over the city backdrop with no prompt
+[  59.5s] #  7 title_screen      fast    wait                     Title art is up, but no 'Press START' prompt is shown yet; the screen is still assembling,
+[  67.4s] #  8 title_screen      fast    wait                     Title art is up but no press prompt is shown; the screen may still be settling, so wait an
+[  77.6s] #  9 title_screen      fast    START                    This is the title/attract screen with the 'PLEASE PRESS START TO BEGIN' prompt; the hint s
+[  86.3s] # 10 title_screen      fast    START                    Title screen with a 'Press START' prompt; the hint says JSRF's prompt wants START, so pres
+[  95.4s] # 11 main_menu         fast    A                        Title menu is up with NEW GAME already highlighted (the brightest item); New Game is the f
+[ 104.7s] # 12 cutscene          fast    A                        Letterbox bars and no HUD mean an intro cinematic after New Game, not player control yet. 
+[ 114.3s] # 13 cutscene          fast    A                        Story dialogue from a cutscene after New Game, not player control yet. The green A icon sh
+[ 118.8s] # 14 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 123.3s] # 15 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 131.9s] # 16 gameplay          fast    wait                     Character is player-controlled in the world with a HUD (spray can, meter bar) and no menu 
+[ 143.6s] # 17 probe             probe   STICK:up:1.5             control 0.017, under input 0.585
+hold-play: genre other, need 600 s of play
+hold-play: fps at 188 s: median 59.0, share>=30 1.0 over 190 samples
+hold-play: fps at 311 s: median 59.0, share>=30 1.0 over 311 samples
+hold-play: HELD 600/600 s of play; 
+held JSRF - Jet Set Radio Future (USA) for 602s
+VERDICT JSRF - Jet Set Radio Future (USA) ? PASS None gameplay=602.4s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0135 play_share=0.9997 fps_excluded=2.0s
+{"name": "JSRF - Jet Set Radio Future (USA)", "device": "nova", "result": "gameplay", "minutes": 2.39, "model_calls": 22, "steps": 17, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/retro-jsrf/frames/016-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256
+pathfind rc=0 at 20:19:51
+released: nova by lane.pathfind
+released rc=0

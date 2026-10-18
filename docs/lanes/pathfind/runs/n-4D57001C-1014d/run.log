@@ -1,0 +1,42 @@
+pathfind: Midway Arcade Treasures USA Europe (4D57001C) on nova: /storage/E6C6-D7AA/Games/XBox/4D57001C-Midway_Arcade_Treasures_USA_Europe.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4D57001C any, loaded none
+[  14.7s] #  1 publisher_logo    fast    A                        Midway Games publisher logo at boot; this title is 4D57001C, same publisher as other Midwa
+[  32.6s] #  2 publisher_logo    fast    A                        Still in the intro/logo sequence; the animated M logo is typical of Midway publisher brand
+[  52.0s] #  3 loading           fast    A                        After two publisher logos, now showing a detailed game environment. No menu text or 'Press
+[  69.6s] #  4 controller_prompt fast    A                        Tutorial screen explaining the control scheme. Similar to Gauntlet's 'Press A Button when 
+[  86.4s] #  5 submenu           fast    A                        Game mode selection menu; ONE PLAYER is highlighted on the left side
+[ 148.2s] #  6 submenu           fast    A                        After selecting ONE PLAYER mode, the arcade game is displaying a disclaimer screen. 'GAME 
+[ 165.3s] #  7 loading           fast    wait                     After selecting ONE PLAYER and confirming a GAME OVER disclaimer, the screen has transitio
+[ 180.6s] #  8 loading           fast    wait                     Animated loading screen with transitional visual effect. The diagonal hatches indicate the
+[ 210.1s] #  9 game_over         fast    A                        The 'GAME OVER' text and credits confirm the game has ended; we have not yet reached the p
+[ 259.0s] # 10 controller_prompt fast    A                        Instruction/tutorial screen similar to step 4, explaining game mechanics; needs A to dismi
+[ 284.3s] # 11 game_over         fast    A                        The 'GAME OVER' text and high score tables indicate the game has ended. This is a results/
+[ 298.0s] # 12 game_over         fast    A                        GAME OVER text displayed; results/high score screen, not gameplay; needs A to dismiss and 
+[ 321.1s] # 13 game_over         fast    A                        GAME OVER text at bottom indicates this is a results or between-round screen from a classi
+[ 336.3s] # 14 submenu           fast    A                        Game mode selection screen; 'PRESS ONE PLAYER' is the fastest path to single-player gamepl
+[ 351.9s] # 15 game_over         fast    A                        GAME OVER text at bottom-left confirms this is a results/end-of-round screen from a classi
+[ 399.3s] # 16 game_over         fast    START                    Arcade game over screen with remaining credits displayed; A button presses looped without 
+[ 445.7s] # 17 submenu           fast    A                        Experience/difficulty level selection menu; TRAINING LEVEL appears to be the highlighted d
+[ 504.3s] # 18 game_over         fast    A                        The 'YOU DIE!' message confirms the player character died immediately after starting the t
+[ 574.0s] # 19 game_over         fast    A                        The screen displays 'GAME OVER' text and shows a warning overlay from the arcade game's pu
+[ 591.8s] # 20 game_over         fast    START                    GAME OVER text with leaderboards and remaining credits; we are stuck looping through game_
+[ 606.8s] # 21 submenu           fast    A                        Experience level selection screen before starting gameplay. EXPERIENCED LEVEL is highlight
+[ 664.5s] # 22 gameplay          fast    wait                     Active HUD with running timer, visible player character in game world in arcade environmen
+[ 668.8s] # 23 probe             probe   STICK:up:1.5             control 0.617, under input 0.000
+[ 692.0s] # 24 results           fast    A                        Leaderboard display showing high scores after game over. Bottom text offers mode selection
+[ 772.9s] # 25 submenu           fast    A                        After the results screen at step 24, this appears to be a game or mode selection screen di
+[ 800.9s] # 26 results           fast    A                        High score / leaderboard display after arcade game ended; player must select a mode to con
+[ 816.0s] # 27 loading           fast    A                        Solid blue screen with active FPS counter suggests the emulator and game are running but w
+[ 834.2s] # 28 game_over         fast    A                        Game over screen for an arcade title showing 'GAME OVER' highlighted, ready for input to c
+[ 847.3s] # 29 submenu           fast    A                        Game mode selection for a skateboarding arcade title; 'ONE PLAYER' is highlighted and lead
+[ 894.0s] # 30 submenu           fast    A                        Mode selection screen between ONE PLAYER and FREE PLAY; needs confirmation to proceed to g
+[ 910.6s] # 31 loading           fast    wait                     Solid blue background with active FPS counter indicates the emulator is running and the ga
+[ 987.2s] # 32 submenu           fast    A                        Mode selection screen between ONE PLAYER and FREE PLAY; ONE PLAYER appears highlighted/def
+[ 998.3s] # 33 loading           fast    wait                     Active FPS counter (59) on a solid blue background indicates the game is loading; no UI or
+[1053.4s] # 34 game_over         fast    A                        Game ended after loading and attempted to play; credits rolling on game over screen. This 
+[1131.4s] # 35 submenu           fast    RIGHT                    Mode selection for 720 arcade game; already pressed A three times on this screen (steps 29
+[1208.0s] # 36 submenu           fast    RIGHT                    Mode selection for the 720° arcade game. ONE PLAYER appears highlighted (bright blue). Ste
+{"name": "Midway Arcade Treasures USA Europe", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 35, "steps": 36, "replayed": 0, "reason": "budget 20 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

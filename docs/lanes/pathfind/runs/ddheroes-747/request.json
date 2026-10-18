@@ -1,0 +1,32 @@
+{
+  "id": "1790878175-autoverdict-2230436",
+  "requester": "autoverdict",
+  "purpose": "#433 Playable confirmation (600-s rule, nominated: 30-fps title never run on the Nova (#433/#507))",
+  "program": "pgraph",
+  "suites": [],
+  "tests": [],
+  "skip_tests": [],
+  "ref": "ec244430e3",
+  "arm": "company",
+  "runs": 1,
+  "title": "49470013-Dungeons_Dragons_Heroes.xiso.iso",
+  "seconds": 840,
+  "device": "nova",
+  "pin": "hard",
+  "pull_glob": "",
+  "audio_capture": "",
+  "base_iso": "",
+  "perflog": "",
+  "only_tests": [],
+  "env": [
+    "PERF_REGIMEN=default"
+  ],
+  "frames_every": 0,
+  "route_name": "dnd-heroes",
+  "route": "# Dungeons & Dragons Heroes (49470013): first-run route (the default hero\n# is not saved before control). PLAYED by nav.py on the Thor, 2026-09-27\n# 07:14 PDT (lane.titleroutes HELD session dnd-heroes.first-run-20260927T071435).\n#\n#   the Bink and publisher logos -> three A presses 5 s apart, which went\n#   through the title and the menus unseen -> the hero select, FIGHTER\n#   Human, \"Press START to Join\" for player 2 (A) -> Name Your Hero with the\n#   default \"ARADIN\" (A) -> \"Loading\" with a Types of Spells card -> the\n#   opening cutscene with the dwarves (A and START do not end it; it runs\n#   about 40 s warm, much longer cold) -> ARADIN in the ruins, health and\n#   mana bars, keys and potions 0/0/0.\n#\n# The three unseen A presses are the fragile part: if the menus come at a\n# different pace, the replay frames show where it stopped.\n#\n# NOT yet replayed. Two replays of the nav session's draft failed: replay 1\n# marked inside the cutscene, which ran at 2 fps; replay 2 was in play when\n# the draft's START landed, which opened Game Options, and the play\n# pattern's A then chose Save Game. This version drops that START and waits\n# 150 s after `skip` for the cutscene to end. A spare A in play is an attack.\n#\n# Still NOT replayed (2026-09-27 12:30 PDT). This version's soak,\n# 0-0-x-1790527983-titleroutes-2100395, is void for a reason outside the\n# route: hakuX rendered on display 0 but did not have the Thor's input\n# focus, so no press reached the game. The title sat in its own loop, the\n# main menu for about 40 s and then the attract demo for about 80 s, and\n# the frames `name`, `load` and `skip` are that demo (heroes with keys and\n# potions already collected). One thing it did show: on a cold boot the\n# main menu, NEW GAME highlighted, is up about 55 s after launch with no\n# press at all (`a3`).\n#\n# Player control: LY min walked the fighter down the screen, A and X\n# attacked; X also opens the skill list (Avid Pursuit, War Cry, Thrown\n# Dagger), so the play pattern presses A only. Nav frames 008-gameplay ->\n# 009-moved.\n#\n# REPLAYED 2026-09-27 13:04 PDT, in a HELD Thor session, unattended, with\n# hakuX holding the input focus on all 17 reads of `dumpsys input`. The frame\n# at the mark is ARADIN in the ruins, out of the cutscene (overlay FPS 15);\n# 40 s later he stands at the torch-lit sign further on\n# (scratch/replay/dnd-heroes-130437/zz-end.png, FPS 11). The boot was warm.\nwait 26.8\nshot boot\nwait 9.6\npress A\nwait 5.4\npress A\nwait 5.4\npress A\nwait 5.1\nshot a3\nwait 9.2\npress A\nwait 6.1\nshot fighter\nwait 10.9\npress A\nwait 6.1\nshot name\nwait 24.5\nshot load\nwait 9.1\npress A\nwait 5.4\npress A\nwait 5.1\nshot skip\nwait 60\nshot cut2\nwait 90\nmark gameplay\nrepeat forever {\n    axis LY min\n    wait 2\n    press A\n    axis LX max\n    wait 1\n    press A\n    axis LX mid\n    axis LY max\n    wait 2\n    press A\n    axis LX min\n    wait 1\n    press A\n    axis LX mid\n    axis LY mid\n    wait 0.5\n}",
+  "expect": "",
+  "expect_sha": "",
+  "no_expect": "Playable confirmation, judged by autoverdict",
+  "priority": "study",
+  "queued_utc": "2026-10-01T18:09:36Z"
+}
