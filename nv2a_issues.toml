@@ -6535,3 +6535,13 @@ status = "open"
 dispatch_state = "available"
 blocked_on = ""
 status_note = "Filed 2026-10-17 from the 10-06 pathfind run's frames (deadly-alliance-1006), noticed while building the title's preliminary Wall card. Owner 2026-10-17 ~23:50 PDT: this defect disqualifies the title from Playable (most frames show white arenas); a fix now stands between Mortal Kombat: Deadly Alliance and Playable. First step: one Nova run on the current build (GPU: PurpleVK line, fights in two or more arenas, a frame dump of a white-arena frame)."
+
+[issue.1071]
+title = "classify.py names a dark menu `black` on mean luminance alone, so a title's save prompt stalls a route as a load"
+suites = []
+no_suites = "A route-classifier threshold defect, not an emulator rendering defect; no pgraph suite covers it."
+disposition = "defect"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "Filed 2026-10-18 from lane.pathfind's own OUTBOX (branch origin/lane/pathfind): classify.py:381-383 tests `lu < BLACK_LUMA(8.0) or flat` with no std term, so a dark text prompt (e.g. Bloody Roar Extreme's save-data Yes/No, mean 1.17/std 12.31) reads as a black load screen and stalls a route. pathfind.py's own is_black already requires low std too; the fix is adding the same std floor to classify.py's black test, with a selftest frame from this run. classify.py and classify_selftest.py are released to [free] (left there by the folded lane.pathclass); no lane currently owns this fix -- available for the next lane.local dispatch, not blocked on anything."
