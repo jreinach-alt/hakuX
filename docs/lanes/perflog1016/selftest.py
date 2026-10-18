@@ -21,6 +21,15 @@ launch-time clear). Each static check reads both sides from source, and each
 has a mutant of one side, applied in memory, that it must catch. The toggle's
 own logic (createNewFile/delete) needs a device; these checks do not reach it.
 
+The wiring checks do the same for the three files the lend granted:
+profile.c defines the implementation before its first include and prints its
+block only while the switch is on; renderer.c polls once, after the
+once-a-second limit and before the dump's early returns; pfifo.c reads the
+switch once per puller call and per pusher pass and reads no clock outside
+it. A link error or a clock read the switch does not gate would otherwise
+show only on a device. Last, the A/B reader (abread.py) against synthetic
+result dirs: each fixture must give its named verdict.
+
 Exit 0 only if every check passes on the real sources and every mutant is
 caught. Needs a C compiler; no QEMU tree build, no device.
 """
@@ -43,6 +52,8 @@ SIDES = {
     'main': 'android/app/src/main/java/com/rfandango/haku_x/MainActivity.kt',
     'hdr': HDR,
     'renderer': 'hw/xbox/nv2a/pgraph/vk/renderer.c',
+    'profile': 'hw/xbox/nv2a/pgraph/profile.c',
+    'pfifo': 'hw/xbox/nv2a/pfifo.c',
     'spec': 'docs/testing/dispatcher.sh',
     'hitch': 'docs/testing/hitch_report.py',
     'route': 'docs/testing/titles/route.sh',
@@ -284,12 +295,308 @@ KT_MUTANTS = [
 ]
 
 
+def gated(body, pos, flag):
+    """Whether offset `pos` in `body` sits inside an `if (<flag>) {` block:
+    the last such opener before it has more `{` than `}` up to `pos`."""
+    i = body.rfind('if (%s) {' % flag, 0, pos)
+    if i < 0:
+        return False
+    seg = body[i:pos]
+    return seg.count('{') > seg.count('}')
+
+
+def clock_reads_ungated(body, flag):
+    """The lines in `body` that read nv2a_clock_ns() neither as
+    `<flag> ? nv2a_clock_ns()` nor inside an `if (<flag>) {` block."""
+    bad = []
+    for m in re.finditer(r'nv2a_clock_ns\(\)', body):
+        ls = body.rfind('\n', 0, m.start()) + 1
+        le = body.find('\n', m.start())
+        line = body[ls:le]
+        if '%s ? nv2a_clock_ns()' % flag in line or gated(body, m.start(), flag):
+            continue
+        bad.append(line.strip())
+    return bad
+
+
+def wire_checks(src):
+    """[(name, ok, detail)] for the three files the lend granted: the
+    implementation, the poll, the print block, and pfifo's timers."""
+    prof, rend, pf = src['profile'], src['renderer'], src['pfifo']
+    out = []
+
+    def check(name, ok, detail):
+        out.append((name, bool(ok), detail))
+
+    # nv2a_perflog_set()/_poll() compile only where the define precedes the
+    # first include that reaches debug.h: after it, the bodies are skipped
+    # and the poll is an undefined symbol at link time, which a compile-only
+    # NDK check does not see.
+    d = prof.find('#define NV2A_PERFLOG_RT_IMPLEMENTATION\n')
+    inc = prof.find('#include ')
+    check('wire.profile_defines_impl_before_includes',
+          prof.count('#define NV2A_PERFLOG_RT_IMPLEMENTATION') == 1
+          and 0 <= d < inc,
+          'define at %d, first #include at %d' % (d, inc))
+
+    # The one poll: inside fdump_poll_marker, after its once-a-second limit
+    # (access() is a syscall), before the dump's own early returns (a dump in
+    # progress must not hold the switch), and the function called at the flip.
+    body = span(rend, 'static void fdump_poll_marker(NV2AState *d)\n{', r'\n}\n')
+    lim = body.find('fdump.next_poll_ns = now + FDUMP_POLL_NS;')
+    pol = body.find('nv2a_perflog_poll(fdump_base_dir());')
+    ret = body.find('if (fdump.fp) {')
+    calls = len(re.findall(r'\n\s+fdump_poll_marker\(d\);', rend))
+    check('wire.renderer_polls_once_after_the_limit',
+          rend.count('nv2a_perflog_poll(') == 1 and 0 <= lim < pol < ret
+          and calls == 1,
+          'polls in renderer.c %d; in fdump_poll_marker: limit %d, poll %d, '
+          'dump return %d; fdump_poll_marker(d) calls %d'
+          % (rend.count('nv2a_perflog_poll('), lim, pol, ret, calls))
+
+    # The print block: a plain build prints it only while the switch is on.
+    i = prof.find('"hakuX-phase", "%s"')
+    pre = prof[:i] if i >= 0 else ''
+    hif = pre[pre.rfind('#if'):].split('\n', 1)[0] if '#if' in pre else ''
+    cif = pre[pre.rfind('\n    if ('):].split('\n')[1] if '\n    if (' in pre else ''
+    check('wire.profile_prints_only_while_on',
+          i >= 0 and hif == '#if defined(__ANDROID__)'
+          and 'nv2a_perflog_on() &&' in cif,
+          'guard %r, condition %r' % (hif, cif.strip()))
+
+    # The four accumulators the switch books into reach the printed stats,
+    # and the line has the perflog build's shape for the same readers.
+    snap = span(prof, 'static void snapshot_phase_timing(void)', r'\n}\n')
+    check('wire.profile_smooths_and_prints_fast_fields',
+          'SMOOTH(draw_sfp);' in snap and 'SMOOTH(tex_hash);' in snap
+          and '#if NV2A_PERF_LOG' not in snap
+          and prof.count('#define PHASE_FAST_FMT " Sfp:%.1f Mfp:%.1f FTx:%.1f"') == 1
+          and prof.count('#define PHASE_TXH_FMT " TxH:%.1f"') == 1
+          and '#define PHASE_FAST_FMT ""' not in prof,
+          'smoothed: %s; build-gated in snapshot: %s; formats unconditional: %s'
+          % ('SMOOTH(draw_sfp);' in snap, '#if NV2A_PERF_LOG' in snap,
+             '#define PHASE_FAST_FMT ""' not in prof))
+
+    # pfifo: the puller reads the switch once per call (one load beside
+    # pfifo_puller_should_stall's atomics) and every clock read follows it;
+    # the pusher pass likewise; no build flag left on either path.
+    pull = span(pf, 'static ssize_t pfifo_run_puller(', r'\n}\n')
+    bad = clock_reads_ungated(pull, 'pl')
+    check('wire.pfifo_puller_times_only_while_on',
+          pull.count('const bool pl = nv2a_perflog_on();') == 1
+          and pull.count('nv2a_perflog_on()') == 1
+          and 'NV2A_PERF_LOG' not in pull and not bad
+          and pull.count('nv2a_clock_ns()') >= 8,
+          'switch reads %d; build flag %s; clock reads %d, ungated %s'
+          % (pull.count('nv2a_perflog_on()'), 'NV2A_PERF_LOG' in pull,
+             pull.count('nv2a_clock_ns()'), bad))
+
+    thr = span(pf, 'void *pfifo_thread(void *arg)', r'\n}\n')
+    push = span(thr, 'const bool pl = nv2a_perflog_on();', r'pfifo_run_pusher\(d\);')
+    idle = span(thr, 'if (nv2a_perflog_on()) {', r'\n            }\n')
+    check('wire.pfifo_pusher_and_idle_follow_the_switch',
+          thr.count('const bool pl = nv2a_perflog_on();') == 1
+          and 'pl ? nv2a_clock_ns() : 0' in push
+          and 'phase_working.fifo_idle_ns' in idle
+          and 'NV2A_PERF_LOG' not in thr,
+          'pusher read %d; push t0 gated %s; idle split gated %s; build flag %s'
+          % (thr.count('const bool pl = nv2a_perflog_on();'),
+             'pl ? nv2a_clock_ns() : 0' in push,
+             'phase_working.fifo_idle_ns' in idle, 'NV2A_PERF_LOG' in thr))
+    return out
+
+
+# (name, side, [(old, new), ...], the check that must FAIL)
+WIRE_MUTANTS = [
+    ('the implementation is defined after the first include', 'profile',
+     [('#define NV2A_PERFLOG_RT_IMPLEMENTATION\n#include "hw/xbox/nv2a/nv2a_int.h"\n',
+       '#include "hw/xbox/nv2a/nv2a_int.h"\n#define NV2A_PERFLOG_RT_IMPLEMENTATION\n')],
+     'wire.profile_defines_impl_before_includes'),
+    ('nothing polls', 'renderer',
+     [('    nv2a_perflog_poll(fdump_base_dir());\n', '')],
+     'wire.renderer_polls_once_after_the_limit'),
+    ('the poll runs before the once-a-second limit', 'renderer',
+     [('    nv2a_perflog_poll(fdump_base_dir());\n', ''),
+      ('    int64_t now = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);\n'
+       '    if (now < fdump.next_poll_ns) {',
+       '    int64_t now = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);\n'
+       '    nv2a_perflog_poll(fdump_base_dir());\n'
+       '    if (now < fdump.next_poll_ns) {')],
+     'wire.renderer_polls_once_after_the_limit'),
+    ('a dump in progress holds the switch', 'renderer',
+     [('    nv2a_perflog_poll(fdump_base_dir());\n', ''),
+      ('        return; /* a dump in progress does not consume a new arm */\n    }\n',
+       '        return; /* a dump in progress does not consume a new arm */\n    }\n'
+       '    nv2a_perflog_poll(fdump_base_dir());\n')],
+     'wire.renderer_polls_once_after_the_limit'),
+    ('the print block ignores the switch', 'profile',
+     [('if (nv2a_perflog_on() && (g_nv2a_stats.frame_count % 60) == 0) {',
+       'if ((g_nv2a_stats.frame_count % 60) == 0) {')],
+     'wire.profile_prints_only_while_on'),
+    ('the print block is back under the build flag', 'profile',
+     [('#if defined(__ANDROID__)\n    /* A perflog build',
+       '#if defined(__ANDROID__) && NV2A_PERF_LOG\n    /* A perflog build')],
+     'wire.profile_prints_only_while_on'),
+    ('the fast fields are smoothed only in a perflog build', 'profile',
+     [('    SMOOTH(draw_sfp);\n', '#if NV2A_PERF_LOG\n    SMOOTH(draw_sfp);\n')],
+     'wire.profile_smooths_and_prints_fast_fields'),
+    ('the puller reads the clock whatever the switch', 'pfifo',
+     [('int64_t _puller_t0 = pl ? nv2a_clock_ns() : 0;',
+       'int64_t _puller_t0 = nv2a_clock_ns();')],
+     'wire.pfifo_puller_times_only_while_on'),
+    ('the puller total books whatever the switch', 'pfifo',
+     [('    if (pl) {\n        g_nv2a_stats.cpu_working.puller_total_ns',
+       '    {\n        g_nv2a_stats.cpu_working.puller_total_ns')],
+     'wire.pfifo_puller_times_only_while_on'),
+    ('the puller is back under the build flag', 'pfifo',
+     [('const bool pl = nv2a_perflog_on();\n    int64_t _puller_t0',
+       'const bool pl = NV2A_PERF_LOG;\n    int64_t _puller_t0')],
+     'wire.pfifo_puller_times_only_while_on'),
+    ('the idle split is back under the build flag', 'pfifo',
+     [('if (nv2a_perflog_on()) {\n                int64_t idle_ns',
+       'if (NV2A_PERF_LOG) {\n                int64_t idle_ns')],
+     'wire.pfifo_pusher_and_idle_follow_the_switch'),
+]
+
+
+def apply_edits(text, edits):
+    """`text` with each (old, new) replaced once; None if an old is not
+    found exactly once (an ambiguous mutant is a failed selftest)."""
+    for old, new in edits:
+        if text.count(old) != 1:
+            return None
+        text = text.replace(old, new)
+    return text
+
+
 def run_kt(src):
     """Run the static checks on `src`; print each; True if all pass."""
     ok = True
-    for name, good, detail in kt_checks(src):
+    for name, good, detail in kt_checks(src) + wire_checks(src):
         print('%s %s: %s' % ('ok  ' if good else 'FAIL', name, detail))
         ok = ok and good
+    return ok
+
+
+def fixture(d, tcpu, gfps=29, ri=23.5, cache='cleared', extra=(), on=False,
+            tier='env'):
+    """A synthetic dispatcher result dir: [rdc] and hakuX-perf lines every
+    2 s for 200 s after `mark gameplay` (80 in the 20..180 window), the
+    render thread at `tcpu` ms/s. `on` adds the ON path's lines after a
+    tier line by `tier` (None: no tier line). `extra` lines go in as-is."""
+    os.makedirs(d)
+    lines = []
+    if on and tier:
+        lines.append('10-18 12:00:01.000 I/hakuX-perf(1): [perflog] runtime '
+                     'tier ON (frame 1, by %s)' % tier)
+    for i in range(110):
+        t = 10 + 2 * i
+        st = '10-18 12:%02d:%02d.000' % (t // 60, t % 60)
+        jit = (i % 3 - 1) * 0.5
+        lines.append('%s I/hakuX-perf(1): [rdc] f=60 dt=2000 tid=2 tcpu=%.1f'
+                     % (st, (tcpu + jit) * 2))
+        lines.append('%s I/hakuX-perf(1): gfps=%d Tq:1.0 Df:0 Ri:%.2f'
+                     % (st, gfps, ri + jit / 10))
+        if on:
+            lines.append('%s I/hakuX-phase(1): Surf:0.4 Tex:0.2 TxH:0.1 Shd:0.0 '
+                         'Draw:3.2 [Vtx:0.3 Cmd:0.5 Sfp:0.2 Mfp:0.1 FTx:0.1] '
+                         'Fin:0.4 | Tot:9.0 ms' % st)
+            lines.append('%s I/hakuX-cpu(1): CPU: K:40 W:12.0K M:900 Push:1.1ms '
+                         '[Pull:2.3(Lk:0.1 Mth:2.0 Fst:0.4)] Lw:0.0' % st)
+            lines.append('%s W/hakuX(1): [tcg787] w=%d dt=2000 gc=10' % (st, i))
+    lines.extend(extra)
+    with open(os.path.join(d, 'logcat.txt'), 'w') as f:
+        f.write('\n'.join(lines) + '\n')
+    with open(os.path.join(d, 'run.log'), 'w') as f:
+        f.write('ROUTE 12:00:10.000 mark gameplay\n')
+    with open(os.path.join(d, 'result.json'), 'w') as f:
+        f.write('{"shader_cache": "%s: fixture"}' % cache)
+
+
+# (name, cold_runs_only, A runs, B runs, ON run or None, exit, must print).
+# A run is fixture() kwargs. Each case names the rule it exercises; the last
+# repeats the one before without cold_runs_only, so the VOID is the rule's.
+PHASE_LINE = ('10-18 12:01:00.000 I/hakuX-phase(1): Surf:0.4 Tex:0.2 TxH:0.1 '
+              'Draw:3.2 Sfp:0.2 Mfp:0.1 FTx:0.1')
+AB_CASES = [
+    ('cleared_and_on_hit', True,
+     [dict(tcpu=300), dict(tcpu=301), dict(tcpu=299)],
+     [dict(tcpu=302), dict(tcpu=300)], dict(tcpu=330, on=True), 0,
+     ['CLEARED', 'ON HIT', 'ON-OFF +29']),
+    ('b_slower_by_40', True,
+     [dict(tcpu=300), dict(tcpu=301), dict(tcpu=299)],
+     [dict(tcpu=340), dict(tcpu=341)], None, 1, ['SLOWDOWN: tcpu B-A +40']),
+    ('b_ri_down_by_1', True,
+     [dict(tcpu=300), dict(tcpu=300)],
+     [dict(tcpu=300, ri=22.5), dict(tcpu=300, ri=22.4)], None, 1,
+     ['SLOWDOWN: Ri B-A']),
+    ('b_prints_a_phase_line', True,
+     [dict(tcpu=300), dict(tcpu=300)],
+     [dict(tcpu=300, extra=[PHASE_LINE]), dict(tcpu=300)], None, 2,
+     ['hakuX-phase lines; B must be OFF']),
+    ('on_run_without_a_tier_line', True,
+     [dict(tcpu=300), dict(tcpu=300)], [dict(tcpu=300), dict(tcpu=300)],
+     dict(tcpu=330, on=True, tier=None), 3, ['ON MISS: want exactly 1']),
+    ('on_run_on_by_marker', True,
+     [dict(tcpu=300), dict(tcpu=300)], [dict(tcpu=300), dict(tcpu=300)],
+     dict(tcpu=330, on=True, tier='marker'), 3, ['ON MISS: want exactly 1']),
+    ('on_run_with_no_timers', True,
+     [dict(tcpu=300), dict(tcpu=300)], [dict(tcpu=300), dict(tcpu=300)],
+     dict(tcpu=330, extra=['10-18 12:00:01.000 I/hakuX-perf(1): [perflog] '
+                           'runtime tier ON (frame 1, by env)']), 3,
+     ['ON MISS: 0 full hakuX-phase lines', 'ON MISS: 0 [tcg787] lines']),
+    ('warm_run_left_out', True,
+     [dict(tcpu=300), dict(tcpu=300), dict(tcpu=200, cache='kept')],
+     [dict(tcpu=300), dict(tcpu=300)], None, 0,
+     ['LEFT OUT (M1/cold_runs_only)', 'CLEARED']),
+    ('one_cold_b_run', True,
+     [dict(tcpu=300), dict(tcpu=300)],
+     [dict(tcpu=300), dict(tcpu=300, cache='kept')], None, 2,
+     ['arm B: 1 cold-cache runs, under 2']),
+    ('one_cold_b_run_rule_off', False,
+     [dict(tcpu=300), dict(tcpu=300)],
+     [dict(tcpu=300), dict(tcpu=300, cache='kept')], None, 0, ['CLEARED']),
+]
+
+
+def abread_checks(tmp):
+    """Run abread.py on each AB_CASES fixture; True if every exit and every
+    expected line matches."""
+    ok = True
+    for name, cold_only, a_runs, b_runs, on_run, want, says in AB_CASES:
+        base = os.path.join(tmp, 'ab-' + name)
+        os.makedirs(base)
+        pred = os.path.join(base, 'pred.json')
+        with open(pred, 'w') as f:
+            f.write('{"expect": {"P2/window_from_mark_s": [20, 180], '
+                    '"P2/tcpu_b_minus_a_max_ms_per_s": 15.0, '
+                    '"P2/ri_b_minus_a_min_ms": -0.3, '
+                    '"P2/prior_band_tcpu_ms_per_s": 14.0, '
+                    '"P2/prior_band_ri_ms": 0.2, '
+                    '"P1/tcpu_b_minus_a_max_ms_per_s": 100.0, '
+                    '"M1/rdc_lines_min": 60, '
+                    '"M1/cold_runs_only": %s, "M1/cold_runs_min_per_arm": 2, '
+                    '"M2/on_tier_lines": 1, "M2/on_phase_lines_min": 50, '
+                    '"M2/on_tcg787_lines_min": 20}}'
+                    % ('true' if cold_only else 'false'))
+        args = [sys.executable, os.path.join(HERE, 'abread.py'), '--judge', pred]
+        for arm, runs in (('a', a_runs), ('b', b_runs)):
+            for i, kw in enumerate(runs):
+                d = os.path.join(base, '%s%d' % (arm, i + 1))
+                fixture(d, **kw)
+                args += ['--' + arm, d]
+        if on_run:
+            d = os.path.join(base, 'on')
+            fixture(d, **on_run)
+            args += ['--on', d]
+        r = subprocess.run(args, capture_output=True, text=True, timeout=60)
+        miss = [s for s in says if s not in r.stdout]
+        if r.returncode == want and not miss:
+            print('PASS abread.%s: exit %d' % (name, want))
+        else:
+            ok = False
+            print('FAIL abread.%s: exit %d (want %d), missing %s\n%s%s'
+                  % (name, r.returncode, want, miss, r.stdout, r.stderr))
     return ok
 
 
@@ -389,6 +696,28 @@ def main():
                 ok = False
                 print('MISSED %s: %s did not fail' % (name, must_fail))
         print('KT MUTANTS caught=%d of %d' % (caught, len(KT_MUTANTS)))
+
+        caught = 0
+        for name, side, edits, must_fail in WIRE_MUTANTS:
+            text = apply_edits(src[side], edits)
+            if text is None:
+                print('WIRE MUTANT %r: a pattern is not found once in %s'
+                      % (name, SIDES[side]))
+                ok = False
+                continue
+            mut = dict(src)
+            mut[side] = text
+            res = {c: good for c, good, _ in wire_checks(mut)}
+            if res.get(must_fail) is False:
+                caught += 1
+                print('CAUGHT %s -> FAIL %s' % (name, must_fail))
+            else:
+                ok = False
+                print('MISSED %s: %s did not fail' % (name, must_fail))
+        print('WIRE MUTANTS caught=%d of %d' % (caught, len(WIRE_MUTANTS)))
+
+        if not abread_checks(tmp):
+            ok = False
     finally:
         if a.keep:
             print('kept', tmp)
