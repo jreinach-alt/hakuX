@@ -1,8 +1,8 @@
 # Known issues
 
-_Last updated 2026-10-12, for version 0.5.0._
+_Last updated 2026-10-17, for version 0.5.2._
 
-What to expect from 0.5.0 before you report a bug. How each tested game runs
+What to expect from 0.5.2 before you report a bug. How each tested game runs
 is on the [compatibility page](docs/COMPATIBILITY.md); open bugs are in the
 [issue tracker](https://github.com/jreinach-alt/hakuX/issues).
 
@@ -20,9 +20,22 @@ is on the [compatibility page](docs/COMPATIBILITY.md); open bugs are in the
   and a game you have played before reuses what it built last time.
 - **The ubershader can cost frame rate in some games.** ToeJam & Earl III ran
   at 54 fps instead of 60 with it on. It can be turned off for one game.
+- **Halo: Combat Evolved's opening cinematic can still dip under 30 fps.**
+  0.5.2 raised it from 17 fps to about 28.6 fps through the hangar briefing
+  on the Retroid Pocket Nova, but it is not a flat 30: some stretches still
+  run as low as about 26 fps. Tracked in
+  [#1018](https://github.com/jreinach-alt/hakuX/issues/1018).
+- **Halo: Combat Evolved's menu ring is not quite right.** The surface layer
+  the console draws over the ring is missing, and the ring's inside surface
+  does not move as the ring rotates. 0.5.1 fixes the ring jumping back in
+  bursts. Tracked in
+  [#939](https://github.com/jreinach-alt/hakuX/issues/939).
 
 ## Audio
 
+- **Halo: Combat Evolved's cutscene speech is quiet under the music.** The
+  voices are there but hard to hear. Tracked in
+  [#938](https://github.com/jreinach-alt/hakuX/issues/938).
 - **Audio effects processing is off by default.** Games that use the Xbox's
   audio effects may sound thin, without reverb. Turn on Settings → Audio →
   Real-time DSP processing; it can cost speed on slower devices.

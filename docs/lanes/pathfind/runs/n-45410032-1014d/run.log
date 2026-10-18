@@ -1,0 +1,34 @@
+pathfind: F1 Career Challenge Europe En Fr De It (45410032) on nova: /storage/E6C6-D7AA/Games/XBox/45410032-F1_Career_Challenge_Europe_En_Fr_De_It.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 45410032 any, loaded none
+[  16.4s] #  1 publisher_logo    fast    A                        Early boot phase showing a static publisher/developer logo; typical F1 game startup screen
+[  30.6s] #  2 intro_video       fast    A                        Early in boot (0.3 min), text overlay on black background showing F1 driver names; typical
+[  45.1s] #  3 publisher_logo    fast    A                        Formula 1 trademark and licensing disclaimer screen, typical legal text after intro video;
+[  49.4s] #  4 black             black   wait                     black frame
+[ 123.2s] #  5 loading           fast    wait                     The track is fully rendered but static. Cars are positioned on the grid. This is the final
+[ 164.7s] #  6 cutscene          fast    A                        The 'DEMO' label indicates an attract/demo mode showing the race grid. The 'CONTINUE' prom
+[ 178.7s] #  7 loading           fast    wait                     Loading screen with visible progress bar; game is initializing the race after the demo seq
+[ 193.9s] #  8 main_menu         fast    A                        Main menu with cursor on CAREER (the red highlight). CAREER is the fastest path to gamepla
+[ 206.1s] #  9 submenu           fast    A                        Career mode selection submenu; NEW CAREER is highlighted in red; selecting it will proceed
+[ 221.5s] # 10 name_entry        fast    A                        The ACCEPT button is highlighted and ready; the profile has a default or partial name. Pre
+[ 288.6s] # 11 name_entry        fast    UP                       The visible keyboard and "SELECT THE LETTER" prompt show that initials must be selected ma
+[ 366.9s] # 12 name_entry        fast    RIGHT RIGHT A            Stuck in keyboard-driven initials entry. A on ACCEPT then UP did not advance; need to navi
+[ 424.1s] # 13 name_entry        fast    BACK                     Stuck in keyboard-driven initials entry. DONE button is visible on the keyboard itself (lo
+[ 469.2s] # 14 name_entry        fast    UP RIGHT A               Stuck on keyboard entry. ACCEPT button is highlighted but pressing A there doesn't advance
+[ 554.6s] # 15 name_entry        fast    STICK:up:0.5 A           Stuck in keyboard loop; D-pad inputs (UP, RIGHT, A) changed nothing after UP RIGHT A reach
+[ 608.3s] # 16 name_entry        fast    RIGHT A                  Still on the keyboard entry loop. The right panel shows profile fields (NAME, AGE, INITIAL
+[ 644.0s] # 17 name_entry        fast    START                    Stuck in keyboard-driven name entry loop after 6 prior attempts with D-pad and stick; trie
+[ 696.7s] # 18 name_entry        fast    STICK:right:1            Stuck in a keyboard loop after 6 attempts. Previous inputs (UP, RIGHT, A, START) changed n
+[ 751.8s] # 19 name_entry        fast    DOWN                     Stuck keyboard navigation. Previous attempts (STICK:right:1, START, D-pad UP/RIGHT combos)
+[ 822.1s] # 20 name_entry        fast    B                        Stuck on keyboard; D-pad, stick, and START navigation have failed. The ACCEPT button at bo
+[ 868.9s] # 21 submenu           fast    Y                        This is a menu screen, not keyboard entry—the profile fields are labels on the right, not 
+[ 888.0s] # 22 submenu           fast    A                        This is a menu screen showing career mode selection, not a keyboard entry screen. NEW CARE
+[ 901.6s] # 23 name_entry        fast    A                        Still on the keyboard entry screen; DONE is highlighted in white at the bottom right of th
+[1025.6s] # 24 name_entry        fast    UP A                     Still on the initials keyboard. DONE is highlighted but pressing A on it changed nothing m
+[1080.3s] # 25 name_entry        fast    DOWN RIGHT A             Still on keyboard; cursor appears to be on the number 7. DONE is down and right from there
+[1118.9s] # 26 name_entry        fast    BACK                     Stuck on initials keyboard after 12 previous attempts with D-pad, stick, START, and button
+[1164.2s] # 27 name_entry        fast    UP                       Still on keyboard entry; 12 prior attempts landed back here. The A ACCEPT button is at the
+[1267.8s] # 28 name_entry        fast    UP UP UP LEFT A          Still on keyboard entry; name field is likely empty, refusing to advance from DONE. Need t
+{"name": "F1 Career Challenge Europe En Fr De It", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 27, "steps": 28, "replayed": 0, "reason": "budget 20 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

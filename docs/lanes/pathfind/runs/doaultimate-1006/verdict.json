@@ -1,0 +1,182 @@
+{
+  "title": "Dead or Alive 1 Ultimate",
+  "title_id": null,
+  "name": null,
+  "device": "",
+  "ref": null,
+  "apk_sha": null,
+  "request_id": "doaultimate-1006",
+  "route": null,
+  "surface_scale": null,
+  "adb_failures": null,
+  "thermal": {
+    "measured": false,
+    "samples": 0,
+    "unread": 0,
+    "pauses": [],
+    "in_window": false,
+    "window_covered": null,
+    "gap": null,
+    "first_pause_s": null,
+    "regimen": null,
+    "failed_sustained": null,
+    "still_heating": null
+  },
+  "human_review": "",
+  "booted": true,
+  "reached_gameplay": true,
+  "gameplay_by": "route",
+  "crash": false,
+  "crash_detail": [],
+  "crash_warnings": 0,
+  "gameplay_s": 1115.8,
+  "timeline": {
+    "play_s": 1001.3,
+    "scored_s": 1115.8,
+    "play_share": 0.8974,
+    "by_state": {
+      "play": 1001.3,
+      "still": 40.4,
+      "menu": 32.7,
+      "cutscene": 19.5,
+      "black": 14.5,
+      "period_break": 7.2,
+      "no-timeline": 0.1
+    },
+    "play_spans": 4,
+    "changes": 11,
+    "fps_excluded_s": 112.6,
+    "fps_excluded_windows": 88
+  },
+  "capture_gaps_s": [],
+  "capture_lost_s": 0,
+  "capture_truncated": false,
+  "capture_truncated_s": null,
+  "hang": false,
+  "hang_gaps_s": [],
+  "fps_windows": 729,
+  "fps_bar": 30.0,
+  "fps_ok_share": 0.953,
+  "fps_ok_window_share": 0.9753,
+  "fps_window_median": 46.99,
+  "fps_window_min": 11.7,
+  "g_fps_mean_reported_not_judged": 47.5,
+  "target_fps": 30.0,
+  "own_target_share": 0.953,
+  "confirmation_need_s": 600.0,
+  "below_own_target": false,
+  "power": {
+    "measured": false,
+    "samples": 0,
+    "sign": "battery_w: + discharging, - charging; net_w = battery_w + usb_w",
+    "battery_w": null,
+    "usb_w": null,
+    "usb_from": null,
+    "usb_bound": null,
+    "net_w": null,
+    "sign_suspect": 0,
+    "thermal_status_max": null,
+    "scored_s": 993.1,
+    "flips": 43740,
+    "j_per_frame": null,
+    "j_per_frame_battery": null
+  },
+  "audio_measured": true,
+  "audio_starve_share": 0.0,
+  "audio_empty_calls": 0,
+  "pace": {
+    "lines": 818,
+    "nominal_vblanks": 2,
+    "late_per_100": 1.98,
+    "worst_stall": 491.7,
+    "last": "f=129780 v0=2 v1=33 v2=23 v3=2 v4=0 vb=85 max=43.5 ms=1551.2"
+  },
+  "hitches": {
+    "n": 23,
+    "n_after_warmup": 22,
+    "per_min_after_warmup": 1.25,
+    "worst_ms": 491.7,
+    "n_big_after_warmup": 0,
+    "classification": {
+      "shader": 22,
+      "texture": 0,
+      "both": 0,
+      "unexplained": 1
+    },
+    "worst5": [
+      {
+        "off_s": 678.9,
+        "max_ms": 491.7,
+        "dsm": 41,
+        "dpc_ms": 112.4,
+        "shader_stage_ms": 104.9,
+        "tex_us": 51,
+        "cls": "shader"
+      },
+      {
+        "off_s": 90.0,
+        "max_ms": 361.6,
+        "dsm": 77,
+        "dpc_ms": 25.1,
+        "shader_stage_ms": 22.3,
+        "tex_us": 675,
+        "cls": "shader"
+      },
+      {
+        "off_s": 366.6,
+        "max_ms": 330.1,
+        "dsm": 40,
+        "dpc_ms": 10.0,
+        "shader_stage_ms": 7.6,
+        "tex_us": 1379,
+        "cls": "shader"
+      },
+      {
+        "off_s": 213.8,
+        "max_ms": 273.9,
+        "dsm": 24,
+        "dpc_ms": 2.4,
+        "shader_stage_ms": 0.0,
+        "tex_us": 1905,
+        "cls": "shader"
+      },
+      {
+        "off_s": 710.4,
+        "max_ms": 265.8,
+        "dsm": 30,
+        "dpc_ms": 1.9,
+        "shader_stage_ms": 0.0,
+        "tex_us": 3574,
+        "cls": "shader"
+      }
+    ]
+  },
+  "hitch_allowance": null,
+  "static_window": {
+    "measured": true,
+    "frozen_frac": 0.0,
+    "n": 30,
+    "source": "route-frames"
+  },
+  "position": {
+    "measured": true,
+    "reason": null,
+    "source": "route-frames",
+    "samples": 30,
+    "pairs": 29,
+    "still": 0,
+    "still_frac": 0.0,
+    "first_last": 0.8633,
+    "bar": 0.025
+  },
+  "pass_kind": "confirmation",
+  "void": null,
+  "pass": false,
+  "failing": "menu time: 89.7% of the scored window in `play` (bar 90%; play 1001 s, still 40 s, menu 33 s, cutscene 20 s)",
+  "failures": [
+    "menu time: 89.7% of the scored window in `play` (bar 90%; play 1001 s, still 40 s, menu 33 s, cutscene 20 s)"
+  ],
+  "rating_candidate": null,
+  "contact_sheet": "contact.png",
+  "judged_utc": "2026-10-07T07:34:16Z"
+}

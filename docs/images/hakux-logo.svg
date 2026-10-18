@@ -1,0 +1,55 @@
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 140" role="img" aria-labelledby="title desc">
+  <title id="title">hakuX Community Edition</title>
+  <desc id="desc">hakuX Community Edition banner with a green lowercase h inside two circular rings.</desc>
+
+  <defs>
+    <clipPath id="banner-clip">
+      <rect width="400" height="140"></rect>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#banner-clip)">
+    <!-- Background -->
+    <rect width="400" height="140" fill="#0B1110"></rect>
+
+    <!-- Subtle diagonal grid -->
+    <g stroke="#28523A" stroke-width="0.7" opacity="0.5">
+      <path d="M-45 140L100 0"></path>
+      <path d="M0 140L145 0"></path>
+      <path d="M45 140L190 0"></path>
+      <path d="M90 140L235 0"></path>
+      <path d="M135 140L280 0"></path>
+      <path d="M180 140L325 0"></path>
+      <path d="M225 140L370 0"></path>
+      <path d="M270 140L415 0"></path>
+      <path d="M315 140L460 0"></path>
+      <path d="M360 140L505 0"></path>
+    </g>
+
+    <!-- hakuX wordmark -->
+    <text x="20" y="73" fill="#F0FFF1" font-family="Arial, Helvetica, sans-serif" font-size="48" font-weight="800" letter-spacing="-2.5">hakuX</text>
+
+    <!-- Edition label -->
+    <text x="22" y="95" fill="#91E982" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="600" letter-spacing="2.7">COMMUNITY EDITION</text>
+
+    <!-- Platform tagline -->
+    <text x="22" y="115" fill="#9AAC9D" font-family="Arial, Helvetica, sans-serif" font-size="9" letter-spacing="1.8">ORIGINAL XBOX • ANDROID</text>
+
+    <!-- Approved D logo -->
+    <g transform="translate(329 70) scale(1.12)">
+      <!-- Three-quarter outer ring -->
+      <circle cx="0" cy="0" r="39" fill="none" stroke="#5CE34F" stroke-width="3" stroke-linecap="round" stroke-dasharray="184 61" transform="rotate(-90)"></circle>
+
+      <!-- Subtle inner ring -->
+      <circle cx="0" cy="0" r="31" fill="none" stroke="#5CE34F" stroke-width="1" opacity="0.3"></circle>
+
+      <!-- Rounded lowercase h -->
+      <path d="M-15 -25V25
+               M-15 2
+               Q-15 -12 0 -12
+               Q15 -12 15 3
+               V25" fill="none" stroke="#86EC68" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"></path>
+    </g>
+  </g>
+</svg>

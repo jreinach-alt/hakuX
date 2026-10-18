@@ -1,0 +1,36 @@
+pathfind: Fantastic 4 (4156001A) on nova: /storage/E6C6-D7AA/Games/XBox/4156001A-Fantastic_4.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4156001A any, loaded none
+[  11.7s] #  1 loading           fast    wait                     No title text, menu, or HUD present yet, just an animated geometric logo on white - likely
+[  17.2s] #  2 black             black   wait                     black frame
+[  25.6s] #  3 cutscene          fast    START A                  Comic-panel style intro cutscene for Fantastic 4, no HUD or player control visible; try sk
+[  34.7s] #  4 title_screen      fast    START                    Title screen prompting START; pressing START to advance to main menu
+[  43.3s] #  5 loading           fast    wait                     Loading screen between cutscene/title and gameplay; no input needed, just wait for it to p
+[  52.7s] #  6 main_menu         fast    A                        New is highlighted with a glow, selecting it starts a new game fastest with defaults
+[  62.9s] #  7 save_load_prompt  fast    A                        Need to pick an empty save slot to proceed to gameplay; first slot is highlighted, confirm
+[  71.7s] #  8 loading           fast    wait                     Game is saving; no input needed, just wait for it to finish and proceed to gameplay.
+[  83.8s] #  9 submenu           fast    A                        Mission/difficulty select screen before gameplay starts; confirming with A should accept d
+[  94.5s] # 10 submenu           fast    A                        Difficulty select screen with Medium already highlighted/selected as default; confirming w
+[ 106.7s] # 11 submenu           fast    A                        Single is the highlighted/glowing option for Single or Coop Play; confirming it with A sho
+[ 115.1s] # 12 loading           fast    wait                     Loading screen after difficulty/mode select; no input needed, wait for it to finish
+[ 126.5s] # 13 cutscene          fast    A                        Narrative scene with character poses and no HUD/controls visible right after loading scree
+[ 135.5s] # 14 cutscene          fast    A                        Narrative close-up shot with no HUD or player controls visible, consistent with ongoing cu
+[ 140.1s] # 15 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 144.8s] # 16 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 149.5s] # 17 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 154.1s] # 18 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 158.8s] # 19 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 163.4s] # 20 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 173.5s] # 21 gameplay          fast    STICK:up:1.5             HUD with health bars, character portrait, and item counter is present over a 3D game world
+[ 185.6s] # 22 probe             probe   STICK:up:1.5 STICK:up:1.5 control 0.009, under input 0.622
+hold-play: genre onrails, need 600 s of play
+hold-play: fps at 186 s: median 26.0, share>=30 0.461 over 89 samples
+hold-play: fps at 301 s: median 30.0, share>=30 0.51 over 149 samples
+hold-play: play disagrees: hold 607.0 s, verdict 599.6 s (verdict trusted)
+hold-play: validity check stop 0 s (hold 607 s of play, verdict 599.6)
+hold-play: not held 607/600 s of play; verdict stops the hold: fps_ok 0.4251, crash False, hang False
+held Fantastic 4 for 1676s
+VERDICT Fantastic 4 ? FAIL(menu time: 35.9% of the scored window in `play` (bar 90%; cutscene 783 s, play 600 s, game_over 219 s, still 40 s)) gameplay=1674.8s fps_ok=0.4261 crash=False hang=False audio_short=0.0 hitches=30/1.115pm worst_ms=4822.5 static_frac=0.0019 play_share=0.3586 fps_excluded=1075.3s
+{"name": "Fantastic 4", "device": "nova", "result": "gameplay", "minutes": 3.09, "model_calls": 107, "steps": 22, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4156001A-1007/frames/021-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156001A": "090054ac4c11", "4156005D": "a1647bf6ddb4", "4253

@@ -1,0 +1,78 @@
+{
+ "title_id": "4143000A",
+ "name": "ATV Quad Power Racing 2",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/4143000A-ATV_Quad_Power_Racing_2.xiso.iso",
+ "result": "gameplay",
+ "tool": "74dfc2db2c",
+ "started": "2026-10-13 11:27:51 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4143000A-1013r/frames/011-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4143000A-1013r/frames/011-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4143000A-1013r/frames/011-probe-c.jpg"
+ ],
+ "minutes": 4.96,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4143000A-1013r/frames/010-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4143000A-1013r/frames/012-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4143000A-1013r/frames/013-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4143000A-1013r/frames/014-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4143000A-1013r/frames/015-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4143000A-1013r/frames/016-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4143000A-1013r/frames/017-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4143000A-1013r/frames/018-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4143000A-1013r/frames/019-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-4143.md"
+ ],
+ "hold": {
+  "genre": "drive",
+  "why": "ATV quad bike racing against competitors on a sandy track, with lap counter and position tracking visible in the HUD.",
+  "ok": false,
+  "play_s": 600.6,
+  "need_s": 600.0,
+  "hold_s": 646.8,
+  "model_navs": 3,
+  "frames": 18,
+  "still_windows": 0,
+  "shed": [],
+  "reversals": 0,
+  "reason": "verdict stops the hold: fps_ok 1.0, crash False, hang False",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 186,
+    "median": 59.0,
+    "share": 1.0,
+    "at_s": 185.6,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 303,
+    "median": 59.0,
+    "share": 0.997,
+    "at_s": 312.6,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "stuck_abort": false,
+  "verdict": "VERDICT ATV Quad Power Racing 2 ? PASS None gameplay=647.5s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0015 play_share=0.9068 fps_excluded=61.6s"
+ },
+ "model_calls": 22,
+ "calls_by_model": {
+  "claude-haiku-4-5-20251001": 22
+ },
+ "steps": 11,
+ "seconds": 999.1,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4143000A-1013r/frames/081-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4143000A-1013r/strip.jpg"
+}

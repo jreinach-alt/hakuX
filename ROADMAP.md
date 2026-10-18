@@ -1,8 +1,8 @@
 # Roadmap
 
-_Last updated 2026-10-12, for version 0.5.0._
+_Last updated 2026-10-17, for version 0.5.2._
 
-Where hakuX (fork) is heading. Plans change; the
+Where hakuX CE is heading. Plans change; the
 [release notes](docs/releases/README.md) say what actually shipped.
 
 ## The goal for 1.0

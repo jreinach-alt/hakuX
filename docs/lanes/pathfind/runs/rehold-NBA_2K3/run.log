@@ -1,0 +1,87 @@
+pathfind: NBA 2K3 (None) on nova: /storage/E6C6-D7AA/Games/XBox/NBA_2K3.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: - any, loaded all goldens (title not identified)
+[  12.2s] #  1 publisher_logo    fast    A                        This looks like an animated publisher or intro logo (green faceted shape on white) before 
+[  19.9s] #  2 publisher_logo    fast    A                        Sega Sports publisher logo before the title; not a menu. Per hints, skip with A once, then
+[  27.7s] #  3 publisher_logo    fast    A                        Another publisher logo before the title; per the hints, skip with A once, then re-read. No
+[  35.3s] #  4 publisher_logo    fast    A                        Another logo/legal notice before the title; not a menu. Per hints, skip with A once and re
+[  39.3s] #  5 black             black   wait                     black frame
+[  48.4s] #  6 publisher_logo    fast    A                        This is still the animated intro/logo sequence before any title screen (prior steps show S
+[  52.5s] #  7 black             black   wait                     black frame
+[  59.6s] #  8 title_screen      fast    START                    Title screen with a 'Press START' prompt; per the hints, START advances past it. Not gamep
+[  68.7s] #  9 main_menu         fast    A                        Sports main menu with Quick Game already highlighted, the fastest route to a match. Press 
+[  83.4s] # 10 main_menu         fast    RIGHT                    Team select, not yet a match. No controller is assigned under either team, so the CPU woul
+[  93.1s] # 11 main_menu         fast    START                    Per the sports team-select rule, one RIGHT moved controller 1 into the side column next to
+[ 103.7s] # 12 loading           fast    wait                     A team preview card after the controller was assigned to HOME; not a menu with a choice an
+[ 113.2s] # 13 loading           fast    A                        Team preview card after controller assignment, not a menu with a choice and not gameplay. 
+[ 123.1s] # 14 loading           fast    wait                     Pre-game team preview card over the arena, not a menu with a choice and not gameplay. The 
+[ 132.9s] # 15 loading           fast    wait                     Pre-game starting-lineups card after team setup, not a menu with a choice and not live pla
+[ 146.2s] # 16 cutscene          fast    A                        Pre-tip-off pregame presentation with both teams lined up and no HUD or player control yet
+[ 158.3s] # 17 gameplay          fast    wait                     HUD and scoreboard are up with the 1st-quarter clock at 5:00 and both teams set for the ti
+[ 178.4s] # 18 probe             probe   A STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.602, under input 0.557
+[ 185.1s] # 19 gameplay          fast    wait                     The HUD and scoreboard are up, the clock has moved from 5:00 to 4:41, and players are in l
+[ 201.1s] # 20 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.564, under input 0.542
+[ 206.9s] # 21 gameplay          fast    wait                     Live play with the HUD and a running clock (4:37 to 4:26) and a controlled player marked. 
+[ 226.7s] # 22 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 STICK:left:1.2 STICK:right:1.2 control 0.451, under input 0.726
+[ 232.5s] # 23 gameplay          fast    wait                     Live play with a HUD and a running clock (4:24, down from 4:26 in the last step), with nor
+[ 243.1s] # 24 probe             probe   STICK:left:1.5           control 0.027, under input 0.367
+[ 248.9s] # 25 gameplay          fast    wait                     Live play with HUD, scoreboard and running clock (4:26 to 4:24); the previous probe of STI
+[ 265.9s] # 26 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.518, under input 0.676
+[ 271.3s] # 27 gameplay          fast    wait                     HUD, running clock (4:14, down from 4:26 earlier) and a controlled player with a name labe
+[ 291.0s] # 28 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.281, under input 0.520
+[ 299.0s] # 29 gameplay          fast    wait                     The HUD is up and the game clock is running down from earlier steps, so this is live play.
+[ 314.2s] # 30 probe             probe   STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.176, under input 0.716
+[ 321.1s] # 31 gameplay          fast    wait                     Scoreboard, running clock (3:56, down from 4:14 earlier) and a controlled player with a na
+[ 341.0s] # 32 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.371, under input 0.448
+[ 348.1s] # 33 gameplay          fast    wait                     HUD and running clock (3:51 to 3:39 across steps) show live play, and a player is in the a
+[ 365.0s] # 34 probe             probe   RT:3 RT+left:1.2 RT+right:1.2 control 0.398, under input 0.532
+[ 369.7s] # 35 gameplay          fast    wait                     Live first-quarter game with HUD and running clock; the clock has been ticking across step
+[ 387.6s] # 36 probe             probe   RT:3 RT+left:1.2 RT+right:1.2 control 0.341, under input 0.523
+[ 394.2s] # 37 gameplay          fast    wait                     HUD, running game clock and a named controlled player are on screen, so this is live play.
+[ 412.6s] # 38 probe             probe   STICK:upleft:1.5 STICK:left:1.2 STICK:right:1.2 control 0.315, under input 0.534
+[ 422.2s] # 39 gameplay          fast    wait                     Live play with HUD and running clock, and a controlled-player marker is on screen. Previou
+[ 436.4s] # 40 probe             probe   HOLD:X:3 STICK:left:1.2 STICK:right:1.2 control 0.555, under input 0.388
+[ 440.7s] # 41 gameplay          fast    wait                     Live first-quarter play with HUD and running clock; the controlled player is the highlight
+[ 458.3s] # 42 probe             probe   HOLD:X:3 STICK:left:1.2 STICK:right:1.2 control 0.396, under input 0.408
+[ 464.3s] # 43 gameplay          fast    wait                     HUD, running game clock and a controlled player are on screen during a live first-quarter 
+[ 488.7s] # 44 probe             probe   LT:2 LT+left:1.2 LT+right:1.2 control 0.444, under input 0.408
+[ 496.4s] # 45 gameplay          fast    wait                     Live NBA 2K3 play with HUD and a controlled Lakers player, but a 5-second violation whistl
+[ 510.9s] # 46 probe             probe   LT:2 LT+left:1.2 LT+right:1.2 control 0.591, under input 0.579
+[ 517.3s] # 47 cutscene          fast    START                    This is an instant replay with a colour filter, not live play, so it is not gameplay. Wait
+[ 527.6s] # 48 gameplay          fast    wait                     The on-screen call is a 5-second inbound violation whistle, a stoppage, so play is briefly
+[ 544.8s] # 49 probe             probe   HOLD:B:3 STICK:left:1.2 STICK:right:1.2 control 0.647, under input 0.576
+[ 550.6s] # 50 cutscene          fast    START                    Replay-style orange-tinted frame with a 'SAMAKI WALKER / 8 SECONDS VIOLATION' call banner;
+[ 558.4s] # 51 pause             fast    A                        Game paused (a pause panel, not gameplay). Cursor is on Resume, the top item; A selects it
+[ 567.8s] # 52 gameplay          fast    wait                     Live play with HUD and a running game clock, no replay tint or menu over it. Probing with 
+[ 587.1s] # 53 probe             probe   HOLD:B:3 STICK:left:1.2 STICK:right:1.2 control 0.649, under input 0.505
+[ 593.1s] # 54 gameplay          fast    wait                     Live play with the HUD and a running game clock, no replay, menu, or pause overlay. Previo
+[ 609.7s] # 55 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.481, under input 0.814
+[ 614.3s] # 56 gameplay          fast    wait                     Live play with HUD and running clock, no menu or replay overlay; the prior probes were ref
+[ 626.6s] # 57 probe             probe   STICK:left:1.5           control 0.088, under input 0.464
+[ 632.6s] # 58 gameplay          fast    wait                     Live play with HUD and a running game clock, no menu or replay overlay. Earlier probes sho
+[ 651.8s] # 59 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.252, under input 0.298
+[ 659.9s] # 60 gameplay          fast    wait                     Live court with players moving and a HUD stat card over the action; the stick changed the 
+[ 679.6s] # 61 probe             probe   STICK:left:1.5 STICK:up:1.2 STICK:left:1.2 STICK:right:1.2 control 0.474, under input 0.733
+[ 688.3s] # 62 gameplay          fast    wait                     Live play with the ringed controlled player, players moving, and a stat card over the acti
+[ 703.8s] # 63 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.462, under input 0.412
+[ 708.4s] # 64 gameplay          fast    STICK:up:1               Live play with HUD and running clock; earlier probes did not visibly move the player, and 
+[ 729.4s] # 65 probe             probe   STICK:up:1 STICK:up:1.5 STICK:right:1.2 STICK:left:1.2 STICK:right:1.2 control 0.706, under input 0.174
+[ 744.2s] # 66 gameplay          fast    wait                     Live court with HUD and clock, but a stoppage banner (5-second inbound violation) is up an
+[ 760.3s] # 67 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.562, under input 0.493
+[ 766.1s] # 68 gameplay          fast    wait                     HUD and scoreboard up, clock running, the ringed controlled player is live with the ball, 
+[ 781.1s] # 69 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.544, under input 0.491
+[ 788.6s] # 70 gameplay          fast    wait                     Live play with HUD and running clock, no stoppage banner or replay tint on this frame. Con
+[ 803.1s] # 71 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.561, under input 0.449
+[ 809.3s] # 72 gameplay          fast    wait                     Live play with HUD, scoreboard, and running clock, and no banner or menu is up on this fra
+[ 821.5s] # 73 probe             probe   STICK:up:1.5             control 0.055, under input 0.148
+[ 827.7s] # 74 gameplay          fast    wait                     Live play with HUD, scoreboard and a controlled player marker. The TURNOVERS banner is a s
+[ 845.4s] # 75 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.521, under input 0.494
+[ 853.0s] # 76 gameplay          fast    wait                     HUD and a full court with players in the game world, but the 8-seconds violation banner sh
+[ 868.4s] # 77 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.646, under input 0.585
+[ 872.6s] # 78 gameplay          fast    wait                     Live play with HUD and running clock, no banner or menu. Previous probes moved the camera/
+[ 892.7s] # 79 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.360, under input 0.587
+[ 905.1s] # 80 gameplay          fast    wait                     Live court with HUD and players in the game world, no menu or banner. Ghosting may be a re
+[ 920.2s] # 81 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.702, under input 0.458
+{"name": "NBA 2K3", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 82, "steps": 81, "replayed": 0, "reason": "budget 15 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

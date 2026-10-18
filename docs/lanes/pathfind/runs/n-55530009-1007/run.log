@@ -1,0 +1,63 @@
+pathfind: XIII USA Europe En Fr De Es It (55530009) on nova: /storage/E6C6-D7AA/Games/XBox/55530009-XIII_USA_Europe_En_Fr_De_Es_It.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 55530009 any, loaded none
+[  10.1s] #  1 publisher_logo    fast    START A                  This looks like an early logo or loading transition screen shortly after boot (0.1 min in)
+[  17.5s] #  2 loading           fast    wait                     Loading screen shown after title, waiting for next screen to appear
+[  26.4s] #  3 title_screen      fast    START                    Title screen explicitly prompts START to begin
+[  35.7s] #  4 profile_creation  fast    DOWN A                   No existing profiles are listed yet (empty profile state), so need to create a new profile
+[  51.5s] #  5 name_entry        fast    A A A START              Name field is empty; need to type characters before confirming. Will press A to enter the 
+[  69.7s] #  6 name_entry        fast    RIGHT A                  Empty name field on a character-select keyboard; prior A presses did nothing, so the curso
+[  77.4s] #  7 profile_creation  fast    A                        This is a profile selection screen with no existing profiles listed, so Create new profile
+[  92.5s] #  8 name_entry        fast    A A A DOWN DOWN LEFT LEFT A Name field is empty; need to type several characters via A then navigate to Ok to confirm 
+[ 108.5s] #  9 name_entry        fast    RIGHT A                  Empty name field on keyboard; previous combo input did nothing, so try a single deliberate
+[ 117.1s] # 10 profile_creation  fast    A                        Only 'Create new profile' is listed, no existing profiles; it appears highlighted as the s
+[ 135.1s] # 11 name_entry        fast    A DOWN DOWN DOWN DOWN A  The name field is empty and no character has been typed yet. Need to select a letter (assu
+[ 151.3s] # 12 name_entry        fast    A                        Empty name field on keyboard overlay; no clear highlight visible in current view, try a si
+[ 161.9s] # 13 profile_creation  fast    A                        Only 'Create new profile' option is visible and presumably highlighted since it's the sole
+[ 181.6s] # 14 name_entry        fast    A                        Name field is empty; need to isolate what A alone does to the currently highlighted key be
+[ 192.1s] # 15 profile_creation  fast    UP A                     Two profile options now visible (previously only Create new profile existed) - a profile m
+[ 211.7s] # 16 name_entry        fast    DOWN DOWN A DOWN DOWN DOWN A Empty name field needs a letter typed then confirmed via Ok; assuming cursor starts near t
+[ 226.6s] # 17 profile_creation  fast    UP A                     Repeated A/UP A presses on name entry looped back here; a profile may already exist from a
+[ 249.7s] # 18 name_entry        fast    A DOWN DOWN DOWN DOWN A  Empty name field with on-screen keyboard; need to type a character then confirm via Ok. Pr
+[ 269.6s] # 19 name_entry        fast    DOWN A DOWN DOWN DOWN A  Previous attempt 'A DOWN DOWN DOWN DOWN A' produced no change, so try a different sequence
+[ 322.4s] # 20 name_entry        fast    DOWN LEFT LEFT A         Cursor/selection box is on the underscore key at the far right of the last grid row; need 
+[ 336.5s] # 21 profile_creation  fast    UP A                     A profile named '9' already exists from prior creation; need to move selection up off 'Cre
+[ 382.1s] # 22 name_entry        fast    DOWN LEFT LEFT A         Empty/placeholder name field needs a character typed then confirmed via Ok; the combo 'DOW
+[ 400.7s] # 23 name_entry        fast    DOWN DOWN DOWN DOWN LEFT LEFT LEFT A A character '7' is already entered in the name field; cursor is on '7' in the top row of t
+[ 415.9s] # 24 profile_creation  fast    A                        Existing profile '7' is already created and appears selected (arrow pointing to it); press
+[ 426.4s] # 25 cutscene          fast    A A A                    Comic-book cutscene panels with a Select A prompt at bottom; this is XIII's narrative pane
+[ 436.8s] # 26 cutscene          fast    A                        This is a stylized comic-panel/dream-sequence cutscene continuing from the narrative panel
+[ 444.3s] # 27 cutscene          fast    A                        This is the narrative comic-panel cutscene sequence continuing from prior steps (Kennedy a
+[ 451.4s] # 28 cutscene          fast    A A A                    Still in the narrative comic-panel sequence; no HUD or player control visible, so continue
+[ 461.2s] # 29 cutscene          fast    A A START                This is a rendered in-engine cutscene continuing from the comic-panel sequence; no HUD, he
+[ 470.2s] # 30 loading           fast    wait                     Loading screen between cutscene and gameplay; no input needed, just wait
+[ 480.0s] # 31 gameplay          fast    STICK:up:1.5             Player character is visible from behind in a 3D playfield with a HUD element (+50), no let
+[ 490.3s] # 32 probe             probe   STICK:up:1.5 STICK:up:1.5 control 0.037, under input 0.068
+hold-play: genre shooter, need 600 s of play
+hold-play: fps at 183 s: median 59.0, share>=30 1.0 over 184 samples
+hold-play: fps at 305 s: median 59.0, share>=30 0.993 over 299 samples
+hold-play: 3 still looks: walk reversed (back) at 469 s
+hold-play: 3 still looks: walk reversed (forward) at 483 s
+hold-play: off play for 12 steps (pause): ladder round 1
+hold-play: off play for 12 steps (menu): ladder round 2
+hold-play: off play for 12 steps (menu): ladder round 3
+hold-play: off play for 12 steps (menu): ladder round 4
+hold-play: off play for 12 steps (menu): ladder round 5
+hold-play: off play for 12 steps (menu): ladder round 6
+hold-play: off play for 12 steps (menu): ladder round 7
+hold-play: off play for 12 steps (menu): ladder round 8
+hold-play: off play for 12 steps (menu): ladder round 9
+hold-play: off play for 12 steps (menu): ladder round 10
+hold-play: off play for 12 steps (menu): ladder round 11
+hold-play: off play for 12 steps (menu): ladder round 12
+hold-play: off play for 12 steps (menu): ladder round 13
+hold-play: off play for 12 steps (menu): ladder round 14
+hold-play: off play for 12 steps (menu): ladder round 15
+hold-play: off play for 12 steps (menu): ladder round 16
+hold-play: off play for 12 steps (menu): ladder round 17
+hold-play: not held 395/600 s of play; off play for 13 steps: menu (Controller settings/options menu is open, not live gameplay)
+held XIII USA Europe En Fr De Es It for 1856s
+VERDICT XIII USA Europe En Fr De Es It ? FAIL(menu time: 21.4% of the scored window in `play` (bar 90%; pause 975 s, menu 429 s, play 398 s, cutscene 43 s)) gameplay=1855.0s fps_ok=1.0 crash=False hang=False audio_short=0.001511 hitches=7/0.234pm worst_ms=1244.9 static_frac=0.0 play_share=0.2143 fps_excluded=1459.8s
+{"name": "XIII USA Europe En Fr De Es It", "device": "nova", "result": "gameplay", "minutes": 8.17, "model_calls": 276, "steps": 32, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-55530009-1007/frames/031-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

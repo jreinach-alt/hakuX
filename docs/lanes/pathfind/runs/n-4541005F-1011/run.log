@@ -1,0 +1,34 @@
+pathfind: Lord of the Rings The The Third Age USA (4541005F) on nova: /storage/E6C6-D7AA/Games/XBox/4541005F-Lord_of_the_Rings_The_The_Third_Age_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4541005F any, loaded none
+[  10.4s] #  1 black             fast    wait                     This is an early loading/splash screen, not yet game content; no publisher logo or title t
+[  16.0s] #  2 black             black   wait                     black frame
+[  24.3s] #  3 publisher_logo    fast    START A                  Standard EA publisher logo screen before title; skip with START then A per convention
+[  32.4s] #  4 publisher_logo    fast    START A                  Standard THX certification logo before title; skip with START then A
+[  37.5s] #  5 black             black   wait                     black frame
+[  44.8s] #  6 cutscene          fast    START A                  This looks like an intro cinematic (letterbox-style dark scene) following the EA/THX publi
+[  49.8s] #  7 black             black   wait                     black frame
+[  58.1s] #  8 main_menu         fast    A                        New Game is highlighted in gold at top of menu list; confirming it starts a fresh game fas
+[  65.5s] #  9 loading           fast    wait                     Loading screen for the Eregion level, need to wait for it to finish
+[  75.0s] # 10 cutscene          fast    START A                  Letterbox bars and cinematic camera pan over mountain scenery indicate an intro cutscene b
+[  80.6s] # 11 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[  87.2s] # 12 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[  92.8s] # 13 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[  98.4s] # 14 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 104.2s] # 15 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 110.0s] # 16 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 120.7s] # 17 cutscene          fast    START A                  Letterboxed forest cutscene continuing from prior steps; keep advancing with START then A 
+[ 126.6s] # 18 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 132.2s] # 19 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 137.9s] # 20 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 143.4s] # 21 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 149.2s] # 22 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 155.9s] # 23 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 165.4s] # 24 cutscene          fast    START A                  Letterboxed eerie cinematic with spectral figures, no HUD; continuing the pattern of advan
+[ 171.1s] # 25 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 176.8s] # 26 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 181.9s] # 27 black             black   wait                     black frame
+[ 187.1s] # 28 diverged          diverged wait                     replay diverged at recorded step 0 (unknown: model gave no answer)
+{"name": "Lord of the Rings The The Third Age USA", "device": "nova", "result": "diverged", "minutes": 3.12, "model_calls": 9, "steps": 28, "replayed": 0, "reason": "replay diverged at recorded step 0 (unknown: model gave no answer)", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

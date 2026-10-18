@@ -1,0 +1,34 @@
+pathfind: Strike Force Bowling (None) on nova: /storage/E6C6-D7AA/Games/XBox/Strike_Force_Bowling.xiso.iso
+titlestate: titles disk: harvest (the device's disk changed since its last harvest)
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: - any, loaded all goldens (title not identified)
+[   9.8s] #  1 publisher_logo    fast    START                    Early boot: a white splash with a green emblem, not yet a title or menu. Wait for the logo
+[  19.6s] #  2 publisher_logo    fast    A                        Publisher logo (Grave Entertainment) before any title or menu; skip with A first, per the 
+[  29.8s] #  3 publisher_logo    fast    A                        RenderWare middleware logo before any title or menu; per the logo-skip hint, press A first
+[  37.2s] #  4 publisher_logo    fast    A                        Game logo/copyright splash before the title; per the hints, A skips intro/logo screens fir
+[  44.6s] #  5 main_menu         fast    A                        Main menu with Open Play highlighted in yellow, the fastest route to play with defaults. P
+[  52.1s] #  6 submenu           fast    A                        Bowler setup menu; no bowler exists yet. Play Game is the fastest route but is not yet sel
+[  62.1s] #  7 submenu           fast    A                        Bowler selection screen; the highlighted profile Mary Anne is a valid default. A selects h
+[  69.4s] #  8 name_entry        fast    DOWN                     Bowler name entry; the hint says to leave the default name and choose Done. The highlight 
+[  75.8s] #  9 submenu           fast    DOWN DOWN DOWN A         Bowler name entry panel with default name Player 1 already filled; the hint says accept th
+[  85.7s] # 10 submenu           fast    A                        Bowler save-slot menu with Page 1 highlighted as the default. Saving the new bowler to Pag
+[  96.4s] # 11 submenu           fast    LEFT A                   A on Page 1 looped back twice, so the save target is not the blocker. The cursor sits in t
+[ 103.5s] # 12 submenu           fast    A                        Save confirmation dialog with YES already highlighted; choosing YES saves the new bowler a
+[ 110.5s] # 13 submenu           fast    DOWN DOWN DOWN DOWN DOWN A A bowler now exists (Player 1), so the goal is to start play. Cursor is on Add Bowler, whi
+[ 122.1s] # 14 submenu           fast    A                        Stage select is a menu after the bowler is set up; the centre stage is the one in focus, s
+[ 132.5s] # 15 submenu           fast    A                        Bowler setup card with 'Press A to continue' prompt; no cursor to move, so A accepts and a
+[ 140.1s] # 16 gameplay          fast    wait                     Bowling lane with HUD scoreboard and Player 1 ball aiming; the ball and aim markers are li
+[ 148.8s] # 17 probe             probe   STICK:left:1.5           control 0.022, under input 0.074
+hold-play: genre bowl, need 600 s of play
+hold-play: fps at 183 s: median 59.0, share>=30 1.0 over 175 samples
+hold-play: fps at 303 s: median 59.0, share>=30 1.0 over 295 samples
+hold-play: off play for 12 steps (menu): ladder round 1
+hold-play: off play for 12 steps (menu): ladder round 2
+hold-play: off play for 12 steps (menu): ladder round 3
+hold-play: off play for 12 steps (menu): ladder round 4
+hold-play: off play for 12 steps (name_entry): ladder round 5
+hold-play: off play for 12 steps (menu): ladder round 6
+hold-play: off play for 12 steps (menu): ladder round 7
+hold-play: off play for 12 steps (menu): ladder round 8
+hold-play: off play for 12 steps (menu): ladder round 9

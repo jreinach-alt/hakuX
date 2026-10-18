@@ -1,0 +1,28 @@
+pathfind: Darkwatch (43430016) on nova: /storage/E6C6-D7AA/Games/XBox/43430016-Darkwatch.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 43430016 any, loaded none
+[  13.6s] #  1 publisher_logo    fast    A                        This is a publisher logo screen at boot (0.1 min); Capcom titles (Dino Crisis 3, Auto Mode
+[  32.2s] #  2 publisher_logo    fast    A                        Capcom title (4343xxxx) in logo sequence; A skips these (Dino Crisis 3, Auto Modellista pa
+[  43.2s] #  3 title_screen      fast    START                    Capcom title (4343xxxx) with 'PRESS START' prompt; pattern from Dino Crisis 3, Auto Modell
+[  61.4s] #  4 profile_creation  fast    A                        Name entry with default 'JERICHO' pre-filled and DONE button highlighted in red; pattern m
+[  76.5s] #  5 main_menu         fast    A                        SINGLE PLAYER is highlighted in red; this is the fastest path to gameplay per menu rules
+[ 105.6s] #  6 submenu           fast    A                        Mission selection menu after SINGLE PLAYER was chosen. Interactive buttons indicate this i
+[ 118.8s] #  7 submenu           fast    A                        Difficulty menu; COWBOY is already highlighted as the default option, matching the pattern
+[ 122.2s] #  8 black             black   wait                     black frame
+[ 134.4s] #  9 cutscene          fast    START                    Character introduction narration with incomplete final line; classic intro cutscene establ
+[ 153.1s] # 10 cutscene          fast    A                        This is an introductory narrative cutscene establishing the character and mission. After S
+[ 166.7s] # 11 cutscene          fast    B                        Narrative cutscene establishing the mission. START and A have both been tried on this unch
+[ 180.9s] # 12 gameplay          fast    wait                     Player-controlled first-person view with visible weapon, crosshair, and full HUD (health, 
+[ 197.4s] # 13 probe             probe   STICK:up:1.5             control 0.020, under input 0.433
+hold-play: genre shooter, need 600 s of play
+hold-play: fps at 185 s: median 59.0, share>=30 1.0 over 186 samples
+hold-play: fps at 309 s: median 59.0, share>=30 1.0 over 310 samples
+hold-play: stuck (scene unchanged for 4 consecutive samples (genre shooter)): unstick STICK:left:2 RT:1 at 368 s
+hold-play: stuck (scene unchanged for 5 consecutive samples (genre shooter)): unstick STICK:right:2 RT:1 at 398 s
+hold-play: stuck_abort: scene unchanged for 6 consecutive samples (genre shooter); 2 unstick rung(s) tried, still stuck
+hold-play: not held 432/600 s of play; stuck_abort: scene unchanged for 6 consecutive samples (genre shooter); 2 unstick rung(s) tried, still stuck
+held Darkwatch for 444s
+VERDICT Darkwatch ? FAIL(duration: 443 s of gameplay < 600 s confirmation) gameplay=442.8s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0735 play_share=0.9995 fps_excluded=1.0s
+{"name": "Darkwatch", "device": "nova", "result": "gameplay", "minutes": 3.29, "model_calls": 19, "steps": 13, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-43430016-1013r/frames/012-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

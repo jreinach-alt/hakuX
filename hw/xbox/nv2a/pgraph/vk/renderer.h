@@ -976,6 +976,8 @@ typedef struct QueryReport {
     bool clear;
     uint32_t parameter;
     unsigned int query_count;
+    /* #1039: its own serial and the last query's begun before it (ZREP) */
+    uint32_t rs, qs;
 } QueryReport;
 
 typedef struct PvideoState {
@@ -1592,6 +1594,10 @@ typedef struct PGRAPHVkState {
     VkQueryPool query_pool;
     int max_queries_in_flight;
     int num_queries_in_flight;
+    /* #1039: a serial per query begun and per report queued, and each pool
+     * index's query serial, for the frame dump's "zq" and HAKUX_ZREP */
+    uint32_t query_serial, report_serial;
+    uint32_t *query_serial_of;
 
 #define GPU_TS_MAX_RENDER_PASSES 48
 #define GPU_TS_QUERIES_PER_CB (2 + GPU_TS_MAX_RENDER_PASSES * 2)
@@ -1616,6 +1622,15 @@ typedef struct PGRAPHVkState {
 
     PGRAPHVkDisplayState display;
     PGRAPHVkComputeState compute;
+
+    /* HAKUX_S2T_CVT (surface.c): the decode pipeline and its scratch buffer,
+     * raw surface words then RGBA8 texels; created on first use */
+    struct {
+        VkPipeline pipeline;
+        VkBuffer buffer;
+        VmaAllocation allocation;
+        VkDeviceSize size;
+    } s2t_cvt;
 
 #if OPT_ASYNC_COMPILE
     struct {
@@ -1727,6 +1742,13 @@ void pgraph_vk_fdump_vertex_upload(PGRAPHVkState *r, hwaddr offset,
                                    const uint8_t *old, const uint8_t *data,
                                    size_t size, bool hazard_finished);
 void pgraph_vk_fdump_pre_draw(NV2AState *d);
+void pgraph_vk_fdump_log_skip(NV2AState *d, const char *why);
+void pgraph_vk_fdump_log_report(NV2AState *d, const QueryReport *report);
+bool pgraph_vk_fdump_armed_once(void);
+
+// draw.c, for the frame dump's schema 9: the last draw's pre-draw path and
+// create_pipeline outcome (the draw census's DCEN_PATH_* and DCEN_CP_*)
+void pgraph_vk_draw_path(uint8_t *path, uint8_t *cp);
 
 // debug.c
 #define RGBA_RED     (float[4]){1,0,0,1}
@@ -1826,6 +1848,9 @@ void pgraph_vk_upload_surface_data(NV2AState *d, SurfaceBinding *surface,
 void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
                               bool zeta_write);
 SurfaceBinding *pgraph_vk_surface_get(NV2AState *d, hwaddr addr);
+bool pgraph_vk_s2t_cvt_on(void);
+void pgraph_vk_s2t_cvt_copy(PGRAPHState *pg, SurfaceBinding *surface,
+                            TextureBinding *texture);
 
 /*
  * "What guest format was this surface last rendered as" -- a colour format

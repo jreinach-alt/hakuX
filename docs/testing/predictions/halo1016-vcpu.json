@@ -1,0 +1,54 @@
+{
+  "registered_utc": "2026-10-17T09:05:00Z",
+  "who": "lane.halo1016",
+  "issues": ["1018"],
+  "kind": "soak env arms (one binary, five runs)",
+  "title": "Halo Combat Evolved.iso",
+  "device": "nova",
+  "seconds": 420,
+  "route": "halo-cinematic (docs/lanes/halo1016/routes/halo-cinematic.route, queued with TITLE_ROUTES=docs/lanes/halo1016/routes)",
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "a_ref": "d70f782f45",
+  "b_ref": "d70f782f45",
+  "a_env": [
+    "HAKUX_FRAMETRACE=1",
+    "HAKUX_PROBE_WAITS=1",
+    "HAKUX_S2T_CVT=1"
+  ],
+  "b_env": [
+    "HAKUX_FRAMETRACE=1",
+    "HAKUX_PROBE_WAITS=1",
+    "HAKUX_S2T_CVT=1",
+    "HAKUX_FLDCW_CHAIN=1",
+    "HAKUX_IBC=1"
+  ],
+  "arms": {
+    "A": ["HAKUX_FRAMETRACE=1", "HAKUX_PROBE_WAITS=1", "HAKUX_S2T_CVT=1"],
+    "F": ["HAKUX_FRAMETRACE=1", "HAKUX_PROBE_WAITS=1", "HAKUX_S2T_CVT=1", "HAKUX_FLDCW_CHAIN=1"],
+    "I": ["HAKUX_FRAMETRACE=1", "HAKUX_PROBE_WAITS=1", "HAKUX_S2T_CVT=1", "HAKUX_IBC=1"],
+    "IF": ["HAKUX_FRAMETRACE=1", "HAKUX_PROBE_WAITS=1", "HAKUX_S2T_CVT=1", "HAKUX_FLDCW_CHAIN=1", "HAKUX_IBC=1"],
+    "A2": ["HAKUX_FRAMETRACE=1", "HAKUX_PROBE_WAITS=1", "HAKUX_S2T_CVT=1"]
+  },
+  "queue_order": "Queued by the lane (env arms; arms.sh skips a_ref == b_ref): five requests of one run each, in the order A, F, I, IF, A2: TITLE_ROUTES=docs/lanes/halo1016/routes request.sh --who halo1016 --device nova --title 'Halo Combat Evolved.iso' --route halo-cinematic --seconds 420 --ref d70f782f45 --perflog --pull 'frametrace_*' --env <the arm's list> --issue 1018 --expect this file. a_env is arm A's list and b_env arm IF's; 'arms' holds all five. d70f782f45 is the lane's head with HAKUX_FLDCW_CHAIN (target/i386/tcg/translate.c gen_fldcw_chain, off by default) and the [fldcw1018] call/flip counter in helper_fldcw, on the census binary (214445e90e).",
+  "judge": "python3 docs/lanes/halo1016/vcpuread.py --arm A=<A> --arm F=<F> --arm I=<I> --arm IF=<IF> --arm A2=<A2> --expect docs/testing/predictions/halo1016-vcpu.json (written before any arm ran; exercised on the census pair, which it voids on V as it should: no [fldcw1018] line on 214445e90e). It prints a per-arm table and per-10-s ms/f whatever the verdict.",
+  "baseline": "census B (halo1016-census.json, judged): 0-0-x-1792222171-halo1016-1341994 on 214445e90e with HAKUX_S2T_CVT=1. Over [mark+131, mark+191], per guest frame: 41.9 ms; Finish sd 0; TBs dispatched from the main loop 49.9 k, of which eo (EOB_ONLY exits) 37.0 k, 36.2 k of them the fldcw at 0x1ec3a; unpatched goto_tb exits 9.6 k (gi, a CF_INVALID block, 7.9 k); longjmps 2.8 k; helper_lookup_tb_ptr calls 930 k (miss share 2.9e-5 over the run); estimated loop time 14.0% of the vCPU's wall. The guest never idles in those shots (census verdict, NOTES.md).",
+  "prediction": "#1018, the vCPU half: with the cvt downloads gone the heavy shots are vCPU-bound at ~42 ms a frame. Two remedies, measured alone and together. R2, HAKUX_FLDCW_CHAIN (F): an FLDCW that keeps HF_FPU_PC_MASK stays in its TB. If the bit rarely flips (FL, P 0.7), the 36 k main-loop returns a frame at 0x1ec3a mostly go (FM, P 0.6) and the loop time they cost, ~118 ns each by B's 14% loop share over 49.9 k returns, about 4.3 ms a frame, comes back with the TB entry each one paid: FE ms/f <= 0.93 x base, P 0.55. #507's inline jump-cache probe, HAKUX_IBC=1 (I): 930 k helper_lookup_tb_ptr calls a frame, nearly all hits; the probe skips the call, get_tb_cpu_state and tb_lookup's compares on a hit (18.4% of the vCPU on GTA). It is parked off because on GTA and Forza the time it saved became guest idle spin; here the guest does not idle, so saved time is frame time. IM hc <= 0.3 x A's, P 0.85. IE ms/f <= 0.93 x base, P 0.5. Both (IF): BE ms/f <= 0.87 x base, P 0.4; G, the 30-fps bar over the span, IF <= 33.4 ms/f, P 0.15. Drift: N, |A2 - A| / mean <= 0.08, P 0.7; over it the ms legs are void, not misses. A miss on FL with FM still hit would mean the flips are rare per TB but not per call; an FM miss with FL hit would mean the chain did not engage (jmp_opt false at those sites).",
+  "expect": {
+    "V_min_windows": 20,
+    "V_sd_max": 5.0,
+    "N_spread_max": 0.08,
+    "FL_flip_share_max": 0.05,
+    "FM_eo_ratio_max": 0.1,
+    "FE_msf_ratio_max": 0.93,
+    "IM_hc_ratio_max": 0.3,
+    "IE_msf_ratio_max": 0.93,
+    "BE_msf_ratio_max": 0.87,
+    "G_msf_max": 33.4
+  },
+  "expect_note": "EMPTY of captures ON PURPOSE: a soak writes none. Named rules read by docs/lanes/halo1016/vcpuread.py --expect (legs V, N, FL, FM, FE, IM, IE, BE, G). V per arm: `mark cinematic`, `[s2tcvt] on`, `[fldcw1018] chain=` 1 in F and IF and 0 elsewhere, `[ibc507] on=1 layout=ok` in I and IF and on=0 elsewhere, >= 20 [rr425] windows in the span, Finish sd <= 5 a frame. A V failure voids the legs that read that arm, not the others; a void A voids all.",
+  "expect_counts": {},
+  "must_not_move": [],
+  "must_not_regress": []
+}

@@ -1,0 +1,43 @@
+pathfind: Battlestar Galactica USA (5655000F) on nova: /storage/E6C6-D7AA/Games/XBox/5655000F-Battlestar_Galactica_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 5655000F any, loaded none
+[  14.8s] #  1 publisher_logo    fast    A                        Green geometric logo on white background at boot; typical Vivendi publisher logo. Skip wit
+[  19.1s] #  2 black             black   wait                     black frame
+[  31.0s] #  3 publisher_logo    fast    A                        Warthog Games publisher logo (second publisher after Vivendi); skip with A per hints
+[  42.1s] #  4 title_screen      fast    START                    Title screen with 'PRESS START' prompt; press START per hints (Vivendi title, similar patt
+[  53.4s] #  5 main_menu         fast    A                        Menu with cursor on the bright cyan 'START NEW GAME' option. A confirms it and starts a ne
+[  68.1s] #  6 profile_creation  fast    A                        Default name filled in (AAA), difficulty and vibration at defaults, CONTINUE button ready.
+[ 127.6s] #  7 profile_creation  fast    START                    Two presses of A looped back to this screen; trying START instead, since hints say START j
+[ 207.6s] #  8 profile_creation  fast    DOWN DOWN DOWN A         Still on profile creation; previous A (step 6) and START (step 7) looped back. Cursor is l
+[ 271.2s] #  9 profile_creation  fast    RIGHT A                  Still stuck on profile creation. Previous A, START, and DOWN×3 attempts all looped back. V
+[ 326.9s] # 10 profile_creation  fast    LEFT A                   Stuck in profile creation loop. Step 9 pressed RIGHT, which likely moved the cursor from Y
+[ 371.8s] # 11 profile_creation  fast    B                        Stuck in a loop on the profile confirmation screen; A, START, DOWN moves, and RIGHT/LEFT h
+[ 383.9s] # 12 main_menu         fast    A                        Two selectable options with START NEW GAME highlighted; previous profile creation screens 
+[ 445.1s] # 13 profile_creation  fast    UP                       Stuck in a loop on profile_creation; A, START, DOWN, RIGHT, LEFT, and B have all looped ba
+[ 552.5s] # 14 profile_creation  fast    STICK:down:2 A           Stuck in profile creation loop after 13 steps; D-pad DOWN/RIGHT/LEFT/B/UP/START/A attempts
+[ 613.2s] # 15 profile_creation  fast    START                    Stuck in a loop on profile settings confirmation. A has been tried ~10 times and looped ba
+[ 684.6s] # 16 profile_creation  fast    RIGHT A                  Stuck in profile confirmation loop. DIFFICULTY is highlighted (cyan text). Previous attemp
+[ 715.5s] # 17 profile_creation  fast    DOWN A                   Stuck in a loop; DIFFICULTY is highlighted, not the CONTINUE button. Previous 10+ A presse
+[ 805.3s] # 18 profile_creation  fast    DOWN DOWN RIGHT A        Still in profile creation loop. DIFFICULTY is highlighted, not the confirm button. The 'CO
+[ 820.7s] # 19 main_menu         fast    A                        Profile loop broken; now at main menu with START MISSION highlighted. Press A to select it
+[ 835.8s] # 20 cutscene          fast    START                    Post-mission-start cinematic of the spacecraft; needs to skip to proceed toward gameplay
+[ 839.5s] # 21 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 852.7s] # 22 pause             fast    A                        Pause menu with CONTINUE highlighted in cyan. The game is paused; pressing A on CONTINUE w
+[ 865.2s] # 23 cutscene          fast    BACK                     Unskippable cinematic with explicit BACK prompt; the spacecraft in space is not player-con
+[ 886.0s] # 24 gameplay          fast    wait                     Active space combat with full operational HUD, player-controlled spacecraft in playfield w
+[ 903.2s] # 25 probe             probe   STICK:up:1.5             control 0.026, under input 0.523
+hold-play: genre drive, need 600 s of play
+hold-play: fps at 180 s: median 59.0, share>=30 1.0 over 181 samples
+hold-play: fps at 307 s: median 59.0, share>=30 1.0 over 307 samples
+hold-play: stuck (scene unchanged for 4 consecutive samples (genre drive)): unstick LT+left:3 RT+right:3 at 477 s
+hold-play: stuck (scene unchanged for 5 consecutive samples (genre drive)): unstick LT+right:3 RT+left:3 at 509 s
+hold-play: stuck (scene unchanged for 4 consecutive samples (genre drive)): unstick LT+left:3 RT+right:3 at 864 s
+hold-play: stuck (scene unchanged for 5 consecutive samples (genre drive)): unstick LT+right:3 RT+left:3 at 897 s
+hold-play: play disagrees: hold 627.0 s, verdict 594.6 s (verdict trusted)
+hold-play: validity check share 2741 s (hold 627 s of play, verdict 594.6)
+hold-play: not held 627/600 s of play; share short by 2741 s with no budget left
+held Battlestar Galactica USA for 967s
+VERDICT Battlestar Galactica USA ? FAIL(menu time: 61.6% of the scored window in `play` (bar 90%; play 595 s, game_over 294 s, cutscene 76 s, no-timeline 0 s)) gameplay=965.8s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=3/0.199pm worst_ms=161.6 static_frac=0.0917 play_share=0.6163 fps_excluded=371.2s
+{"name": "Battlestar Galactica USA", "device": "nova", "result": "gameplay", "minutes": 15.05, "model_calls": 47, "steps": 25, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5655000F-1013/frames/024-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

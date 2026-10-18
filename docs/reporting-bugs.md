@@ -1,6 +1,6 @@
 # Reporting a bug
 
-_Last updated 2026-10-13, for version 0.5.0._
+_Last updated 2026-10-17, for version 0.5.2._
 
 A report that has the details below can be worked on straight away.
 
@@ -17,12 +17,12 @@ to report how well a game runs. Use **Bug Report** for anything else.
 
 - **Device:** the make and model, chip, Android version and RAM.
 - **hakuX version:** shown in a small label on the library screen, and under
-  Android Settings → Apps → hakuX (fork).
+  Android Settings → Apps → hakuX CE.
 - **Which build:**
 
   | Build | Launcher name | Package |
   |---|---|---|
-  | Release | hakuX (fork) | `com.jreinach.hakux` |
+  | Release | hakuX CE | `com.jreinach.hakux` |
   | Test build | hakuX (test builds) | `com.jreinach.hakux.debug` |
 
   The two are separate apps, each with its own settings, hard disk image and

@@ -1,0 +1,152 @@
+| request | arm | ref | title | video verdict | V1 lead s | align off s (score, at 0) | episodes: frames, classes, s after first present, probe src / screen-off / H1 H5 H4 |
+|---|---|---|---|---|---|---|---|
+| 1792282757 | before | 7ea8b80e71 | Halo CE | VOID: no decodable frames (segment bytes [0]) | None | None (None, None) | none |
+| 0-1792284283 | before | 7ea8b80e71 | Halo CE | VALID; 4 episode(s), 254 frame(s) of static or green | 2.7 | 1.0667 (0.0012, 0.05) | 5 fr green @-0.677 s, - / 0 of 0 / 0 0 1; 20 fr noise @0.15 s, v / 12 of 19 / 1 1 1; 203 fr green @2.601 s, v / 205 of 205 / 1 1 0; 26 fr noise @5.922 s, v / 28 of 33 / 1 1 0 |
+| 0-1792284284 | before | 7ea8b80e71 | Top Spin | VOID: V1; 0 episode(s), 0 frame(s) of static or green | -1.69 | 0.2 (0.0066, 0.0502) | none |
+| 0-1792284285 | before | 7ea8b80e71 | GTA III | VOID: V1; 0 episode(s), 0 frame(s) of static or green | -0.31 | 0.7833 (0.0019, 0.0847) | none |
+| 0-1792284286 | after | 446e9abbed | Halo CE | VOID: V1; 0 episode(s), 0 frame(s) of static or green | -0.32 | 0.9667 (0.0011, 0.0373) | none |
+| 0-1792284287 | after | 446e9abbed | Top Spin | VOID: V1; 0 episode(s), 0 frame(s) of static or green | -0.32 | 0.85 (0.0064, 0.1362) | none |
+| 0-1792284288 | after | 446e9abbed | GTA III | VOID: V1; 0 episode(s), 0 frame(s) of static or green | -0.05 | 0.9333 (0.0024, 0.1067) | none |
+| 1792287441 | after | 2a012b14fc | Halo CE | VALID; 1 episode(s), 5 frame(s) of static or green | 2.32 | 0.5 (0.001, 0.0201) | 5 fr green @-0.813 s, - / 0 of 0 / 0 0 1 |
+| 1792287442 | after | 2a012b14fc | Top Spin | VOID: V1; 0 episode(s), 0 frame(s) of static or green | -1.74 | 0.25 (0.0065, 0.0614) | none |
+| 1792287443 | after | 2a012b14fc | GTA III | VOID: V1; 0 episode(s), 0 frame(s) of static or green | -0.85 | 1.1833 (0.0026, 0.1254) | none |
+| 1792291608 | after | 2a012b14fc | Top Spin | VALID; 1 episode(s), 5 frame(s) of static or green | 2.5 | 0.9333 (0.0057, 0.1351) | 5 fr green @-0.746 s, - / 0 of 0 / 0 0 1 |
+| 1792291609 | after | 2a012b14fc | GTA III | VOID: V1; 1 episode(s), 5 frame(s) of static or green | 1.95 | 0.9 (0.0015, 0.1049) | 5 fr green @-0.682 s, - / 0 of 0 / 0 0 1 |
+
+0-1792284283 before Halo CE (first present at video +2.7 s):
+v00001.mp4: 1936 frames to 30.0 s
+picture   0.000- 1.530 s   183 frames    1547 ms
+black     1.538- 1.771 s    29 frames     250 ms
+picture   1.781- 1.964 s    20 frames     199 ms
+black     1.996- 3.982 s   122 frames    2003 ms
+logo      3.999- 4.216 s    15 frames     234 ms
+streaks   4.232- 7.520 s   203 frames    3304 ms
+picture   7.537- 7.963 s    27 frames     443 ms
+logo      7.971- 7.971 s     1 frames      17 ms
+black     7.988- 8.396 s    27 frames     425 ms
+picture   8.405-29.984 s  1309 frames   21596 ms
+
+0-1792284284 before Top Spin (first present at video +-1.69 s):
+v00001.mp4: 1812 frames to 30.0 s
+logo      0.000- 2.221 s   135 frames    2238 ms
+black     2.238- 2.371 s     9 frames     150 ms
+picture   2.388-12.345 s   600 frames    9973 ms
+black    12.362-12.378 s     2 frames      33 ms
+picture  12.395-20.340 s   480 frames    7962 ms
+black    20.357-20.974 s    39 frames     634 ms
+picture  20.991-26.541 s   337 frames    5567 ms
+black    26.558-27.209 s    41 frames     668 ms
+picture  27.226-29.989 s   169 frames    2779 ms
+
+0-1792284285 before GTA III (first present at video +-0.31 s):
+v00001.mp4: 1818 frames to 30.0 s
+logo      0.000- 1.397 s    88 frames    1413 ms
+picture   1.413- 3.148 s   109 frames    1752 ms
+black     3.165- 3.316 s    10 frames     167 ms
+picture   3.333- 5.217 s   114 frames    1902 ms
+black     5.234- 5.351 s     8 frames     133 ms
+picture   5.368-10.767 s   326 frames    5416 ms
+black    10.783-10.900 s     8 frames     134 ms
+picture  10.917-16.300 s   327 frames    5400 ms
+black    16.317-18.069 s   108 frames    1769 ms
+picture  18.085-21.331 s   198 frames    3263 ms
+black    21.348-23.134 s   110 frames    1803 ms
+picture  23.151-29.986 s   412 frames    6852 ms
+
+0-1792284286 after Halo CE (first present at video +-0.32 s):
+v00001.mp4: 1825 frames to 30.0 s
+black     0.000- 1.091 s    69 frames    1108 ms
+logo      1.108- 1.108 s     1 frames      17 ms
+black     1.125- 5.138 s   243 frames    4030 ms
+logo      5.155- 5.155 s     1 frames      17 ms
+black     5.172- 5.473 s    20 frames     318 ms
+picture   5.490-29.989 s  1491 frames   24516 ms
+
+0-1792284287 after Top Spin (first present at video +-0.32 s):
+v00001.mp4: 1820 frames to 30.0 s
+black     0.000- 2.887 s   178 frames    2904 ms
+logo      2.904- 2.904 s     1 frames      17 ms
+black     2.921- 3.038 s     8 frames     134 ms
+picture   3.055-13.010 s   608 frames    9972 ms
+black    13.027-13.095 s     5 frames      85 ms
+picture  13.110-21.072 s   484 frames    7978 ms
+black    21.089-21.690 s    37 frames     618 ms
+picture  21.706-27.256 s   335 frames    5566 ms
+black    27.272-27.940 s    41 frames     685 ms
+picture  27.957-29.994 s   123 frames    2054 ms
+
+0-1792284288 after GTA III (first present at video +-0.05 s):
+v00001.mp4: 1812 frames to 30.0 s
+black     0.000- 1.400 s    87 frames    1417 ms
+logo      1.417- 1.417 s     1 frames      17 ms
+picture   1.434- 3.219 s   110 frames    1802 ms
+black     3.236- 3.353 s     8 frames     134 ms
+picture   3.370- 5.256 s   116 frames    1902 ms
+black     5.272- 5.389 s     8 frames     133 ms
+picture   5.405-16.271 s   657 frames   10883 ms
+black    16.287-18.090 s   110 frames    1819 ms
+picture  18.107-21.353 s   197 frames    3263 ms
+black    21.370-23.172 s   109 frames    1819 ms
+picture  23.189-29.990 s   409 frames    6818 ms
+
+1792287441 after Halo CE (first present at video +2.32 s):
+v00001.mp4: 1936 frames to 30.0 s
+picture   0.000- 1.586 s   190 frames    1603 ms
+black     1.594- 8.677 s   453 frames    7099 ms
+picture   8.694-29.996 s  1293 frames   21319 ms
+
+1792287442 after Top Spin (first present at video +-1.74 s):
+v00001.mp4: 1819 frames to 30.0 s
+black     0.000- 2.321 s   143 frames    2337 ms
+picture   2.337-12.234 s   604 frames    9914 ms
+black    12.251-12.335 s     6 frames     101 ms
+picture  12.351-20.321 s   479 frames    7986 ms
+black    20.338-20.955 s    38 frames     634 ms
+picture  20.972-26.522 s   337 frames    5566 ms
+black    26.538-27.189 s    41 frames     668 ms
+picture  27.206-29.985 s   171 frames    2795 ms
+
+1792287443 after GTA III (first present at video +-0.85 s):
+v00001.mp4: 1820 frames to 30.0 s
+black     0.000- 0.281 s    19 frames     298 ms
+picture   0.298- 2.100 s   113 frames    1819 ms
+black     2.117- 2.234 s     8 frames     134 ms
+picture   2.250- 4.070 s   110 frames    1836 ms
+black     4.086- 4.203 s     8 frames     134 ms
+picture   4.219- 9.636 s   327 frames    5433 ms
+black     9.653- 9.769 s     8 frames     133 ms
+picture   9.786-15.185 s   327 frames    5416 ms
+black    15.202-16.954 s   107 frames    1769 ms
+picture  16.971-20.250 s   200 frames    3296 ms
+black    20.267-22.052 s   110 frames    1802 ms
+picture  22.069-29.988 s   483 frames    7936 ms
+
+1792291608 after Top Spin (first present at video +2.5 s):
+v00001.mp4: 1918 frames to 30.0 s
+picture   0.000- 1.386 s   166 frames    1403 ms
+black     1.395- 3.914 s   176 frames    2536 ms
+logo      3.930- 3.930 s     1 frames      17 ms
+black     3.947- 7.468 s   212 frames    3538 ms
+picture   7.485-17.366 s   601 frames    9898 ms
+black    17.383-17.483 s     7 frames     117 ms
+picture  17.500-25.470 s   482 frames    7986 ms
+black    25.486-26.087 s    37 frames     618 ms
+picture  26.104-29.984 s   236 frames    3897 ms
+
+1792291609 after GTA III (first present at video +1.95 s):
+v00001.mp4: 1895 frames to 30.0 s
+picture   0.000- 0.939 s   112 frames     955 ms
+black     0.946- 1.520 s    60 frames     591 ms
+logo      1.537- 1.987 s    29 frames     467 ms
+black     2.004- 3.507 s    92 frames    1519 ms
+picture   3.524- 5.326 s   112 frames    1819 ms
+black     5.343- 5.459 s     8 frames     133 ms
+picture   5.476- 7.362 s   114 frames    1903 ms
+black     7.379- 7.496 s     8 frames     133 ms
+picture   7.512-12.828 s   320 frames    5332 ms
+black    12.845-12.961 s     8 frames     133 ms
+picture  12.979-18.411 s   327 frames    5449 ms
+black    18.427-20.196 s   109 frames    1785 ms
+picture  20.213-23.484 s   200 frames    3288 ms
+black    23.501-25.279 s   109 frames    1794 ms
+picture  25.296-29.993 s   287 frames    4714 ms

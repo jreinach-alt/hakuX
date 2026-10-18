@@ -1,0 +1,30 @@
+pathfind: Tony Hawk s Underground 2 USA Europe En Fr De (4156003C) on nova: /storage/E6C6-D7AA/Games/XBox/4156003C-Tony_Hawk_s_Underground_2_USA_Europe_En_Fr_De.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4156003C any, loaded none
+[  17.2s] #  1 publisher_logo    fast    START                    Activision logo appears first after cold boot (0.1 min); START skipped logos in other Acti
+[  33.9s] #  2 publisher_logo    fast    A                        New logo frame in sequence after START on the previous Activision logo; skateboard imagery
+[  46.3s] #  3 publisher_logo    fast    A                        Warning/disclaimer screen in the boot sequence after publisher logos; part of the intro ph
+[  65.0s] #  4 publisher_logo    fast    A                        Game title/branding logo screen in the boot sequence after previous publisher logos; skipp
+[  82.5s] #  5 submenu           fast    A                        Game mode selection screen after publisher logos; STORY MODE is highlighted and matches th
+[  98.7s] #  6 submenu           fast    A                        Menu screen with START NEW STORY MODE highlighted in yellow. This is the New Game equivale
+[ 111.9s] #  7 submenu           fast    A                        Difficulty selection submenu with Normal highlighted; accepting the default to proceed fas
+[ 115.3s] #  8 black             black   wait                     black frame
+[ 171.2s] #  9 loading           fast    wait                     Level has loaded after the black transition screen; Tony Hawk games typically show a goal 
+[ 184.8s] # 10 cutscene          fast    START                    In-engine narrative scene with characters, not gameplay yet; follows loading sequence in T
+[ 197.5s] # 11 cutscene          fast    A                        Still narrative scene, not gameplay. Last step sent START; continuing to skip with A.
+[ 201.2s] # 12 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 204.8s] # 13 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 208.6s] # 14 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 222.2s] # 15 cutscene          fast    A                        Character speaking with dialogue subtitle; in-engine but not player-controlled. No HUD vis
+[ 260.7s] # 16 gameplay          fast    wait                     HUD present (SCORE, SPECIAL), player character visible in the playable level, no splash sc
+[ 280.9s] # 17 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.325, under input 0.588
+hold-play: genre other, need 600 s of play
+hold-play: fps at 188 s: median 59.0, share>=30 1.0 over 174 samples
+hold-play: fps at 307 s: median 59.0, share>=30 1.0 over 284 samples
+hold-play: validity check stop 0 s (hold 604 s of play, verdict 605.3)
+hold-play: not held 604/600 s of play; verdict stops the hold: fps_ok 1.0, crash False, hang False
+held Tony Hawk s Underground 2 USA Europe En Fr De for 608s
+VERDICT Tony Hawk s Underground 2 USA Europe En Fr De ? PASS None gameplay=606.2s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0145 play_share=0.9996 fps_excluded=1.0s
+{"name": "Tony Hawk s Underground 2 USA Europe En Fr De", "device": "nova", "result": "gameplay", "minutes": 4.68, "model_calls": 21, "steps": 17, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4156003C-1013/frames/016-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156003C": "016d151cf191", "4156005D": "a1647bf6ddb4", "4253

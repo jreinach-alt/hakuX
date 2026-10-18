@@ -1,0 +1,12 @@
+pathfind: Knight s Apprentice Memorick s Adventures USA Europe En Fr De Es It (4D490004) on nova: /storage/E6C6-D7AA/Games/XBox/4D490004-Knight_s_Apprentice_Memorick_s_Adventures_USA_Europe_En_Fr_De_Es_It.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4D490004 any, loaded none
+[  25.2s] #  1 publisher_logo    fast    A                        Early boot showing a branded logo screen; following the skip strategy: A on logos before t
+[  41.4s] #  2 cutscene          fast    START                    After the publisher logo skip, this is an opening cinematic showing the game world before 
+[  70.6s] #  3 cutscene          fast    A                        This is an opening cinematic showing the game world and characters after we skipped the pu
+[  82.9s] #  4 loading           fast    wait                     Game is saving progress automatically; this is a blocking operation that must complete bef
+[  97.1s] #  5 fatal_error       fast    wait                     The screen shows the exact fatal disc error listed in the spec: 'there is a problem with t
+[ 107.7s] #  6 fatal_error       fast    wait                     This is the fatal disc error from the spec: 'there is a problem with the disc / dirty or d
+{"name": "Knight s Apprentice Memorick s Adventures USA Europe En Fr De Es It", "device": "nova", "result": "title-error", "minutes": null, "model_calls": 6, "steps": 6, "replayed": 0, "reason": "This is the fatal disc error from the spec: 'there is a problem with the disc / dirty or damaged'. No input clears this screen; it is unrecoverable.", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

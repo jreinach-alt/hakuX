@@ -1,0 +1,23 @@
+pathfind: Stake USA En Fr De Es It (4D440004) on nova: /storage/E6C6-D7AA/Games/XBox/4D440004-Stake_USA_En_Fr_De_Es_It.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4D440004 any, loaded none
+[  10.4s] #  1 black             fast    wait                     This looks like a loading/transition screen with a faint logo appearing, likely a publishe
+[  19.1s] #  2 black             fast    wait                     Screen shows rendering corruption typical of an early boot/transition glitch rather than a
+[  26.7s] #  3 publisher_logo    fast    START A                  Metro3D publisher logo screen, progression from earlier black/loading screens; skip it to 
+[  34.7s] #  4 save_load_prompt  fast    A                        Profile load prompt; press A to load the default player profile and proceed toward gamepla
+[  42.0s] #  5 save_load_prompt  fast    B                        Prompt to create a profile or continue without one; pressing B to continue without creatin
+[  50.8s] #  6 main_menu         fast    A                        Single Player is already highlighted; confirm with A to start fastest path to gameplay wit
+[  59.0s] #  7 submenu           fast    A                        This is a character select screen; need to confirm the highlighted character with A (OK) t
+[  65.7s] #  8 loading           fast    wait                     Now Loading screen after character select confirmation; need to wait for gameplay to begin
+[  76.0s] #  9 gameplay          fast    STICK:up:1.5             HUD is fully present with health bar, timer, minimap, and character in the game world; thi
+[  96.8s] # 10 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.212, under input 0.201
+hold-play: genre attack, need 630 s of play
+hold-play: fps at 183 s: median 58.0, share>=30 1.0 over 173 samples
+hold-play: fps at 302 s: median 58.0, share>=30 1.0 over 285 samples
+hold-play: off play 153 s of a 556 s scored window cannot drop to 10% with 846 s of budget left: no amount of further play can pass
+hold-play: not held 403/630 s of play; off play 153 s of a 556 s scored window cannot drop to 10% with 846 s of budget left: no amount of further play can pass
+held Stake USA En Fr De Es It for 558s
+VERDICT Stake USA En Fr De Es It ? FAIL(duration: 557 s of gameplay < 600 s confirmation) gameplay=556.8s fps_ok=0.9939 crash=False hang=False audio_short=0.000306 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0006 play_share=0.7253 fps_excluded=155.7s
+{"name": "Stake USA En Fr De Es It", "device": "nova", "result": "gameplay", "minutes": 1.61, "model_calls": 22, "steps": 10, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D440004-1015n/frames/009-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

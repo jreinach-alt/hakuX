@@ -1,2 +1,4 @@
 # Learned by pathfind: the inputs that reached confirmed gameplay, one line per title
 - Panzer Elite Action Fields of Glory Europe (4A570009, nova, pathfind 2026-10-07): gameplay in 2.7 min via publisher_logo START A -> intro_video START A -> cutscene START A -> main_menu A -> submenu A -> cutscene A A A A -> cutscene RT:1 LT:1
+- Ski Racing 2005 Europe (4A570005, nova, pathfind 2026-10-16): gameplay in 5.0 min via intro_video START A -> title_screen START -> save_load_prompt A -> save_load_prompt X -> main_menu A -> submenu A -> name_entry A -> name_entry LEFT LEFT LEFT A -> name_entry RIGHT RIGHT RIGHT A -> submenu START -> cutscene START A -> submenu START -> submenu A -> cutscene A -> submenu A -> title_screen START
+- Yetisports Arctic Adventures Europe (4A570004, nova, pathfind 2026-10-16): gameplay in 2.9 min via publisher_logo START A -> main_menu A -> submenu A -> submenu RIGHT A -> cutscene A

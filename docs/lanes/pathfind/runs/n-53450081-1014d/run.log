@@ -1,0 +1,43 @@
+pathfind: World Snooker Championship 2005 Europe (53450081) on nova: /storage/E6C6-D7AA/Games/XBox/53450081-World_Snooker_Championship_2005_Europe.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 53450081 any, loaded none
+[  14.8s] #  1 publisher_logo    fast    A                        Sega's green geometric logo appears at boot, before any game content. Skip it with A.
+[  18.2s] #  2 publisher_logo    repeat  A                        repeat A: it advanced the publisher_logo
+[  29.6s] #  3 publisher_logo    fast    A                        Another Sega logo after the first two; new logos are progress. Continue skipping with A
+[  41.1s] #  4 publisher_logo    fast    A                        Game branding logo screen after Sega intros; skip with A to reach title or menus
+[  44.5s] #  5 black             black   wait                     black frame
+[  56.4s] #  6 title_screen      fast    START                    Title screen with explicit 'PRESS START TO BEGIN' prompt requires START input to advance
+[  71.3s] #  7 submenu           fast    RIGHT A                  Character selection screen after title. No character loaded; need to create one to reach p
+[ 109.0s] #  8 submenu           fast    A                        Character creation screen with defaults already populated. Pressing A will select/confirm 
+[ 129.5s] #  9 submenu           fast    A                        Character creation screen with the Done button highlighted. Default character is previewed
+[ 185.5s] # 10 submenu           fast    A                        Skill selection as part of character creation; Done button appears highlighted; pressing A
+[ 204.8s] # 11 save_load_prompt  fast    A                        Confirmation prompt to save the character created in setup; Yes is highlighted; pressing A
+[ 223.5s] # 12 submenu           fast    A                        Character selection menu after creating a character. 'Continue' is the active option, high
+[ 248.1s] # 13 submenu           fast    A                        Game mode/option selection menu. The top button is highlighted and likely a quick-play or 
+[ 264.3s] # 14 submenu           fast    A                        Game mode selection menu; Exhibition is the fastest path to play and is already highlighte
+[ 282.6s] # 15 submenu           fast    A                        Player selection within Exhibition mode; not yet in live play. Default player is highlight
+[ 300.0s] # 16 submenu           fast    R1                       Player selection screen within Exhibition mode. Pressing A repeatedly has recycled the sam
+[ 338.1s] # 17 submenu           fast    A                        Player 1 configuration is set; this is a selection screen awaiting confirmation to move to
+[ 388.9s] # 18 submenu           fast    BACK                     Stuck loop: A and R1 have recycled this screen. The 'Not Signed in' message on Player 1 su
+[ 438.1s] # 19 submenu           fast    UP A                     Stuck in a loop on Player 1 configuration screen; A, R1, and BACK all recycled back here. 
+[ 521.4s] # 20 submenu           fast    L1 A                     Still in player/match setup. UP A escaped a recycling loop to this screen. The UI explicit
+[ 543.6s] # 21 gameplay          fast    wait                     The snooker table is fully set up with balls in play position, the player HUD is visible w
+[ 566.8s] # 22 probe             probe   HOLD:A:1.5 STICK:left:1.2 STICK:right:1.2 control 0.677, under input 0.556
+[ 592.7s] # 23 gameplay          fast    wait                     Live snooker match: table fully set with balls in play, player HUD visible, cue positioned
+[ 607.1s] # 24 probe             probe   STICK:right:1.5          control 0.002, under input 0.006
+[ 628.2s] # 25 gameplay          fast    RT:1.5                   Live snooker match with full HUD, table set, cue positioned and ready. Previous probes wit
+[ 642.0s] # 26 probe             probe   RT:1.5 RT:1.5 RT:1.5     control 0.004, under input 0.004
+[ 678.3s] # 27 gameplay          fast    A                        Live match ready: table set, balls positioned, cue ready, HUD active with match info. Hand
+[ 716.1s] # 28 probe             probe   A RT:1.5 RT+left:1.2 RT+right:1.2 control 0.774, under input 0.018
+[ 746.7s] # 29 gameplay          fast    A                        Live snooker match in progress with cue positioned and table ready. Previous probes confir
+[ 791.2s] # 30 probe             probe   A STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.799, under input 0.013
+claim: 3 live reads with self-moving refused probes: entering the hold
+hold-play: genre bowl, need 630 s of play
+hold-play: fps at 181 s: median 23.0, share>=30 0.0 over 69 samples
+hold-play: fps at 301 s: median 23.0, share>=30 0.0 over 114 samples -> STOP (not on course)
+hold-play: not held 300/630 s of play; fps gate at 5:01: median 23 < 27, 0% of 114 samples at >= 28.5
+held World Snooker Championship 2005 Europe for 303s
+VERDICT World Snooker Championship 2005 Europe ? FAIL(duration: 301 s of gameplay < 600 s confirmation) gameplay=301.5s fps_ok=0.0 crash=False hang=False audio_short=0.0 hitches=19/4.721pm worst_ms=434.4 static_frac=0.0001 play_share=0.9992 fps_excluded=0.0s
+{"name": "World Snooker Championship 2005 Europe", "device": "nova", "result": "gameplay", "minutes": 13.19, "model_calls": 32, "steps": 30, "replayed": 0, "reason": "four probes refused", "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-53450081-1014d/frames/029-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

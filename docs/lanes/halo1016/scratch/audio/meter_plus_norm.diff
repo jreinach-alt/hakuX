@@ -1,0 +1,263 @@
+--- a/hw/xbox/mcpx/apu/vp/vp.c
++++ b/hw/xbox/mcpx/apu/vp/vp.c
+@@ -453,6 +453,125 @@
+     return (vol == 0xFFF) ? 0.0 : powf(10.0f, vol/(64.0 * -20.0f));
+ }
+ 
++/*
++ * HAKUX_APU_METER=1 (#938; off by default): what each voice put into the
++ * MON_VP mix, and the raw scale of the HRIRs the guest binds to 3D voices.
++ *
++ * Every 7500 APU frames (5 s), one line under logcat tag hakuX-audio:
++ *
++ *   apumeter w=<window> 3d=<dBFS> 2d=<dBFS> top=<v>:<dBFS>,... pause=<v>:<n>,...
++ *
++ * 3d and 2d are the summed energy of voices 0-63 and 64-255 over the window
++ * as an RMS level (both channels, after gain, envelope and HRTF; voices are
++ * summed by energy, so two voices playing the same buffer count 3 dB, not
++ * 6). top is the eight voices with the most energy; pause the voices the
++ * guest sent a VOICE_PAUSE (pause, not resume) in the window, with counts.
++ * A voice's first SET_VOICE_TAR_HRTF in each window, and every 50th overall,
++ * also prints the HRIR it binds, before the normalisation in hrtf.h,
++ * coefficients as int8/128:
++ *
++ *   apuhrtf v=<voice> h=<entry> l1=<L>/<R> l2=<L>/<R> dc=<L>/<R> itd=<samples>
++ *
++ * l1 = sum |c| (what hrtf.h divides by), l2 = sqrt(sum c^2) (broadband
++ * gain for white input), dc = sum c (gain at low frequencies). With l1
++ * normalisation an ear's broadband gain is l2/l1 and its LF gain dc/l1.
++ */
++#ifdef __ANDROID__
++extern int __android_log_print(int prio, const char *tag, const char *fmt, ...);
++#define METER_PRINT(fmt, ...) \
++    __android_log_print(4, "hakuX-audio", fmt, ##__VA_ARGS__)
++#else
++#define METER_PRINT(fmt, ...) fprintf(stderr, fmt "\n", ##__VA_ARGS__)
++#endif
++#define METER_WINDOW_FRAMES 7500
++static int meter_on = -1;
++static double meter_e[MCPX_HW_MAX_VOICES];       /* worker-owned per voice */
++static uint32_t meter_pause[MCPX_HW_MAX_VOICES]; /* FE thread */
++static uint32_t meter_frames, meter_window, meter_hrtf_n;
++static bool meter_hrtf_seen[MCPX_HW_MAX_3D_VOICES]; /* FE thread */
++
++static bool meter_enabled(void)
++{
++    if (meter_on < 0) {
++        const char *e = getenv("HAKUX_APU_METER");
++        meter_on = e && e[0] == '1' && e[1] == '\0';
++        METER_PRINT("apu_meter: %s", meter_on ? "on" : "off");
++    }
++    return meter_on;
++}
++
++static double meter_db(double e)
++{
++    return e > 0.0 ? 10.0 * log10(e) : -200.0;
++}
++
++static void meter_hrtf_print(int v, int h, float hrir[2][HRTF_NUM_TAPS],
++                             float itd)
++{
++    float l1[2] = { 0 }, l2[2] = { 0 }, dc[2] = { 0 };
++    for (int ch = 0; ch < 2; ch++) {
++        for (int k = 0; k < HRTF_NUM_TAPS; k++) {
++            l1[ch] += fabsf(hrir[ch][k]);
++            l2[ch] += hrir[ch][k] * hrir[ch][k];
++            dc[ch] += hrir[ch][k];
++        }
++        l2[ch] = sqrtf(l2[ch]);
++    }
++    METER_PRINT("apuhrtf v=%d h=%d l1=%.3f/%.3f l2=%.3f/%.3f dc=%.3f/%.3f "
++                "itd=%.2f", v, h, l1[0], l1[1], l2[0], l2[1], dc[0], dc[1],
++                itd);
++}
++
++/* APU thread, after voice_work_dispatch: the workers are done with meter_e. */
++static void meter_frame(void)
++{
++    if (++meter_frames < METER_WINDOW_FRAMES) {
++        return;
++    }
++    const double n = (double)METER_WINDOW_FRAMES * NUM_SAMPLES_PER_FRAME * 2;
++    double e3 = 0.0, e2 = 0.0;
++    int top[8] = { -1, -1, -1, -1, -1, -1, -1, -1 };
++    for (int v = 0; v < MCPX_HW_MAX_VOICES; v++) {
++        if (v < MCPX_HW_MAX_3D_VOICES) {
++            e3 += meter_e[v];
++        } else {
++            e2 += meter_e[v];
++        }
++        if (meter_e[v] <= 0.0) {
++            continue;
++        }
++        for (int i = 0; i < 8; i++) {
++            if (top[i] < 0 || meter_e[v] > meter_e[top[i]]) {
++                for (int j = 7; j > i; j--) {
++                    top[j] = top[j - 1];
++                }
++                top[i] = v;
++                break;
++            }
++        }
++    }
++    char tops[8 * 16], pauses[8 * 12];
++    int tl = 0, pl = 0, np = 0;
++    tops[0] = pauses[0] = '\0';
++    for (int i = 0; i < 8 && top[i] >= 0; i++) {
++        tl += snprintf(tops + tl, sizeof(tops) - tl, "%s%d:%.1f", i ? "," : "",
++                       top[i], meter_db(meter_e[top[i]] / n));
++    }
++    for (int v = 0; v < MCPX_HW_MAX_VOICES && np < 8; v++) {
++        if (meter_pause[v]) {
++            pl += snprintf(pauses + pl, sizeof(pauses) - pl, "%s%d:%u",
++                           np++ ? "," : "", v, meter_pause[v]);
++        }
++    }
++    METER_PRINT("apumeter w=%u 3d=%.1f 2d=%.1f top=%s pause=%s", meter_window,
++                meter_db(e3 / n), meter_db(e2 / n), tops, np ? pauses : "-");
++    memset(meter_e, 0, sizeof(meter_e));
++    memset(meter_pause, 0, sizeof(meter_pause));
++    memset(meter_hrtf_seen, 0, sizeof(meter_hrtf_seen));
++    meter_frames = 0;
++    meter_window++;
++}
++
+ static uint32_t voice_get_mask(MCPXAPUState *d, uint16_t voice_handle,
+                                hwaddr offset, uint32_t mask)
+ {
+@@ -517,6 +636,35 @@
+     d->vp.hrtf.entries[entry].hrir[channel][coeff_idx] = int8_to_float(value);
+ }
+ 
++/*
++ * HAKUX_APU_HRTF_NORM (#938): how a 3D voice's HRIR is scaled (hrtf.h).
++ * Unset or "l1": divided by sum |c| per ear, as upstream and as today.
++ * "cap": divided only where sum |c| > 1. "raw": as the guest uploaded it.
++ * "off": no HRTF filter at all, the voice's mono samples to both ears, as
++ * [audio] hrtf = false gives, so an A/B leg needs no toml edit. Read once
++ * and said once in logcat, so a run shows the switch reached the APU.
++ */
++#define HRTF_NORM_OFF 3
++static int hrtf_norm(void)
++{
++    static int m = -1;
++    if (m < 0) {
++        const char *e = getenv("HAKUX_APU_HRTF_NORM");
++        m = !e || !strcmp(e, "l1") ? HRTF_NORM_L1 :
++            !strcmp(e, "cap")      ? HRTF_NORM_CAP :
++            !strcmp(e, "raw")      ? HRTF_NORM_RAW :
++            !strcmp(e, "off")      ? HRTF_NORM_OFF : HRTF_NORM_L1;
++        static const char *const name[] = { "l1", "cap", "raw", "off" };
++#ifdef __ANDROID__
++        __android_log_print(4, "hakuX-audio", "hrtf_norm: %s%s", name[m],
++                            e ? "" : " (default)");
++#else
++        fprintf(stderr, "hrtf_norm: %s%s\n", name[m], e ? "" : " (default)");
++#endif
++    }
++    return m;
++}
++
+ static void fe_method(MCPXAPUState *d, uint32_t method, uint32_t argument)
+ {
+     unsigned int slot;
+@@ -665,6 +813,10 @@
+         voice_off(d, argument & NV1BA0_PIO_VOICE_OFF_HANDLE);
+         break;
+     case NV1BA0_PIO_VOICE_PAUSE:
++        if (meter_enabled() && (argument & NV1BA0_PIO_VOICE_PAUSE_ACTION) &&
++            (argument & NV1BA0_PIO_VOICE_PAUSE_HANDLE) < MCPX_HW_MAX_VOICES) {
++            meter_pause[argument & NV1BA0_PIO_VOICE_PAUSE_HANDLE]++;
++        }
+         voice_set_mask(d, argument & NV1BA0_PIO_VOICE_PAUSE_HANDLE,
+                        NV_PAVS_VOICE_PAR_STATE, NV_PAVS_VOICE_PAR_STATE_PAUSED,
+                        (argument & NV1BA0_PIO_VOICE_PAUSE_ACTION) != 0);
+@@ -716,9 +868,18 @@
+             // after updating filter parameters, however it may be possible to
+             // update parameter targets for an active voice.
+             assert(handle < HRTF_ENTRY_COUNT);
++            if (meter_enabled() && (meter_hrtf_n++ % 50 == 0 ||
++                                    !meter_hrtf_seen[current_voice])) {
++                meter_hrtf_seen[current_voice] = true;
++                meter_hrtf_print(current_voice, handle,
++                                 d->vp.hrtf.entries[handle].hrir,
++                                 d->vp.hrtf.entries[handle].itd);
++            }
+             hrtf_filter_set_target_params(&d->vp.filters[current_voice].hrtf,
+                                           d->vp.hrtf.entries[handle].hrir,
+-                                          d->vp.hrtf.entries[handle].itd);
++                                          d->vp.hrtf.entries[handle].itd,
++                                          hrtf_norm() == HRTF_NORM_OFF ?
++                                              HRTF_NORM_L1 : hrtf_norm());
+         }
+         break;
+     }
+@@ -2132,7 +2293,8 @@
+         }
+     }
+ 
+-    if (v < MCPX_HW_MAX_3D_VOICES && g_config.audio.hrtf) {
++    if (v < MCPX_HW_MAX_3D_VOICES && g_config.audio.hrtf &&
++        hrtf_norm() != HRTF_NORM_OFF) {
+         uint16_t hrtf_handle =
+             voice_get_mask(d, v, NV_PAVS_VOICE_CFG_HRTF_TARGET,
+                            NV_PAVS_VOICE_CFG_HRTF_TARGET_HANDLE);
+@@ -2212,6 +2374,14 @@
+             sample_buf[i][0] += g*samples[i][0];
+             sample_buf[i][1] += g*samples[i][1];
+         }
++        if (meter_enabled()) {
++            double e = 0.0;
++            for (int i = 0; i < NUM_SAMPLES_PER_FRAME; i++) {
++                double l = g * samples[i][0], r = g * samples[i][1];
++                e += l * l + r * r;
++            }
++            meter_e[v] += e;
++        }
+     }
+ }
+ 
+@@ -3329,6 +3499,9 @@
+     mon_acc_report();
+ #endif
+     voice_work_dispatch(d, mixbins);
++    if (meter_enabled()) {
++        meter_frame();
++    }
+     if (unlikely(vl_on)) {
+         voicelog_frame_end(d);
+     }
+--- a/hw/xbox/mcpx/apu/vp/hrtf.h
++++ b/hw/xbox/mcpx/apu/vp/hrtf.h
+@@ -56,9 +56,19 @@
+     memset(f->ch[1].buf, 0, sizeof(f->ch[1].buf));
+ }
+ 
++/*
++ * How an uploaded HRIR is scaled (HAKUX_APU_HRTF_NORM, read in vp.c):
++ *   HRTF_NORM_L1   each ear divided by its sum |c|: peak gain exactly 1 at
++ *                  every frequency bound, broadband gain l2/l1 (upstream)
++ *   HRTF_NORM_CAP  the same division only where sum |c| > 1: an HRIR that
++ *                  cannot overload plays as uploaded, one that could is cut
++ *   HRTF_NORM_RAW  as uploaded, int8/128, no division
++ */
++enum { HRTF_NORM_L1 = 0, HRTF_NORM_CAP = 1, HRTF_NORM_RAW = 2 };
++
+ static inline void
+ hrtf_filter_set_target_params(HrtfFilter *f, float hrir_coeff[2][HRTF_NUM_TAPS],
+-                              float itd)
++                              float itd, int norm)
+ {
+     f->itd_tar =
+         fmaxf(-HRTF_MAX_DELAY_SAMPLES, fminf(itd, HRTF_MAX_DELAY_SAMPLES));
+@@ -75,6 +85,9 @@
+         if (s == 0.0f || s == 1.0f) {
+             continue; /* this channel only: the other is still to normalise */
+         }
++        if (norm == HRTF_NORM_RAW || (norm == HRTF_NORM_CAP && s < 1.0f)) {
++            continue;
++        }
+         for (int k = 0; k < HRTF_NUM_TAPS; k++) {
+             coeff[k] /= s;
+         }

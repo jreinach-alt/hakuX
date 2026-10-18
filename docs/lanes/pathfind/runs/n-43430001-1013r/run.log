@@ -1,0 +1,43 @@
+pathfind: Genma Onimusha (43430001) on nova: /storage/E6C6-D7AA/Games/XBox/43430001-Genma_Onimusha.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 43430001 any, loaded none
+[  14.0s] #  1 publisher_logo    fast    A                        Publisher logo at boot; skip with A per hints for Capcom titles
+[  18.5s] #  2 black             black   wait                     black frame
+[  22.1s] #  3 black             black   wait                     black frame
+[  39.4s] #  4 cutscene          fast    A                        Content warning overlay in the boot sequence; part of intro before title/menu; text sugges
+[  52.9s] #  5 title_screen      fast    START                    Title screen with 'PRESS START BUTTON' prompt visible; the explicit text instructs START p
+[  66.1s] #  6 main_menu         fast    A                        Main menu with NEW GAME already highlighted; select it with A to reach gameplay fastest pe
+[  70.5s] #  7 black             black   wait                     black frame
+[  74.2s] #  8 black             black   wait                     black frame
+[  94.8s] #  9 cutscene          fast    START                    Letterbox bars and rendered scene after black loading frames; intro cinematic before gamep
+[ 115.0s] # 10 cutscene          fast    A                        Letterbox bars and rendered scene with subtitle text indicate an intro cinematic; START ad
+[ 130.6s] # 11 cutscene          fast    B                        Letterbox bars and subtitle text indicate intro cinematic still playing; START and A both 
+[ 134.6s] # 12 cutscene          repeat  B                        repeat B: it advanced the cutscene
+[ 138.5s] # 13 cutscene          repeat  B                        repeat B: it advanced the cutscene
+[ 142.5s] # 14 cutscene          repeat  B                        repeat B: it advanced the cutscene
+[ 155.0s] # 15 gameplay          fast    wait                     Player character visible and in-world, HUD up (minimap and status bars), no cutscene bars 
+[ 160.7s] # 16 probe             probe   STICK:up:1.5             control 0.002, under input 0.001
+[ 216.3s] # 17 gameplay          fast    STICK:right:1.5          HUD visible (minimap and status bars present), player character in game world, no menu ove
+[ 225.3s] # 18 probe             probe   STICK:right:1.5 STICK:right:1.5 control 0.001, under input 0.001
+[ 277.2s] # 19 gameplay          fast    UP                       HUD present (minimap, health bar, counters), player character in-world, no menu overlays. 
+[ 297.1s] # 20 probe             probe   X UP STICK:up:1.5        control 0.000, under input 0.001
+[ 326.3s] # 21 gameplay          fast    RT:2                     HUD present (minimap, status bar), player character in game world, no menu overlays or cut
+[ 348.7s] # 22 probe             probe   B RT:2 RT:1.5            control 0.001, under input 0.007
+hold-play: genre attack, need 600 s of play
+hold-play: 3 still looks: walk reversed (back) at 93 s
+hold-play: fps at 185 s: median 59.0, share>=30 1.0 over 186 samples
+hold-play: 3 still looks: walk reversed (forward) at 185 s
+hold-play: stuck (scene unchanged for 4 consecutive samples (genre attack)): unstick STICK:right:2 A at 185 s
+hold-play: fps at 302 s: median 59.0, share>=30 1.0 over 302 samples
+hold-play: 3 still looks: walk reversed (back) at 402 s
+hold-play: 3 still looks: walk reversed (forward) at 486 s
+hold-play: stuck (scene unchanged for 4 consecutive samples (genre attack)): unstick STICK:right:2 A at 512 s
+hold-play: stuck (scene unchanged for 5 consecutive samples (genre attack)): unstick STICK:up:2 A at 543 s
+hold-play: stuck (scene unchanged for 6 consecutive samples (genre attack)): unstick STICK:left:2 A at 596 s
+hold-play: stuck_abort: scene unchanged for 7 consecutive samples (genre attack); 3 unstick rung(s) tried, still stuck
+hold-play: not held 273/600 s of play; stuck_abort: scene unchanged for 7 consecutive samples (genre attack); 3 unstick rung(s) tried, still stuck
+held Genma Onimusha for 662s
+VERDICT Genma Onimusha ? FAIL(menu time: 41.5% of the scored window in `play` (bar 90%; still 386 s, play 274 s, no-timeline 0 s)) gameplay=660.6s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=1/0.1pm worst_ms=111.5 static_frac=0.1279 play_share=0.415 fps_excluded=387.9s
+{"name": "Genma Onimusha", "device": "nova", "result": "gameplay", "minutes": 5.81, "model_calls": 33, "steps": 22, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-43430001-1013r/frames/021-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

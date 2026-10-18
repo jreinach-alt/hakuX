@@ -1,0 +1,27 @@
+pathfind: Legends of Wrestling USA (41430003) on nova: /storage/E6C6-D7AA/Games/XBox/41430003-Legends_of_Wrestling_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 41430003 any, loaded none
+[  14.8s] #  1 publisher_logo    fast    START                    Geometric logo on startup; standard publisher intro before title/menu.
+[  30.3s] #  2 publisher_logo    fast    START                    Another publisher/codec logo in the intro sequence. Multiple logos are normal before the t
+[  41.2s] #  3 title_screen      fast    START                    The screen displays the title card with the explicit 'press START' prompt; this is the tit
+[  57.9s] #  4 main_menu         fast    A                        exhibition is already highlighted (red box); fastest path to play; press A to accept and a
+[  74.2s] #  5 submenu           fast    A                        Exhibition match-type selector; first option (3 way dance) is the natural default in a ver
+[ 129.6s] #  6 submenu           fast    A                        Sports team select screen for the match; human player already assigned to TEAM 1. The 'pre
+[ 164.6s] #  7 submenu           fast    START                    Still on team/match setup; human player assigned to TEAM 1; the 'press START to join' prom
+[ 182.6s] #  8 submenu           fast    A                        Confirmation dialog within the match setup; yes is highlighted; pressing A accepts and adv
+[ 214.5s] #  9 submenu           fast    START                    Character/wrestler selection menu before the match; START to pick random wrestlers is the 
+[ 271.1s] # 10 submenu           fast    A                        Wrestler selection menu after START random was pressed in step 9; A ACCEPT confirms the ra
+[ 295.4s] # 11 submenu           fast    A                        'yes' is highlighted in the ready confirmation; pressing A accepts and starts the match.
+[ 312.6s] # 12 cutscene          fast    START                    In-engine wrestler entrance animation after the match ready confirmation; automated walkou
+[ 365.0s] # 13 cutscene          fast    A                        Entrance animation still playing showing single wrestler introduction; opponent not yet vi
+[ 381.4s] # 14 gameplay          fast    wait                     Active wrestling match with HUD visible (wrestler names, crowd), two wrestlers in the ring
+[ 405.4s] # 15 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.424, under input 0.348
+hold-play: genre attack, need 630 s of play
+hold-play: fps at 190 s: median 59.0, share>=30 0.995 over 189 samples
+hold-play: off play 158 s of a 237 s scored window cannot drop to 10% with 1166 s of budget left: no amount of further play can pass
+hold-play: not held 80/630 s of play; off play 158 s of a 237 s scored window cannot drop to 10% with 1166 s of budget left: no amount of further play can pass
+held Legends of Wrestling USA for 239s
+VERDICT Legends of Wrestling USA ? FAIL(duration: 238 s of gameplay < 600 s confirmation) gameplay=237.6s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=1/0.338pm worst_ms=264.9 static_frac=0.2578 play_share=0.3329 fps_excluded=160.0s
+{"name": "Legends of Wrestling USA", "device": "nova", "result": "gameplay", "minutes": 6.76, "model_calls": 28, "steps": 15, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-41430003-1014d/frames/014-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430003": "ee393a17dcb0", "41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "4253

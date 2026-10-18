@@ -3,10 +3,13 @@
 own records say about it, so nothing that decides a dispatch has to read prose.
 
     title_registry.py build  [--root W] [--out PATH] [--no-forge]
-    title_registry.py check  [--root W] [--registry PATH] [--pages]
+    title_registry.py check  [--root W] [--registry PATH] [--pages] [--stalls]
                                                              exit 0 fresh (and, with --pages,
                                                              every page's Playable count matches
-                                                             the table's); 3 otherwise
+                                                             the table's; with --stalls, every
+                                                             single-stall candidate is raised
+                                                             within 2h in pm/stall-raised.tsv);
+                                                             3 otherwise
     title_registry.py show   [--root W] [--registry PATH] (TITLE_ID | --status S | --all)
     title_registry.py resolve [--root W] NAME                 what a name resolves to, and from where
 
@@ -43,6 +46,11 @@ SOURCES (all read as data):
                                                 Forgejo HTTP API (127.0.0.1:3330, W/forge/tokens/jobs.token),
                                                 never `gh` (no GitHub contact). Unreadable: the header says
                                                 forge=unreadable and every such hold stays active.
+
+pm/stall-raised.tsv is read by `check --stalls` and the hourly report's STALL
+ASKS section, NOT by build(): it is hand-appended (title_id, raised_pdt, run,
+stall_ms, frames, owner_answer, answered_pdt), so it is not a source of a row
+and is not in the staleness digest. See title_id/is_stall_candidate below.
 """
 import argparse
 import csv
@@ -98,6 +106,10 @@ class Paths:
         self.pf = os.path.join(root, "wt", "pathfind")
         self.pf_runs = os.path.join(self.pf, "docs", "lanes", "pathfind", "runs")
         self.fixes = os.path.join(self.pm, "title-fixes.tsv")
+        # stallraise1017: the owner's same-day rule for a single-stall title (#stallraise1017
+        # NOTES.md) -- hand-appended, never generated, so it is not in source_files() / the
+        # staleness digest.
+        self.stall_raised = os.path.join(self.pm, "stall-raised.tsv")
         self.pf_paths = os.path.join(self.pf, "docs", "testing", "titles", "pathknow", "paths")
         self.dispatch = os.path.join(root, "dispatch")
         self.results = os.path.join(self.dispatch, "results")
@@ -560,6 +572,87 @@ def forge_open_issues(p, use_forge=True, url=FORGE_URL):
     return None             # 200 pages and no empty one: not a listing to trust
 
 
+# ---------------------------------------------------------------- stall raises (#stallraise1017)
+#
+# Owner 10-17: "the rule should be to raise them when you have a title with
+# one measured hitch like this, not bury it in some report and then forget
+# about it for days". Marvel Nemesis (hold marvel-851) sat 10-06 to 10-17
+# with no row ever asking the owner. The registry already derives
+# `failing_all` per title; this reads that column, never a second parser of
+# a verdict.
+
+STALL_RAISED_COLS = ["title_id", "raised_pdt", "run", "stall_ms", "frames", "owner_answer", "answered_pdt"]
+STALL_FRAMES = ("LOADING", "PLAY", "CANNOT TELL")
+STALL_GRACE_S = 2 * 3600   # a single-stall candidate must be raised within 2h (owner 10-17: same day)
+
+
+def is_stall_candidate(row):
+    """A single-stall candidate: the registry's own latest scored verdict fails
+    hitch and nothing else. title_id/name come from the row the caller has."""
+    return row.get("status") == "BELOW_BAR" and row.get("failing_all") == "hitch"
+
+
+def load_stall_raised(p):
+    return read_tsv(p.stall_raised)
+
+
+def validate_stall_raised(p):
+    """[str] problems with pm/stall-raised.tsv, hand-appended so never trusted
+    blind: a bad title_id, an unparseable raised_pdt, a non-numeric stall_ms,
+    or a frames value outside STALL_FRAMES."""
+    errs = []
+    for i, r in enumerate(load_stall_raised(p), 1):
+        tid = (r.get("title_id") or "").strip().upper()
+        if not TID_RE.match(tid):
+            errs.append("pm/stall-raised.tsv row %d: bad title_id %r" % (i, r.get("title_id")))
+        if not parse_pdt(r.get("raised_pdt")):
+            errs.append("pm/stall-raised.tsv row %d (%s): bad raised_pdt %r" % (i, tid, r.get("raised_pdt")))
+        if not re.match(r"^\d+$", (r.get("stall_ms") or "").strip()):
+            errs.append("pm/stall-raised.tsv row %d (%s): stall_ms not a whole number: %r" % (i, tid, r.get("stall_ms")))
+        if (r.get("frames") or "").strip() not in STALL_FRAMES:
+            errs.append("pm/stall-raised.tsv row %d (%s): frames must be one of %s, got %r" % (
+                i, tid, "/".join(STALL_FRAMES), r.get("frames")))
+    return errs
+
+
+def stall_asks(p, rows, now=None):
+    """(not_raised, unanswered) for the hourly report's STALL ASKS section.
+    not_raised: [(tid, name)] -- a candidate with no pm/stall-raised.tsv row at
+    all (owner owes nothing yet; lane.local owes the raise).
+    unanswered: [(tid, run, age_h)] -- a raised row with a blank owner_answer,
+    with its age in hours since raised_pdt."""
+    now = now or dt.datetime.now(dt.timezone.utc)
+    raised = load_stall_raised(p)
+    raised_tids = {(r.get("title_id") or "").strip().upper() for r in raised}
+    not_raised = [(tid, row.get("name", "")) for tid, row in sorted(rows.items())
+                  if is_stall_candidate(row) and tid not in raised_tids]
+    unanswered = []
+    for r in raised:
+        if (r.get("owner_answer") or "").strip():
+            continue
+        t = parse_pdt(r.get("raised_pdt"))
+        age_h = (now - t).total_seconds() / 3600 if t else None
+        unanswered.append(((r.get("title_id") or "").strip().upper(), r.get("run", ""), age_h))
+    return not_raised, unanswered
+
+
+def stall_overdue(p, rows, now=None):
+    """[(tid, name, age_h)] -- single-stall candidates with no pm/stall-raised.tsv
+    row, past STALL_GRACE_S since the verdict that made them a candidate.
+    age_h is None (and counts as overdue) when verdict_utc can't be read."""
+    now = now or dt.datetime.now(dt.timezone.utc)
+    raised_tids = {(r.get("title_id") or "").strip().upper() for r in load_stall_raised(p)}
+    out = []
+    for tid, row in sorted(rows.items()):
+        if not is_stall_candidate(row) or tid in raised_tids:
+            continue
+        t = parse_utc(row.get("verdict_utc"))
+        age_h = (now - t).total_seconds() / 3600 if t else None
+        if age_h is None or age_h * 3600 > STALL_GRACE_S:
+            out.append((tid, row.get("name", ""), age_h))
+    return out
+
+
 # ---------------------------------------------------------------- the build
 
 def staged_map(p, cat):
@@ -729,6 +822,11 @@ def build(p, now=None, use_forge=True, forge_url=FORGE_URL):
             if g is not None and len(fl) != len(g):
                 notes.setdefault(tid, []).append(
                     "recomputed %d failing gate(s), verdict lists %d" % (len(g), len(fl)))
+        failing_all_str = "+".join(g) if g else ""
+        # #stallraise1017: visible in the TSV itself, not just derivable by a reader who
+        # knows to check status+failing_all -- the owner's same-day rule names this title.
+        if status == "BELOW_BAR" and failing_all_str == "hitch":
+            rule += " [SINGLE-STALL CANDIDATE: raise within 2h in pm/stall-raised.tsv]"
         rows.append(dict(
             title_id=tid, aliases=",".join(sorted(cat.aliases.get(tid, set()) - {tid})), name=name, status=status, status_rule=rule,
             ledger=(ledger[tid].get("date_pdt", "") if tid in ledger else ""),
@@ -742,7 +840,7 @@ def build(p, now=None, use_forge=True, forge_url=FORGE_URL):
             fps_ok_share=_f(d.get("fps_ok_share")), fps_window_median=_f(d.get("fps_window_median")),
             play_share=_f(d.get("play_share")), play_s=_f(d.get("play_s")), hitch=_f(d.get("hitch")),
             crash=_b(d.get("crash")), hang=_b(d.get("hang")), void=(d.get("void") or "") if d else "",
-            failing_all="+".join(g) if g else "", cause=cause, fix_commit=fixes.get(tid, ""),
+            failing_all=failing_all_str, cause=cause, fix_commit=fixes.get(tid, ""),
             last_run=last_run.where if last_run else "", last_run_utc=iso_z(last_run.t) if last_run else "",
             last_run_build=(last_run.build or "unrecorded") if last_run else "",
             runs_total=str(len(rs)), runs_today=str(runs_today),
@@ -863,6 +961,21 @@ def freshness(p, path=None, now=None):
     return True, "registry built %s, %.0f s old, sources unchanged" % (hdr["generated_utc"], age)
 
 
+README_NUMBERLESS = (r"\*\*Games rated Playable so far:\*\* \[the list, with progress charts\]\("
+                     r"https://github\.com/jreinach-alt/hakuX/blob/home/STATUS\.md\)\.")
+
+
+def readme_has_numberless_line(p):
+    """master's README carries the Playable line WITHOUT a number (owner 10-16);
+    host-tools/home_page.py matches this exact text and writes the count from
+    STATUS.md into home's copy. A number here breaks that match and freezes the
+    public page (10-17: every home update failed from 23:00 until it was put back)."""
+    try:
+        return len(re.findall(README_NUMBERLESS, open(p.repo_readme, encoding="utf-8", errors="replace").read())) == 1
+    except OSError:
+        return False
+
+
 def page_playable_counts(p):
     """{label: int or None} -- the Playable count each public/rendered page
     states, by regex or row-count against the page's own text. Never joins
@@ -875,14 +988,6 @@ def page_playable_counts(p):
         out["status page"] = int(m.group(1)) if m else None
     except OSError:
         out["status page"] = None
-    try:
-        readme = open(p.repo_readme, encoding="utf-8", errors="replace").read()
-        m1 = re.search(r"\[(\d+) Playable games\]", readme)
-        m2 = re.search(r"(\d+) games rated Playable\.", readme)
-        out["README.md (link)"] = int(m1.group(1)) if m1 else None
-        out["README.md (bullet)"] = int(m2.group(1)) if m2 else None
-    except OSError:
-        out["README.md (link)"] = out["README.md (bullet)"] = None
     try:
         compat = open(p.repo_compat, encoding="utf-8", errors="replace").read()
         m = re.search(r"(\d+) Playable ·", compat)
@@ -958,6 +1063,7 @@ def main(argv=None):
     ap.add_argument("--status")
     ap.add_argument("--all", action="store_true")
     ap.add_argument("--pages", action="store_true")
+    ap.add_argument("--stalls", action="store_true")
     a = ap.parse_args(argv)
     p = Paths(a.root)
     if a.cmd == "build":
@@ -994,6 +1100,11 @@ def main(argv=None):
                 fail = True
             else:
                 table_playable = sum(1 for r in rows.values() if r.get("status") == "PLAYABLE")
+                if readme_has_numberless_line(p):
+                    print("PAGE README.md: numberless Playable line, as home_page.py expects (home sets the count)")
+                else:
+                    print("PAGE README.md: the Playable line is not the numberless form home_page.py rewrites")
+                    fail = True
                 for label, n in page_playable_counts(p).items():
                     if n is None:
                         print("PAGE %s: Playable count not found" % label)
@@ -1003,6 +1114,27 @@ def main(argv=None):
                         fail = True
                     else:
                         print("PAGE %s: Playable %d matches the table" % (label, n))
+        if a.stalls:
+            # #stallraise1017: owner 10-17 same-day rule. A single-stall candidate
+            # (BELOW_BAR, failing_all=="hitch") with no pm/stall-raised.tsv row past
+            # STALL_GRACE_S is a title buried the way Marvel Nemesis (hold marvel-851)
+            # was buried 10-06 to 10-17.
+            for e in validate_stall_raised(p):
+                print("STALL ROW INVALID: %s" % e)
+                fail = True
+            if hdr is None:
+                print("STALLS: no registry to check")
+                fail = True
+            else:
+                overdue = stall_overdue(p, rows)
+                if overdue:
+                    for tid, name, age_h in overdue:
+                        age = "unknown age (no verdict_utc)" if age_h is None else "%.1fh old" % age_h
+                        print("STALL NOT RAISED %s %s: single-stall candidate, %s, no pm/stall-raised.tsv row "
+                              "(owner 10-17: raise the same day)" % (tid, name, age))
+                    fail = True
+                else:
+                    print("STALLS: every single-stall candidate is raised, or still within the 2h grace")
         return 3 if fail else 0
     if a.cmd == "resolve":
         cat = build_catalog(p)

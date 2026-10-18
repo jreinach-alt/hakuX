@@ -1,0 +1,40 @@
+taken: nova by lane.pathfind
+NOT IDLE: nova is held but busy -- do not touch it yet:
+dispatcher pid 518495 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+run: hold.sh wait-idle nova <timeout_s>, and touch the device only on exit 0
+waiting for nova: dispatcher pid 518495 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+idle: nova is held and runs nothing
+held at 13:08:56
+pathfind: AMF Bowling 2004 (None) on nova: /storage/E6C6-D7AA/Games/XBox/AMF_Bowling_2004.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: - any, loaded all goldens (title not identified)
+[   9.2s] #  1 loading           fast    wait                     Blank white frame with a green logo, likely a publisher or splash logo or the boot loader;
+[  17.9s] #  2 publisher_logo    fast    START                    A legal/copyright text card after the logos, not a title or menu. Not skippable by the usu
+[  26.8s] #  3 cutscene          fast    A                        This is a live-action style video clip (not a menu or HUD), so it is an intro/promo video 
+[  34.5s] #  4 title_screen      fast    START                    Title screen with 'Press START' prompt; START advances past the title per the rules for th
+[  42.3s] #  5 main_menu         fast    A                        Main menu with Start New Game already highlighted; it is the fastest route to play. Pressi
+[  52.4s] #  6 main_menu         fast    A                        Start New Game submenu. Tournament is the brighter, likely highlighted item, and its setup
+[  59.6s] #  7 submenu           fast    UP A                     Previous A on Start New Game returned to this same screen, so the highlight may not be whe
+[  69.2s] #  8 submenu           fast    A                        Controller 1 is already assigned as Player 1, which is the one human player the goal asks 
+[  78.4s] #  9 submenu           fast    DOWN DOWN DOWN DOWN DOWN A Previous A and UP+A presses kept returning to this same setup screen, so the highlight is 
+[  93.3s] # 10 submenu           fast    DOWN A                   10 Frames is already the longest game length offered in this list, controller 1 is already
+[ 104.7s] # 11 gameplay          fast    wait                     Player-controlled bowling scene with the bowler and ball at the foul line, no menu open. P
+[ 122.1s] # 12 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.155, under input 0.110
+[ 130.0s] # 13 gameplay          fast    A                        Bowling HUD with aim diagram and power meter, no menu open, so this is the live player-con
+[ 148.8s] # 14 probe             probe   A HOLD:A:1.5 HOLD:A:1.5 HOLD:A:1.5 control 0.053, under input 0.048
+[ 157.8s] # 15 gameplay          fast    A                        Bowling HUD is up and no menu is open, so this is live play. The last hold of A did not ch
+[ 175.4s] # 16 probe             probe   A STICK:left:1 STICK:left:1 STICK:left:1 control 0.052, under input 0.048
+[ 183.5s] # 17 gameplay          fast    HOLD:A:0.5               Live bowling scene with no menu. Earlier A taps and stick probes barely moved the view, so
+[ 197.4s] # 18 probe             probe   HOLD:A:0.5 HOLD:A:3      control 0.073, under input 0.667
+hold-play: genre bowl, need 600 s of play
+hold-play: fps at 182 s: median 59.0, share>=30 1.0 over 183 samples
+hold-play: fps at 303 s: median 59.0, share>=30 1.0 over 304 samples
+hold-play: HELD 603/600 s of play; 
+held AMF Bowling 2004 for 675s
+VERDICT AMF Bowling 2004 ? FAIL(menu time: 89.2% of the scored window in `play` (bar 90%; play 601 s, menu 66 s, results 6 s, no-timeline 0 s)) gameplay=673.8s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=1/0.098pm worst_ms=165.6 static_frac=0.0 play_share=0.8919 fps_excluded=74.2s
+{"name": "AMF Bowling 2004", "device": "nova", "result": "gameplay", "minutes": 3.29, "model_calls": 35, "steps": 18, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-bowling-2004/hold2/frames/017-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "e78b35c8147e", "4256
+pathfind rc=0 at 13:24:19
+released: nova by lane.pathfind
+released rc=0

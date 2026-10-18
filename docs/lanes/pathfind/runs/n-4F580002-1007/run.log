@@ -1,0 +1,37 @@
+pathfind: Pilot Down Behind Enemy Lines Europe (4F580002) on nova: /storage/E6C6-D7AA/Games/XBox/4F580002-Pilot_Down_Behind_Enemy_Lines_Europe.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4F580002 any, loaded none
+[  10.6s] #  1 black             fast    wait                     This looks like an emulator loading screen or very early boot graphic, not yet a game vide
+[  20.6s] #  2 publisher_logo    fast    START A                  Developer credit screen before title; skip it to progress faster.
+[  30.8s] #  3 title_screen      fast    START                    Title screen explicitly prompts START to begin; pressing START should advance to the main 
+[  40.4s] #  4 main_menu         fast    DOWN UP A                Main menu is showing; NEW GAME is the default fastest path to gameplay, selecting it with 
+[  52.1s] #  5 cutscene          fast    A                        This is an intro narrative cutscene with comic-panel art and text captions setting up the 
+[  62.0s] #  6 cutscene          fast    A                        This is still the comic-panel intro narrative setting up the story, with an on-screen A pr
+[  70.1s] #  7 cutscene          fast    A                        Comic-panel narrative intro continues with an on-screen A prompt to advance; pressing A sh
+[  78.4s] #  8 cutscene          fast    A                        Comic-panel narrative intro continues with an on-screen A prompt icon visible bottom-right
+[  86.4s] #  9 cutscene          fast    A                        Still the comic-panel narrative intro with an on-screen A prompt; advancing with A to cont
+[  94.8s] # 10 cutscene          fast    A                        Still comic-panel narrative art style with an A prompt icon, not yet a live HUD with playe
+[  98.4s] # 11 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 107.7s] # 12 cutscene          fast    A                        Still the comic-panel narrative intro with an A prompt icon visible; advancing with A to c
+[ 116.0s] # 13 cutscene          fast    A                        Still comic-panel narrative intro with an on-screen A prompt icon in the bottom-right pane
+[ 125.0s] # 14 cutscene          fast    A                        Still the comic-panel narrative intro with an A prompt icon; advancing with A to continue 
+[ 133.6s] # 15 cutscene          fast    A                        Still comic-book panel art with dialogue caption and an A prompt, same narrative intro sty
+[ 141.9s] # 16 cutscene          fast    A                        Still the comic-panel narrative intro sequence with an A prompt icon, same style as prior 
+[ 149.8s] # 17 cutscene          fast    A                        Still the same comic-panel narrative intro sequence with an A prompt icon; continuing to a
+[ 157.5s] # 18 cutscene          fast    A                        Still the same comic-panel intro sequence with the A prompt icon; continuing to advance to
+[ 165.6s] # 19 cutscene          fast    A                        Same comic-panel intro sequence with A prompt icon, continuing to advance toward gameplay
+[ 173.2s] # 20 cutscene          fast    A                        Same comic-panel narrative intro sequence with A prompt icon shown bottom-right; continuin
+[ 181.1s] # 21 cutscene          fast    A                        Still the same comic-book panel intro sequence with an A prompt icon, consistent with prio
+[ 189.5s] # 22 cutscene          fast    A                        Still the same comic-book narrative intro with the A prompt icon; continuing to advance th
+[ 200.3s] # 23 cutscene          fast    A                        Same comic-book narrative intro sequence with A prompt icon, advancing the story before ga
+[ 211.5s] # 24 gameplay          fast    STICK:up:1.5             The comic-panel intro cutscene has ended; now showing a player-controlled character in a 3
+[ 226.8s] # 25 probe             probe   STICK:up:1.5 STICK:up:1.5 control 0.047, under input 0.301
+hold-play: genre other, need 600 s of play
+hold-play: fps at 187 s: median 23.0, share>=30 0.39 over 59 samples
+hold-play: fps at 310 s: median 25.0, share>=30 0.406 over 101 samples -> STOP (not on course)
+hold-play: not held 309/600 s of play; fps gate at 5:10: median 25 < 27, 41% of 101 samples at >= 28.5
+held Pilot Down Behind Enemy Lines Europe for 312s
+VERDICT Pilot Down Behind Enemy Lines Europe ? FAIL(duration: 310 s of gameplay < 600 s confirmation) gameplay=310.4s fps_ok=0.2289 crash=False hang=False audio_short=0.0 hitches=30/7.189pm worst_ms=173.8 static_frac=0.0638 play_share=0.9992 fps_excluded=0.0s
+{"name": "Pilot Down Behind Enemy Lines Europe", "device": "nova", "result": "gameplay", "minutes": 3.78, "model_calls": 29, "steps": 25, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4F580002-1007/frames/024-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

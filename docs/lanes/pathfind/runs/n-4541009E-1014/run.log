@@ -1,0 +1,69 @@
+pathfind: Need for Speed Carbon USA (4541009E) on nova: /storage/E6C6-D7AA/Games/XBox/4541009E-Need_for_Speed_Carbon_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4541009E any, loaded none
+[   6.6s] #  1 publisher_logo    sibreplay START                    sibling 4541007B step 0: This is an early boot logo animation (green polygon emblem on whi
+[  12.0s] #  2 black             black   wait                     black frame
+[  24.8s] #  3 loading           fast    wait                     Explicit 'LOADING...' text with animated spinner indicates the game engine is loading cont
+[  38.5s] #  4 cutscene          fast    START                    This is a rendered intro scene after the loading screen, with letterbox framing and no con
+[  43.0s] #  5 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[  68.5s] #  6 save_load_prompt  fast    DOWN A                   Profile/alias creation prompt; No is currently selected; choosing Yes follows the hint tha
+[  82.2s] #  7 save_load_prompt  fast    A                        Informational notice about autosave with a single OK button highlighted; A confirms it and
+[  96.3s] #  8 save_load_prompt  fast    A                        Informational autosave notice with a single OK button highlighted. A confirms it and proce
+[ 157.8s] #  9 name_entry        fast    DOWN DOWN DOWN DOWN RIGHT RIGHT A Name entry keyboard with cursor on A. Following the NFS Most Wanted sibling path (same ser
+[ 230.4s] # 10 name_entry        fast    DOWN DOWN DOWN DOWN RIGHT RIGHT A Cursor on a letter (C), not on Done. Following the proven NFS Most Wanted sibling EA-title
+[ 272.2s] # 11 name_entry        fast    START                    Stuck in the name entry keyboard. The cursor is on letter E, not on Done. Previous D-pad n
+[ 284.4s] # 12 save_load_prompt  fast    UP A                     Save/alias prompt; 'No' is highlighted but the hint says save-creation prompts reach play 
+[ 318.3s] # 13 save_load_prompt  fast    A                        This is a notice-only dialog with a single OK button (not a Yes/No choice). Similar to ste
+[ 341.6s] # 14 submenu           fast    A                        Car/vehicle selection screen before race: the default car is displayed and 'Ⓐ Accept' is h
+[ 358.0s] # 15 submenu           fast    A                        Menu with selectable options (START CAREER is the highlighted default); car display is par
+[ 371.0s] # 16 loading           fast    wait                     LOADING... indicator at bottom with spinner; controls help overlay shown while the game lo
+[ 384.5s] # 17 cutscene          fast    START                    Post-loading intro cutscene with letterbox bars and car cinematography; no HUD, no gamepla
+[ 398.3s] # 18 cutscene          fast    A                        Still a post-loading intro cutscene with letterbox bars and no gameplay HUD; START was pre
+[ 417.9s] # 19 cutscene          fast    B                        Post-load intro cinematic showing car action with no gameplay HUD or player controls avail
+[ 423.4s] # 20 cutscene          repeat  B                        repeat B: it advanced the cutscene
+[ 441.7s] # 21 game_over         fast    A                        Mission failure screen with loss message and two action options; Continue is the highlight
+[ 460.0s] # 22 submenu           fast    A                        Menu overlay with selectable options over the game world. RESUME CAREER is highlighted yel
+[ 488.0s] # 23 loading           fast    wait                     LOADING... spinner indicates the game is still loading the race environment. This controls
+[ 503.2s] # 24 cutscene          fast    START                    Post-loading story sequence with no gameplay HUD or player controls; previous B presses ad
+[ 518.6s] # 25 cutscene          fast    A                        FMV-style story sequence with no gameplay HUD or player control; previous START advanced i
+[ 532.0s] # 26 cutscene          fast    START                    FMV-style story sequence showing a police confrontation; no gameplay HUD, no interactive e
+[ 577.0s] # 27 pause             fast    B                        Pause menu is active; pressing START during the prior cutscene paused the game instead of 
+[ 596.4s] # 28 gameplay          fast    wait                     Player car is in active control on the road during a pursuit; full HUD visible (minimap, s
+[ 600.5s] # 29 probe             probe   RT:1.5                   control 0.003, under input 0.003
+[ 623.6s] # 30 results           fast    A                        End-of-mission failure screen showing the pursuit attempt ended; offers to restart or cont
+[ 643.7s] # 31 submenu           fast    A                        Secondary menu after results screen; offers career options (resume or start new); RESUME C
+[ 658.0s] # 32 loading           fast    wait                     After selecting RESUME CAREER, the game is loading the next stage. Black background with a
+[ 674.5s] # 33 cutscene          fast    START                    Post-load cinematic scene with a car on road, no HUD or interactive elements. The dark fra
+[ 692.9s] # 34 cutscene          fast    START                    Cinematic presentation with a vehicle visible but no gameplay HUD (minimap, speedometer), 
+[ 706.6s] # 35 cutscene          fast    A                        Letterbox framing + character in car window = cinematic, not gameplay. Previous step was S
+[ 711.4s] # 36 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 790.8s] # 37 gameplay          fast    wait                     Racing environment with player and opponent cars visible; chase camera view of player car;
+[ 794.9s] # 38 probe             probe   RT:1.5                   control 0.000, under input 0.000
+[ 808.2s] # 39 game_over         fast    A                        Mission failed - player did not escape from Cross (a pursuit/race event). Game displays lo
+[ 849.2s] # 40 submenu           fast    A                        Post-game-over career menu. RESUME CAREER is already highlighted. The previous mission fai
+[ 863.5s] # 41 loading           fast    wait                     LOADING... text with spinner animation indicates game is loading the next race/mission aft
+[ 880.4s] # 42 cutscene          fast    START                    Road scene with no interactive HUD elements after a loading screen; this is a cinematic vi
+[ 894.8s] # 43 cutscene          fast    A                        Post-loading cinematic briefing, FMV-style, letterboxed; previous START input changed the 
+[ 899.6s] # 44 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 942.2s] # 45 gameplay          fast    wait                     After loading and briefing cutscenes, the car is now on the road in active pursuit/race st
+[ 962.1s] # 46 probe             probe   X HOLD:A:3               control 0.000, under input 0.550
+[ 994.2s] # 47 submenu           fast    A                        Career continuation menu after losing a race; RESUME CAREER is highlighted; A selects it t
+[1007.0s] # 48 loading           fast    wait                     After pressing A on RESUME CAREER menu, the game is loading the next race/mission; the ani
+[1023.5s] # 49 cutscene          fast    START                    Post-loading briefing cinematic, not gameplay; letterbox bars and cinematic framing confir
+[1037.4s] # 50 cutscene          fast    START                    Letterbox bars and cinematic framing confirm a pre-recorded sequence, not gameplay; previo
+[1048.7s] # 51 cutscene          fast    START                    Letterbox black bars at top and bottom frame a pre-recorded cinematic sequence, not player
+[1061.7s] # 52 cutscene          fast    START                    Black letterbox bars frame a pre-recorded cinematic sequence of cars; no player control, n
+[1075.7s] # 53 cutscene          fast    START                    Letterbox bars and cinematic framing confirm a pre-recorded sequence, not gameplay; contin
+[1086.4s] # 54 cutscene          fast    START                    Letterbox bars (black at top and bottom) and cinematic framing confirm a pre-recorded sequ
+[1099.3s] # 55 cutscene          fast    START                    Letterbox bars and cinematic framing over cars; not player-controlled gameplay. Previous s
+[1111.3s] # 56 cutscene          fast    START                    Letterbox bars and cinematic framing confirm a pre-recorded sequence, not player-controlle
+[1123.6s] # 57 cutscene          fast    START                    Letterbox bars (black at top and bottom) and cinematic framing confirm a pre-recorded sequ
+[1135.5s] # 58 cutscene          fast    START                    Letterbox bars (black top and bottom) and cinematic framing over a car; pre-recorded seque
+[1146.6s] # 59 cutscene          fast    START                    Letterbox bars and cinematic framing confirm a pre-recorded sequence, not player-controlle
+[1159.2s] # 60 cutscene          fast    START                    Letterbox bars and cinematic framing with story text indicate a pre-recorded intro/briefin
+[1174.0s] # 61 cutscene          fast    START                    Letterbox bars and cinematic framing confirm a pre-recorded sequence, not player-controlle
+[1184.5s] # 62 cutscene          fast    START                    Letterbox bars and cinematic framing over a car scene confirm a pre-recorded sequence, not
+[1196.7s] # 63 cutscene          fast    START                    Letterbox bars and cinematic framing confirm a pre-recorded sequence. Previous steps 57-62
+{"name": "Need for Speed Carbon USA", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 55, "steps": 63, "replayed": 0, "reason": "budget 20 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

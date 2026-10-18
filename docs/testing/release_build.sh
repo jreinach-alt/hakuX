@@ -28,6 +28,9 @@
 #   - HEAD is exactly v<version>^{commit} (so <version> names a real,
 #     reviewed tag rather than whatever the checkout happens to be on)
 #
+#   - for a plain X.Y.Z, docs/releases/v<version>.md exists and links
+#     docs/gpu-driver.md (every release note names the tested GPU driver)
+#
 # and REFUSES after building unless the APK is signed and its own aapt2 dump agrees
 # that versionName is exactly <version> and bool/debug_tools_default is
 # exactly "false" -- so a defect in the Gradle wiring is caught here, against
@@ -71,6 +74,21 @@ if [ "$HEAD_SHA" != "$TAG_SHA" ]; then
     exit 1
 fi
 
+# Every final release note links the GPU driver page (owner, 2026-10-17): the
+# one driver hakuX is tested with. A -rc or other suffixed build has no note
+# of its own, so only a plain X.Y.Z is held to it.
+if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    NOTE="$REPO/docs/releases/v$VERSION.md"
+    if [ ! -f "$NOTE" ]; then
+        echo "${0##*/}: refusing -- no release note at docs/releases/v$VERSION.md" >&2
+        exit 10
+    fi
+    if ! grep -q 'docs/gpu-driver\.md' "$NOTE"; then
+        echo "${0##*/}: refusing -- docs/releases/v$VERSION.md does not link docs/gpu-driver.md (every release note names the tested GPU driver)" >&2
+        exit 10
+    fi
+fi
+
 echo "${0##*/}: building $VERSION from $TAG ($HEAD_SHA) ..." >&2
 if ! ( cd "$REPO/android" && ./gradlew --no-daemon assembleRelease "-PversionedRelease=$VERSION" ); then
     echo "${0##*/}: build failed" >&2
@@ -97,6 +115,25 @@ fi
     echo "${0##*/}: refusing -- no aapt2 or aapt under $SDK_ROOT/build-tools/36.1.0 (set ANDROID_SDK_ROOT); $APK was built but not verified" >&2
     exit 5
 }
+
+# #433: re-sign with the rotated key, v3-only + lineage, but ONLY once
+# ~/keystores/hakux-rotation.lineage exists and key.properties names that
+# keystore -- otherwise this is a no-op and $APK is exactly what Gradle
+# produced, same as before the rotation.
+APKSIGNER="$SDK_ROOT/build-tools/36.1.0/apksigner"
+[ -x "$APKSIGNER" ] || APKSIGNER=$(find "$SDK_ROOT/build-tools" -maxdepth 2 -name apksigner -type f 2>/dev/null | sort -V | tail -1)
+if [ -n "$APKSIGNER" ]; then
+    # shellcheck source=sign_lineage.sh
+    . "$HERE/sign_lineage.sh"
+    resign_with_rotation "$APK" "$REPO/android/key.properties" "$APKSIGNER" || {
+        echo "${0##*/}: refusing -- the rotated re-sign of $APK did not check out; nothing published" >&2
+        exit 9
+    }
+    if [ "$ROTATION_APPLIED" = 1 ] && ! lineage_lists_both_certs "$APK" "$APKSIGNER"; then
+        echo "${0##*/}: refusing -- $APK was re-signed but its lineage does not list both certs" >&2
+        exit 9
+    fi
+fi
 
 # `aapt2 dump badging` prints versionName='...' on its "package:" line.
 GOT_VERSION=$("$AAPT2" dump badging "$APK" 2>/dev/null | sed -nE "s/.*versionName='([^']*)'.*/\1/p" | head -1)

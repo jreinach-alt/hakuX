@@ -1,0 +1,39 @@
+pathfind: Rogue Trooper (5343000E) on nova: /storage/E6C6-D7AA/Games/XBox/5343000E-Rogue_Trooper.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 5343000E any, loaded none
+[  11.0s] #  1 publisher_logo    fast    A                        Early boot logo (publisher/developer splash) with no title or menu yet; per hints, skip wi
+[  16.2s] #  2 black             black   wait                     black frame
+[  27.2s] #  3 publisher_logo    fast    A                        Developer splash (Rebellion) with no title or menu yet; per hints, one A press to skip, th
+[  37.1s] #  4 title_screen      fast    START                    Title screen with a 'Press START to continue' prompt; START advances past it. Nothing high
+[  49.4s] #  5 profile_creation  fast    A                        No profiles exist; the only option is CREATE NEW PROFILE, already highlighted. Hints say t
+[  59.4s] #  6 name_entry        fast    A                        Default name is filled in and the cursor sits on END, which accepts it. Hint says press A 
+[  70.1s] #  7 main_menu         fast    A                        Main menu with SINGLE PLAYER already highlighted; per hints, choose the fastest path to pl
+[  82.4s] #  8 main_menu         fast    A                        Single Player submenu is open with NEW GAME already highlighted; per hints, New Game is th
+[  95.3s] #  9 main_menu         fast    A                        Difficulty select is the last menu before play. NORMAL is the default highlight and the fa
+[ 108.5s] # 10 cutscene          fast    START                    Cinematic close-up with letterbox bars, not player-controlled play; skip with START, then 
+[ 124.6s] # 11 cutscene          fast    START                    This is a tactical route-analysis briefing overlay, not player-controlled play; it is a mi
+[ 138.9s] # 12 gameplay          fast    A                        A HUD-style text box over a live third-person playfield with the player's character; the p
+[ 166.4s] # 13 probe             probe   A STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 control 0.059, under input 0.080; 2 of 3 idle/input rounds won
+[ 176.6s] # 14 gameplay          fast    A                        Live third-person playfield with the player's character and a tutorial tip box. The earlie
+[ 204.6s] # 15 probe             probe   A STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 control 0.052, under input 0.077; 3 of 3 idle/input rounds won
+[ 215.6s] # 16 gameplay          fast    RSTICK:right:1           Live playfield with the player's character and a HUD tip asking for the right stick (R). E
+[ 233.6s] # 17 probe             probe   RSTICK:right:1 RSTICK:right:1.5 RSTICK:right:1.5 RSTICK:right:1.5 control 0.062, under input 0.029
+[ 241.8s] # 18 gameplay          fast    RSTICK:right:1           Live third-person playfield with the player's character and a tutorial tip box asking for 
+[ 261.4s] # 19 probe             probe   RSTICK:right:1 HOLD:A:3 HOLD:A:3 HOLD:A:3 control 0.111, under input 0.072
+[ 272.0s] # 20 gameplay          fast    wait                     Live playfield with the player's character and HUD, no menu or tip box. Earlier RSTICK and
+[ 291.0s] # 21 probe             probe   HOLD:A:3                 control 0.027, under input 0.187
+[ 300.0s] # 22 gameplay          fast    wait                     Live playfield with the player's character and HUD, no menu open. The tip asks for LEFT to
+[ 316.4s] # 23 probe             probe   RT:3 RT:3 RT:3           control 0.074, under input 0.094
+[ 322.9s] # 24 gameplay          fast    wait                     Live playfield with the player's character and HUD, no menu open; the tip asks for LEFT to
+[ 338.3s] # 25 probe             probe   RT:3 RT:3 RT:3           control 0.085, under input 0.075
+[ 352.5s] # 26 gameplay          fast    wait                     Live playfield with the player's character and HUD, no menu open. The digipad tip asks for
+[ 364.8s] # 27 probe             probe   HOLD:X:3                 control 0.098, under input 0.160
+hold-play: genre shooter, need 600 s of play
+hold-play: fps at 183 s: median 59.0, share>=30 1.0 over 164 samples
+hold-play: fps at 313 s: median 59.0, share>=30 1.0 over 279 samples
+hold-play: HELD 609/600 s of play; 
+held Rogue Trooper for 611s
+VERDICT Rogue Trooper ? PASS None gameplay=609.8s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0344 play_share=0.9997 fps_excluded=1.1s
+{"name": "Rogue Trooper", "device": "nova", "result": "gameplay", "minutes": 6.08, "model_calls": 31, "steps": 27, "replayed": 0, "reason": "four probes refused", "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-5343000E/frames/026-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

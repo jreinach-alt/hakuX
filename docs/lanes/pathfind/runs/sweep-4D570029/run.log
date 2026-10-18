@@ -1,0 +1,42 @@
+pathfind: Mortal Kombat Shaolin Monks (4D570029) on nova: /storage/E6C6-D7AA/Games/XBox/4D570029-Mortal_Kombat_Shaolin_Monks.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4D570029 any, loaded none
+[   9.3s] #  1 loading           fast    wait                     Blank white frame with only a small green geometric graphic, likely a publisher or loading
+[  17.8s] #  2 publisher_logo    fast    A                        Animated logo/intro graphic with no title or menu yet; the previous step was also a logo-s
+[  25.2s] #  3 title_screen      fast    START                    Title screen with a 'Press START' prompt; START is the required input here.
+[  32.6s] #  4 submenu           fast    A                        Brightness calibration screen before the title is reached; defaults are fine, so accept wi
+[  40.6s] #  5 main_menu         fast    A                        Main menu with Single Player already highlighted at the top; that is the fastest route to 
+[  50.1s] #  6 gameplay          fast    A                        Mistake in my reasoning above: this is a character select screen, not gameplay. Correct st
+[  60.2s] #  7 probe             probe   A STICK:up:1.5           control 0.000, under input 0.009
+[  63.9s] #  8 unknown           fast    A                        Difficulty dialog on character select; the default NORMAL is highlighted, so A accepts the
+[  69.2s] #  9 black             black   wait                     black frame
+[  72.6s] # 10 black             black   wait                     black frame
+[  80.8s] # 11 publisher_logo    fast    START                    Mortal Kombat logo splash before the title; not a menu or gameplay. No input needed yet, r
+[  88.7s] # 12 loading           fast    wait                     Game is loading assets; progress bar is still filling, no menu or prompt to answer. Wait a
+[  98.2s] # 13 cutscene          fast    START                    Title card over a static environment shot, looks like an intro/level-title splash before p
+[ 106.6s] # 14 cutscene          fast    START                    Atmospheric scene with letterbox bars and no HUD or menu; not player-controlled play yet. 
+[ 112.4s] # 15 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 117.1s] # 16 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 121.8s] # 17 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 126.5s] # 18 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 131.1s] # 19 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 135.6s] # 20 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 145.7s] # 21 cutscene          fast    START                    Letterboxed scene with no HUD or player control, so not gameplay. START advanced earlier c
+[ 151.5s] # 22 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 157.3s] # 23 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 163.2s] # 24 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 169.0s] # 25 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 174.8s] # 26 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 181.5s] # 27 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 191.9s] # 28 cutscene          fast    START                    Letterbox bars and a scripted scene with no HUD mean cutscene, not gameplay. The last step
+[ 201.9s] # 29 gameplay          fast    wait                     Player character Liu Kang is standing in the world with the game HUD (health and name bars
+[ 212.5s] # 30 probe             probe   STICK:up:1.5             control 0.001, under input 0.384
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 185 s: median 39.0, share>=30 1.0 over 124 samples
+hold-play: fps at 306 s: median 39.0, share>=30 1.0 over 204 samples
+hold-play: HELD 602/600 s of play; 
+held Mortal Kombat Shaolin Monks for 646s
+VERDICT Mortal Kombat Shaolin Monks ? PASS None gameplay=645.0s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=1/0.103pm worst_ms=115.7 static_frac=0.0081 play_share=0.9362 fps_excluded=42.3s
+{"name": "Mortal Kombat Shaolin Monks", "device": "nova", "result": "gameplay", "minutes": 3.54, "model_calls": 27, "steps": 30, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4D570029/frames/029-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

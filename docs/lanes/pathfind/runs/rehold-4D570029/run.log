@@ -1,0 +1,41 @@
+pathfind: Mortal Kombat Shaolin Monks (4D570029) on nova: /storage/E6C6-D7AA/Games/XBox/4D570029-Mortal_Kombat_Shaolin_Monks.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4D570029 any, loaded none
+[  11.0s] #  1 publisher_logo    fast    A                        An animated logo splash with no title or menu yet; not gameplay. Skip with A, then re-read
+[  15.0s] #  2 black             black   wait                     black frame
+[  21.7s] #  3 publisher_logo    fast    A                        Midway publisher logo, not gameplay; previous skip with A changed the screen, so press A a
+[  25.9s] #  4 title_screen      replay  START                    replay step 2: Title screen with a 'Press START' prompt; START is the required input here.
+[  29.9s] #  5 submenu           replay  A                        replay step 3: Brightness calibration screen before the title is reached; defaults are fin
+[  34.5s] #  6 main_menu         replay  A                        replay step 4: Main menu with Single Player already highlighted at the top; that is the fa
+[  43.1s] #  7 submenu           fast    A                        Character select screen; the default highlighted fighter Liu Kang is the fastest route, so
+[  47.5s] #  8 unknown           replay  A                        replay step 6: Difficulty dialog on character select; the default NORMAL is highlighted, s
+[  52.6s] #  9 black             black   wait                     black frame
+[  56.0s] # 10 black             black   wait                     black frame
+[  59.6s] # 11 publisher_logo    replay  START                    replay step 9: Mortal Kombat logo splash before the title; not a menu or gameplay. No inpu
+[  66.8s] # 12 loading           fast    wait                     Game is loading a level/screen with a progress bar; no input is accepted during loading. W
+[  73.7s] # 13 cutscene          replay  START                    replay step 11: Title card over a static environment shot, looks like an intro/level-title
+[  78.0s] # 14 cutscene          replay  START                    replay step 12: Atmospheric scene with letterbox bars and no HUD or menu; not player-contr
+[  85.9s] # 15 cutscene          fast    START                    Letterbox bars and no HUD or player control mean a cutscene, not gameplay; the recorded pa
+[  91.3s] # 16 cutscene          replay  START                    replay step 14: repeat START: it advanced the cutscene
+[  95.8s] # 17 cutscene          replay  START                    replay step 16: repeat START: it advanced the cutscene
+[ 105.9s] # 18 cutscene          fast    START                    Letterboxed scene with no HUD or player control, so not gameplay. The recorded path and th
+[ 110.4s] # 19 cutscene          replay  START                    replay step 17: repeat START: it advanced the cutscene
+[ 115.0s] # 20 cutscene          replay  START                    replay step 19: Letterboxed scene with no HUD or player control, so not gameplay. START ad
+[ 124.4s] # 21 cutscene          fast    START                    Letterbox bars and no HUD or player control, so this is a cutscene, not gameplay. The reco
+[ 129.9s] # 22 cutscene          replay  START                    replay step 21: repeat START: it advanced the cutscene
+[ 141.3s] # 23 cutscene          fast    START                    Letterbox bars and no HUD or player control, so this is a cutscene, not gameplay. Previous
+[ 146.7s] # 24 cutscene          replay  START                    replay step 25: repeat START: it advanced the cutscene
+[ 155.3s] # 25 cutscene          fast    START                    Letterbox bars with no HUD or player control means cutscene, not gameplay. Previous START 
+[ 160.9s] # 26 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 171.7s] # 27 submenu           fast    B                        This is a character stats/map status screen opened from the game, not gameplay. B exits ba
+[ 179.8s] # 28 gameplay          fast    wait                     HUD with the player's character standing in the world, no menu or cutscene. Confirming con
+[ 189.1s] # 29 probe             probe   STICK:up:1.5             control 0.003, under input 0.472
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 181 s: median 51.0, share>=30 1.0 over 154 samples
+hold-play: fps at 311 s: median 51.0, share>=30 1.0 over 264 samples
+hold-play: HELD 605/600 s of play; 
+held Mortal Kombat Shaolin Monks for 688s
+VERDICT Mortal Kombat Shaolin Monks ? FAIL(menu time: 87.9% of the scored window in `play` (bar 90%; play 604 s, still 83 s, no-timeline 0 s)) gameplay=686.5s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=112.2 static_frac=0.0522 play_share=0.8795 fps_excluded=84.7s
+{"name": "Mortal Kombat Shaolin Monks", "device": "nova", "result": "gameplay", "minutes": 3.15, "model_calls": 28, "steps": 29, "replayed": 13, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold-4D570029/frames/028-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

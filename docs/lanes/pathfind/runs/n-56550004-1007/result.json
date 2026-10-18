@@ -1,0 +1,78 @@
+{
+ "title_id": "56550004",
+ "name": "Lord of the Rings The The Fellowship of the Ring USA",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/56550004-Lord_of_the_Rings_The_The_Fellowship_of_the_Ring_USA.xiso.iso",
+ "result": "gameplay",
+ "tool": "3624b0a01d",
+ "started": "2026-10-07 16:02:29 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-56550004-1007/frames/008-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-56550004-1007/frames/008-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-56550004-1007/frames/008-probe-c.jpg"
+ ],
+ "minutes": 1.37,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-56550004-1007/frames/007-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-56550004-1007/frames/009-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-56550004-1007/frames/010-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-56550004-1007/frames/011-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-56550004-1007/frames/012-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-56550004-1007/frames/013-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-56550004-1007/frames/014-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-56550004-1007/frames/015-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-56550004-1007/frames/016-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-56550004-1007/frames/017-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-5655.md"
+ ],
+ "hold": {
+  "genre": "other",
+  "why": "Walking around inside a hobbit-hole talking/quest-log screen, not combat, driving, or shooting.",
+  "ok": false,
+  "play_s": 602.4,
+  "need_s": 600.0,
+  "hold_s": 602.8,
+  "model_navs": 0,
+  "frames": 17,
+  "still_windows": 0,
+  "shed": [],
+  "reversals": 0,
+  "reason": "verdict stops the hold: fps_ok 1.0, crash False, hang False",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 91,
+    "median": 29.0,
+    "share": 0.967,
+    "at_s": 181.1,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 151,
+    "median": 29.0,
+    "share": 0.98,
+    "at_s": 302.6,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "verdict": "VERDICT Lord of the Rings The The Fellowship of the Ring USA ? PASS None gameplay=603.4s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0519 play_share=0.9997 fps_excluded=0.0s"
+ },
+ "model_calls": 16,
+ "calls_by_model": {
+  "claude-sonnet-5": 16
+ },
+ "steps": 8,
+ "seconds": 732.3,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-56550004-1007/frames/076-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-56550004-1007/strip.jpg"
+}

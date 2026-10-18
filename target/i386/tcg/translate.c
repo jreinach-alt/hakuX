@@ -3148,6 +3148,78 @@ static void gen_jmp_rel_csize(DisasContext *s, int diff, int tb_num)
     gen_jmp_rel(s, CODE32(s) ? MO_32 : MO_16, diff, tb_num);
 }
 
+#ifdef XBOX
+/*
+ * #1018: FLDCW without leaving the TB when it can stay. A TB depends on the
+ * control word through one flag, HF_FPU_PC_MASK (fpu_using_double_precision()
+ * picks f32 or f64 ops at translation). The rounding mode is not baked in:
+ * gen_bb_epilogue() runs before every helper call, so the call to
+ * helper_fldcw itself flushes the FP cache and clears flcr_set, and the next
+ * FP op reloads the host rounding mode from the new fpuc. So translation goes
+ * on past an FLDCW that leaves the precision bit as this TB was translated,
+ * and only a flip leaves, by lookup_and_goto_ptr, which looks the next TB up
+ * under the new flags, instead of exit_tb(NULL, 0) to the main loop.
+ *
+ * Halo's CRT _control87 (0x1ec3a) runs ~1 M FLDCW a second in the opening
+ * cinematic's heavy shots, 97% of the TB exits that reach the main loop
+ * there (docs/lanes/halo1016/NOTES.md). On unless HAKUX_FLDCW_CHAIN=0
+ * (since #1018).
+ */
+#ifdef __ANDROID__
+#include <android/log.h>
+#define FLDCW1018_LOG(...) \
+    __android_log_print(ANDROID_LOG_WARN, "hakuX", __VA_ARGS__)
+#else
+#define FLDCW1018_LOG(...) do { \
+        fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); } while (0)
+#endif
+
+static int hakux_fldcw_chain_state = -1;
+
+static bool hakux_fldcw_chain(DisasContext *s)
+{
+    if (unlikely(hakux_fldcw_chain_state < 0)) {
+        const char *e = getenv("HAKUX_FLDCW_CHAIN");
+
+        hakux_fldcw_chain_state = !e || strcmp(e, "0") != 0;
+        FLDCW1018_LOG("[fldcw1018] chain=%d HAKUX_FLDCW_CHAIN=%s",
+                      hakux_fldcw_chain_state, e ? e : "(unset)");
+    }
+    /* jmp_opt is false under RF, TF, an interrupt shadow and CF_NO_GOTO_TB */
+    return hakux_fldcw_chain_state && s->jmp_opt && !CODE64(s);
+}
+
+/* After gen_helper_fldcw; translation continues at the label. */
+static void gen_fldcw_chain(DisasContext *s)
+{
+    TCGLabel *same = gen_new_label();
+    TCGv_i32 pc = tcg_temp_new_i32();
+
+    assert(s->pc_save != -1);
+    gen_update_cc_op(s);
+    tcg_gen_ld_i32(pc, tcg_env, offsetof(CPUX86State, hflags));
+    tcg_gen_andi_i32(pc, pc, HF_FPU_PC_MASK);
+    tcg_gen_brcondi_i32(TCG_COND_EQ, pc, s->flags & HF_FPU_PC_MASK, same);
+
+    /*
+     * The precision flipped: eip past the FLDCW, then the TB for the new
+     * flags. pc_save is left alone, as the path that stays has not moved
+     * cpu_eip.
+     */
+    if (tb_cflags(s->base.tb) & CF_PCREL) {
+        tcg_gen_addi_tl(cpu_eip, cpu_eip, s->pc - s->pc_save);
+    } else {
+        tcg_gen_movi_tl(cpu_eip, (uint32_t)(s->pc - s->cs_base));
+    }
+    if (hakux_ibc_use(s)) {
+        gen_ibc_probe(s);
+    }
+    tcg_gen_lookup_and_goto_ptr();
+
+    gen_set_label(same);
+}
+#endif
+
 static inline void gen_ldq_env_A0(DisasContext *s, int offset)
 {
     tcg_gen_qemu_ld_i64(s->tmp1_i64, s->A0, s->mem_index, MO_LEUQ);
@@ -3425,6 +3497,12 @@ static void gen_x87(DisasContext *s, X86DecodedInsn *decode)
                                 s->mem_index, MO_LEUW);
             gen_helper_fldcw(tcg_env, s->tmp2_i32);
             update_fip = update_fdp = false;
+#ifdef XBOX
+            if (hakux_fldcw_chain(s)) {
+                gen_fldcw_chain(s);
+                break;
+            }
+#endif
             gen_update_eip_next(s);
             gen_eob(s, DISAS_EOB_ONLY);
             break;

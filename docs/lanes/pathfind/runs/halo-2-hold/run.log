@@ -1,0 +1,90 @@
+taken: nova by pathfind:halo2
+NOT IDLE: nova is held but busy -- do not touch it yet:
+dispatcher pid 4112104 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+running: 1-1791072308-lanelocal-1173788 on nova
+run: hold.sh wait-idle nova <timeout_s>, and touch the device only on exit 0
+waiting for nova: dispatcher pid 4112104 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+running: 1-1791072308-lanelocal-1173788 on nova
+idle: nova is held and runs nothing
+pathfind: Halo 2 (4D530064) on nova: /storage/E6C6-D7AA/Games/XBox/Halo 2.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4D530064 any, loaded golden 0a4742f1e45d
+[  11.3s] #  1 publisher_logo    fast    A                        A publisher or studio logo animating in on a white background; no skip prompt visible yet.
+[  19.0s] #  2 publisher_logo    fast    A                        Microsoft Game Studios logo is animating in; not yet the title. Hint says A or START skips
+[  23.4s] #  3 black             black   wait                     black frame
+[  30.4s] #  4 title_screen      fast    START                    Title screen with a 'Press START' prompt; per hints, START is the correct input here.
+[  38.7s] #  5 submenu           fast    A                        Profile select; hint says Create New Profile stays lit even with a profile saved, and the 
+[  47.8s] #  6 name_entry        fast    A                        Default name is filled in and the cursor sits on DONE, which is lit. Hint says press A onc
+[  55.8s] #  7 main_menu         fast    A                        Hint says New Campaign via CAMPAIGN is the path to play for Halo 2. CAMPAIGN is already li
+[  63.8s] #  8 submenu           fast    A                        Campaign options submenu; New Campaign is already the lit item, so A selects it to start t
+[  71.8s] #  9 submenu           fast    A                        Level select on the campaign path; The Heretic is the lit item. Per the Halo 2 hint, A sel
+[  83.0s] # 10 submenu           fast    A                        Difficulty select on the Halo 2 campaign path; Normal is the lit default, and the hint say
+[  93.4s] # 11 publisher_logo    fast    wait                     Halo 2 title/splash logo fading in before the menus; no input is needed or clearly useful 
+[  98.1s] # 12 black             black   wait                     black frame
+[ 107.6s] # 13 cutscene          fast    START                    Letterboxed in-engine space shot with no HUD or menu, so it is a cutscene, not gameplay. C
+[ 117.4s] # 14 cutscene          fast    START                    Opening location-title cinematic with letterbox-style framing and a place caption, not pla
+[ 129.3s] # 15 cutscene          fast    A                        Letterboxed in-engine shot with no HUD, so it is a cutscene, not gameplay. The last two st
+[ 138.0s] # 16 cutscene          fast    START                    Halo 2 in-engine shot with no HUD or menu, so not gameplay. Previous cutscene steps answer
+[ 148.9s] # 17 cutscene          fast    B                        Letterboxed in-engine scene with no HUD, so not gameplay. START and A have already been tr
+[ 154.3s] # 18 black             black   wait                     black frame
+[ 163.6s] # 19 cutscene          fast    BACK                     Letterboxed in-engine cinematic with no HUD, so not gameplay. START, A and B were already 
+[ 175.2s] # 20 cutscene          fast    wait                     Letterboxed in-engine cinematic with no HUD, so not gameplay. START, A, B and BACK were al
+[ 187.2s] # 21 cutscene          fast    wait                     Dark in-engine cinematic with no HUD, so not gameplay. START, A, B and BACK were already t
+[ 199.4s] # 22 cutscene          fast    wait                     Overexposed in-engine scene with letterbox bars and no HUD; not gameplay. START, A, B, BAC
+[ 213.8s] # 23 cutscene          fast    X                        In-engine cinematic with no HUD, so not gameplay. START, A, B and BACK were already tried 
+[ 223.7s] # 24 cutscene          fast    wait                     Close-up in-engine cinematic with no HUD, so not gameplay. START, A, B, BACK and X have al
+[ 235.1s] # 25 cutscene          fast    Y                        Letterboxed in-engine cinematic with no HUD, so not gameplay. START, A, B, BACK and X were
+[ 246.0s] # 26 cutscene          fast    wait                     In-engine cinematic with no HUD, so not gameplay. Already tried START, A, B, BACK, X and Y
+[ 256.7s] # 27 cutscene          fast    wait                     In-engine view with no HUD, so not gameplay. START, A, B, BACK, X and Y were already tried
+[ 266.2s] # 28 cutscene          fast    wait                     In-engine cinematic with no HUD and no player control, so not gameplay. START, A, B, BACK,
+[ 277.7s] # 29 cutscene          fast    R1                       Letterboxed in-engine cinematic with no HUD and no player control, so not gameplay. START,
+[ 288.9s] # 30 cutscene          fast    wait                     Letterboxed in-engine cinematic with no HUD and no player control, so not gameplay. START,
+[ 301.8s] # 31 cutscene          fast    wait                     Letterboxed in-engine cinematic with no HUD and no player control, so not gameplay. Prior 
+[ 315.6s] # 32 gameplay          fast    wait                     A Halo HUD (motion sensor) is up and the banner marks the end of the Armory look test, so 
+[ 329.3s] # 33 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 control 0.021, under input 0.006
+[ 345.2s] # 34 unknown           fast    A                        A HUD is up, but the last STICK:up probe did not move the view, so this is not confirmed p
+[ 353.9s] # 35 gameplay          fast    A                        This is the Halo 2 Armory look test (the 'Use to look up' tutorial prompt is from the prio
+[ 360.6s] # 36 probe             probe   A STICK:up:1.5           control 0.000, under input 0.000
+[ 375.1s] # 37 unknown           fast    X STICK:up:1.5           This is the Armory look test, which needs the right stick (not in the action list). A was 
+[ 396.0s] # 38 unknown           fast    UP UP                    Still the look-test tutorial. Earlier A, X+STICK:up and STICK:up did nothing, and the prom
+[ 405.6s] # 39 gameplay          fast    STICK:right:1.5          Still the Armory look-test tutorial; the prompt needs the right stick, which is not in the
+[ 413.8s] # 40 probe             probe   STICK:right:1.5 STICK:right:1.5 control 0.003, under input 0.003
+[ 422.0s] # 41 gameplay          fast    RT:1.5                   Same Armory look-test tutorial as before. A, X, UP and right-stick pushes all failed, so I
+[ 431.1s] # 42 probe             probe   X RT:1.5 STICK:left:1.5  control 0.003, under input 0.000
+[ 446.1s] # 43 unknown           fast    Y                        Still the Armory look-test tutorial, which needs the right stick (not in the action list).
+[ 457.3s] # 44 gameplay          fast    R3 STICK:up:1.5          Still the look-test tutorial, which needs the right stick. Y, A, X, UP and earlier stick p
+[ 467.9s] # 45 probe             probe   B R3 STICK:up:1.5 R3 STICK:up:1.5 control 0.000, under input 0.000
+[ 482.4s] # 46 unknown           fast    L1 R1 L3 STICK:up:1      Still the Armory look-test tutorial, which wants right-stick look. The right stick is not 
+[ 503.1s] # 47 unknown           fast    BACK                     Still the Armory look-test tutorial, which wants right-stick look. The right stick is not 
+[ 520.0s] # 48 unknown           fast    LT:2                     Still the Armory look-test tutorial, which wants right-stick look. The right stick is not 
+[ 539.9s] # 49 unknown           fast    HOLD:A:1.5               Still the Armory look-test tutorial, which wants right-stick look. Every input so far (A, 
+[ 551.8s] # 50 unknown           fast    HOLD:R1:1.5 STICK:upright:1 Still the look-test tutorial, which needs the right stick. Untried inputs remain: the R1 s
+[ 574.4s] # 51 unknown           fast    START                    Still the Armory look-test tutorial, which wants right-stick look. Right stick is not in t
+[ 582.5s] # 52 pause             fast    A                        Pause menu with Continue lit. Per the hints, A on the lit Continue/Resume item returns to 
+[ 598.8s] # 53 unknown           fast    R3 STICK:up:1            Still the look-test tutorial that needs right-stick look, which the action list cannot sen
+[ 616.6s] # 54 unknown           fast    UP UP UP                 Still the look-test tutorial, which needs right-stick look. R3 and the stick were tried wi
+[ 633.0s] # 55 unknown           fast    L3 L1 LT:1               Still the look-test tutorial that needs right-stick look, which the action list cannot sen
+[ 652.6s] # 56 unknown           fast    Y X R1                   Still the look-test tutorial, which needs right-stick look that the action list cannot sen
+[ 672.2s] # 57 unknown           fast    RT:2 LT:2 STICK:up:1     Still the look-test tutorial that needs right-stick look. Every input tried so far (START,
+[ 695.5s] # 58 unknown           fast    STICK:down:2             Still the look-test tutorial that wants right-stick look, which the action list cannot sen
+[ 712.7s] # 59 cutscene          fast    B                        Still the look-test tutorial, which needs right-stick look. Inputs already tried did nothi
+[ 723.7s] # 60 cutscene          fast    HOLD:A:1.5               Still the look-test tutorial that needs right-stick look, which the action list cannot sen
+[ 741.2s] # 61 cutscene          fast    HOLD:X:1.5 DOWN RIGHT LEFT Still the look-test tutorial, which needs right-stick look that the action list cannot sen
+[ 761.7s] # 62 unknown           fast    BACK                     Still the look-test tutorial that needs right-stick look, which the action list cannot sen
+[ 778.7s] # 63 unknown           fast    HOLD:Y:1.5 STICK:upright:1 Still the look test that needs the right stick, which the action list cannot send. Earlier
+[ 798.6s] # 64 cutscene          fast    HOLD:R1:2 HOLD:L1:2      Still the look-test tutorial, which needs right-stick look that the action list cannot sen
+[ 815.0s] # 65 cutscene          fast    STICK:up:2               Still the look-test tutorial, which wants right-stick look (not in the action list). Tried
+[ 826.9s] # 66 cutscene          fast    START                    Still the look test, which needs the right stick the action list cannot send. START has no
+[ 835.9s] # 67 pause             fast    A                        Halo 2 pause menu with Continue lit; per the hints, A resumes play. Not gameplay yet, so n
+[ 844.8s] # 68 cutscene          fast    wait                     Still the Halo 2 look-test tutorial that wants right-stick look, which the action list can
+[ 856.7s] # 69 cutscene          fast    R3 STICK:up:1.5          Still the Halo 2 look-test tutorial, which wants right-stick look. Earlier right-stick att
+[ 870.1s] # 70 cutscene          fast    A                        Still the Halo 2 look test, which needs the right stick the action list cannot send. R3+ST
+[ 879.6s] # 71 cutscene          fast    B X STICK:up:1.5         Still the look test, which needs the right stick the action list cannot send. A and R3+STI
+[ 892.8s] # 72 cutscene          fast    Y                        This is the Halo 2 look test (right-stick look), which the action list cannot send. A, B, 
+[ 904.1s] # 73 cutscene          fast    L1 R1 UP                 Still the look-test tutorial, which needs the right stick. A, B, X, Y and R3 did nothing. 
+{"name": "Halo 2", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 85, "steps": 73, "replayed": 0, "reason": "budget 15 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256
+PATHFIND_EXIT=1
+released: nova by pathfind:halo2
+HOLD_RELEASED=0

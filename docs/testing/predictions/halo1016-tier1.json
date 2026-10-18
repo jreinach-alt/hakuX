@@ -1,0 +1,50 @@
+{
+  "registered_utc": "2026-10-17T09:35:00Z",
+  "who": "lane.halo1016",
+  "issues": ["1018"],
+  "kind": "soak env arms (one binary), two runs added to halo1016-vcpu.json's five",
+  "title": "Halo Combat Evolved.iso",
+  "device": "nova",
+  "seconds": 420,
+  "route": "halo-cinematic (docs/lanes/halo1016/routes/halo-cinematic.route, queued with TITLE_ROUTES=docs/lanes/halo1016/routes)",
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "a_ref": "d70f782f45",
+  "b_ref": "d70f782f45",
+  "a_env": [
+    "HAKUX_FRAMETRACE=1",
+    "HAKUX_PROBE_WAITS=1",
+    "HAKUX_S2T_CVT=1",
+    "HAKUX_TIER1_THRESHOLD=0"
+  ],
+  "b_env": [
+    "HAKUX_FRAMETRACE=1",
+    "HAKUX_PROBE_WAITS=1",
+    "HAKUX_S2T_CVT=1",
+    "HAKUX_TIER1_THRESHOLD=0",
+    "HAKUX_FLDCW_CHAIN=1",
+    "HAKUX_IBC=1"
+  ],
+  "arms": {
+    "T": ["HAKUX_FRAMETRACE=1", "HAKUX_PROBE_WAITS=1", "HAKUX_S2T_CVT=1", "HAKUX_TIER1_THRESHOLD=0"],
+    "FIT": ["HAKUX_FRAMETRACE=1", "HAKUX_PROBE_WAITS=1", "HAKUX_S2T_CVT=1", "HAKUX_TIER1_THRESHOLD=0", "HAKUX_FLDCW_CHAIN=1", "HAKUX_IBC=1"]
+  },
+  "queue_order": "Queued by the lane after halo1016-vcpu.json's A, F, I, IF, A2 (1792226875..1792226879), as two requests of one run each, T then FIT: TITLE_ROUTES=docs/lanes/halo1016/routes request.sh --who halo1016 --device nova --title 'Halo Combat Evolved.iso' --route halo-cinematic --seconds 420 --ref d70f782f45 --perflog --pull 'frametrace_*' --env <the arm's list> --issue 1018 --expect this file. a_env is T's list and b_env FIT's. The comparison arms A, A2 and IF are halo1016-vcpu.json's.",
+  "judge": "python3 docs/lanes/halo1016/tier1read.py --arm A=<vcpu A> --arm A2=<vcpu A2> --arm IF=<vcpu IF> --arm T=<T> --arm FIT=<FIT> --expect docs/testing/predictions/halo1016-tier1.json (written before T or FIT ran; reuses vcpuread.py's accounting; exercised on census B, which it voids on V as it should).",
+  "baseline": "census B (0-0-x-1792222171-halo1016-1341994, 214445e90e, HAKUX_S2T_CVT=1), [mark+131, mark+191], per guest frame: 41.9 ms; 49.9 k main-loop dispatches; g 9.6 k of which gi 7.9 k (the TB that started the chain carried CF_INVALID, so the exit was not patched), 380 k per 2 s at resume pc 0x19f23; hakuX-tier1 `promote #N` lines every 10 000 calls name pc 0x19f23 and 0x1ec3d with `dedup ... already pending`; tier1 threshold 64 (the default).",
+  "prediction": "#1018, a third vCPU remedy: tier-1 promotion off. tb_request_tier1_promotion() marks a block that reached 64 executions CF_INVALID and leaves it in the qht, whose compare masks CF_INVALID, so the block is found and run on every lookup, tb_gen_code never runs, the tier-1 request is never consumed (the known gap at cpu-exec.c:710), and the block is never chained into (tb_add_jump refuses a CF_INVALID destination), misses the jump cache every time (stale, then a qht lookup), and leaves every chain it starts with an unpatched exit (gi). Up to 64 hot blocks are pinned like that for the run. HAKUX_TIER1_THRESHOLD=0 (an existing switch, read after the request env is set) stops the promotion, so no block is marked. TM: T's gi per frame <= 0.2 x A's, P 0.75. TE: T's ms/f <= 0.96 x base (mean of vcpu A and A2), P 0.45: 7.9 k returns a frame at ~118 ns of loop each is ~0.9 ms, plus the qht lookups the stale jump-cache entries force. XS: FIT (all three vCPU remedies) <= 0.97 x IF, P 0.45; it also guards R2, whose _control87 block, once it no longer ends at the FLDCW, would itself be promoted and pinned. XE: FIT <= 0.85 x base, P 0.35. XG: FIT <= 33.4 ms/f over the span, P 0.2. N as halo1016-vcpu.json.",
+  "expect": {
+    "V_min_windows": 20,
+    "N_spread_max": 0.08,
+    "TM_gi_ratio_max": 0.2,
+    "TE_msf_ratio_max": 0.96,
+    "XS_ratio_max": 0.97,
+    "XE_msf_ratio_max": 0.85,
+    "XG_msf_max": 33.4
+  },
+  "expect_note": "EMPTY of captures ON PURPOSE: a soak writes none. Named rules read by docs/lanes/halo1016/tier1read.py --expect (legs V, N, TM, TE, XS, XE, XG). V: `mark cinematic`, `[s2tcvt] on`, `tier1 threshold: 0` in T and FIT and 64 in A, A2 and IF, the [fldcw1018]/[ibc507] lines as each arm's env says, >= 20 [rr425] windows. A V failure voids the legs that read that arm.",
+  "expect_counts": {},
+  "must_not_move": [],
+  "must_not_regress": []
+}

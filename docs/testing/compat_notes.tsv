@@ -45,8 +45,6 @@ playable	4553000F	Legacy of Kain: Defiance	USA	filename	Nova	47.58	0.9681	987.2	
 playable	5454000C	Max Payne 2: The Fall of Max Payne	USA	filename	Nova	59.94	1.0	603.4	2026-10-08	
 playable	41560046	X-Men: The Official Game (Europe)	Europe	filename	Nova	49.3	1.0	611.7	2026-10-12	
 playable	4C410015	Mercenaries: Playground of Destruction	USA, Europe	filename	Nova	53.33	1.0	604.9	2026-10-12	
-playable	5454000E	Grand Theft Auto III	?	none	nova	29.97	0.9967	648.5	2026-10-12	
-playable	5454000F	Grand Theft Auto: Vice City	?	none	nova	29.97	0.9872	684.4	2026-10-12	
 playable	544D0008	Conan (Europe)	Europe	filename	Nova	29.97	1.0	648.2	2026-10-12	
 playable	5451000E	Scooby-Doo! Mystery Mayhem (Europe)	Europe	filename	Nova	29.0	1.0	611.0	2026-10-12	
 playable	4D530053	Grabbed by the Ghoulies	USA	filename	nova	29.97	0.9805	1308.6	2026-10-12	
@@ -56,6 +54,46 @@ playable	545100F7	Scooby-Doo! Unmasked (Europe)	Europe	filename	Nova	59.94	0.994
 playable	4B4E000E	Shadow of Memories (Europe)	Europe	filename	Nova	29.97	1.0	663.3	2026-10-13	
 playable	41560017	Tony Hawk's Pro Skater 4	?	none	Nova	56.6	0.9752	603.7	2026-10-13	
 playable	45530018	25 to Life	?	none	Nova	59.94	0.9737	609.4	2026-10-13	
+playable	55530002	Rayman 3 Hoodlum Havoc	?	none	nova	59.94	1.0	603.2	2026-10-13	
+playable	4143000A	ATV Quad Power Racing 2	?	none	nova		0.9412		2026-10-13	
+playable	45410076	Burnout Revenge	?	none	nova		0.982	642	2026-10-13	
+playable	41560037	Shrek 2	?	none	nova	29.75	0.9246	613.4	2026-10-13	
+playable	45410037	Harry Potter and the Philosopher's Stone	?	none	nova	41.52	0.9513	620.5	2026-10-13	
+playable	4D4A000D	BloodRayne 2	USA	archive	nova	29.97	1.0	609.5	2026-10-13	
+playable	53410002	Guilty Gear XX #Reload	USA	archive	nova	59.94	1.0	602.7	2026-10-13	
+playable	4553000A	TimeSplitters 2	?	none	nova	59.9	0.988	729	2026-10-13	
+playable	54510105	Avatar: The Last Airbender	USA	archive	nova	59.9	0.9958		2026-10-13	
+playable	43430001	Genma Onimusha	?	none	nova		0.9919		2026-10-13	
+playable	4156000B	Mat Hoffman's Pro BMX 2	USA	archive	nova	29.97	1.0	740.3	2026-10-14	
+playable	454D0016	Bad Boys: Miami Takedown	USA	archive	nova	59.94	1.0	640.7	2026-10-14	
+playable	454D001E	Jacked	Europe	archive	nova	46.08	1.0	620	2026-10-14	
+playable	58500004	Hello Kitty: Roller Rescue	Europe	archive	nova	59.94	1.0	1173.8	2026-10-14	
+playable	4F580001	Conspiracy: Weapons of Mass Destruction	Europe	archive	nova	59.94	1.0	656.9	2026-10-14	
+playable	54540003	Max Payne	USA	archive	nova	51.33	1.0	627.9	2026-10-14	
+playable	41430016	Alias	USA	archive	nova	29.96	1.0	773.8	2026-10-14	
+playable	45410029	TY the Tasmanian Tiger	USA	archive	nova	29.97	1.0	622.4	2026-10-14	
+playable	45530016	Backyard Wrestling 2: There Goes the Neighborhood	USA	archive	nova	40.82	0.9943	744.8	2026-10-14	
+playable	54540019	Manhunt	USA	archive	nova	59.0		632	2026-10-14	
+playable	52410003	David Beckham Soccer	Europe	archive	nova	59.94	0.9979	1023.4	2026-10-15	
+playable	54510009	FILA World Tour Tennis	Europe	archive	nova	56.82	1.0	627.5	2026-10-15	
+playable	434D0057	Ricky Ponting International Cricket 2005	Australia	archive	nova	59.88	0.9812	851.6	2026-10-15	
+playable	4541000A	Knockout Kings 2002	USA	archive	nova	59.76	1.0	640	2026-10-16	
+playable	4541002D	MVP Baseball 2003	USA	archive	nova	59.94	1.0	632.3	2026-10-16	
+playable	53450028	ESPN Major League Baseball	USA	archive	nova	43.2	1.0	643.3	2026-10-16	
+playable	49470011	Slam Tennis	Europe	archive	nova	35.42	0.9831	636.6	2026-10-16	
+playable	4B4E0029	Dance Dance Revolution Ultramix 3	USA	archive	nova	59.94	0.9482	637.7	2026-10-16	
+playable	4B4E0005	ESPN MLS ExtraTime 2002	USA	archive	nova	59.94	1.0	642.4	2026-10-16	
+playable	545400B0	Family Guy Video Game	?	none	nova	29.97	0.9963		2026-10-16	
+playable	4541038A	Marvel Nemesis: Rise of the Imperfects	?	none	nova	29.97	0.9888	601.9	2026-10-06	
+playable	4D53002D	Dead or Alive 3	?	none	nova	50.13	1.0	775	2026-10-12	
+playable	4E4D0006	Pac-Man World 2	?	none	nova	59.94	1.0	594.8	2026-10-13	
+playable	454100A1	NBA Live 07	?	none	nova	50.8	0.986	762	2026-10-17	Owner play session; telemetry only, no frames
+playable	4D570029	Mortal Kombat: Shaolin Monks	?	none	nova	39.89	1.0	603.9	2026-10-06	
+playable	45410011	Cel Damage	?	none	nova	29.9	0.9815	1082.1	2026-10-07	
+playable	4947001C	Micro Machines (Europe)	Europe	filename	nova	59.94	1.0	672.9	2026-10-14	
+playable	4156001F	Lemony Snicket's A Series of Unfortunate Events (USA)	USA	filename	nova	59.88	1.0	606.8	2026-10-11	
+below_bar	5454000E	Grand Theft Auto III	?	none	nova				2026-10-12	Plays, but drops into the teens while driving in the city (below the 30 fps bar); tracked as #1049.
+below_bar	5454000F	Grand Theft Auto: Vice City	?	none	nova				2026-10-12	Plays, but drops into the teens while driving in the city (below the 30 fps bar); tracked as #1049.
 below_bar	41430004	Turok Evolution	USA	archive	Nova	29.85	0.8351		2026-10-07	
 below_bar	4156002B	Spider Man 2	?	none	Nova	25.8	0.2895		2026-10-06	
 below_bar	41560055	Ty the Tasmanian Tiger: Night of the Quinkan	USA, Australia	filename	Nova	47.81	0.7856		2026-10-07	
@@ -65,12 +103,15 @@ below_bar	45410091	Half-Life 2	?	none	Nova	29.78	0.7418		2026-10-13
 below_bar	4A570009	Panzer Elite Action: Fields of Glory	Europe	filename	Nova	30.41	0.8965		2026-10-07	
 below_bar	4C410004	Star Wars: The Clone Wars	USA	filename	Nova	29.38	0.6078		2026-10-08	
 below_bar	4D4A0014	Aeon Flux	?	none	Nova	29.96	0.846		2026-10-13	
-below_bar	4D530041	Amped 2	USA	filename	Nova	28.44	0.4423		2026-10-05	
-below_bar	4D53006E	Forza Motorsport	?	none	Nova	29.04	0.4532		2026-10-01	
 below_bar	4D570002	Arctic Thunder	USA	archive	nova	30.2	0.6393		2026-09-30	
 below_bar	4D570005	Area 51	USA	filename	Nova	29.96	0.7254		2026-10-09	
 below_bar	53450017	NHL 2K3	USA	archive	Nova	35.03	0.6937		2026-10-06	
 below_bar	56550039	The Incredible Hulk: Ultimate Destruction	?	none	Nova	29.25	0.6433		2026-10-06	
+below_bar	4541005B	Burnout 3: Takedown	?	none	nova	30.8	0.8475	634.9	2026-10-14	
+below_bar	4541006D	Stranger's Wrath	?	none	nova	26.99	0.3793	620.7	2026-10-13	
+below_bar	4D53000B	NBA Inside Drive 2004	?	none	nova	31.09	0.7048	639	2026-10-16	
+below_bar	545400AE	NBA 2K7	?	none	nova	57.25	0.7525	633	2026-10-16	
+below_bar	45410012	Buffy the Vampire Slayer	?	none	nova	29.73	0.7386		2026-10-18	
 not_playable	42530014	AMF Xtreme Bowling							2026-10-05	Crashes about 7 minutes in
 not_playable	43430019	Capcom Classics Collection Vol 2							2026-10-01	Crashes after about 6 minutes
 not_playable	4947001F	Mission Impossible: Operation Surma							2026-10-12	Hangs about 5 minutes in

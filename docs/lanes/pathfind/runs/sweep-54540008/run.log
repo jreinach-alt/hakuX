@@ -1,0 +1,55 @@
+pathfind: Midnight Club II (54540008) on nova: /storage/E6C6-D7AA/Games/XBox/54540008-Midnight_Club_II.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 54540008 any, loaded none
+[   9.2s] #  1 publisher_logo    fast    A                        Boot still in logos; nothing to read yet. Per hints, skip with A first, then START if no c
+[  17.9s] #  2 publisher_logo    fast    A                        Still in the boot logo sequence (a stylised intro/logo animation, not a title or menu). Pe
+[  26.8s] #  3 publisher_logo    fast    A                        Rockstar boot logo still playing, no title or menu yet; per Rockstar hints nothing useful 
+[  36.4s] #  4 cutscene          fast    START A                  A static showroom/garage-style view of a car with no HUD, not player-controlled play; the 
+[  41.5s] #  5 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[  50.5s] #  6 profile_creation  fast    A                        Save-slot select with no existing game; 'Create New Game' is the fastest route to a fresh 
+[  63.4s] #  7 name_entry        fast    A                        Save-slot name keyboard with a default name 'Game 1' filled in and Accept appearing highli
+[  72.6s] #  8 main_menu         fast    A                        Career Mode is already highlighted on the new save 'Game 1', and A is labelled 'Start Race
+[  81.7s] #  9 cutscene          fast    START A                  A character/race-select style intro card with no HUD or player-controlled car; not gamepla
+[  87.3s] # 10 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[  99.8s] # 11 cutscene          fast    A                        A static night street view with no HUD and no player vehicle is a transition or cutscene, 
+[ 104.8s] # 12 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 114.8s] # 13 cutscene          fast    A                        No HUD and no player-controlled driving are visible, so this is not gameplay. The previous
+[ 126.2s] # 14 gameplay          fast    wait                     Free-roam driving HUD (minimap, speedometer, gear indicator) with the player's car in the 
+[ 141.3s] # 15 probe             probe   RT:1.5 RT:1.5 RT:1.5     control 0.012, under input 0.002
+[ 149.3s] # 16 gameplay          fast    wait                     Free-roam driving HUD (minimap, speedometer, gear) with the player's car in the world. The
+[ 159.9s] # 17 probe             probe   RT:3                     control 0.005, under input 0.010
+[ 167.9s] # 18 gameplay          fast    wait                     Free-roam HUD with the player's car in the world. Earlier RT probes did not move the car, 
+[ 183.6s] # 19 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 control 0.011, under input 0.002
+[ 193.8s] # 20 gameplay          fast    wait                     Free-roam HUD with the player's car in the world, so this is gameplay. Earlier RT and STIC
+[ 210.9s] # 21 probe             probe   A HOLD:A:3 HOLD:A:3 HOLD:A:3 control 0.010, under input 0.001
+[ 219.3s] # 22 gameplay          fast    LT:1                     The HUD, minimap, speedometer and player car are all present, so this is free roam. Earlie
+[ 239.8s] # 23 probe             probe   LT:1 HOLD:A:3 HOLD:A:3 HOLD:A:3 control 0.010, under input 0.002
+[ 248.5s] # 24 gameplay          fast    wait                     Free-roam HUD with the player's car in the world, so this is gameplay. Earlier STICK and A
+[ 264.4s] # 25 probe             probe   STICK:up:2 STICK:up:2 STICK:up:2 control 0.007, under input 0.008
+[ 271.2s] # 26 gameplay          fast    wait                     Free-roam HUD with the player's car in the world, so this is gameplay. Earlier stick and A
+[ 285.9s] # 27 probe             probe   HOLD:X:3 HOLD:X:3 HOLD:X:3 control 0.010, under input 0.009
+[ 291.5s] # 28 gameplay          fast    wait                     Free-roam HUD with the player's car in the world and a live scene, so this is gameplay. Pr
+[ 304.1s] # 29 probe             probe   HOLD:X:3                 control 0.004, under input 0.011
+[ 310.0s] # 30 gameplay          fast    RT:3                     Free-roam HUD (minimap, speedo) with the player's car in the world and traffic live. Car i
+[ 330.4s] # 31 probe             probe   RT:3 LT:2 LT:2 LT:2      control 0.014, under input 0.018
+[ 338.6s] # 32 gameplay          fast    wait                     Free-roam HUD (minimap, speedo, tach) with the player's car in the world and traffic live.
+[ 353.1s] # 33 probe             probe   LT:2 LT:2 LT:2           control 0.008, under input 0.003
+[ 363.1s] # 34 gameplay          fast    LT+left:2                Free-roam HUD with the player's car in the world and the scene live, but the car has been 
+[ 382.8s] # 35 probe             probe   LT+left:2 RT+right:1.5 RT+right:1.5 RT+right:1.5 control 0.004, under input 0.004
+[ 391.7s] # 36 gameplay          fast    LT+right:2               HUD and scene are live, but the car has stayed at 0 mph through RT and LT inputs and the g
+[ 406.7s] # 37 probe             probe   LT+right:2 RT+left:2     control 0.002, under input 0.005
+[ 414.4s] # 38 gameplay          fast    X                        HUD, minimap and traffic are live, but the car sits at 0 mph in N after earlier RT/LT prob
+[ 433.4s] # 39 probe             probe   X X STICK:left:1.5 STICK:left:1.5 STICK:left:1.5 control 0.026, under input 0.032
+[ 441.1s] # 40 gameplay          fast    wait                     The HUD is up and the scene is live with traffic moving, but the car has sat at 0 mph in N
+[ 457.1s] # 41 probe             probe   STICK:left:1.5 STICK:left:1.5 STICK:left:1.5 control 0.009, under input 0.007
+[ 464.4s] # 42 gameplay          fast    HOLD:A:1                 HUD, minimap and live traffic are up, so this is gameplay, but the car is still at 0 mph i
+[ 479.0s] # 43 probe             probe   HOLD:A:1 HOLD:B:3        control 0.016, under input 0.362
+hold-play: genre drive, need 600 s of play
+hold-play: fps at 189 s: median 23.0, share>=30 0.0 over 73 samples
+hold-play: fps at 303 s: median 23.0, share>=30 0.0 over 117 samples -> STOP (not on course)
+hold-play: not held 194/600 s of play; fps gate at 5:03: median 23 < 27, 0% of 117 samples at >= 28.5
+held Midnight Club II for 306s
+VERDICT Midnight Club II ? FAIL(duration: 303 s of gameplay < 600 s confirmation) gameplay=303.4s fps_ok=0.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.5265 play_share=0.6351 fps_excluded=111.8s
+{"name": "Midnight Club II", "device": "nova", "result": "gameplay", "minutes": 7.98, "model_calls": 39, "steps": 43, "replayed": 0, "reason": "four probes refused", "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-54540008/frames/042-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

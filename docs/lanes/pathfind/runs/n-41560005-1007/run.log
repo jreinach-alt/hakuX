@@ -1,0 +1,26 @@
+pathfind: Blade II (41560005) on nova: /storage/E6C6-D7AA/Games/XBox/41560005-Blade_II.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 41560005 any, loaded none
+[  13.1s] #  1 loading           fast    wait                     This looks like a loading/splash icon shortly after cold boot, not yet any game content; w
+[  23.4s] #  2 title_screen      fast    START                    Title screen explicitly prompts PRESS START TO BEGIN
+[  32.5s] #  3 main_menu         fast    A                        PLAY GAME appears to be the default top/highlighted item; confirm with A to start the fast
+[  44.4s] #  4 submenu           fast    A                        Campaign/mission select list with the first entry 'Whistler's Base' highlighted as the def
+[  53.5s] #  5 submenu           fast    A                        This is a mission briefing/loadout screen before the level loads, not yet gameplay; confir
+[  64.3s] #  6 loading           fast    wait                     This is a controls tutorial/loading screen shown while the level loads; the loading bar at
+[  76.0s] #  7 cutscene          fast    A                        A scripted dialogue line with portrait and text box is playing before the training level s
+[  84.8s] #  8 cutscene          fast    A                        Dialogue box with NPC portrait is an instruction/tutorial line playing before control is c
+[  95.2s] #  9 gameplay          fast    STICK:up:1.5             Player character model visible from behind in a fully rendered 3D level with a persistent 
+[ 113.6s] # 10 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 control 0.008, under input 0.007
+[ 121.7s] # 11 gameplay          fast    STICK:right:1.5 STICK:up:1.5 Full 3D level with persistent combat HUD and objective text; character appears stuck again
+[ 136.3s] # 12 probe             probe   STICK:right:1.5 STICK:up:1.5 STICK:right:1.5 control 0.001, under input 0.599
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 182 s: median 29.0, share>=30 1.0 over 92 samples
+hold-play: fps at 304 s: median 29.0, share>=30 1.0 over 153 samples
+hold-play: 3 still looks: walk reversed (back) at 859 s
+hold-play: validity check share 7202 s (hold 600 s of play, verdict 601.3)
+hold-play: not held 600/600 s of play; share short by 7202 s with no budget left
+held Blade II for 1470s
+VERDICT Blade II ? FAIL(menu time: 41.0% of the scored window in `play` (bar 90%; still 867 s, play 602 s, no-timeline 0 s)) gameplay=1469.3s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=1/0.043pm worst_ms=122.2 static_frac=0.0028 play_share=0.4099 fps_excluded=865.0s
+{"name": "Blade II", "device": "nova", "result": "gameplay", "minutes": 2.27, "model_calls": 33, "steps": 12, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-41560005-1007/frames/011-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "41560005": "854592d8f31c", "4156005D": "a1647bf6ddb4", "4253

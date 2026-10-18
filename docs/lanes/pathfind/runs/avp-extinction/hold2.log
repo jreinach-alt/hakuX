@@ -1,0 +1,34 @@
+taken: nova by lane.pathfind
+idle: nova is held and runs nothing
+held at 19:42:16
+pathfind: Aliens Versus Predator Extinction (56550022) on nova: /storage/E6C6-D7AA/Games/XBox/56550022-Aliens_Versus_Predator_Extinction.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 56550022 any, loaded golden 50a35dcd33ed
+[   9.4s] #  1 publisher_logo    fast    A                        Publisher logo mid-animation; per hints, one A press to skip, then re-read after the scree
+[  15.7s] #  2 publisher_logo    replay  A                        replay step 1: replay step 1: Title/logo card still on screen; per hints, skip with A firs
+[  20.9s] #  3 publisher_logo    replay  A                        replay step 2: EA publisher logo still on screen. Per the hints, skip with A first, then r
+[  29.6s] #  4 publisher_logo    fast    A                        Publisher logo still animating; per hints, one A press to skip, then re-read after the scr
+[  38.1s] #  5 publisher_logo    fast    A                        Still an animated logo card with no title or menu yet; per the recorded path and hints, on
+[  43.7s] #  6 title_screen      replay  START                    replay step 4: Title screen with a 'Press START' prompt; per hints START advances it. No m
+[  49.2s] #  7 main_menu         replay  DOWN A                   replay step 5: Profile menu; the lit item is Load Profile, but the hint path for this titl
+[  58.6s] #  8 main_menu         fast    A                        Profile dialog: the lit 'Create Profile' button is the path to play for a new profile. A c
+[  64.2s] #  9 main_menu         replay  A                        replay step 6: Profile menu: the highlighted 'Create Profile' is the path to play for a ne
+[  73.0s] # 10 main_menu         fast    A                        Main menu with Start Campaign already highlighted, the fastest route to play; A accepts it
+[  79.4s] # 11 main_menu         replay  A                        replay step 9: Campaign select with Marine Campaign as the top, default-highlighted item; 
+[  88.3s] # 12 submenu           fast    A                        Marine character select; Marine 1 is the highlighted default, so A accepts it to reach pla
+[  94.0s] # 13 cutscene          replay  START                    replay step 11: Mission briefing text screen with a Press START prompt, not a menu and not
+[  98.8s] # 14 cutscene          replay  A                        replay step 12: Intro cinematic with a visible 'Press A to Skip Intro' prompt; not gamepla
+[ 107.9s] # 15 gameplay          fast    wait                     Full in-game HUD with the player's squad on the battlefield and no menu, cutscene or lette
+[ 121.0s] # 16 probe             probe   STICK:up:1.5             control 0.012, under input 0.452
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 196 s: median 31.0, share>=30 1.0 over 102 samples
+hold-play: fps at 309 s: median 31.0, share>=30 1.0 over 161 samples
+hold-play: not held 67/600 s of play; budget 23 min with 67 s of play
+held Aliens Versus Predator Extinction for 1215s
+VERDICT Aliens Versus Predator Extinction ? FAIL(menu time: 5.5% of the scored window in `play` (bar 90%; still 1146 s, play 67 s, no-timeline 0 s)) gameplay=1213.9s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.9919 play_share=0.0554 fps_excluded=1148.1s
+{"name": "Aliens Versus Predator Extinction", "device": "nova", "result": "gameplay", "minutes": 2.02, "model_calls": 52, "steps": 16, "replayed": 8, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/avp-extinction/hold2/frames/015-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256
+pathfind rc=0 at 20:05:13
+released: nova by lane.pathfind
+released rc=0

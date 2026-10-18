@@ -53,6 +53,9 @@
 #   9   built and logged, but nothing player-facing to publish (not a failure)
 #   10  no version found -- version_stamp.sh's BASE_VERSION is unreadable
 #   11  the built apk does not verify (apksigner); an unsigned apk is not published
+#   12  the rotated re-sign (#433, docs/testing/sign_lineage.sh) did not check
+#       out -- the lineage applies but the result doesn't verify, or its
+#       lineage doesn't list both certs; not published
 set -u
 
 REPO="${NIGHTLY_REPO:-jreinach-alt/hakuX}"
@@ -532,6 +535,7 @@ section() {   # <heading> <line...>
     fi
     echo "Installs alongside an official hakuX build and upgrades a previous fork build in place."
     echo "Launching from ES-DE needs the two files in \`docs/es-de/\`."
+    echo "hakuX is tested only with the Turnip Adreno Driver T30 (@Mr_Purple_666); the handheld's own driver and other Turnip builds are untested and draw some games wrongly. [Which driver, and how to install it.](https://github.com/jreinach-alt/hakuX/blob/home/docs/gpu-driver.md)"
     echo
     echo "_Notes updated $(date -u '+%F %H:%M') UTC._"
 } > "$BODY"
@@ -641,6 +645,21 @@ if [ -z "$APKSIGNER" ]; then
     say "PUBLISH REFUSED: no apksigner under ${SDK_DIR:-<no sdk.dir>}/build-tools; cannot confirm $NAME is signed"
     exit 11
 fi
+
+# #433: re-sign with the rotated key, v3-only + lineage, but ONLY once
+# ~/keystores/hakux-rotation.lineage exists and key.properties names that
+# keystore -- otherwise this is a no-op and $OUT/$NAME is exactly what Gradle
+# produced, same as every nightly before the rotation.
+. "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/sign_lineage.sh"
+resign_with_rotation "$OUT/$NAME" "android/key.properties" "$APKSIGNER" || {
+    say "PUBLISH REFUSED: $NAME's rotated re-sign did not check out"
+    exit 12
+}
+if [ "$ROTATION_APPLIED" = 1 ] && ! lineage_lists_both_certs "$OUT/$NAME" "$APKSIGNER"; then
+    say "PUBLISH REFUSED: $NAME was re-signed but its lineage does not list both certs"
+    exit 12
+fi
+
 if ! "$APKSIGNER" verify "$OUT/$NAME" >>"$LOG" 2>&1; then
     say "PUBLISH REFUSED: $NAME does not verify (apksigner) -- an unsigned apk is not published"
     exit 11

@@ -633,7 +633,7 @@ notes = "No #431 target; the default 30 applies. route = gen-lego-star-wars: #43
 name = "Marvel Nemesis: Rise of the Imperfects"
 iso = { nova = "4541038A-Marvel_Nemesis_Rise_of_the_Imperfects.xiso.iso" }
 route = "gen-marvel-nemesis"
-notes = "No #431 target; the default 30 applies. route = gen-marvel-nemesis: #433 step 6c classifier-path benchmark opening (drive generic), fighter play loop (close/attack), not yet device-proven. See pm/owner-holds.tsv marvel-851 (pending, PLAYABLE_ATTEMPT only -- does not block a benchmark fps read)."
+notes = "No #431 target; the default 30 applies. route = gen-marvel-nemesis: #433 step 6c classifier-path benchmark opening (drive generic), fighter play loop (close/attack), not yet device-proven. Hold marvel-851 released: owner ruled 2026-10-17 that a stall with the guest and renderer both idle is loading, not a hitch; Marvel Nemesis is Playable (pm/playable-accepted.tsv 2026-10-17 21:55, run marvel-1006)."
 
 [titles."54540008"]
 name = "Midnight Club II"
@@ -657,7 +657,7 @@ notes = "No #431 target; the default 30 applies. route = gen-nba-live-06: #433 s
 name = "NBA Live 07"
 iso = { nova = "454100A1-NBA_Live_07.xiso.iso" }
 route = "gen-nba-live-07"
-notes = "No #431 target; the default 30 applies. route = gen-nba-live-07: #433 step 6c classifier-path benchmark opening (drive generic), basketball play loop (move/shoot), not yet device-proven."
+notes = "No #431 target; the default 30 applies. Playable per an owner play session on the Nova, 2026-10-17 (762 s of play, window median ~51 fps, 98.6% at or above the bar); supersedes the 2026-10-06 pathfind run (median 19.99 fps). route = gen-nba-live-07: #433 step 6c classifier-path benchmark opening (drive generic), basketball play loop (move/shoot)."
 
 [titles."45410050"]
 name = "NBA Live 2005"
@@ -669,7 +669,7 @@ notes = "No #431 target; the default 30 applies. route = gen-nba-live-2005: #433
 name = "Mortal Kombat: Shaolin Monks"
 iso = { nova = "4D570029-Mortal_Kombat_Shaolin_Monks.xiso.iso" }
 route = "gen-mk-shaolin-monks"
-notes = "No #431 target; the default 30 applies. route = gen-mk-shaolin-monks: #433 step 6c classifier-path benchmark opening (drive generic); unlike the other MK titles here this is a 3D beat-'em-up, so the loop walks/turns/attacks rather than closing distance on a fixed opponent. Not yet device-proven."
+notes = "No #431 target; the default 30 applies. route = gen-mk-shaolin-monks: #433 step 6c classifier-path benchmark opening (drive generic); unlike the other MK titles here this is a 3D beat-'em-up, so the loop walks/turns/attacks rather than closing distance on a fixed opponent. Playable per the 2026-10-18 ledger (pathfind held run sweep-4D570029, 10-06, frame-reviewed): 603.9 s of play, window median 39.89 fps, 100% at or above the 30 fps bar, one 115.7 ms hitch after warm-up."
 
 [titles."4156002B"]
 name = "Spider-Man 2"
@@ -705,7 +705,7 @@ notes = "No #431 target; the default 30 applies. route = gen-lotr-rotk: #433 ste
 name = "Top Spin"
 iso = { nova = "4D530035-Top_Spin.xiso.iso" }
 route = "gen-top-spin"
-notes = "No #431 target; the default 30 applies. route = gen-top-spin: #433 step 6c classifier-path benchmark opening (drive generic), tennis play loop (move/swing), not yet device-proven."
+notes = "No #431 target; the default 30 applies. route = gen-top-spin: #433 step 6c classifier-path benchmark opening (drive generic) through Court, then fps786-topspin.route's steps 14-25 (lane.topspinroute1018, 10-18: Controller Select needs axis HATX, which the generic classifier's A-only policy cannot do), tennis play loop (move/swing), not yet device-proven."
 
 [titles."58490004"]
 name = "Black Stone: Magic & Steel"

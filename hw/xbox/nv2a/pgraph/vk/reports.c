@@ -64,9 +64,12 @@
 
 typedef struct RaReport {
     bool clear;
+    bool early;        /* answered at queue (HAKUX_REPORT_EARLY): count only */
     int qend;          /* the batch's queries counted before this report */
     uint8_t *dst;      /* the guest's 16-byte report; NULL for a clear */
+    uint32_t off;      /* its offset in the report DMA object */
     uint32_t trace;    /* trace record, when tracing */
+    uint32_t rs, qs;   /* #1039's serials (HAKUX_ZREP) */
 } RaReport;
 
 typedef struct RaBatch {
@@ -97,6 +100,78 @@ static struct {
     uint32_t sum;
     uint64_t *results;
 } ra;
+
+/*
+ * #1039: HAKUX_ZREP=<path>[,<MB>], off unless set. Each query's count and
+ * each report's value as the path that reads them writes them, so a frame
+ * dump (schema 11: "zq" on a draw, {"t":"rep"} per report) can say which
+ * draws a report counted and what it came to. Nothing is written until a
+ * frame dump has been armed once; it stops at <MB> (default 256). Lines:
+ *
+ *   q <query serial> <samples>
+ *   r <report serial> <last query serial> <offset> <value> <early>
+ *   c <report serial> <last query serial>        (CLEAR_REPORT_VALUE)
+ *
+ * <value> is the report's own count, as the guest gets it unless <early> is
+ * 1 (HAKUX_REPORT_EARLY answered it with the offset's last value, the
+ * previous r line at the same offset). The serials are the dump's "zq" and
+ * "rs"/"qs". A report counts every query after the last clear's <last query
+ * serial> up to its own.
+ */
+static struct {
+    FILE *fp;
+    QemuMutex lock;
+    int64_t bytes, cap;
+} zr;
+
+static void zr_init(void)
+{
+    const char *e = getenv("HAKUX_ZREP");
+    char path[512];
+    const char *comma;
+    size_t len;
+
+    if (!e || !*e || zr.fp) {
+        return;
+    }
+    comma = strchr(e, ',');
+    len = comma ? (size_t)(comma - e) : strlen(e);
+    snprintf(path, sizeof(path), "%.*s", (int)MIN(len, sizeof(path) - 1), e);
+    zr.cap = (comma ? MAX(atoi(comma + 1), 1) : 256) * (int64_t)1048576;
+    zr.bytes = 0;
+    zr.fp = fopen(path, "w");
+    qemu_mutex_init(&zr.lock);
+    RA_LOG("[zrep1039] %s -> %s (cap %" PRId64 " MB)",
+           zr.fp ? "on" : "cannot open", path, zr.cap / 1048576);
+}
+
+static bool zr_on(void)
+{
+    return zr.fp && zr.bytes < zr.cap && pgraph_vk_fdump_armed_once();
+}
+
+static void zr_query(uint32_t qs, uint64_t samples)
+{
+    qemu_mutex_lock(&zr.lock);
+    int n = fprintf(zr.fp, "q %u %" PRIu64 "\n", qs, samples);
+    zr.bytes += MAX(n, 0);
+    qemu_mutex_unlock(&zr.lock);
+}
+
+static void zr_report(bool clear, uint32_t rs, uint32_t qs, uint32_t off,
+                      uint32_t value, bool early)
+{
+    qemu_mutex_lock(&zr.lock);
+    int n = clear ? fprintf(zr.fp, "c %u %u\n", rs, qs)
+                  : fprintf(zr.fp, "r %u %u 0x%x %u %d\n", rs, qs, off, value,
+                            (int)early);
+    zr.bytes += MAX(n, 0);
+    if (zr.bytes >= zr.cap) {
+        fprintf(zr.fp, "end cap\n");
+        fflush(zr.fp);
+    }
+    qemu_mutex_unlock(&zr.lock);
+}
 
 /* Trace: one record per GET_REPORT, in queue order. */
 #define RT_RING 8192
@@ -378,6 +453,7 @@ static void rt_add_wait(bool gate, int64_t us)
 }
 
 static void *ra_reader(void *opaque);
+static void re_init(void);
 
 static void ra_start(PGRAPHVkState *r)
 {
@@ -410,6 +486,8 @@ void pgraph_vk_init_reports(PGRAPHState *pg)
     const char *async = getenv("HAKUX_REPORT_ASYNC");
     ra.on = async && !strcmp(async, "1");
     rt_init(pg);
+    re_init();
+    zr_init();
 
     QSIMPLEQ_INIT(&r->report_queue);
     QSIMPLEQ_INIT(&r->report_pool);
@@ -435,6 +513,8 @@ void pgraph_vk_init_reports(PGRAPHState *pg)
         .queryCount = ra.on ? NUM_SUBMIT_FRAMES * RA_SLOT_QUERIES
                             : r->max_queries_in_flight,
     };
+    r->query_serial_of =
+        g_malloc0_n(pool_create_info.queryCount, sizeof(uint32_t));
     VK_CHECK(
         vkCreateQueryPool(r->device, &pool_create_info, NULL, &r->query_pool));
 
@@ -472,8 +552,147 @@ void pgraph_vk_finalize_reports(PGRAPHState *pg)
     r->report_pool_entries = NULL;
     g_free(r->query_results);
     r->query_results = NULL;
+    g_free(r->query_serial_of);
+    r->query_serial_of = NULL;
 
     vkDestroyQueryPool(r->device, r->query_pool, NULL);
+}
+
+/*
+ * #1018 (halo1016): two switches for a guest that polls its visibility tests,
+ * both on the async reader (HAKUX_REPORT_ASYNC=1, which "Fast renderer paths"
+ * sets by default); without it they log so and stay off.
+ *
+ * HAKUX_REPORT_EARLY (on unless set to 0, since #1018): a GET_REPORT whose
+ * status word the guest armed is answered when it is queued, with the count
+ * the last GET_REPORT at the same offset was written with. Its own count, once
+ * the reader has it, goes to that table and not to the guest. An offset not
+ * seen before is written as today. Halo's cinematic queues ~540 armed reports
+ * a frame, each offset once a frame, and polls them (0x63482 -> D3D 0x1810f0)
+ * until the status word leaves -1; the async reader writes each ~28 ms after
+ * it is queued (median, RT arm): handed off at the next flip's finish, read
+ * once the GPU has run that whole command buffer. The answer is one test
+ * stale, as RPCS3's "relaxed ZCULL sync" answers: a flare or an
+ * occlusion-culled object can lag a frame.
+ *
+ * Only an offset whose last GET_REPORT came in the guest frame before this one
+ * is answered early: that is Halo's pattern (one test per offset per frame,
+ * polled the next), where the previous count is the same test's, one frame
+ * old. An offset already queued this frame would get another test's count; an
+ * offset last queued two or more frames ago is a slot ring (NFS Most Wanted
+ * cycles four, each reused >= 66.7 ms later, reportasync1010), whose guest
+ * reads the slot later and does not wait on it, so an early answer would only
+ * make its count older. Both are written as today (skip0, skipn below).
+ *
+ * The reader compares each early answer with the count its own test came to:
+ * stale counts those that differ, vis those where one is 0 and the other not
+ * (the guest drew or hid something its own test would have decided the other
+ * way, for one frame). Both go on the 2 s window line.
+ *
+ * HAKUX_REPORT_SUBMIT=<us>: after an armed GET_REPORT is queued, if <us> or
+ * more have passed since the last finish, finish now (STALLED), so the GPU
+ * starts on the draws before it and the reader writes the report once those
+ * have run, nearer to when the NV2A writes it (when it reaches the method).
+ * Each such finish is a submit and a frame-slot rotation.
+ *
+ * An early report is marked in QueryReport.parameter's type byte
+ * (RE_EARLY_BIT); GET_REPORT asserted the type before queueing it, and the
+ * async path reads only the offset afterwards.
+ */
+#define RE_HASH 4096
+#define RE_RING 16384
+#define RE_EARLY_BIT (1u << 31)
+
+static struct {
+    int early;
+    int64_t submit_us;
+    uint64_t tab[RE_HASH];   /* (offset + 1) << 32 | count; 0 = empty */
+    /* the PFIFO thread's: each offset's last GET_REPORT and its guest frame */
+    uint32_t q_off[RE_HASH]; /* offset + 1; 0 = none */
+    int q_frame[RE_HASH];
+    int64_t t_fin;           /* end of the last finish, when submit_us */
+    int64_t t_win;
+    uint32_t n_early, n_cold, n_unarmed, n_submit, n_skip0, n_skipn, n_full;
+    /* early answers in queue order, read back in the same order by ra_run */
+    struct {
+        uint32_t off, val;
+    } ring[RE_RING];
+    uint32_t ring_w, ring_r;
+    uint32_t n_stale, n_vis, n_desync;   /* ra_run's, taken by the window */
+} re;
+
+static void ra_write(uint8_t *dst, uint32_t result);
+
+static void re_init(void)
+{
+    const char *e = getenv("HAKUX_REPORT_EARLY");
+    const char *s = getenv("HAKUX_REPORT_SUBMIT");
+    re.early = !e || strcmp(e, "0") != 0;
+    re.submit_us = s ? MAX(atoi(s), 0) : 0;
+    memset(re.tab, 0, sizeof(re.tab));
+    memset(re.q_off, 0, sizeof(re.q_off));
+    re.ring_w = re.ring_r = 0;
+    if (!ra.on && (re.early || re.submit_us)) {
+        RA_LOG("[rearly1018] needs HAKUX_REPORT_ASYNC=1: off");
+        re.early = 0;
+        re.submit_us = 0;
+    }
+    RA_LOG("[rearly1018] early=%d submit_us=%" PRId64 " HAKUX_REPORT_EARLY=%s",
+           re.early, re.submit_us, e ? e : "(unset)");
+}
+
+static void re_queued(NV2AState *d, QueryReport *report)
+{
+    uint8_t *dst = ra_map(d, report->parameter, false);
+    int64_t now = g_get_monotonic_time();
+    bool armed = dst && ldl_le_p(dst + 12);
+    bool answered = false;
+    uint32_t off = GET_MASK(report->parameter, NV097_GET_REPORT_OFFSET);
+    unsigned h = (off >> 4) % RE_HASH;
+    int frame = qatomic_read(&d->pgraph.frame_time);
+    /* frames since this offset's last GET_REPORT; -1 if none */
+    int gap = re.q_off[h] == off + 1 ? frame - re.q_frame[h] : -1;
+
+    re.q_off[h] = off + 1;
+    re.q_frame[h] = frame;
+    if (!armed) {
+        re.n_unarmed++;
+    } else if (re.early && ra.started) {
+        uint64_t v = qatomic_read(&re.tab[h]);
+        uint32_t w = re.ring_w;
+        if ((v >> 32) != (uint64_t)off + 1) {
+            re.n_cold++;
+        } else if (gap == 0) {
+            re.n_skip0++;
+        } else if (gap != 1) {
+            re.n_skipn++;
+        } else if (w - qatomic_load_acquire(&re.ring_r) >= RE_RING) {
+            re.n_full++;
+        } else {
+            re.ring[w % RE_RING].off = off;
+            re.ring[w % RE_RING].val = (uint32_t)v;
+            qatomic_store_release(&re.ring_w, w + 1);
+            ra_write(dst, (uint32_t)v);
+            report->parameter |= RE_EARLY_BIT;
+            answered = true;
+            re.n_early++;
+        }
+    }
+    if (now - re.t_win >= 2000000) {
+        RA_LOG("[rearly1018] w early=%u cold=%u unarmed=%u submit=%u "
+               "skip0=%u skipn=%u full=%u stale=%u vis=%u desync=%u",
+               re.n_early, re.n_cold, re.n_unarmed, re.n_submit, re.n_skip0,
+               re.n_skipn, re.n_full, qatomic_xchg(&re.n_stale, 0),
+               qatomic_xchg(&re.n_vis, 0), qatomic_xchg(&re.n_desync, 0));
+        re.n_early = re.n_cold = re.n_unarmed = re.n_submit = 0;
+        re.n_skip0 = re.n_skipn = re.n_full = 0;
+        re.t_win = now;
+    }
+    if (armed && !answered && re.submit_us &&
+        now - qatomic_read(&re.t_fin) >= re.submit_us) {
+        re.n_submit++;
+        pgraph_vk_finish(&d->pgraph, VK_FINISH_REASON_STALLED);
+    }
 }
 
 static QueryReport *alloc_report(PGRAPHVkState *r)
@@ -501,9 +720,15 @@ void pgraph_vk_clear_report_value(NV2AState *d)
     report->clear = true;
     report->parameter = 0;
     report->query_count = r->num_queries_in_flight;
+    report->rs = ++r->report_serial;
+    report->qs = r->query_serial;
     QSIMPLEQ_INSERT_TAIL(&r->report_queue, report, entry);
 
     r->new_query_needed = true;
+
+    if (nv2a_dbg_framedump_active()) {
+        pgraph_vk_fdump_log_report(d, report);
+    }
 }
 
 void pgraph_vk_get_report(NV2AState *d, uint32_t parameter)
@@ -518,12 +743,21 @@ void pgraph_vk_get_report(NV2AState *d, uint32_t parameter)
     report->clear = false;
     report->parameter = parameter;
     report->query_count = r->num_queries_in_flight;
+    report->rs = ++r->report_serial;
+    report->qs = r->query_serial;
     QSIMPLEQ_INSERT_TAIL(&r->report_queue, report, entry);
 
     r->new_query_needed = true;
 
+    if (nv2a_dbg_framedump_active()) {
+        pgraph_vk_fdump_log_report(d, report);
+    }
+
     if (rt.on) {
         rt_queued(d, parameter);
+    }
+    if (re.early || re.submit_us) {
+        re_queued(d, report);
     }
 }
 
@@ -534,6 +768,38 @@ static void ra_write(uint8_t *dst, uint32_t result)
     stl_le_p(dst + 8, result);
     smp_wmb();
     stl_le_p(dst + 12, 0);
+}
+
+/*
+ * An early report's own count has come: compare it with the answer the guest
+ * got. Early reports reach here in the order re_queued answered them, so the
+ * ring's next entry is this report's. If it is not, the entries before this
+ * report's (within 64) are skipped and counted as desync, so one lost report
+ * does not void the rest of the run; with no entry for it, it counts one and
+ * the ring stays. Called from ra_run only, which has one user at a time.
+ */
+static void re_check(uint32_t off, uint32_t v)
+{
+    uint32_t r0 = re.ring_r;
+    uint32_t w = qatomic_load_acquire(&re.ring_w);
+
+    for (uint32_t i = r0; i != w && i - r0 < 64; i++) {
+        if (re.ring[i % RE_RING].off == off) {
+            uint32_t ans = re.ring[i % RE_RING].val;
+            if (i != r0) {
+                qatomic_add(&re.n_desync, i - r0);
+            }
+            if (ans != v) {
+                qatomic_inc(&re.n_stale);
+            }
+            if ((ans == 0) != (v == 0)) {
+                qatomic_inc(&re.n_vis);
+            }
+            qatomic_store_release(&re.ring_r, i + 1);
+            return;
+        }
+    }
+    qatomic_inc(&re.n_desync);
 }
 
 /*
@@ -569,6 +835,12 @@ static void ra_run(PGRAPHVkState *r, RaBatch *b)
     if (rt.on) {
         t_f = g_get_monotonic_time();
     }
+    bool zr_w = zr_on();
+    if (zr_w) {
+        for (int i = 0; i < b->nq; i++) {
+            zr_query(r->query_serial_of[b->qfirst + i], ra.results[i]);
+        }
+    }
 
     int counted = 0;
     for (int i = 0; i < b->nreports; i++) {
@@ -579,15 +851,35 @@ static void ra_run(PGRAPHVkState *r, RaBatch *b)
         }
         if (rep->clear) {
             ra.sum = 0;
+            if (zr_w) {
+                zr_report(true, rep->rs, rep->qs, 0, 0, false);
+            }
         } else {
+            uint32_t v = ra.sum / b->divisor;
+            if (zr_w) {
+                zr_report(false, rep->rs, rep->qs, rep->off, v, rep->early);
+            }
             if (rt.on) {
                 rt_written(rep->trace, rep->dst, t_f);
             }
-            ra_write(rep->dst, ra.sum / b->divisor);
+            if (re.early) {
+                qatomic_set(&re.tab[(rep->off >> 4) % RE_HASH],
+                            ((uint64_t)rep->off + 1) << 32 | v);
+            }
+            if (!rep->early) {
+                ra_write(rep->dst, v);
+            } else {
+                re_check(rep->off, v);
+            }
         }
     }
     while (counted < b->nq) {
         ra.sum += ra.results[counted++];
+    }
+    if (zr_w) {
+        qemu_mutex_lock(&zr.lock);
+        fflush(zr.fp);
+        qemu_mutex_unlock(&zr.lock);
     }
 }
 
@@ -682,10 +974,16 @@ static void ra_internal(NV2AState *d)
             assert(report->query_count <= r->num_queries_in_flight);
             RaReport *o = &b->reports[b->nreports++];
             o->clear = report->clear;
+            o->early = !report->clear && (report->parameter & RE_EARLY_BIT);
             o->qend = report->query_count - ra.cur_base;
             o->dst = report->clear ? NULL : ra_map(d, report->parameter, true);
+            o->off = report->clear ? 0 :
+                     GET_MASK(report->parameter, NV097_GET_REPORT_OFFSET);
             o->trace = (!report->clear && rt.on) ? rt_handoff(t_e) : 0;
-            if (o->dst && !ldl_le_p(o->dst + 12)) {
+            o->rs = report->rs;
+            o->qs = report->qs;
+            /* An early report's status word is our own 0, not the guest's. */
+            if (o->dst && !o->early && !ldl_le_p(o->dst + 12)) {
                 unarmed = true;
             }
             QSIMPLEQ_REMOVE_HEAD(&r->report_queue, entry);
@@ -856,6 +1154,10 @@ void pgraph_vk_process_pending_reports_internal(NV2AState *d)
 
     assert(!r->in_command_buffer);
 
+    if (re.submit_us) {
+        qatomic_set(&re.t_fin, g_get_monotonic_time());
+    }
+
     if (ra.started) {
         ra_internal(d);
         NV2A_VK_DGROUP_END();
@@ -938,6 +1240,12 @@ void pgraph_vk_process_pending_reports_internal(NV2AState *d)
     int num_results_counted = 0;
     const int result_divisor =
         pg->surface_scale_factor * pg->surface_scale_factor;
+    bool zr_w = zr_on();
+    if (zr_w) {
+        for (int i = 0; i < r->num_queries_in_flight; i++) {
+            zr_query(r->query_serial_of[i], query_results[i]);
+        }
+    }
 
     QueryReport *report;
     while ((report = QSIMPLEQ_FIRST(&r->report_queue)) != NULL) {
@@ -949,6 +1257,12 @@ void pgraph_vk_process_pending_reports_internal(NV2AState *d)
                 query_results[num_results_counted++];
         }
 
+        if (zr_w) {
+            zr_report(report->clear, report->rs, report->qs,
+                      report->clear ? 0 :
+                      GET_MASK(report->parameter, NV097_GET_REPORT_OFFSET),
+                      r->zpass_pixel_count_result / result_divisor, false);
+        }
         if (report->clear) {
             NV2A_VK_DPRINTF("Cleared");
             r->zpass_pixel_count_result = 0;
@@ -972,6 +1286,11 @@ void pgraph_vk_process_pending_reports_internal(NV2AState *d)
     // Add remaining results
     while (num_results_counted < r->num_queries_in_flight) {
         r->zpass_pixel_count_result += query_results[num_results_counted++];
+    }
+    if (zr_w) {
+        qemu_mutex_lock(&zr.lock);
+        fflush(zr.fp);
+        qemu_mutex_unlock(&zr.lock);
     }
 
     r->num_queries_in_flight = 0;
@@ -1053,6 +1372,41 @@ static bool pfifowait_enabled(void)
     return on;
 }
 
+/*
+ * #1018 (halo1016): HAKUX_REPORT_CATCHUP=1, off unless set. A queued
+ * GET_REPORT is written at a caught-up FIFO even when the STALLED finish
+ * below would not run: no command buffer is open, or no draw came since the
+ * last STALLED finish. Without it such a report waits for the next finish of
+ * any kind (every finish writes the queue, pgraph_vk_finish's tail), while a
+ * guest polling its status word spins: Halo's cinematic polls each
+ * visibility test (D3D at 0x1810f0, from 0x63482) until the word leaves -1.
+ * Only a value report counts; a queue holding clears alone is left as it
+ * was. The value is the one the next finish would have written: the running
+ * count, read after the fences, by the same code.
+ */
+static bool report_catchup_enabled(void)
+{
+    static int on = -1;
+    if (on < 0) {
+        const char *v = getenv("HAKUX_REPORT_CATCHUP");
+        on = v && !strcmp(v, "1");
+        RA_LOG("[rcatch1018] %s HAKUX_REPORT_CATCHUP=%s", on ? "on" : "off",
+               v ? v : "(unset)");
+    }
+    return on;
+}
+
+static bool report_queue_has_value(PGRAPHVkState *r)
+{
+    QueryReport *report;
+    QSIMPLEQ_FOREACH(report, &r->report_queue, entry) {
+        if (!report->clear) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void pgraph_vk_process_pending_reports(NV2AState *d)
 {
     PGRAPHState *pg = &d->pgraph;
@@ -1060,6 +1414,27 @@ void pgraph_vk_process_pending_reports(NV2AState *d)
 
     uint32_t *dma_get = &d->pfifo.regs[NV_PFIFO_CACHE1_DMA_GET];
     uint32_t *dma_put = &d->pfifo.regs[NV_PFIFO_CACHE1_DMA_PUT];
+
+    if (*dma_get == *dma_put && report_catchup_enabled() &&
+        (!r->in_command_buffer || pg->draw_time == r->last_stall_draw_time) &&
+        report_queue_has_value(r)) {
+        static uint32_t n_open, n_closed;
+        static int64_t t_win;
+        int64_t now = g_get_monotonic_time();
+        if (r->in_command_buffer) {
+            n_open++;
+        } else {
+            n_closed++;
+        }
+        if (now - t_win >= 2000000) {
+            RA_LOG("[rcatch1018] w open=%u closed=%u", n_open, n_closed);
+            n_open = n_closed = 0;
+            t_win = now;
+        }
+        pgraph_vk_finish(pg, VK_FINISH_REASON_STALLED);
+        r->last_stall_draw_time = pg->draw_time;
+        return;
+    }
 
     if (*dma_get == *dma_put && r->in_command_buffer) {
         if (stall_reports_only() && QSIMPLEQ_EMPTY(&r->report_queue)) {

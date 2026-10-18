@@ -1,0 +1,46 @@
+pathfind: Shadow of Memories Europe (4B4E000E) on nova: /storage/E6C6-D7AA/Games/XBox/4B4E000E-Shadow_of_Memories_Europe.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4B4E000E any, loaded none
+[  12.4s] #  1 publisher_logo    fast    A                        First screen after boot; green geometric logo is a publisher mark. Skip with A per intro i
+[  24.2s] #  2 publisher_logo    fast    A                        New publisher logo (Konami) after the initial green geometric logo; skip with A per intro 
+[  37.8s] #  3 main_menu         fast    A                        Menu screen with START/CONTINUE/OPTION options; START is highlighted. Press A to select Ne
+[  49.8s] #  4 cutscene          fast    START                    Text-only intro prologue screen after main menu selection; this is a cutscene that should 
+[  97.0s] #  5 gameplay          fast    STICK:up:1.5             Character is visible and positioned in the playable 3D game world with HUD elements active
+[ 104.7s] #  6 probe             probe   STICK:up:1.5 STICK:up:1.5 control 0.555, under input 0.389
+[ 114.7s] #  7 cutscene          fast    START                    Black letterbox bars frame the scene; crediting text overlay confirms this is a cinematic 
+[ 126.2s] #  8 cutscene          fast    START                    Black letterbox bars (top and bottom) frame the scene cinematically. The 3D world is visib
+[ 140.2s] #  9 cutscene          fast    A                        Black letterbox bars (top and bottom) indicate a cinematic cutscene, not gameplay. The 3D 
+[ 152.5s] # 10 cutscene          fast    A                        Black letterbox bars top and bottom indicate a cinematic sequence. This is a credits/produ
+[ 184.5s] # 11 cutscene          fast    BACK                     Black letterbox bars and character dialogue confirm this is a cinematic sequence, not game
+[ 197.2s] # 12 cutscene          fast    START                    Black bars at top and bottom indicate a letterbox cinematic; dialogue overlay and scripted
+[ 207.1s] # 13 cutscene          fast    A                        Letterbox black bars and dialogue text confirm a cinematic sequence, not gameplay. Previou
+[ 218.7s] # 14 pause             fast    START                    The PAUSE text confirms the game is paused mid-cutscene. Previous A input had no effect. S
+[ 235.0s] # 15 cutscene          fast    A                        Letterbox bars and character dialogue overlay confirm this is a scripted cinematic sequenc
+[ 254.1s] # 16 cutscene          fast    A                        Dialogue text overlaid on a 3D scripted scene indicates a non-interactive cinematic sequen
+[ 258.6s] # 17 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 263.0s] # 18 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 267.5s] # 19 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 281.6s] # 20 cutscene          fast    A                        Dialogue text overlay on a scripted 3D cinematic scene indicates non-interactive narrative
+[ 292.4s] # 21 cutscene          fast    A                        Dialogue text overlay on a scripted 3D cinematic scene; non-interactive narrative sequence
+[ 303.4s] # 22 cutscene          fast    A                        Dialogue text overlay on a 3D scripted scene is non-interactive narrative; continue advanc
+[ 314.7s] # 23 cutscene          fast    A                        Dialogue text overlay on a 3D scripted cinematic scene; non-interactive narrative sequence
+[ 331.6s] # 24 cutscene          fast    A                        Dialogue text overlay on a scripted 3D cinematic scene is a non-interactive narrative sequ
+[ 343.8s] # 25 cutscene          fast    A                        Dialogue text overlay on a 3D scripted cinematic scene is a non-interactive narrative sequ
+[ 354.1s] # 26 cutscene          fast    A                        Dialogue text overlay on a scripted 3D cinematic scene is a non-interactive narrative sequ
+[ 393.7s] # 27 gameplay          fast    STICK:up:1.5             Transitioned from cutscene to active 3D game world with player character model; no narrati
+[ 409.5s] # 28 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 control 0.006, under input 0.001
+[ 451.1s] # 29 gameplay          fast    A                        Active 3D game world with HUD present and player character visible in scene; no menus or n
+[ 457.4s] # 30 probe             probe   A HOLD:A:3               control 0.002, under input 0.004
+[ 504.0s] # 31 gameplay          fast    STICK:down:1.5           Active 3D game world with player character visible, HUD present, no menus or narrative tex
+[ 522.8s] # 32 probe             probe   STICK:down:1.5 STICK:down:1.5 control 0.007, under input 0.741
+hold-play: genre other, need 600 s of play
+hold-play: fps at 189 s: median 29.0, share>=30 1.0 over 95 samples
+hold-play: fps at 304 s: median 29.0, share>=30 1.0 over 152 samples
+hold-play: 3 still looks: walk reversed (back) at 509 s
+hold-play: validity check stop 0 s (hold 609 s of play, verdict 609.9)
+hold-play: not held 609/600 s of play; verdict stops the hold: fps_ok 1.0, crash False, hang False
+held Shadow of Memories Europe for 665s
+VERDICT Shadow of Memories Europe ? PASS None gameplay=663.3s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0003 play_share=0.9203 fps_excluded=56.1s
+{"name": "Shadow of Memories Europe", "device": "nova", "result": "gameplay", "minutes": 8.71, "model_calls": 41, "steps": 32, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4B4E000E-1013/frames/031-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

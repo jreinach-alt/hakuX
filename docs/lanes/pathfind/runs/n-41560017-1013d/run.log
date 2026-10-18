@@ -1,0 +1,28 @@
+pathfind: Tony Hawk s Pro Skater 4 (41560017) on nova: /storage/E6C6-D7AA/Games/XBox/41560017-Tony_Hawk_s_Pro_Skater_4.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 41560017 any, loaded none
+[   7.2s] #  1 publisher_logo    sibreplay START                    sibling 4156003C step 0: Activision logo appears first after cold boot (0.1 min); START sk
+[  10.4s] #  2 black             black   wait                     black frame
+[  14.0s] #  3 black             black   wait                     black frame
+[  26.5s] #  4 publisher_logo    fast    A                        New logo frame in the Tony Hawk intro sequence after Activision logo; skateboard branding 
+[  30.0s] #  5 publisher_logo    plan    A                        plan: publisher_logo (from the guide)
+[  34.0s] #  6 title_screen      plan    START                    plan: title_screen (from the guide)
+[  38.0s] #  7 main_menu         plan    A                        plan: main_menu (from the guide)
+[  68.5s] #  8 submenu           fast    A                        Career options submenu after main menu; 'New Career' is highlighted in yellow and is the d
+[  86.0s] #  9 submenu           fast    A                        Character/skater selection screen after New Career was chosen; default skater is shown and
+[ 101.4s] # 10 submenu           fast    A                        Career mode selection menu, 'Play Level' is the default highlighted item leading directly 
+[ 116.3s] # 11 submenu           fast    A                        Level select menu with default (College) highlighted; ready to accept and load into the fi
+[ 136.2s] # 12 gameplay          fast    wait                     HUD is visible (SCORE and PRO PTS); player character (skater) is in the game world, contro
+[ 151.2s] # 13 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 control 0.015, under input 0.001
+[ 175.5s] # 14 gameplay          fast    A                        HUD is visible (SCORE, PRO PTS) and the playable level is loaded with the player character
+[ 199.8s] # 15 probe             probe   A STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.738, under input 0.503
+hold-play: genre other, need 600 s of play
+hold-play: fps at 184 s: median 59.0, share>=30 0.988 over 162 samples
+hold-play: fps at 307 s: median 59.0, share>=30 0.981 over 262 samples
+hold-play: validity check stop 0 s (hold 602 s of play, verdict 602.7)
+hold-play: not held 602/600 s of play; verdict stops the hold: fps_ok 0.9786, crash False, hang False
+held Tony Hawk s Pro Skater 4 for 605s
+VERDICT Tony Hawk s Pro Skater 4 ? PASS None gameplay=603.7s fps_ok=0.9752 crash=False hang=False audio_short=0.0 hitches=1/0.11pm worst_ms=116.9 static_frac=0.0028 play_share=0.9997 fps_excluded=0.0s
+{"name": "Tony Hawk s Pro Skater 4", "device": "nova", "result": "gameplay", "minutes": 3.33, "model_calls": 16, "steps": 15, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-41560017-1013d/frames/014-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "41560017": "9d4f73444de8", "4156005D": "a1647bf6ddb4", "4253

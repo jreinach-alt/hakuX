@@ -1,0 +1,34 @@
+pathfind: Brian Lara International Cricket 2005 Europe (434D004E) on nova: /storage/E6C6-D7AA/Games/XBox/434D004E-Brian_Lara_International_Cricket_2005_Europe.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 434D004E any, loaded none
+[  16.1s] #  1 publisher_logo    fast    START                    Green animated logo at 0.1 min from cold boot; likely a publisher intro that needs skippin
+[  29.3s] #  2 publisher_logo    fast    A                        Still in the publisher/developer logo sequence; the last step was START on a green animate
+[  44.3s] #  3 publisher_logo    fast    START                    Still in the publisher/developer logo sequence before the title screen. This is a new logo
+[  56.0s] #  4 title_screen      fast    START                    Title screen with explicit START prompt; pressing START advances to main menu
+[  69.2s] #  5 loading           fast    wait                     Automatic save-check screen that must complete before proceeding. No input prompt visible;
+[  82.0s] #  6 main_menu         fast    A                        Main menu with Exhibition Match already highlighted (the fastest path to gameplay). SELECT
+[  96.3s] #  7 submenu           fast    A                        Match type selection; 'One Day International' already highlighted; A confirms and advances
+[ 163.9s] #  8 submenu           fast    DOWN RIGHT               Match settings review screen for ODI cricket. Owner rule (10-05) requires maximizing match
+[ 222.1s] #  9 submenu           fast    RIGHT A                  Match configuration submenu before gameplay. Owner rule 10-05 requires maximizing match le
+[ 238.8s] # 10 submenu           fast    LEFT A                   Controller/team assignment screen before gameplay. Both controllers in the middle column s
+[ 255.9s] # 11 submenu           fast    A                        Squad/team selection before gameplay; default BEST 11 preset is highlighted; ADVANCE butto
+[ 270.6s] # 12 submenu           fast    A                        Team/squad selection before gameplay. Default BEST 11 preset is ready; ADVANCE button prom
+[ 281.9s] # 13 loading           fast    wait                     The loading bar is animating; the game is loading the configured match. Wait for completio
+[ 303.0s] # 14 loading           fast    wait                     The loading bar animation from step 13 appears to be rendering the pitch. No HUD, players,
+[ 320.0s] # 15 submenu           fast    A                        Coin toss selection screen is a pre-match menu; HEADS is the highlighted default choice; p
+[ 371.3s] # 16 submenu           fast    A                        Post-coin-toss pre-match introduction screen showing the batting and bowling teams on the 
+[ 386.8s] # 17 submenu           fast    A                        Player introduction screen showing batting/bowling team players in sequence before the mat
+[ 448.1s] # 18 gameplay          fast    wait                     Active match HUD with live score visible (0-0), batsman positioned as player character on 
+[ 466.9s] # 19 probe             probe   HOLD:A:1.5               control 0.017, under input 0.047
+hold-play: sports look {'clock': 'Overs 0-0', 'period': 'First over', 'human_controlled': True, 'why': 'P1 label visible in bottom left corner indicates human player 1 is actively controlling the fielding side'}
+hold-play: genre team, need 630 s of play
+hold-play: fps at 181 s: median 59.0, share>=30 0.969 over 163 samples
+hold-play: fps at 306 s: median 59.0, share>=30 0.982 over 275 samples
+hold-play: 3 still looks: walk reversed (back) at 421 s
+hold-play: off play 168 s of a 528 s scored window cannot drop to 10% with 874 s of budget left: no amount of further play can pass
+hold-play: not held 373/630 s of play; off play 168 s of a 528 s scored window cannot drop to 10% with 874 s of budget left: no amount of further play can pass
+held Brian Lara International Cricket 2005 Europe for 530s
+VERDICT Brian Lara International Cricket 2005 Europe ? FAIL(duration: 529 s of gameplay < 600 s confirmation) gameplay=529.0s fps_ok=0.9626 crash=False hang=False audio_short=0.0 hitches=20/2.559pm worst_ms=335.1 static_frac=0.004 play_share=0.6812 fps_excluded=169.4s
+{"name": "Brian Lara International Cricket 2005 Europe", "device": "nova", "result": "gameplay", "minutes": 7.78, "model_calls": 33, "steps": 19, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-434D004E-1014d/frames/018-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

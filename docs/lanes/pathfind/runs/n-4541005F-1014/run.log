@@ -1,0 +1,46 @@
+pathfind: Lord of the Rings The The Third Age USA (4541005F) on nova: /storage/E6C6-D7AA/Games/XBox/4541005F-Lord_of_the_Rings_The_The_Third_Age_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4541005F any, loaded none
+[  15.3s] #  1 publisher_logo    fast    START A                  First screen after cold boot; gray publisher/certification logo screen; matches recorded p
+[  20.9s] #  2 publisher_logo    replay  START A                  replay step 2: Standard EA publisher logo screen before title; skip with START then A per 
+[  26.3s] #  3 black             black   wait                     black frame
+[  30.0s] #  4 publisher_logo    replay  START A                  replay step 3: Standard THX certification logo before title; skip with START then A
+[  35.0s] #  5 black             black   wait                     black frame
+[  38.8s] #  6 publisher_logo    plan    START A                  plan: publisher_logo (from the guide)
+[  52.3s] #  7 publisher_logo    fast    START A                  Another publisher logo before the title screen; following the pattern of skipping with STA
+[  64.3s] #  8 loading           fast    wait                     Loading screen with animated spinner; the game is loading the level/area 'Eregion' after t
+[  83.2s] #  9 cutscene          fast    START                    After the loading screen, this is an unskippable intro cinematic with narrative/world intr
+[  87.2s] # 10 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[  91.1s] # 11 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[  95.6s] # 12 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[  99.5s] # 13 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 103.3s] # 14 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 107.3s] # 15 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 119.6s] # 16 cutscene          fast    START                    Letterbox bars frame a cinematic sequence. START has been advancing through cutscenes succ
+[ 124.5s] # 17 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 130.0s] # 18 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 134.8s] # 19 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 139.6s] # 20 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 144.4s] # 21 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 149.2s] # 22 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 163.5s] # 23 cutscene          fast    START                    Still showing a non-interactive cinematic; START has been advancing it on previous steps (
+[ 168.3s] # 24 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 173.1s] # 25 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 178.1s] # 26 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 182.9s] # 27 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 195.9s] # 28 cutscene          fast    START                    Non-interactive cinematic showing game world environment; START has been advancing this cu
+[ 237.9s] # 29 gameplay          fast    A                        Active turn-based RPG combat with responsive menu. Highlight on Attack. Player in control 
+[ 260.5s] # 30 probe             probe   A HOLD:A:1.5             control 0.025, under input 0.536
+[ 298.9s] # 38 retracted         probe   wait                     retracted after 30 s: letterboxed
+[ 310.5s] # 39 cutscene          fast    START                    Letterbox bars frame the scene. Character is posed in an in-game cinematic, not interactiv
+[ 314.5s] # 40 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 318.3s] # 41 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 322.7s] # 42 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 337.0s] # 43 loading           fast    wait                     Blank transition screen after cutscene sequence; likely a load or fade-in to next scene. W
+[ 349.7s] # 44 cutscene          fast    START                    Letterbox bars and posed character in an in-game cinematic, not interactive. Continuing th
+[ 356.2s] # 45 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 362.1s] # 46 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 367.9s] # 47 diverged          diverged wait                     replay diverged at recorded step 4 (black: black frame)
+{"name": "Lord of the Rings The The Third Age USA", "device": "nova", "result": "diverged", "minutes": 6.13, "model_calls": 13, "steps": 40, "replayed": 2, "reason": "replay diverged at recorded step 4 (black: black frame)", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

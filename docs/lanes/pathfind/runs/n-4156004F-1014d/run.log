@@ -1,0 +1,9 @@
+pathfind: American Chopper 2 Full Throttle USA Australia (4156004F) on nova: /storage/E6C6-D7AA/Games/XBox/4156004F-American_Chopper_2_Full_Throttle_USA_Australia.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4156004F any, loaded none
+[  14.5s] #  1 publisher_logo    fast    START                    Green geometric shape is Activision's logo; skip with START per the intro/publisher logo c
+[  19.0s] #  2 unknown           check   wait                     hakuX not in front (xemu alive: False)
+[  26.7s] #  3 unknown           check   wait                     hakuX not in front (xemu alive: False)
+{"name": "American Chopper 2 Full Throttle USA Australia", "device": "nova", "result": "lost", "minutes": null, "model_calls": 1, "steps": 3, "replayed": 0, "reason": "hakuX left the foreground twice", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156004F": "8230a6ccfa72", "4156005D": "a1647bf6ddb4", "4253

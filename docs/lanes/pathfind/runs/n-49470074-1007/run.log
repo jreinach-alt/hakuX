@@ -1,0 +1,31 @@
+pathfind: Forgotten Realms Demon Stone USA (49470074) on nova: /storage/E6C6-D7AA/Games/XBox/49470074-Forgotten_Realms_Demon_Stone_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 49470074 any, loaded none
+[   9.4s] #  1 publisher_logo    fast    START A                  Early boot, a logo is still resolving on a blank background; no title or menu text present
+[  19.0s] #  2 publisher_logo    fast    START A                  Legal disclaimer text screen typical of early boot sequence before title screen; skip it w
+[  26.9s] #  3 publisher_logo    fast    START A                  Another publisher logo appeared after the previous ones, progress continues; skip it
+[  35.0s] #  4 publisher_logo    fast    START A                  Standard licensing/publisher logo screen during boot sequence, skip with START then A
+[  43.8s] #  5 submenu           fast    A                        Normal is highlighted (white) as the default difficulty; pressing A on Play will accept de
+[  52.9s] #  6 publisher_logo    fast    START A                  A new publisher logo appeared after the difficulty selection, continuing the boot sequence
+[  62.1s] #  7 cutscene          fast    START A                  Static framing behind the character's back in a foggy forest with no HUD elements suggests
+[  67.7s] #  8 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[  73.3s] #  9 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[  78.7s] # 10 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[  85.7s] # 11 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[  95.1s] # 12 cutscene          fast    START A                  Same static framing behind/near the character with no HUD, letterbox-style cinematic feel 
+[ 100.7s] # 13 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 106.2s] # 14 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 116.2s] # 15 gameplay          fast    STICK:up:1.5             HUD with health meter is present and character stands in a combat scene with enemies aroun
+[ 134.0s] # 16 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.586, under input 0.309
+[ 139.0s] # 17 gameplay          fast    STICK:up:1.5 A A STICK:left:1.2 Combat HUD with health bar and player character actively engaged with enemies in the game 
+[ 158.0s] # 18 probe             probe   STICK:up:1.5 A A STICK:left:1.2 STICK:up:1.5 control 0.120, under input 0.233
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 189 s: median 29.0, share>=30 0.518 over 85 samples
+hold-play: fps at 304 s: median 29.0, share>=30 0.636 over 140 samples
+hold-play: validity check stop 0 s (hold 607 s of play, verdict 606.0)
+hold-play: not held 607/600 s of play; verdict stops the hold: fps_ok 0.5072, crash False, hang False
+held Forgotten Realms Demon Stone USA for 740s
+VERDICT Forgotten Realms Demon Stone USA ? FAIL(menu time: 82.2% of the scored window in `play` (bar 90%; play 607 s, still 112 s, cutscene 19 s, no-timeline 0 s)) gameplay=738.3s fps_ok=0.5054 crash=False hang=False audio_short=0.0 hitches=1/0.088pm worst_ms=715.7 static_frac=0.0 play_share=0.8224 fps_excluded=130.1s
+{"name": "Forgotten Realms Demon Stone USA", "device": "nova", "result": "gameplay", "minutes": 2.63, "model_calls": 22, "steps": 18, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-49470074-1007/frames/017-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

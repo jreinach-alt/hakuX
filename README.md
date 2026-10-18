@@ -1,22 +1,27 @@
-# hakuX (fork)
+<p align="center"><img src="docs/images/hakux-logo.svg" alt="hakuX Community Edition: Original Xbox on Android" width="640"></p>
 
-_Last updated 2026-10-13, for version 0.5.0._
+# hakuX CE
 
-**Original Xbox games on your Android handheld.** An independent build of the
-hakuX emulator, tested game by game on Snapdragon handhelds.
+_Last updated 2026-10-17, for version 0.5.2._
 
-**[Download 0.5.0](https://github.com/jreinach-alt/hakuX/releases/latest)** ·
-[72 Playable games](docs/COMPATIBILITY.md) ·
-[What's new](docs/releases/v0.5.0.md)
+**Original Xbox games on your Android handheld.** hakuX CE is the Community
+Edition: an independent build of the hakuX emulator, tested game by game on
+Snapdragon handhelds.
+
+**[Download 0.5.2](https://github.com/jreinach-alt/hakuX/releases/latest)** ·
+[What's new](docs/releases/v0.5.2.md) ·
+[Sponsor](https://github.com/sponsors/jreinach-alt)
+
+**Games rated Playable so far:** [the list, with progress charts](https://github.com/jreinach-alt/hakuX/blob/home/STATUS.md).
 
 ## Highlights
 
-- **72 games rated Playable.** Each one reached real gameplay on a handheld and
-  held 30 fps (within 5%) for at least 90% of a timed run, with no crash or
-  hang. Among them: Halo: Combat Evolved, Jet Set Radio Future, Panzer Dragoon
-  Orta, Grand Theft Auto III and Vice City, Need for Speed: Most Wanted,
-  Crimson Skies, Max Payne 2, Mercenaries, Call of Duty 3 and The Simpsons
-  Hit & Run. [See them all.](docs/COMPATIBILITY.md)
+- **Rated by play.** A game is Playable only after it reaches real gameplay on
+  a handheld and holds 30 fps (within 5%) for at least 90% of a timed run, with
+  no crash or hang. Among the Playable games: Halo: Combat Evolved, Jet Set
+  Radio Future, Panzer Dragoon Orta, Grand Theft Auto III and Vice City, Need
+  for Speed: Most Wanted, Crimson Skies, Max Payne 2, Mercenaries, Call of
+  Duty 3 and The Simpsons Hit & Run.
 - **Save states.** Ten slots per game plus an auto slot, from the pause menu,
   with undo.
 - **Less stutter.** A new scene draws straight away while its shaders compile,
@@ -34,15 +39,17 @@ hakuX emulator, tested game by game on Snapdragon handhelds.
 
 ## Will it run on my device?
 
-- Android 10 or newer.
+- Android 13 or newer.
 - A Snapdragon 845-class chip or better (64-bit ARMv8.2). Older designs such
   as the Snapdragon 835, 660, 665 and 460 are not supported; on them the app
   says so and exits.
 - Ratings come from a Retroid Pocket Nova and an AYN Thor, both Snapdragon 8
   Gen 2 (Adreno 740) on Android 13, using the **Turnip Adreno Driver T30
   (@Mr_Purple_666)** GPU driver, installed under Settings → Graphics → GPU
-  Driver. On a slower chip, expect fewer games at full speed; with another
-  driver, results may differ.
+  Driver. On a slower chip, expect fewer games at full speed. This is the
+  only driver hakuX is tested with: the handheld's own driver and other Turnip
+  builds are untested and draw some games wrongly. See
+  [GPU driver](docs/gpu-driver.md) for what to install and how.
 
 ## What you need
 
@@ -54,11 +61,14 @@ discs you provide:
 - an Xbox hard disk image
 - your games, as `.iso`, `.xiso`, `.cso` or `.cci` images
 
+[Getting your Xbox files](docs/xbox-files.md) says what each one is and what
+the app accepts.
+
 ## Get started
 
 1. Download the APK from
    [Releases](https://github.com/jreinach-alt/hakuX/releases/latest) and
-   install it. It appears as **hakuX (fork)**.
+   install it. It appears as **hakuX CE**.
 2. Open it. Setup asks for the boot ROM, the BIOS, the hard disk image and
    your games folder.
 3. Pick a game from the library.
@@ -78,7 +88,7 @@ this build. Coming from the official hakuX?
 - No account and no analytics. The app goes online only for box art and for
   online play, and both are off until you turn them on. See
   [Privacy](PRIVACY.md).
-- 0.5.0 is this build's own version number, not an official hakuX release.
+- 0.5.2 is this build's own version number, not an official hakuX release.
   The official line is at 0.3.1.
 
 ## More
@@ -89,12 +99,23 @@ this build. Coming from the official hakuX?
 | [Release notes](docs/releases/README.md) | What changed in each version |
 | [Known issues](KNOWN_ISSUES.md) | What to expect before you report a bug |
 | [Roadmap](ROADMAP.md) | What is coming next |
+| [How we got here](docs/HISTORY.md) | The story of hakuX CE so far |
 | [ES-DE setup](docs/es-de/README.md) | Launching games from ES-DE |
 | [Moving from the official build](android/MIGRATING.md) | Bringing your saves across |
 | [Reporting a bug](docs/reporting-bugs.md) | What to include |
 | [Privacy](PRIVACY.md) | What stays on your device |
 | [Building from source](android/README.md) | For developers |
 | [Contributing](CONTRIBUTING.md) | For developers |
+
+## Support the project
+
+hakuX is developed and tested by one person, and paid for out of pocket. If it
+is useful to you, you can
+[sponsor the work on GitHub](https://github.com/sponsors/jreinach-alt). It is
+entirely optional; a good bug report helps just as much.
+
+The emulator underneath is xemu; if you want to support it directly, see the
+Patreon link under Credits.
 
 ## Credits
 

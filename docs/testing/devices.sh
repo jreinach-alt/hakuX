@@ -676,6 +676,61 @@ device_titles() {
     done
 }
 
+# ----------------------------------------------------- host staging roots
+#
+# Where an ISO sits on the HOST before it is ever pushed. No adb call, no
+# lease: these three read /mnt/d/hakux-staging/, nothing else, so a caller
+# (request.sh at queue time, dispatcher.sh at claim time) can ask "is this
+# title staged anywhere" for free, as many times as it likes.
+#
+# D: is the designated home for big files (owner, 2026-10-09); the roots are
+# searched in this order because `sweep` and `xiso` are the curated,
+# sha-sidecarred sets, and the lane/archive dirs are scratch that happens to
+# hold a copy too.
+STAGING_ROOTS_DEFAULT="/mnt/d/hakux-staging/sweep /mnt/d/hakux-staging/xiso
+/mnt/d/hakux-staging/nova-archive-* /mnt/d/hakux-staging/lanelocal-*
+/mnt/d/hakux-staging/staging /mnt/d/hakux-staging/ingest"
+
+# staging_roots  ->  every root HAKUX_STAGING_ROOTS (or the default list,
+# globs expanded) names that actually exists, one per line, in order.
+staging_roots() {
+    local pat
+    for pat in ${HAKUX_STAGING_ROOTS:-$STAGING_ROOTS_DEFAULT}; do
+        for d in $pat; do
+            [ -d "$d" ] && printf '%s\n' "$d"
+        done
+    done
+}
+
+# staging_find_tid <8-hex title id>  ->  the first <root>/<TID>-*.xiso.iso a
+# staging root has, on stdout; non-zero when none does. Matched by the
+# TitleID HEAD, not the full file name -- the region/name suffix after it is
+# not something a request or a route can be expected to spell the same way
+# the staging set did.
+staging_find_tid() {
+    local tid; tid=$(printf '%s' "${1:?staging_find_tid needs a title id}" | tr '[:lower:]' '[:upper:]')
+    local root hit
+    while IFS= read -r root; do
+        for hit in "$root/$tid"-*.xiso.iso "$root/$tid"-*.iso; do
+            [ -f "$hit" ] && { printf '%s\n' "$hit"; return 0; }
+        done
+    done < <(staging_roots)
+    return 1
+}
+
+# staging_file_sha <path>  ->  the sha256 of a staged file: its `.sha`
+# sidecar (a bare 64-hex-char line, no filename -- the sweep/xiso convention)
+# when one sits beside it, else a fresh sha256sum. Preferring the sidecar
+# means a room-making check against a multi-GB image does not re-hash it.
+staging_file_sha() {
+    local p="${1:?staging_file_sha needs a path}" s
+    if [ -f "$p.sha" ]; then
+        s=$(tr -d ' \t\r\n' < "$p.sha")
+        [[ "$s" =~ ^[0-9a-f]{64}$ ]] && { printf '%s\n' "$s"; return 0; }
+    fi
+    sha256sum "$p" 2>/dev/null | cut -d' ' -f1
+}
+
 # Run directly: print the table. Sourced: define the functions and return 0.
 #
 # The `&&` chain this replaces left a FALSE test as the last statement when the
@@ -690,6 +745,11 @@ if [ "${BASH_SOURCE[0]}" = "$0" ]; then
         labels) device_all_labels ;;
         pool)   device_pool_labels ;;
         offpool) device_offpool_labels ;;
+        staging-find)
+            if staging_find_tid "${2:?staging-find needs a title id}"; then :; else
+                echo "not staged under any of: $(staging_roots | paste -sd, - | sed 's/,/, /g')" >&2
+                exit 1
+            fi ;;
         *)      device_env "$1" && printf '%s %s %s\n' \
                     "$SERIAL" "$DEVICE_LABEL" "$DEVICE_ISO_ROOT" ;;
     esac

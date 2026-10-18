@@ -1,0 +1,102 @@
+{"gas_try": "RT", "changed": 0.013, "ok": false}
+{"gas_try": "A", "changed": 0.333, "ok": true}
+{"n": 29, "hold_s": 0.9, "play_s": 4.9, "changed": null, "off": false, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": true}
+{"n": 30, "hold_s": 6.9, "play_s": 10.1, "changed": 0.3639, "off": false, "shift_look": 0.0, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 31, "hold_s": 12.0, "play_s": 15.0, "changed": 0.4171, "off": false, "shift_look": 5.0, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 32, "hold_s": 17.0, "play_s": 20.0, "changed": 0.3546, "off": false, "shift_look": 1.0, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 33, "hold_s": 21.9, "play_s": 25.0, "changed": 0.2761, "off": false, "shift_look": 1.41, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 34, "hold_s": 26.9, "play_s": 29.9, "changed": 0.4224, "off": false, "shift_look": 3.16, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 35, "hold_s": 31.8, "play_s": 34.9, "changed": 0.4615, "off": false, "shift_look": 0.0, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "window": 0.5399, "kept": true}
+{"n": 36, "hold_s": 37.1, "play_s": 41.2, "changed": 0.453, "off": false, "shift_look": 0.0, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 37, "hold_s": 43.3, "play_s": 46.3, "changed": 0.5622, "off": false, "shift_look": 6.4, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 38, "hold_s": 48.4, "play_s": 51.4, "changed": 0.3571, "off": false, "shift_look": 5.1, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 39, "hold_s": 53.4, "play_s": 56.4, "changed": 0.5327, "off": false, "shift_look": 1.0, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 40, "hold_s": 58.5, "play_s": 61.5, "changed": 0.6093, "off": false, "shift_look": 0.0, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 41, "hold_s": 63.5, "play_s": 66.4, "changed": 0.6104, "off": false, "shift_look": 5.83, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "window": 0.6083, "kept": true}
+{"n": 42, "hold_s": 68.5, "play_s": 72.6, "changed": 0.5306, "off": false, "shift_look": 1.0, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 43, "hold_s": 74.7, "play_s": 77.5, "changed": 0.6503, "off": false, "shift_look": 6.4, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 44, "hold_s": 79.5, "play_s": 82.3, "changed": 0.5517, "off": false, "shift_look": 49.04, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 45, "hold_s": 84.4, "play_s": 87.2, "changed": 0.5832, "off": false, "shift_look": 0.0, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 46, "hold_s": 89.4, "play_s": 109.3, "changed": 0.6032, "off": false, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Vehicle actively racing on track; HUD shows position 4th, lap 1; game running at 59 fps", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 47, "hold_s": 111.5, "play_s": 114.3, "changed": 0.5815, "off": false, "shift_look": 7.81, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "window": 0.6296, "kept": true}
+{"n": 48, "hold_s": 116.7, "play_s": 119.7, "changed": 0.5107, "off": false, "shift_look": 1.0, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 49, "hold_s": 121.9, "play_s": 124.6, "changed": 0.381, "off": false, "shift_look": 1.0, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 50, "hold_s": 126.9, "play_s": 129.6, "changed": 0.3499, "off": false, "shift_look": 1.41, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 51, "hold_s": 131.9, "play_s": 134.7, "changed": 0.4093, "off": false, "shift_look": 0.0, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 52, "hold_s": 137.0, "play_s": 141.0, "changed": 0.3367, "off": false, "shift_look": 0.0, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 53, "hold_s": 143.3, "play_s": 146.0, "changed": 0.202, "off": false, "shift_look": 0.0, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "window": 0.5203, "kept": true}
+{"n": 54, "hold_s": 148.3, "play_s": 151.0, "changed": 0.3701, "off": false, "shift_look": 2.0, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 55, "hold_s": 153.3, "play_s": 156.1, "changed": 0.3514, "off": false, "shift_look": 0.0, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 56, "hold_s": 158.4, "play_s": 161.1, "changed": 0.454, "off": false, "shift_look": 1.0, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 57, "hold_s": 163.4, "play_s": 166.0, "changed": 0.5172, "off": false, "shift_look": 1.0, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 58, "hold_s": 168.3, "play_s": 172.1, "changed": 0.6073, "off": false, "shift_look": 0.0, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 59, "hold_s": 174.4, "play_s": 177.2, "changed": 0.6855, "off": false, "shift_look": 0.0, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "window": 0.6177, "kept": true}
+{"n": 60, "hold_s": 179.6, "play_s": 189.8, "changed": 0.6876, "off": false, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Player's vehicle (black micro machine) is actively on the racing track in lap 1, position 4th; race HUD visible with position and lap counter; game world fully ", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 61, "hold_s": 192.2, "play_s": 194.8, "changed": 0.6708, "off": false, "shift_look": 1.0, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 62, "hold_s": 197.1, "play_s": 199.7, "changed": 0.644, "off": false, "shift_look": 0.0, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 63, "hold_s": 202.0, "play_s": 205.7, "changed": 0.5935, "off": false, "shift_look": 17.69, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 64, "hold_s": 208.0, "play_s": 210.7, "changed": 0.5538, "off": false, "shift_look": 24.08, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "window": 0.6412, "kept": true}
+{"n": 65, "hold_s": 213.2, "play_s": 215.6, "changed": 0.699, "off": false, "shift_look": 47.68, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 66, "hold_s": 218.1, "play_s": 220.7, "changed": 0.7011, "off": false, "shift_look": 10.44, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 67, "hold_s": 223.0, "play_s": 225.6, "changed": 0.5956, "off": false, "shift_look": 8.94, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 68, "hold_s": 228.2, "play_s": 231.1, "changed": 0.5368, "off": false, "shift_look": 8.25, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 69, "hold_s": 233.7, "play_s": 236.7, "changed": 0.4208, "off": false, "shift_look": 21.38, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 70, "hold_s": 240.3, "play_s": 243.4, "changed": 0.3116, "off": false, "shift_look": 8.06, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "window": 0.5138, "kept": true}
+{"n": 71, "hold_s": 246.1, "play_s": 248.9, "changed": 0.3119, "off": false, "shift_look": 8.54, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 72, "hold_s": 251.5, "play_s": 254.3, "changed": 0.5494, "off": false, "shift_look": 35.11, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 73, "hold_s": 256.8, "play_s": 259.5, "changed": 0.6361, "off": false, "shift_look": 38.05, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 74, "hold_s": 262.2, "play_s": 265.0, "changed": 0.5311, "off": false, "shift_look": 2.24, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 75, "hold_s": 267.6, "play_s": 271.4, "changed": 0.2007, "off": false, "shift_look": 0.0, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 76, "hold_s": 274.1, "play_s": 284.9, "changed": 0.4665, "off": false, "shift_look": 1.41, "src": "check", "state": "gameplay", "why": "Vehicle visible on racing track, lap counter shows 1, position shows 4th, active race in progress", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "window": 0.6482, "kept": true}
+{"n": 77, "hold_s": 287.6, "play_s": 289.9, "changed": 0.5175, "off": false, "shift_look": 5.1, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 78, "hold_s": 292.5, "play_s": 294.8, "changed": 0.5993, "off": false, "shift_look": 15.23, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 79, "hold_s": 297.4, "play_s": 299.7, "changed": 0.6772, "off": false, "shift_look": 5.83, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 80, "hold_s": 302.3, "play_s": 305.9, "changed": 0.4796, "off": false, "shift_look": 18.03, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 81, "hold_s": 308.6, "play_s": 310.9, "changed": 0.5723, "off": false, "shift_look": 29.41, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "window": 0.5868, "kept": true}
+{"n": 82, "hold_s": 313.6, "play_s": 316.1, "changed": 0.5717, "off": false, "shift_look": 4.47, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 83, "hold_s": 318.9, "play_s": 331.1, "changed": 0.6422, "off": false, "shift_look": 8.06, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 84, "hold_s": 333.8, "play_s": 336.1, "changed": 0.5852, "off": false, "shift_look": 5.1, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 85, "hold_s": 340.3, "play_s": 342.7, "changed": 0.7037, "off": false, "shift_look": 0.0, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "window": 0.7027, "kept": true}
+{"n": 86, "hold_s": 345.6, "play_s": 347.8, "changed": 0.6448, "off": false, "shift_look": 0.0, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 87, "hold_s": 350.7, "play_s": 352.8, "changed": 0.6617, "off": false, "shift_look": 1.0, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 88, "hold_s": 355.6, "play_s": 357.7, "changed": 0.6666, "off": false, "shift_look": 5.1, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 89, "hold_s": 360.7, "play_s": 362.8, "changed": 0.5558, "off": false, "shift_look": 24.76, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 90, "hold_s": 365.7, "play_s": 379.3, "changed": 0.334, "off": false, "shift_look": 9.0, "src": "check", "state": "gameplay", "why": "The player's yellow car is actively racing on the track against other cars; position/lap HUD visible; race in progress, not paused or in any menu.", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 91, "hold_s": 382.2, "play_s": 384.2, "changed": 0.4199, "off": false, "shift_look": 21.84, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "window": 0.6807, "kept": true}
+{"n": 92, "hold_s": 387.1, "play_s": 389.3, "changed": 0.487, "off": false, "shift_look": 25.63, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 93, "hold_s": 392.2, "play_s": 394.2, "changed": 0.4557, "off": false, "shift_look": 28.79, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 94, "hold_s": 397.1, "play_s": 399.2, "changed": 0.4112, "off": false, "shift_look": 15.81, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 95, "hold_s": 402.2, "play_s": 405.4, "changed": 0.6865, "off": false, "shift_look": 31.95, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 96, "hold_s": 408.4, "play_s": 410.4, "changed": 0.5853, "off": false, "shift_look": 0.0, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 97, "hold_s": 413.4, "play_s": 415.5, "changed": 0.6126, "off": false, "shift_look": 0.0, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "window": 0.6334, "kept": true}
+{"n": 98, "hold_s": 418.6, "play_s": 420.6, "changed": 0.766, "off": false, "shift_look": 12.53, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 99, "hold_s": 423.7, "play_s": 425.7, "changed": 0.5201, "off": false, "shift_look": 23.35, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 100, "hold_s": 428.7, "play_s": 430.6, "changed": 0.3806, "off": false, "shift_look": 9.22, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 101, "hold_s": 433.6, "play_s": 435.8, "changed": 0.5158, "off": false, "shift_look": 22.02, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 102, "hold_s": 438.8, "play_s": 442.3, "changed": 0.5572, "off": false, "shift_look": 12.17, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 103, "hold_s": 445.4, "play_s": 447.6, "changed": 0.4207, "off": false, "shift_look": 28.65, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "window": 0.6331, "kept": true}
+{"n": 104, "hold_s": 450.8, "play_s": 453.0, "changed": 0.5094, "off": false, "shift_look": 0.0, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 105, "hold_s": 456.2, "play_s": 467.5, "changed": 0.6219, "off": false, "shift_look": 8.06, "src": "check", "state": "gameplay", "why": "Player's vehicle visible on active race track mid-lap, position 4th displayed, game running at 59 FPS", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 106, "hold_s": 470.6, "play_s": 473.7, "changed": 0.5957, "off": false, "shift_look": 8.94, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 107, "hold_s": 476.7, "play_s": 478.5, "changed": 0.4532, "off": false, "shift_look": 19.31, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "window": 0.6742, "kept": true}
+{"n": 108, "hold_s": 481.6, "play_s": 483.3, "changed": 0.3803, "off": false, "shift_look": 12.0, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 109, "hold_s": 486.5, "play_s": 488.1, "changed": 0.6705, "off": false, "shift_look": 35.47, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 110, "hold_s": 491.3, "play_s": 493.0, "changed": 0.5432, "off": false, "shift_look": 0.0, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 111, "hold_s": 496.1, "play_s": 497.8, "changed": 0.4662, "off": false, "shift_look": 0.0, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 112, "hold_s": 501.0, "play_s": 502.6, "changed": 0.4556, "off": false, "shift_look": 0.0, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 113, "hold_s": 505.7, "play_s": 508.7, "changed": 0.4572, "off": false, "shift_look": 0.0, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 114, "hold_s": 511.8, "play_s": 513.5, "changed": 0.5076, "off": false, "shift_look": 1.41, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "window": 0.732, "kept": true}
+{"n": 115, "hold_s": 516.6, "play_s": 518.2, "changed": 0.5753, "off": false, "shift_look": 29.21, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 116, "hold_s": 521.5, "play_s": 523.1, "changed": 0.4748, "off": false, "shift_look": 20.62, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 117, "hold_s": 526.3, "play_s": 527.9, "changed": 0.2092, "off": false, "shift_look": 1.0, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 118, "hold_s": 531.1, "play_s": 532.5, "changed": 0.3458, "off": false, "shift_look": 0.0, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 119, "hold_s": 535.7, "play_s": 538.6, "changed": 0.3509, "off": false, "shift_look": 13.04, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 120, "hold_s": 541.8, "play_s": 543.3, "changed": 0.5408, "off": false, "shift_look": 32.8, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 121, "hold_s": 546.5, "play_s": 569.8, "changed": 0.5969, "off": false, "shift_look": 33.24, "src": "check", "state": "gameplay", "why": "Blue toy car visible on active race track; position 4th, lap 1 displayed; game running at 59 FPS", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "window": 0.6779, "kept": true}
+{"n": 122, "hold_s": 574.8, "play_s": 586.8, "changed": 0.588, "off": false, "shift_look": 21.59, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 124, "hold_s": 626.7, "play_s": 591.7, "changed": 0.5607, "off": false, "shift_look": 36.0, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "window": 0.5904, "kept": true}
+{"n": 125, "hold_s": 631.7, "play_s": 596.6, "changed": 0.5767, "off": false, "shift_look": 46.87, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 126, "hold_s": 636.6, "play_s": 622.7, "changed": 0.5436, "off": false, "shift_look": 47.51, "src": "check", "state": "gameplay", "why": "Player vehicle visible in 4th position lap 1, racing through surreal track environment", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"n": 127, "hold_s": 662.8, "play_s": 627.6, "changed": 0.5077, "off": false, "shift_look": 60.22, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "window": 0.578, "kept": true}
+{"n": 128, "hold_s": 667.7, "play_s": 632.5, "changed": 0.5038, "off": false, "shift_look": 46.49, "src": "genre", "action": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"], "kept": false}
+{"check": "stop", "short_s": 0.0, "hold_play_s": 632.5, "verdict_play_s": 672.3, "gameplay_s": 672.6}

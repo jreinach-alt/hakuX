@@ -1,0 +1,81 @@
+{
+ "title_id": "54540003",
+ "name": "Max Payne USA",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/54540003-Max_Payne_USA.xiso.iso",
+ "result": "gameplay",
+ "tool": "920a61de3c",
+ "started": "2026-10-14 08:45:14 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-54540003-1014d/frames/012-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-54540003-1014d/frames/012-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-54540003-1014d/frames/012-probe-c.jpg"
+ ],
+ "minutes": 2.39,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-54540003-1014d/frames/011-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-54540003-1014d/frames/013-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-54540003-1014d/frames/014-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-54540003-1014d/frames/015-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-54540003-1014d/frames/016-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-54540003-1014d/frames/017-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-54540003-1014d/frames/018-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-54540003-1014d/frames/019-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-54540003-1014d/frames/020-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-54540003-1014d/frames/021-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-5454.md"
+ ],
+ "hold": {
+  "genre": "shooter",
+  "why": "Third-person perspective, walking through an urban level with gun equipped (Beretta), typical third-person shooter gameplay",
+  "ok": false,
+  "play_s": 634.8,
+  "need_s": 630.0,
+  "hold_s": 780.7,
+  "model_navs": 8,
+  "frames": 21,
+  "still_windows": 0,
+  "shed": [],
+  "reversals": 12,
+  "reason": "share short by 744 s with no budget left",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 146,
+    "median": 47.0,
+    "share": 0.979,
+    "at_s": 187.5,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 233,
+    "median": 46.0,
+    "share": 0.979,
+    "at_s": 302.1,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "stuck_abort": false,
+  "verdict": "VERDICT Max Payne USA ? FAIL(menu time: 80.5% of the scored window in `play` (bar 90%; play 628 s, loading 127 s, pause 25 s, no-timeline 0 s)) gameplay=780.1s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=1/0.083pm worst_ms=404.5 static_frac=0.0003 play_share=0.8048 fps_excluded=153.9s"
+ },
+ "model_calls": 25,
+ "calls_by_model": {
+  "claude-haiku-4-5-20251001": 25
+ },
+ "steps": 12,
+ "seconds": 990.6,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-54540003-1014d/frames/076-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [
+  "5454000C"
+ ],
+ "cheap": 5,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-54540003-1014d/strip.jpg"
+}

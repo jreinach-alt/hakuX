@@ -1,0 +1,27 @@
+pathfind: Largo Winch Empire Under Threat Europe En Fr De Es It (5553000B) on nova: /storage/E6C6-D7AA/Games/XBox/5553000B-Largo_Winch_Empire_Under_Threat_Europe_En_Fr_De_Es_It.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 5553000B any, loaded none
+[  13.6s] #  1 loading           fast    wait                     A loading spinner appears after boot; waiting for the Ubisoft logo or title screen to appe
+[  29.4s] #  2 publisher_logo    fast    A                        Publisher logo appears after the loading spinner; skip with A to reach the title screen
+[  41.5s] #  3 title_screen      fast    START                    Title screen with explicit 'Press START button' prompt; follow the on-screen instruction
+[  59.6s] #  4 cutscene          fast    START                    Opening story cinematic with character voiceover and in-world dialogue; should be skipped 
+[  75.4s] #  5 cutscene          fast    A                        Intro cinematic displaying the game title and character artwork; part of the opening seque
+[  78.9s] #  6 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[  91.5s] #  7 cutscene          fast    A                        Still in an opening narrative cutscene with subtitle dialogue; needs to be skipped with A 
+[ 104.4s] #  8 cutscene          fast    A                        In-engine narrative cutscene with letterbox subtitles; skip with A to progress toward game
+[ 117.0s] #  9 cutscene          fast    A                        Letterbox subtitle bars and narrative dialogue; this is a story cinematic that must be ski
+[ 119.3s] # 10 black             black   wait                     black frame
+[ 129.7s] # 11 loading           fast    wait                     Game is loading after the cutscenes; the logo and 'LOADING' text indicate the game is prep
+[ 149.3s] # 12 loading           fast    wait                     Game environment is rendering in-engine after the previous loading state; no HUD elements,
+[ 188.9s] # 13 gameplay          fast    wait                     Environment fully loaded post-loading-screen, player character present in game world, inte
+[ 204.2s] # 14 probe             probe   STICK:up:1.5             control 0.000, under input 0.155
+hold-play: genre attack, need 630 s of play
+hold-play: fps at 187 s: median 59.0, share>=30 1.0 over 157 samples
+hold-play: fps at 323 s: median 59.0, share>=30 1.0 over 292 samples
+hold-play: off play 161 s of a 410 s scored window cannot drop to 10% with 992 s of budget left: no amount of further play can pass
+hold-play: not held 240/630 s of play; off play 161 s of a 410 s scored window cannot drop to 10% with 992 s of budget left: no amount of further play can pass
+held Largo Winch Empire Under Threat Europe En Fr De Es It for 413s
+VERDICT Largo Winch Empire Under Threat Europe En Fr De Es It ? FAIL(duration: 410 s of gameplay < 600 s confirmation) gameplay=410.5s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0 play_share=0.6058 fps_excluded=162.9s
+{"name": "Largo Winch Empire Under Threat Europe En Fr De Es It", "device": "nova", "result": "gameplay", "minutes": 3.4, "model_calls": 23, "steps": 14, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5553000B-1014/frames/013-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

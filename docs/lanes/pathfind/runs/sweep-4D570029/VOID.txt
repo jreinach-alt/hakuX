@@ -1,0 +1,14 @@
+VOID: this hold ran on a lane APK with a non-empty env, so it scores nothing.
+
+Run: Mortal Kombat Shaolin Monks (4D570029), Nova, 2026-10-05 20:06 PDT, verdict 2026-10-06T03:21:01Z
+(PASS, fps_ok 1.0, median 39). The PASS is from a void build.
+
+Source: lane.local 06:35 PDT 10-06, "RE-HOLD FIVE TITLES ON MASTER FIRST": "MK Shaolin Monks sweep-4D570029,
+MK Armageddon sweep-4D570034, MK Deadly Alliance sweep-4D57000C (10-05 20:06-20:50): gpunonrender APK
+a771c3e50905 (ref 9609d0299f), HAKUX_GPUXFR=1 HAKUX_GPUXFR_CTRL=16."
+
+The master re-hold is runs/shaolin-1006 (verdict 2026-10-06T21:54:16Z): FAIL, fps_ok 0.4912 (#874, #986).
+That is the title's real result, and below-bar.tsv refuses it.
+
+Attempt 3 of lane.pathfind (2026-10-18) banked this run to pm/playable-accepted.tsv by mistake; attempt 4
+removed the row the same day (backup pm/playable-accepted.bak-shaolin-void-1018).

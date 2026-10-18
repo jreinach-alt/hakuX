@@ -5433,6 +5433,114 @@ DEF_METHOD_INC(NV097, SET_TRANSFORM_DATA)
     pg->vertex_state_shader_v0[slot] = parameter;
 }
 
+/*
+ * #939 (lane.x1port1012), HAKUX_XVSS: the v0-hash skip in
+ * LAUNCH_TRANSFORM_PROGRAM. A launch is skipped when the XOR of v0's four
+ * words matches the last launch of the same program. That ignores the
+ * constants the program reads, and takes two v0 with equal XOR (two words
+ * swapped, say) as one: either leaves the program's outputs, which are
+ * constants, at an earlier launch's values. X1 BOX cf92edbbba removed the
+ * skip. Unset keeps it; "noskip" runs every launch, as X1 BOX does; "audit"
+ * keeps the skip's output, runs each skipped launch on a copy of the
+ * constants and counts the ones whose output would have differed (hakuX-perf
+ * "[xvss]" lines), which says whether a title reaches the case at all.
+ */
+enum { XVSS_SKIP, XVSS_NOSKIP, XVSS_AUDIT };
+static int xvss_mode = -1;
+
+#ifdef __ANDROID__
+#define XVSS_LOG(...) \
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-perf", __VA_ARGS__)
+#else
+#define XVSS_LOG(fmt, ...) fprintf(stderr, fmt "\n", ##__VA_ARGS__)
+#endif
+
+static int xvss_get_mode(void)
+{
+    if (xvss_mode < 0) {
+        const char *e = getenv("HAKUX_XVSS");
+        xvss_mode = !e                      ? XVSS_SKIP :
+                    !strcmp(e, "noskip")    ? XVSS_NOSKIP :
+                    !strcmp(e, "audit")     ? XVSS_AUDIT : XVSS_SKIP;
+        if (xvss_mode != XVSS_SKIP) {
+            XVSS_LOG("[xvss] mode=%s",
+                     xvss_mode == XVSS_NOSKIP ? "noskip" : "audit");
+        }
+    }
+    return xvss_mode;
+}
+
+static struct {
+    uint64_t launches, skips, skip_v0_differs, skip_stale;
+    int64_t last_log_ms;
+    uint32_t last_v0[NV2A_MAX_TRANSFORM_PROGRAM_LENGTH][4];
+    uint32_t scratch[NV2A_VERTEXSHADER_CONSTANTS][4];
+} xvss_audit;
+
+static void xvss_audit_tick(void)
+{
+    int64_t now = g_get_monotonic_time() / 1000;
+    if (now - xvss_audit.last_log_ms < 5000) {
+        return;
+    }
+    xvss_audit.last_log_ms = now;
+    XVSS_LOG("[xvss] launches=%" PRIu64 " skips=%" PRIu64
+             " skip_v0_differs=%" PRIu64 " skip_stale=%" PRIu64,
+             xvss_audit.launches, xvss_audit.skips,
+             xvss_audit.skip_v0_differs, xvss_audit.skip_stale);
+}
+
+/* An executed launch: remember the v0 it ran on. */
+static void xvss_audit_ran(PGRAPHState *pg, unsigned int program_start)
+{
+    xvss_audit.launches++;
+    memcpy(xvss_audit.last_v0[program_start], pg->vertex_state_shader_v0,
+           sizeof(xvss_audit.last_v0[0]));
+    xvss_audit_tick();
+}
+
+/* A skipped launch: run it on a copy of the constants, and compare. */
+static void xvss_audit_skipped(PGRAPHState *pg, const Nv2aVshProgram *program,
+                               unsigned int program_start)
+{
+    xvss_audit.launches++;
+    xvss_audit.skips++;
+    bool v0_differs = memcmp(xvss_audit.last_v0[program_start],
+                             pg->vertex_state_shader_v0,
+                             sizeof(xvss_audit.last_v0[0])) != 0;
+    if (v0_differs) {
+        xvss_audit.skip_v0_differs++;
+    }
+
+    memcpy(xvss_audit.scratch, pg->vsh_constants, sizeof(xvss_audit.scratch));
+    Nv2aVshCPUXVSSExecutionState linkage;
+    Nv2aVshExecutionState state = nv2a_vsh_emu_initialize_xss_execution_state(
+            &linkage, (float *)xvss_audit.scratch);
+    memcpy(linkage.input_regs, pg->vertex_state_shader_v0,
+           sizeof(pg->vertex_state_shader_v0));
+    nv2a_vsh_emu_execute(&state, program);
+
+    int row = -1;
+    for (int i = 0; i < NV2A_VERTEXSHADER_CONSTANTS; i++) {
+        if (memcmp(xvss_audit.scratch[i], pg->vsh_constants[i],
+                   sizeof(xvss_audit.scratch[i]))) {
+            row = i;
+            break;
+        }
+    }
+    if (row >= 0) {
+        xvss_audit.skip_stale++;
+        if (xvss_audit.skip_stale <= 16) {
+            const uint32_t *v0 = pg->vertex_state_shader_v0;
+            XVSS_LOG("[xvss] stale skip #%" PRIu64 " prog=%u v0_differs=%d "
+                     "v0=%08x %08x %08x %08x first_row=%d",
+                     xvss_audit.skip_stale, program_start, v0_differs,
+                     v0[0], v0[1], v0[2], v0[3], row);
+        }
+    }
+    xvss_audit_tick();
+}
+
 DEF_METHOD(NV097, LAUNCH_TRANSFORM_PROGRAM)
 {
     unsigned int program_start = parameter;
@@ -5441,15 +5549,25 @@ DEF_METHOD(NV097, LAUNCH_TRANSFORM_PROGRAM)
     const Nv2aVshProgram *program = pgraph_vsh_cpu_program(pg, program_start);
     assert(program);
 
+    int xvss = xvss_get_mode();
+
     /* Skip execution if the input register (v0) hasn't changed since last
-     * run of this same program — the output is deterministic. */
+     * run of this same program — the output is deterministic, unless the
+     * constants it reads changed (#939, HAKUX_XVSS above). */
     const uint32_t *v0 = pg->vertex_state_shader_v0;
     uint32_t v0_hash = v0[0] ^ v0[1] ^ v0[2] ^ v0[3];
     if (v0_hash == 0) v0_hash = 1; /* distinguish from initial 0 */
-    if (v0_hash == pg->vsh_last_v0_hash[program_start]) {
+    if (xvss != XVSS_NOSKIP &&
+        v0_hash == pg->vsh_last_v0_hash[program_start]) {
+        if (xvss == XVSS_AUDIT) {
+            xvss_audit_skipped(pg, program, program_start);
+        }
         return;
     }
     pg->vsh_last_v0_hash[program_start] = v0_hash;
+    if (xvss == XVSS_AUDIT) {
+        xvss_audit_ran(pg, program_start);
+    }
 
     Nv2aVshCPUXVSSExecutionState state_linkage;
     Nv2aVshExecutionState state = nv2a_vsh_emu_initialize_xss_execution_state(

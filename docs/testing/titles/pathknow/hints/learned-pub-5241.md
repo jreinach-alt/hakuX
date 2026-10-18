@@ -1,0 +1,2 @@
+# Learned by pathfind: the inputs that reached confirmed gameplay, one line per title
+- David Beckham Soccer Europe En Fr De Es It (52410003, nova, pathfind 2026-10-15): gameplay in 18.3 min via publisher_logo START -> intro_video A -> title_screen START -> main_menu A -> submenu A -> submenu START -> submenu RIGHT -> submenu A -> submenu DOWN -> submenu A START -> submenu START -> submenu UP RIGHT A START -> submenu A -> submenu START -> submenu RIGHT RIGHT A -> submenu START -> submenu A

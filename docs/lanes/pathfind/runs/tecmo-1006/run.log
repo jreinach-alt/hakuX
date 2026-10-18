@@ -1,0 +1,38 @@
+pathfind: Tecmo Classic Arcade (5443000E) on nova: /storage/E6C6-D7AA/Games/XBox/5443000E-Tecmo_Classic_Arcade.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 5443000E any, loaded none
+[   5.5s] #  1 publisher_logo    replay  A                        replay step 0: Boot splash or logo animation on a blank white background, no title or menu
+[  14.4s] #  2 publisher_logo    fast    A                        Xbox boot splash logo, not a title or menu yet. Per the hint, skip with A first; the logo 
+[  18.6s] #  3 publisher_logo    replay  A                        replay step 1: Tecmo legal/federal warning screen, not a title or menu yet. Hint says A pa
+[  25.5s] #  4 publisher_logo    fast    A                        Tecmo company logo, not a title or menu yet. Per hints, skip with A once, then re-read; a 
+[  33.3s] #  5 main_menu         fast    A                        Game-select menu with the Tecmo Cup tile highlighted and A labelled GAME START; A starts t
+[  40.8s] #  6 loading           fast    wait                     Dark transitional screen with a wireframe graphic rising from a striped base, no menu curs
+[  50.6s] #  7 period_break      fast    START A                  This is a results/high-score table, not gameplay or a menu to steer. Per the period-break-
+[  58.5s] #  8 publisher_logo    fast    A                        A Tehkan title-logo splash, not a title or menu yet. Skipping logos with A first per the h
+[  67.5s] #  9 game_over         fast    A                        The match clock is at 00:00 and the GAME OVER banner is shown over the pitch, so this is a
+[  75.5s] # 10 game_over         fast    A                        Match clock is at 00:00 and GAME OVER banner is shown, so this is the end-of-match screen,
+[  86.3s] # 11 game_over         fast    START A                  Match clock is at 00:00 and GAME OVER is shown. Two A presses on this screen already loope
+[  97.0s] # 12 game_over         fast    B                        Match clock is at 00:00 and GAME OVER is shown; A and START+A already looped on this scree
+[ 106.8s] # 13 game_over         fast    wait                     Game Over over the pitch. A, START+A and B already looped back here, so I'm changing the i
+[ 119.5s] # 14 game_over         fast    X                        Match clock is 00:00 with GAME OVER over the pitch, so this is the end-of-match screen, no
+[ 130.1s] # 15 title_screen      fast    START                    Arcade attract/info screen with a 'PUSH ONE PLAYER BUTTON' prompt and CREDIT 1 showing, so
+[ 138.7s] # 16 submenu           fast    A                        Tecmo Cup team/matchup screen before the match; not gameplay yet. Accept the default with 
+[ 150.6s] # 17 gameplay          fast    wait                     Live match with the HUD (score, clock) and players on the pitch, not a menu or end-of-matc
+[ 165.6s] # 18 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.418, under input 0.055
+[ 173.5s] # 19 gameplay          fast    A                        Live match with HUD and clock counting. The earlier stick probe moved nothing (change 0.05
+[ 190.7s] # 20 probe             probe   A STICK:down:1.5         control 0.078, under input 0.180
+hold-play: sports look {'clock': '0:06', 'period': 'none', 'human_controlled': False, 'why': 'Right-side TIME box reads 0:06 with no quarter/half indicator; the lone soccer-style pitch has no controller icon or marked player, so no human-controlled team '}
+hold-play: genre team, need 600 s of play
+hold-play: fps at 192 s: median 59.0, share>=30 1.0 over 192 samples
+hold-play: fps at 303 s: median 59.0, share>=30 1.0 over 303 samples
+hold-play: validity check share 116 s (hold 607 s of play, verdict 609.1)
+hold-play: verdict short on share by 116 s; holding on (budget 1480 s left)
+hold-play: validity check share 45 s (hold 677 s of play, verdict 679.3)
+hold-play: verdict short on share by 45 s; holding on (budget 1410 s left)
+hold-play: validity check stop 0 s (hold 743 s of play, verdict 745.3)
+hold-play: not held 743/600 s of play; verdict stops the hold: fps_ok 1.0, crash False, hang False
+held Tecmo Classic Arcade for 827s
+VERDICT Tecmo Classic Arcade ? FAIL(static window: 23% of pixels never moved more than 10/255 from the window's first frame, over 23 sampled frames from route-frames (bar 20%)) gameplay=826.3s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.2296 play_share=0.9025 fps_excluded=82.1s
+{"name": "Tecmo Classic Arcade", "device": "nova", "result": "gameplay", "minutes": 3.18, "model_calls": 40, "steps": 20, "replayed": 2, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/tecmo-1006/frames/019-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

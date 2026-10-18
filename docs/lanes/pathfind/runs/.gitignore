@@ -1,0 +1,14 @@
+# Frames, video and images from pathfind runs stay on disk in wt/pathfind; they are not committed.
+# Why (lane.pathfind attempt 4, 2026-10-18): the uncommitted backlog was 172 run dirs, 3.5 GB of frames/video plus
+# 58 MB of jpg strips, and C: (which holds the WSL vhdx, the forge mirror and every lane worktree) was at 99%.
+# The text evidence (verdict.json, result.json, steps.jsonl, calls.jsonl, hold.jsonl, request.json, run.log,
+# VOID.txt) is committed. Files tracked before this file existed stay tracked. A frame that a ledger row or an
+# issue cites as evidence is added with `git add -f`.
+frames/
+route-frames/
+video/
+provisional/
+*.jpg
+*.png
+*.mp4
+screen-logcat.txt

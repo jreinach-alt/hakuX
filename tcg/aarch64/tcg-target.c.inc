@@ -22,6 +22,14 @@ extern bool hakux_tso_rcpc;
 static uint64_t hakux_tso_ld, hakux_tso_st, hakux_tso_pair, hakux_tso_slow;
 static void hakux_tso_count(uint64_t *c);
 
+/*
+ * On by default (#939): the cvt*f_i* ops (inline FIST/FISTP only) round
+ * per FPCR.RMode, which flcr loads from the guest's x87 RC, as x87 FIST
+ * does and as the x86_64 backend's CVTSD2SI does. HAKUX_FIST_ROUND=0 is
+ * the escape hatch back to a bare FCVTZS, which always truncates.
+ */
+static bool hakux_fist_round;
+
 /* HAKUX_HOSTBENCH / HAKUX_TOPO, run from tcg_target_init; off by default. */
 #include "../../tools/bench/hostbench.c.inc"
 #endif
@@ -675,6 +683,8 @@ typedef enum {
     I_FP1_FNEG_D    = 0x1e614000,
     I_FP1_FSQRT_D   = 0x1e61c000,
     I_FP1_FCVT_SD   = 0x1e624000,  /* FCVT Sd, Dn (double->single) */
+    I_FP1_FRINTI_S  = 0x1e27c000,  /* round to integral per FPCR.RMode */
+    I_FP1_FRINTI_D  = 0x1e67c000,
 
     /* Scalar FP compare -- Rn, Rm */
     I_FPCMP_FCMP_S  = 0x1e202000,
@@ -3148,6 +3158,24 @@ static void tcg_out_fpcvt(TCGContext *s, AArch64Insn insn,
     tcg_out32(s, insn | (rn & 0x1f) << 5 | (rd & 0x1f));
 }
 
+/* FP to int for inline FIST/FISTP: FRINTI first under HAKUX_FIST_ROUND. */
+static void tcg_out_fist(TCGContext *s, AArch64Insn cvt, AArch64Insn rint,
+                         TCGReg rd, TCGReg rn)
+{
+#ifdef XBOX
+    if (hakux_fist_round) {
+        static uint64_t n;
+        n++;
+        if ((n & (n - 1)) == 0 && n <= 4096) {
+            hb_log("fist round emitted n=%llu", (unsigned long long)n);
+        }
+        tcg_out_fp1src(s, rint, TCG_VEC_TMP0, rn);
+        rn = TCG_VEC_TMP0;
+    }
+#endif
+    tcg_out_fpcvt(s, cvt, rd, rn);
+}
+
 /*
  * Emit FCMP + flag conversion to x86-style EFLAGS (CF, PF, ZF) in a GPR.
  *
@@ -3538,28 +3566,28 @@ static void tcg_out_op(TCGContext *s, TCGOpcode opc, TCGType type,
         break;
     case INDEX_op_cvt32f_i32:
 #if BISECT_FP_CVT
-        tcg_out_fpcvt(s, I_FPCVT_FCVTZS_WS, a0, a1);
+        tcg_out_fist(s, I_FPCVT_FCVTZS_WS, I_FP1_FRINTI_S, a0, a1);
 #else
         tcg_out32(s, I_FPMOV_W_S | (a1 & 0x1f) << 5 | (a0 & 0x1f));
 #endif
         break;
     case INDEX_op_cvt32f_i64:
 #if BISECT_FP_CVT
-        tcg_out_fpcvt(s, I_FPCVT_FCVTZS_XS, a0, a1);
+        tcg_out_fist(s, I_FPCVT_FCVTZS_XS, I_FP1_FRINTI_S, a0, a1);
 #else
         tcg_out32(s, I_FPMOV_W_S | (a1 & 0x1f) << 5 | (a0 & 0x1f));
 #endif
         break;
     case INDEX_op_cvt64f_i32:
 #if BISECT_FP_CVT
-        tcg_out_fpcvt(s, I_FPCVT_FCVTZS_WD, a0, a1);
+        tcg_out_fist(s, I_FPCVT_FCVTZS_WD, I_FP1_FRINTI_D, a0, a1);
 #else
         tcg_out32(s, I_FPMOV_W_S | (a1 & 0x1f) << 5 | (a0 & 0x1f));
 #endif
         break;
     case INDEX_op_cvt64f_i64:
 #if BISECT_FP_CVT
-        tcg_out_fpcvt(s, I_FPCVT_FCVTZS_XD, a0, a1);
+        tcg_out_fist(s, I_FPCVT_FCVTZS_XD, I_FP1_FRINTI_D, a0, a1);
 #else
         tcg_out32(s, I_FPMOV_X_D | (a1 & 0x1f) << 5 | (a0 & 0x1f));
 #endif
@@ -4290,7 +4318,18 @@ static void tcg_target_init(TCGContext *s)
 #ifdef XBOX
     {
         /* HWCAP_LRCPC is bit 15 of AT_HWCAP on Linux/arm64. */
+        const char *fr = getenv("HAKUX_FIST_ROUND");
         const char *tso = getenv("HAKUX_TCG_TSO");
+        if (!fr) {
+            hakux_fist_round = true;
+            hb_log("fist round=ON (default)");
+        } else if (strcmp(fr, "0") == 0) {
+            hakux_fist_round = false;
+            hb_log("fist round=OFF (env HAKUX_FIST_ROUND=0)");
+        } else {
+            hakux_fist_round = true;
+            hb_log("fist round=ON (env)");
+        }
         if (tso && strcmp(tso, "rcpc") == 0) {
 #if defined(__linux__)
             unsigned long hw = qemu_getauxval(AT_HWCAP);

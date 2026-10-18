@@ -1,0 +1,90 @@
+pathfind: Star Wars Starfighter Special Edition USA (4C410002) on nova: /storage/E6C6-D7AA/Games/XBox/4C410002-Star_Wars_Starfighter_Special_Edition_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4C410002 any, loaded none
+[   6.1s] #  1 publisher_logo    sibreplay START                    sibling 4C410014 step 0: sibling 4C410017 step 0: Green geometric star logo on white backg
+[  10.5s] #  2 black             black   wait                     black frame
+[  21.7s] #  3 loading           fast    wait                     Title logo with active loading bar indicates the game is initializing; wait for the load t
+[  36.3s] #  4 publisher_logo    fast    START                    Lucas Arts publisher logo after the initial star logo. Skip with START per hints; multiple
+[  51.6s] #  5 publisher_logo    fast    START                    Another publisher logo in the pre-game sequence; a new logo is progress; skip with START p
+[  54.9s] #  6 publisher_logo    repeat  START                    repeat START: it advanced the publisher_logo
+[  75.0s] #  7 submenu           fast    A                        Storage device selection screen appearing after publisher logos; defaults are visible, con
+[  92.7s] #  8 submenu           fast    Y                        Storage device selection after publisher logos; top EMPTY slot is highlighted; Y create is
+[ 109.2s] #  9 profile_creation  fast    A                        Yes/No confirmation to create a new gamer profile. The A YES button is highlighted and rea
+[ 126.8s] # 10 name_entry        fast    Y                        Default profile name 'RHYS' is already filled in; Y is the OK button to confirm and procee
+[ 178.9s] # 11 name_entry        fast    A                        Default profile name 'RHYS' is already filled in on screen; Y (ok) button failed to advanc
+[ 199.6s] # 12 name_entry        fast    START                    Name entry with a filled-in default but extra characters added (RHYSARA instead of RHYS). 
+[ 220.8s] # 13 name_entry        fast    X X X Y                  Name entry is stuck; extra characters 'ARA' were added when A (SELECT) was pressed. X (ERA
+[ 253.2s] # 14 name_entry        fast    RIGHT RIGHT A            Stuck name-entry screen; previous inputs (X, Y, START, A) made no visible change. Need to 
+[ 317.4s] # 15 name_entry        fast    UP A                     Stuck on name entry with incomplete name. Previous RIGHT navigation made tiny progress (0.
+[ 358.4s] # 16 name_entry        fast    B                        Stuck on name entry; multiple inputs (Y, A, START, X, RIGHT, UP) have failed. BACK (B) to 
+[ 417.4s] # 17 profile_creation  fast    Y                        Empty profile list with top slot highlighted. The 'Y create' button at bottom indicates we
+[ 437.8s] # 18 save_load_prompt  fast    A                        YES is the highlighted default choice; confirm with A to proceed to name entry for the new
+[ 466.4s] # 19 name_entry        fast    Y                        Default name 'RHYS' (the protagonist) is pre-filled at the top; Y ok confirms and advances
+[ 492.0s] # 20 name_entry        fast    START                    Name 'RHYS' is pre-filled but Y (ok) failed to advance on the last attempt; per hints, STA
+[ 536.7s] # 21 name_entry        fast    A                        Stuck on name entry with 'RHYS' pre-filled. Previous attempts with START and Y did not adv
+[ 581.0s] # 22 name_entry        fast    UP                       Still on name entry with the same pre-filled name; A, START, and Y have all failed. Per hi
+[ 622.1s] # 23 name_entry        fast    LEFT                     Stuck on name entry; tried UP/A/START/Y without changing the screen; trying LEFT to naviga
+[ 656.8s] # 24 name_entry        fast    B                        Stuck on name entry after 12+ failed attempts (START, Y, A, UP, LEFT sent previously with 
+[ 725.1s] # 25 name_entry        fast    RIGHT                    Profile name entry screen with radial letter wheel. Cursor must navigate the wheel to loca
+[ 773.9s] # 26 name_entry        fast    DOWN                     Stuck on radial wheel name entry. D-pad LEFT/RIGHT failed; cursor needs to rotate around w
+[ 817.1s] # 27 name_entry        fast    STICK:right:2.5          Radial wheel name entry screen. The cursor (blue dot at bottom) must rotate around the whe
+[ 832.4s] # 28 name_entry        fast    Y                        Name entry wheel with on-screen Y=ok instruction; cursor at bottom suggests OK position; Y
+[ 859.6s] # 29 name_entry        fast    STICK:left:2.5           Radial wheel name entry screen; cursor stuck at bottom position. Previous inputs (Y, STICK
+[ 884.9s] # 30 name_entry        fast    START                    Stuck on the name entry wheel after 12+ failed attempts (STICK, D-pad, Y all did nothing).
+[ 925.7s] # 31 name_entry        fast    A                        Still on the radial wheel name entry screen with the same unchanged layout. Previous attem
+[ 946.4s] # 32 name_entry        fast    R1                       Stuck on radial wheel after 12+ failed attempts (STICK, D-pad, START, A, B, Y all produced
+[ 961.7s] # 33 name_entry        fast    LEFT                     Stuck on radial wheel after 12+ attempts with STICK, D-pad RIGHT, UP, DOWN, START, A, B, Y
+[ 990.6s] # 34 name_entry        fast    UP                       Stuck radial wheel name selector. Tried 12+ inputs (STICK, d-pad, Y, A, B, START, R1) with
+[1008.9s] # 35 name_entry        fast    X                        Still on the radial wheel; all D-pad and stick inputs tried (11+ attempts). X button (eras
+[1040.7s] # 36 name_entry        fast    wait                     Radial wheel name selection screen stuck after 35+ attempts with D-pad, stick, and most bu
+[1056.4s] # 37 name_entry        fast    L1                       Still on the radial wheel name selector; the untried input is L1 (the left-arrow hint symb
+[1094.6s] # 38 name_entry        fast    RSTICK:right:2.5         Stuck on radial wheel after 37 steps; 13+ different inputs (D-pad, left stick, buttons A/B
+[1121.7s] # 39 name_entry        fast    R3                       Stuck on radial wheel after 38 inputs. Previous attempts: D-pad all directions, left stick
+[1189.0s] # 40 name_entry        fast    RT:1.5                   Name entry wheel is stuck after 39 different inputs. The < and > symbols at bottom suggest
+[1226.5s] # 41 name_entry        fast    STICK:up:2.5             Stuck on wheel after 40 steps; D-pad, left stick horizontal, buttons A/B/X/Y/L1/R1/START/R
+[1268.1s] # 42 name_entry        fast    BACK                     Stuck on name selection wheel after 41 failed inputs. Untried: BACK button (navigation), L
+[1298.0s] # 43 save_load_prompt  fast    Y                        Empty profile list after escaping the stuck name wheel with BACK. Press Y to create a new 
+[1309.8s] # 44 save_load_prompt  fast    A                        Yes/No dialog for profile creation; YES is highlighted on the right, choose it to proceed
+[1326.0s] # 45 name_entry        fast    Y                        Name 'RHYS' is complete and ready to confirm; button hint shows 'Y ok' to accept the name 
+[1362.4s] # 46 name_entry        fast    A                        Still on the name wheel after Y (ok) failed. Y did not confirm. Try A (select) per the but
+[1382.0s] # 47 name_entry        fast    RIGHT                    Stuck on the name wheel after A and Y both failed to confirm the completed name 'RHYS'. Th
+[1401.4s] # 48 name_entry        fast    DOWN                     Name complete but confirmation stuck. Previous RIGHT, A, Y all failed. The wheel has a but
+[1417.1s] # 49 name_entry        fast    UP                       Stuck on the name wheel. A, Y, RIGHT, DOWN all failed. Need to navigate with a different i
+[1435.7s] # 50 name_entry        fast    L1                       Name is entered but Y/A/d-pad directions failed to confirm it; ◄ ► symbols suggest shoulde
+[1462.4s] # 51 name_entry        fast    START                    Name 'RHYS' is entered but confirmation is stuck. The button hint 'Y ok' should confirm, b
+[1503.9s] # 52 name_entry        fast    X                        Stuck on name wheel; previous attempts (A, Y, START, L1, UP, DOWN, RIGHT) all failed; the 
+[1544.9s] # 53 name_entry        fast    LEFT                     Name shows only 'RHY' but should be 'RHYS' (4 letters). Previous attempts tried RIGHT, UP,
+[1577.9s] # 54 name_entry        fast    STICK:right:1            Name entry is stuck; 'RHY' needs one more letter 'S'. The '< >' arrow symbols in hints sug
+[1626.9s] # 55 name_entry        fast    STICK:left:1             Stuck on name wheel; need to rotate the dial to reach letter S. Previous attempts with RIG
+[1645.0s] # 56 name_entry        fast    R1                       Stuck on name wheel; RHY is entered but needs S. Previous L1, LEFT, RIGHT, STICK attempts 
+[1713.4s] # 57 name_entry        fast    LT:1                     Stuck on name dial with incomplete name 'RHY' (need 'S' for 'RHYS'). All D-pad, stick with
+[1799.6s] # 58 name_entry        fast    RSTICK:left:1            Still stuck on 'RHY' (need 'RHYS', 4 letters). All tested D-pad directions, left stick dir
+[1841.7s] # 59 name_entry        fast    RT+right:1               Name wheel is stuck at 'RHY'; need letter 'S' to complete 'RHYS'. All D-pad, stick, and tr
+[1896.1s] # 60 name_entry        fast    R3                       The ◄ ► arrows in the instructions are the navigation controls; L1/R1/triggers/D-pad/stick
+[1919.0s] # 61 name_entry        fast    STICK:up:2               Stuck on name dial; RHY needs S. STICK:left/right/up/down with 1s, both triggers, both sho
+[1956.1s] # 62 name_entry        fast    L3                       Stuck on incomplete name 'RHY' (need 'S' for 'RHYS'); all D-pad, stick, triggers, and shou
+[2014.8s] # 63 name_entry        fast    B                        Incomplete name 'RHY' needs letter 'S' to complete 'RHYS'. The B button is the only contro
+[2052.5s] # 64 save_load_prompt  fast    Y                        Save slot creation screen after exiting the stuck name entry. Y (create) should proceed to
+[2072.3s] # 65 save_load_prompt  fast    A                        Game prompts to create a new gamer after exiting the stuck name entry. YES is highlighted 
+[2089.3s] # 66 name_entry        fast    Y                        The name 'RHYS' is complete and displayed in the entry interface. The 'Y ok' instruction i
+[2106.6s] # 67 submenu           fast    A                        Game mode selection menu with PLAY highlighted; 'A ok' instruction at bottom indicates rea
+[2120.3s] # 68 submenu           fast    A                        Difficulty selection menu before gameplay start; EASY is the default highlighted option; A
+[2124.8s] # 69 black             black   wait                     black frame
+[2136.5s] # 70 cutscene          fast    START                    Opening crawl is a cinematic text sequence; sibling Star Wars titles (KOTOR II 4C410014, C
+[2152.9s] # 71 submenu           fast    A                        Mission objective/briefing screen before gameplay starts. Matches hint pattern: 'a level s
+[2168.8s] # 72 cutscene          fast    START                    Letterboxing confirms cinematic; no HUD, no player control visible; this is the opening ac
+[2211.6s] # 73 submenu           fast    A                        Mission objective/briefing screen shown before actual gameplay starts, matching hint patte
+[2232.4s] # 74 gameplay          fast    wait                     Full HUD (radar, shields, targeting) present with 3D game world in cockpit view; no menus,
+[2261.1s] # 75 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.658, under input 0.910
+[2302.6s] # 84 retracted         probe   wait                     retracted after 30 s: letterboxed
+[2339.2s] # 85 results           fast    A                        Mission end/results screen: letterboxing present, mission objectives and time (0:42) displ
+[2365.8s] # 86 submenu           fast    A                        Mission briefing/objective screen before gameplay; the highlighted bar with arrows is a me
+[2381.0s] # 87 cutscene          fast    START                    Letterboxing + no HUD + no menu elements = cinematic, not gameplay or a menu. Post-mission
+[2401.7s] # 88 pause             fast    A                        Pause menu appeared after cutscene; Continue is the top highlighted option; A selects it t
+[2415.8s] # 89 gameplay          fast    wait                     Full HUD visible (targeting reticle, radar, shields), no letterbox bars, no menu elements.
+[2438.1s] # 90 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.465, under input 0.619
+[2480.2s] # 99 retracted         probe   wait                     retracted after 30 s: letterboxed
+[2536.8s] #100 submenu           fast    A                        Mission objectives/results screen after previous gameplay was interrupted by a cutscene (s
+{"name": "Star Wars Starfighter Special Edition USA", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 80, "steps": 84, "replayed": 0, "reason": "budget 42 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

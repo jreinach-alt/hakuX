@@ -1,0 +1,35 @@
+taken: nova by lane.pathfind
+idle: nova is held and runs nothing
+held at 12:33:30
+pathfind: AMF Bowling 2004 (None) on nova: /storage/E6C6-D7AA/Games/XBox/AMF_Bowling_2004.xiso.iso
+titlestate: titles disk: harvest (the device's disk changed since its last harvest)
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: - any, loaded all goldens (title not identified)
+[  11.0s] #  1 publisher_logo    fast    START                    Boot splash on a white background, not the game yet; nothing to press. Wait for the logo s
+[  20.8s] #  2 publisher_logo    fast    START                    Publisher logo (Mud Duck) with no prompt; the logo sequence is still running, so nothing t
+[  29.5s] #  3 title_screen      fast    START                    Title screen with a 'Press START' prompt; per the title hint, START is the input for this 
+[  37.2s] #  4 main_menu         fast    A                        Title screen is past; main menu with 'Start New Game' already highlighted at the top. Per 
+[  45.2s] #  5 main_menu         fast    A                        Submenu under Start New Game; Open Bowling is highlighted and is the fastest path to bowli
+[  53.2s] #  6 submenu           fast    START                    Same screen came back after A twice, so A is not advancing. Regular Game is already highli
+[  63.8s] #  7 submenu           fast    DOWN                     Regular Game is greyed out so it cannot be chosen; START did nothing. Move the highlight d
+[  73.1s] #  8 submenu           fast    UP A                     Earlier A, START and DOWN did nothing here. Team Game is greyed, so Regular Game is the to
+[  82.9s] #  9 controller_prompt fast    A                        Controller 1 is already assigned to Port 1 as Player 1. Per the join-screen hint, A select
+[  90.1s] # 10 submenu           fast    UP A                     Setup for controller 1 is Human; the highlight sits on the Pro row, so the Human/Pro choic
+[ 100.0s] # 11 submenu           fast    DOWN DOWN A              Controller 1 is already Human under Port 1, so the setup is done. UP A did nothing twice, 
+[ 110.8s] # 12 submenu           fast    UP A                     Previous A/START/DOWN/UP presses looped back here. The game-length option is 'Change Frame
+[ 121.7s] # 13 submenu           fast    DOWN DOWN DOWN A         Frames is already 10, the longest option, so the game length is set. The earlier UP/DOWN/A
+[ 135.0s] # 14 gameplay          fast    wait                     The player-controlled bowler is at the foul line with the ball in hand and the lane ahead,
+[ 147.5s] # 15 probe             probe   STICK:left:1.5           control 0.004, under input 0.201
+hold-play: sports look {'clock': 'none', 'period': 'none', 'human_controlled': False, 'why': 'Bowling has no game clock or period; the view shows a bowler from behind at the lane with a ball, but no controller icon or marker identifies a human-controlled'}
+hold-play: genre team, need 600 s of play
+hold-play: fps at 191 s: median 59.0, share>=30 1.0 over 183 samples
+hold-play: fps at 301 s: median 59.0, share>=30 1.0 over 288 samples
+hold-play: not held 283/600 s of play; off play for 13 steps: period_break (End-of-game/frame scorecard for Lane 8 (Hooty D., one frame in) with a replay prompt, not live bowling play.)
+held AMF Bowling 2004 for 391s
+VERDICT AMF Bowling 2004 ? FAIL(duration: 390 s of gameplay < 600 s confirmation) gameplay=389.9s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0 play_share=0.7324 fps_excluded=105.4s
+{"name": "AMF Bowling 2004", "device": "nova", "result": "gameplay", "minutes": 2.46, "model_calls": 35, "steps": 15, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-bowling-2004/hold/frames/014-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "e78b35c8147e", "4256
+pathfind rc=0 at 12:43:22
+released: nova by lane.pathfind
+released rc=0

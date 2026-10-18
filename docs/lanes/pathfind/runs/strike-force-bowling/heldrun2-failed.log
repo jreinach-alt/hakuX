@@ -1,0 +1,40 @@
+taken: nova by lane.pathfind
+NOT IDLE: nova is held but busy -- do not touch it yet:
+dispatcher pid 518495 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+run: hold.sh wait-idle nova <timeout_s>, and touch the device only on exit 0
+waiting for nova: dispatcher pid 518495 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+idle: nova is held and runs nothing
+held at 14:31:25
+pathfind: Strike Force Bowling (None) on nova: /storage/E6C6-D7AA/Games/XBox/Strike_Force_Bowling.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: - any, loaded all goldens (title not identified)
+[   9.8s] #  1 publisher_logo    fast    A                        This looks like a publisher or studio logo animation on a white background, not a title or
+[  17.3s] #  2 publisher_logo    fast    A                        A publisher logo animation before the title screen; a new logo is progress. Press A once, 
+[  25.6s] #  3 publisher_logo    fast    A                        A publisher logo before the title screen; a new logo is progress. Pressing A once to skip,
+[  35.6s] #  4 publisher_logo    fast    A                        This is the game's own title/copyright splash, not gameplay or a menu yet. No 'Press Start
+[  43.8s] #  5 main_menu         fast    A                        Main menu with Open Play already highlighted; Open Play is the fastest route to bowling. A
+[  52.4s] #  6 main_menu         fast    A                        Goal needs one human player, and the bowlers list is empty. Add Bowler is already highligh
+[  59.9s] #  7 submenu           fast    A                        Bowler select screen with a default bowler (Mary Anne, right-handed) already centered. Goa
+[  69.8s] #  8 submenu           fast    DOWN A                   Bowler name entry for Player 1 with the default name already filled in; the goal is one hu
+[  77.3s] #  9 submenu           fast    DOWN A                   Bowler setup for Player 1 is on the stats screen; the name is already set. Accept defaults
+[  86.7s] # 10 submenu           fast    DOWN DOWN A              Previous DOWN A only moved from Strength/Accuracy onto Curve; Done is two rows below Accur
+[  98.4s] # 11 submenu           fast    A                        Bowler setup is finished and this screen saves it. Page 1 is highlighted, so A saves the b
+[ 108.4s] # 12 submenu           fast    LEFT A                   A on Page 1 already returned here twice and the bowler is still EMPTY, so the save never t
+[ 116.0s] # 13 submenu           fast    A                        Save confirmation dialog for the bowler; YES is highlighted (default), so A confirms the s
+[ 125.5s] # 14 submenu           fast    DOWN DOWN DOWN DOWN DOWN A Player 1 already exists as the one human bowler, so the saving loop is done. Add Bowler is
+[ 139.9s] # 15 submenu           fast    A                        Stage Select is a menu with the centered bowling alley highlighted; A selects it to start 
+[ 149.2s] # 16 title_screen      fast    A                        A prompt-to-continue screen after the bowler setup; the prompt reads Press A to continue, 
+[ 159.6s] # 17 gameplay          fast    wait                     Live bowling HUD with the player's bowler, ball and aim line up, and no menu or banner on 
+[ 170.8s] # 18 probe             probe   STICK:left:1.5           control 0.015, under input 0.067
+hold-play: genre bowl, need 600 s of play
+hold-play: fps at 182 s: median 59.0, share>=30 1.0 over 166 samples
+hold-play: fps at 305 s: median 59.0, share>=30 1.0 over 287 samples
+hold-play: not held 251/600 s of play; off play for 13 steps: menu (Name Entry dialog is open after a game; the player is not in live play.)
+held Strike Force Bowling for 328s
+VERDICT Strike Force Bowling ? FAIL(duration: 327 s of gameplay < 600 s confirmation) gameplay=327.3s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0 play_share=0.7787 fps_excluded=74.1s
+{"name": "Strike Force Bowling", "device": "nova", "result": "gameplay", "minutes": 2.85, "model_calls": 35, "steps": 18, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/strike-force-bowling/hold2/frames/017-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256
+pathfind rc=0 at 14:40:27
+released: nova by lane.pathfind
+released rc=0

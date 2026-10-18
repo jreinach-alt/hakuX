@@ -1,10 +1,10 @@
 # Contributing
 
-_Last updated 2026-10-13, for version 0.5.0._
+_Last updated 2026-10-17, for version 0.5.2._
 
 hakuX is an original Xbox emulator for Android. Its lineage is xemu, then
-X1 BOX (izzy2lost), then hakuX (rfandango), then this fork. This page covers
-building it, testing games and sending pull requests.
+X1 BOX (izzy2lost), then hakuX (rfandango), then this project, hakuX CE. This
+page covers building it, testing games and sending pull requests.
 
 ## Building for Android
 

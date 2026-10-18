@@ -1,0 +1,50 @@
+== A 1-1792170341-lane.audio1016-2350757
+  V: downmix ['off'] use_dsp False rt ['00'] apumix windows 61 cutscene frames 19 span 198 s
+  cutscene windows 41 median -29.13; pre windows 16 median -26.83
+  cost (cutscene): gp_us 10 ep_us 14 vp_us 154 gp_cyc 418 util 0.26 (max 0.35)
+  starve over the cutscene: 0.0% of output
+  [frames] letterboxed span (37807, 37861); speech windows 11 median -29.34; idle windows 27 median -29.10
+    speech voices:   82500 frames  11 rows  v2 excess  +6.0/ +6.0  FL:-6.0 FR:-6.0 C:-6.0 LFE:-6.0 BL:-6.0 BR:-6.0 xFL:-6.0 xFR:-6.0
+    speech voices:   82500 frames  11 rows  v2 excess  -3.0/ -3.0  xBL:-6.0 xBR:-6.0 I3DL2:-6.0 11:-6.0 12:-6.0 13:-6.0 14:-6.0 15:-6.0
+    speech voices:   82500 frames  11 rows  v2 excess  +0.0/ +0.0  16:-6.0 17:-6.0 18:-6.0 19:-6.0 20:-6.0 21:-6.0 22:-6.0 23:-6.0
+    speech voices:   82500 frames  11 rows  v2 excess  +0.0/ +0.0  24:-6.0 25:-6.0 26:-6.0 27:-6.0 28:-6.0 29:-6.0 30:-6.0
+    speech voices:   82500 frames  11 rows  v2 excess  +7.7/ +7.7  xFL:-11.2 xBL:-11.2 xFR:-11.2 xBR:-11.2 C:-11.2
+    speech voices:   34857 frames   5 rows  v2 excess  +3.0/ +3.0  xFL:-24.6 xFR:-24.6 C:-21.6 12:-23.6
+== B 1-1792170345-lane.audio1016-2351225
+  V: downmix ['on'] use_dsp False rt ['00'] apumix windows 60 cutscene frames 17 span 201 s
+  cutscene windows 41 median -28.11; pre windows 16 median -26.88
+  cost (cutscene): gp_us 10 ep_us 15 vp_us 156 gp_cyc 418 util 0.27 (max 0.33)
+  starve over the cutscene: 0.0% of output
+  [frames] letterboxed span (39157, 39212); speech windows 11 median -22.15; idle windows 27 median -29.61
+    speech voices:   82500 frames  11 rows  v2 excess  +6.0/ +6.0  FL:-6.0 FR:-6.0 C:-6.0 LFE:-6.0 BL:-6.0 BR:-6.0 xFL:-6.0 xFR:-6.0
+    speech voices:   82500 frames  11 rows  v2 excess  -3.0/ -3.0  xBL:-6.0 xBR:-6.0 I3DL2:-6.0 11:-6.0 12:-6.0 13:-6.0 14:-6.0 15:-6.0
+    speech voices:   82500 frames  11 rows  v2 excess  +0.0/ +0.0  16:-6.0 17:-6.0 18:-6.0 19:-6.0 20:-6.0 21:-6.0 22:-6.0 23:-6.0
+    speech voices:   82500 frames  11 rows  v2 excess  +0.0/ +0.0  24:-6.0 25:-6.0 26:-6.0 27:-6.0 28:-6.0 29:-6.0 30:-6.0
+    speech voices:   82500 frames  11 rows  v2 excess  +7.7/ +7.7  xFL:-11.2 xBL:-11.2 xFR:-11.2 xBR:-11.2 C:-11.2
+    speech voices:   34856 frames   5 rows  v2 excess  +3.0/ +3.0  xFL:-24.6 xFR:-24.6 C:-21.6 12:-23.6
+== D 1-1792170348-lane.audio1016-2351533
+  V: downmix [] use_dsp True rt ['11'] apumix windows 61 cutscene frames 18 span 191 s
+  cutscene windows 40 median -33.76; pre windows 18 median -30.90
+  cost (cutscene): gp_us 263 ep_us 186 vp_us 154 gp_cyc 13158 util 0.68 (max 0.74)
+  starve over the cutscene: 0.0% of output
+  [frames] letterboxed span (39511, 39556); speech windows 9 median -30.45; idle windows 28 median -34.94
+    speech voices:   67500 frames   9 rows  v2 excess  +6.0/ +6.0  FL:-6.0 FR:-6.0 C:-6.0 LFE:-6.0 BL:-6.0 BR:-6.0 xFL:-6.0 xFR:-6.0
+    speech voices:   67500 frames   9 rows  v2 excess  -3.0/ -3.0  xBL:-6.0 xBR:-6.0 I3DL2:-6.0 11:-6.0 12:-6.0 13:-6.0 14:-6.0 15:-6.0
+    speech voices:   67500 frames   9 rows  v2 excess  +0.0/ +0.0  16:-6.0 17:-6.0 18:-6.0 19:-6.0 20:-6.0 21:-6.0 22:-6.0 23:-6.0
+    speech voices:   67500 frames   9 rows  v2 excess  +0.0/ +0.0  24:-6.0 25:-6.0 26:-6.0 27:-6.0 28:-6.0 29:-6.0 30:-6.0
+    speech voices:   67500 frames   9 rows  v2 excess  +7.7/ +7.7  xFL:-11.2 xBL:-11.2 xFR:-11.2 xBR:-11.2 C:-11.2
+    speech voices:   34876 frames   6 rows  v2 excess  +3.0/ +3.0  xFL:-24.6 xFR:-24.6 C:-21.6 12:-23.6
+[frames] A: pre - speech = +2.51 dB; idle - speech = +0.24 dB
+[frames] B - A: speech +7.19 dB, idle -0.51 dB, pre -0.05 dB; B's idle - speech -7.46 dB
+[frames] D - A: speech -1.11 dB, idle -5.84 dB, pre -4.07 dB; D's idle - speech -4.49 dB
+Q: A pre - cutscene = +2.31 dB (>= 6): FAIL
+L: spread voices in A's cutscene: 54; best (18, 64, 7500, 10.67, 'FL:-6.0 FR:-6.0 C:-6.0 BL:-6.0 BR:-6.0 xFL:-6.0 xFR:-6.0'): PASS
+U: cutscene B - A = +1.03 dB ([+3.0, +8.5]): FAIL
+S: pre B - A = -0.05 dB (|x| <= 1.5): PASS
+DL: pre D - A = -4.07 dB ([-8, -4]): PASS
+DL: cutscene D - A = -4.63 dB ([-4, +1]): FAIL
+DL: balance gain D over A = -0.56 dB ([+2, +7]): FAIL
+DC: D gp_us + ep_us/8 = 286 us of 667 ([250, 700]): PASS
+DC: starve D 0.0000% vs A 0.0000% (D - A >= 1 point): FAIL
+C L: clipped C1 84 vs C0 84 (<= 2610): PASS; acrms C1 -14.06 C0 -14.08 (+0.02, |x| <= 1.5): PASS
+C R: clipped C1 73 vs C0 73 (<= 2588): PASS; acrms C1 -14.06 C0 -14.08 (+0.02, |x| <= 1.5): PASS

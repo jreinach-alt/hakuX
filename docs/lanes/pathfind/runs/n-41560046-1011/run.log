@@ -1,0 +1,32 @@
+pathfind: X Men The Official Game Europe (41560046) on nova: /storage/E6C6-D7AA/Games/XBox/41560046-X_Men_The_Official_Game_Europe.xiso.iso
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 41560046 any, loaded none
+[   9.4s] #  1 black             fast    wait                     Early boot screen with no readable content yet; likely still loading before first publishe
+[  19.0s] #  2 loading           fast    wait                     Loading screen with progress bar visible, no interactive prompt yet; wait for it to finish
+[  28.3s] #  3 publisher_logo    fast    START A                  Marvel publisher logo splash; skip with START then A per convention
+[  33.7s] #  4 title_screen      replay  START                    replay step 2: Title screen shows PRESS START prompt; press START to proceed to main menu
+[  42.9s] #  5 loading           fast    wait                     This looks like a stylized loading/transition animation (circular dial) with no interactiv
+[  48.0s] #  6 profile_creation  replay  A                        replay step 4: Profile list with NEW slots, first one highlighted; select it to create a n
+[  58.8s] #  7 name_entry        fast    START                    Keyboard cursor is on letter A; per convention press START to jump to Done/Accept/CREATE r
+[  66.9s] #  8 name_entry        fast    A                        Error dialog requires acknowledging before retrying name entry; A CONTINUE is highlighted
+[  79.7s] #  9 name_entry        fast    A DOWN DOWN DOWN DOWN RIGHT A Empty name was rejected last time; type a letter first, then navigate down to CREATE and c
+[  94.7s] # 10 name_entry        fast    RIGHT A                  Name 'A' already entered; cursor is on MORE, need to move right to CREATE and confirm
+[ 103.8s] # 11 save_load_prompt  fast    A                        Save prompt after profile creation; choose Yes to proceed with saving and continue toward 
+[ 112.2s] # 12 save_load_prompt  fast    A                        Save completed confirmation dialog; press A to continue past it toward gameplay
+[ 124.2s] # 13 cutscene          fast    A START                  No player HUD or controllable character visible, just a cinematic vault/chamber render fol
+[ 129.7s] # 14 cutscene          repeat  A START                  repeat A: it advanced the cutscene
+[ 138.9s] # 15 submenu           fast    A                        This is a mission select/briefing screen, not gameplay yet; pressing A starts the mission
+[ 146.9s] # 16 submenu           fast    A                        Difficulty select dialog with HERO already highlighted as default; confirm with A to proce
+[ 155.4s] # 17 cutscene          fast    A START                  This is a loading/transition visual effect (likely a mission intro flare) following the di
+[ 160.6s] # 18 black             black   wait                     black frame
+[ 168.8s] # 19 gameplay          fast    STICK:up:1.5             Player character Wolverine is visible with claws extended facing an enemy, objective HUD b
+[ 187.5s] # 20 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.235, under input 0.322
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 191 s: median 51.0, share>=30 1.0 over 163 samples
+hold-play: fps at 309 s: median 48.0, share>=30 1.0 over 254 samples
+hold-play: validity check stop 0 s (hold 608 s of play, verdict 610.4)
+hold-play: not held 608/600 s of play; verdict stops the hold: fps_ok 1.0, crash False, hang False
+held X Men The Official Game Europe for 612s
+VERDICT X Men The Official Game Europe ? PASS None gameplay=611.7s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0001 play_share=0.9995 fps_excluded=1.3s
+{"name": "X Men The Official Game Europe", "device": "nova", "result": "gameplay", "minutes": 3.12, "model_calls": 24, "steps": 20, "replayed": 2, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-41560046-1011/frames/019-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "41560046": "c142752c37e1", "4156005D": "a1647bf6ddb4", "4253

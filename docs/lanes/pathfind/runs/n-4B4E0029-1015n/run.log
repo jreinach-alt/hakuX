@@ -1,0 +1,75 @@
+pathfind: Dance Dance Revolution Ultramix 3 USA (4B4E0029) on nova: /storage/E6C6-D7AA/Games/XBox/4B4E0029-Dance_Dance_Revolution_Ultramix_3_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4B4E0029 any, loaded none
+[  10.8s] #  1 black             fast    wait                     The emulator has not yet loaded the game; this appears to be an Android loading/app icon s
+[  20.1s] #  2 publisher_logo    fast    A                        Standard publisher logo screen before title; skip it with A per global hints
+[  28.1s] #  3 loading           fast    A                        Safety/legal disclaimer screen before title, matching known DDR Ultramix pattern; dismiss 
+[  34.2s] #  4 loading           fast    wait                     This is a loading screen between the disclaimer and the main menu; no input needed, just w
+[  41.3s] #  5 title_screen      fast    START                    Title logo screen shown before main menu; START to proceed per global hints
+[  49.9s] #  6 loading           fast    wait                     A save indicator is active; this is a system-level save operation, not a menu or gameplay,
+[  58.5s] #  7 main_menu         fast    A                        This is the game mode selection menu; PARTY MODE is the default top entry and fastest path
+[  66.5s] #  8 submenu           fast    A                        Style select screen with 4PANELS already highlighted as the default standard mode; confirm
+[  75.8s] #  9 submenu           fast    A                        This is a player join/setup screen requiring A to join player 1 before proceeding to song 
+[  85.7s] # 10 submenu           fast    A                        Song select screen with RANDOM highlighted as the current selection; confirming with A sho
+[  96.2s] # 11 gameplay          fast    wait                     The dance step arrow panel, player HUD, score bar and song title confirm active rhythm gam
+[ 112.4s] # 12 probe             probe   LEFT DOWN UP STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.811, under input 0.801
+[ 119.7s] # 13 loading           fast    wait                     No DDR HUD, arrows, or score visible - this looks like a transition/loading effect between
+[ 127.6s] # 14 results           fast    A START A                This is a post-song grading/results screen, not active gameplay; the arrows already finish
+[ 137.5s] # 15 loading           fast    wait                     Loading screen between song select and gameplay; no HUD or arrows visible yet, just wait f
+[ 146.0s] # 16 gameplay          fast    LEFT DOWN LEFT           Active DDR song is in progress with scrolling arrows, score HUD, and player panel; this is
+[ 164.4s] # 17 probe             probe   LEFT DOWN LEFT LEFT DOWN STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.969, under input 0.107
+[ 168.7s] # 18 results           fast    A START A                Song ended with a failing grade (E); this is a results screen, not gameplay. Need to confi
+[ 181.8s] # 19 loading           fast    wait                     READY banner indicates the song is about to start but step arrows aren't yet scrolling for
+[ 188.5s] # 20 gameplay          fast    LEFT DOWN UP RIGHT       Scrolling step arrows, live score HUD, and player panel confirm active rhythm gameplay is 
+[ 206.1s] # 21 probe             probe   LEFT DOWN UP RIGHT LEFT DOWN UP STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.945, under input 0.384
+claim: 3 live reads with self-moving refused probes: entering the hold
+[ 242.2s] # 30 retracted         probe   wait                     retracted after 30 s: This is a post-song results/score screen (grade E, BOO count), not a
+[ 253.3s] # 31 results           fast    A                        Song failed with grade E; this is a results/score screen not gameplay. Need to press throu
+[ 261.5s] # 32 submenu           fast    A                        Song select screen with RANDOM already chosen as the default selection; confirm with A to 
+[ 271.6s] # 33 loading           fast    wait                     This is the song ready/intro screen before gameplay starts; arrows are static, not scrolli
+[ 278.2s] # 34 gameplay          fast    LEFT DOWN UP RIGHT       Scrolling step arrows, live judgment (BOO) and score HUD confirm active rhythm gameplay; s
+[ 296.8s] # 35 probe             probe   LEFT DOWN UP RIGHT LEFT DOWN UP HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.706, under input 0.761
+[ 300.6s] # 36 results           fast    A                        Song failed with grade E; this is a results/score screen, not gameplay. Need to press thro
+[ 308.2s] # 37 submenu           fast    A                        Song select screen with RANDOM already chosen as default selection; confirm with A to proc
+[ 319.3s] # 38 loading           fast    wait                     Static step arrows and zero score indicate this is the pre-song ready/intro screen before 
+[ 327.3s] # 39 gameplay          fast    LEFT DOWN UP RIGHT LEFT DOWN UP RIGHT Scrolling step arrows, live judgment text (BOO), and the score/player HUD confirm active r
+[ 344.8s] # 40 probe             probe   LEFT DOWN UP RIGHT LEFT DOWN UP HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.986, under input 0.911
+[ 349.9s] # 41 results           fast    A                        This is a post-song grade/score screen, not gameplay; need to press through with A to retu
+[ 358.2s] # 42 submenu           fast    A                        Song select screen with RANDOM already chosen as default; confirm with A to proceed to gam
+[ 366.3s] # 43 loading           fast    wait                     This is the song ready/preview screen after confirming song select, step arrows are static
+[ 374.2s] # 44 gameplay          fast    LEFT DOWN UP RIGHT LEFT DOWN UP RIGHT Active dance gameplay with live step arrows scrolling and judgment feedback (BOO) and scor
+[ 393.7s] # 45 probe             probe   LEFT DOWN UP RIGHT LEFT DOWN UP STICK:up:2 STICK:left:1.2 STICK:right:1.2 control 0.835, under input 0.787
+claim: 3 live reads with self-moving refused probes: entering the hold
+[ 429.6s] # 54 retracted         probe   wait                     retracted after 30 s: This is the post-song results screen showing grade E and score tally
+[ 433.5s] # 55 results           fast    A A A                    This is the grade/score tally screen after a song, not gameplay; press A to advance past i
+[ 443.3s] # 56 loading           fast    wait                     Song is loading before gameplay starts; no step arrows active yet, just loading screen wit
+[ 451.8s] # 57 gameplay          fast    LEFT DOWN UP RIGHT       Live step arrows scrolling with HUD and score visible confirms active dance gameplay in pr
+[ 467.2s] # 58 probe             probe   LEFT DOWN UP RIGHT STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.859, under input 0.502
+[ 470.7s] # 59 results           fast    A A A                    Song failed, this is a results screen not gameplay; need to press A to advance past it to 
+[ 481.9s] # 60 submenu           fast    A                        Song select screen with RANDOM already highlighted; confirm with A to pick a song and proc
+[ 490.7s] # 61 gameplay          fast    LEFT DOWN UP RIGHT       Step arrows are scrolling with active HUD and score counter, song title 'Mi Alma Uzomaili'
+[ 510.4s] # 62 probe             probe   LEFT DOWN UP RIGHT LEFT DOWN UP RT:3 RT+left:1.2 RT+right:1.2 control 0.484, under input 0.840
+[ 515.5s] # 63 results           fast    A A A                    Song failed with grade E; this is a results/scoring screen, need A to advance back to song
+[ 525.3s] # 64 loading           fast    wait                     This is a pre-song READY countdown screen before the step arrows start scrolling live; wai
+[ 532.3s] # 65 gameplay          fast    LEFT DOWN UP RIGHT       Active DDR gameplay with scrolling step arrows, combo counter, and score HUD confirms the 
+[ 552.3s] # 66 probe             probe   LEFT DOWN UP RIGHT LEFT DOWN UP RT:3 RT+left:1.2 RT+right:1.2 control 0.690, under input 0.102
+claim: 3 live reads with self-moving refused probes: entering the hold
+[ 584.6s] # 74 retracted         probe   wait                     retracted after 30 s: This is the song selection menu, not active gameplay
+[ 589.2s] # 75 loading           fast    wait                     This is a pre-song READY countdown screen before step arrows start scrolling live; the wor
+[ 596.8s] # 76 gameplay          fast    LEFT DOWN UP RIGHT       Active rhythm gameplay with scrolling step arrows, score HUD, and judgment feedback confir
+[ 616.0s] # 77 probe             probe   LEFT DOWN UP RIGHT LEFT DOWN UP HOLD:X:3 STICK:left:1.2 STICK:right:1.2 control 0.538, under input 0.550
+[ 620.5s] # 78 gameplay          fast    LEFT DOWN UP RIGHT       Active rhythm gameplay with scrolling arrows, combo counter, judgment feedback (PERFECT) a
+[ 636.5s] # 79 probe             probe   LEFT DOWN UP RIGHT HOLD:X:3 STICK:left:1.2 STICK:right:1.2 control 0.549, under input 0.630
+[ 640.8s] # 80 gameplay          fast    LEFT DOWN UP RIGHT       Scrolling step arrows, judgment feedback and score HUD confirm live rhythm gameplay in pro
+[ 658.7s] # 81 probe             probe   LEFT DOWN UP RIGHT LT:2 LT+left:1.2 LT+right:1.2 control 0.885, under input 0.193
+claim: 3 live reads with self-moving refused probes: entering the hold
+hold-play: genre other, need 630 s of play
+hold-play: fps at 190 s: median 59.0, share>=30 0.978 over 184 samples
+hold-play: fps at 301 s: median 59.0, share>=30 0.957 over 280 samples
+hold-play: validity check stop 0 s (hold 637 s of play, verdict 637.0)
+hold-play: not held 637/630 s of play; verdict stops the hold: fps_ok 0.9515, crash False, hang False
+held Dance Dance Revolution Ultramix 3 USA for 683s
+VERDICT Dance Dance Revolution Ultramix 3 USA ? FAIL(hitches: a 852 ms stall after the first 60 s (bar 500 ms)) gameplay=682.3s fps_ok=0.9482 crash=False hang=False audio_short=0.0 hitches=8/0.771pm worst_ms=852.2 static_frac=0.0 play_share=0.9347 fps_excluded=42.8s
+{"name": "Dance Dance Revolution Ultramix 3 USA", "device": "nova", "result": "gameplay", "minutes": 10.98, "model_calls": 73, "steps": 58, "replayed": 0, "reason": "four probes refused", "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4B4E0029-1015n/frames/080-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

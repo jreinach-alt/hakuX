@@ -6,3 +6,7 @@
 - Manhunt USA (54540019, nova, pathfind 2026-10-08): gameplay in 2.3 min via publisher_logo START A -> main_menu A -> submenu A -> save_load_prompt B -> cutscene A
 - Grand Theft Auto III (5454000E, nova, pathfind 2026-10-11): gameplay in 2.2 min via intro_video A -> title_screen START -> cutscene A
 - Grand Theft Auto Vice City (5454000F, nova, pathfind 2026-10-11): gameplay in 1.4 min via publisher_logo A -> cutscene A
+- 4x4 Evo 2 (54540001, nova, pathfind 2026-10-13): gameplay in 3.7 min via publisher_logo A -> title_screen START -> main_menu A -> submenu A -> submenu UP A
+- Max Payne USA (54540003, nova, pathfind 2026-10-14): gameplay in 2.4 min via cutscene START A -> loading A
+- Torino 2006 Europe En Fr De Es It (545400A9, nova, pathfind 2026-10-15): gameplay in 17.6 min via publisher_logo A -> main_menu DOWN A -> submenu A -> submenu LEFT A -> submenu A -> submenu DOWN A -> submenu Y -> submenu UP A -> submenu Y -> submenu BACK -> submenu START -> submenu X -> name_entry START -> name_entry UP UP UP A DOWN DOWN DOWN A -> submenu DOWN RIGHT A -> submenu UP UP A -> submenu A -> cutscene A -> submenu A
+- NBA 2K7 USA Europe (545400AE, nova, pathfind 2026-10-16): gameplay in 4.7 min via publisher_logo A -> title_screen START -> submenu A -> name_entry START -> submenu A -> main_menu A -> submenu RIGHT -> submenu LEFT -> submenu A -> loading A

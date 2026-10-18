@@ -1,5 +1,37 @@
 # Changelog
 
+> **GPU driver.** hakuX is tested only with the Turnip Adreno Driver T30
+> (@Mr_Purple_666). The handheld's own driver and other Turnip builds are
+> untested and draw some games wrongly.
+> [Which driver, and how to install it.](https://github.com/jreinach-alt/hakuX/blob/home/docs/gpu-driver.md)
+
+## v0.5.2 — 2026-10-17
+
+Halo: Combat Evolved's opening cinematic was running at 17 fps on Android
+handhelds; it now holds about 29 fps through the hangar briefing. The fix
+answers the game's occlusion (visibility) tests as soon as they are queued
+instead of waiting on the GPU to confirm each one, skips a slower texture
+path the cinematic's colour surfaces were taking, and stops the CPU
+translator recompiling around one floating-point instruction. Answering
+occlusion tests early means a visual effect can show a frame
+late at a camera cut. Mortal Kombat: Shaolin Monks' Goro's Lair cutscene
+rises from about 27.5-29 fps to about 54 fps with the texture-path change.
+
+See [docs/releases/v0.5.2.md](docs/releases/v0.5.2.md).
+
+## v0.5.1 — 2026-10-16
+
+The app is renamed hakuX CE and gets a new icon. Halo's menu ring no longer
+jumps back in bursts: float-to-integer stores now round the way the Xbox
+does. Also fixed: a game with bad audio data no longer closes the emulator,
+a texture pointing outside video memory draws blank instead of crashing,
+out-of-range ADPCM audio plays instead of producing noise, a corrupt
+pipeline cache is discarded instead of crashing at start, a missing audio
+device is no longer fatal, and the setup wizard rejects a BIOS file that is
+not 256 KB, 512 KB or 1 MB.
+
+See [docs/releases/v0.5.1.md](docs/releases/v0.5.1.md).
+
 ## v0.5.0 — 2026-10-12
 
 The first release rated by play rather than by pixel counts alone: 52 titles
@@ -42,6 +74,8 @@ texture formats, render targets, depth, fog and fixed-function lighting all
 move closer to the hardware. Several emulator aborts and Vulkan
 resource-lifetime bugs are fixed, and Android gets a clean exit on guest
 power-off, a separate debug build id, and emulator stderr reaching logcat.
+Skipping the intro video in Crimson Skies: High Road to Revenge no longer
+closes the emulator.
 
 See [`docs/releases/v0.4.0-j1.md`](docs/releases/v0.4.0-j1.md).
 

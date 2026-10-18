@@ -1,0 +1,67 @@
+taken: nova by lane.pathfind
+NOT IDLE: nova is held but busy -- do not touch it yet:
+dispatcher pid 518495 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+running: 1-1791245535-lane.frametrace-680559 on nova
+run: hold.sh wait-idle nova <timeout_s>, and touch the device only on exit 0
+waiting for nova: dispatcher pid 518495 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+running: 1-1791245535-lane.frametrace-680559 on nova
+idle: nova is held and runs nothing
+held at 17:54:41
+pathfind: NBA 2K3 (None) on nova: /storage/E6C6-D7AA/Games/XBox/NBA_2K3.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: - any, loaded all goldens (title not identified)
+[  10.2s] #  1 publisher_logo    fast    START                    Boot splash or logo animation with no menu or HUD; no input is needed yet, so I'm waiting 
+[  18.6s] #  2 publisher_logo    fast    A                        Publisher logo still showing; skipping it with A per the intro/logo rule. Cursor not appli
+[  26.1s] #  3 publisher_logo    fast    A                        Publisher/developer logo still playing with no menu. Per the logo rule, skip with A; the c
+[  34.1s] #  4 publisher_logo    fast    A                        This is a legal/copyright notice card in the intro sequence before the title, not gameplay
+[  38.4s] #  5 black             black   wait                     black frame
+[  46.4s] #  6 intro_video       fast    A                        Abstract animated tunnel is an intro/logo-style sequence before any title or menu; no curs
+[  50.6s] #  7 black             black   wait                     black frame
+[  57.5s] #  8 title_screen      fast    START                    Title screen with a 'Press START' prompt; START advances to the main menu.
+[  66.1s] #  9 main_menu         fast    A                        Main menu with Quick Game highlighted. Quick Game is the fastest path to a game; period le
+[  76.4s] # 10 submenu           fast    RIGHT START              Team select with controller 1 in the middle column, unassigned. Per the run goal: one RIGH
+[  86.9s] # 11 loading           fast    wait                     A team info card after the team-select START, not a menu and not gameplay. Nothing to pres
+[  95.6s] # 12 loading           fast    wait                     Team info card shown after the team-select START, not a menu and not gameplay. Nothing to 
+[ 104.5s] # 13 loading           fast    wait                     Team info card after the team-select START, not a menu and not gameplay; nothing to choose
+[ 114.6s] # 14 submenu           fast    START                    Team select still showing a team-card overlay; the controller 1 assignment from the earlie
+[ 123.6s] # 15 pause             fast    A                        Pause menu with Resume highlighted at the top. Selecting Resume with A returns to the game
+[ 132.8s] # 16 cutscene          fast    START                    Pregame lineup card, not gameplay and not a menu; it has no selectable item and advances o
+[ 144.6s] # 17 pause             fast    B                        Pause panel with Resume lit; two A presses returned here, so A on Resume isn't closing it.
+[ 152.5s] # 18 pause             fast    START                    Pause menu with Resume highlighted. A and B both returned here, so I'm trying START, the p
+[ 160.2s] # 19 submenu           fast    wait                     Pregame starting-lineup card, not gameplay and not a menu with a selectable item; it advan
+[ 170.2s] # 20 cutscene          fast    START                    Pregame lineup or introduction view with players standing in lines and no selectable item.
+[ 184.8s] # 21 pause             fast    DOWN UP A                Pause menu with Resume highlighted and the arrow on it. A, B and START each returned here,
+[ 197.6s] # 22 cutscene          fast    START                    This is the pregame introduction card, not a menu and not gameplay. It has no selectable i
+[ 206.3s] # 23 pause             fast    B                        Pause menu is open with Resume highlighted by the arrow. Prior A and B presses returned he
+[ 217.0s] # 24 pause             fast    HOLD:A:1.5               Pause menu with Resume still highlighted. A, B, START and DOWN UP A have all returned here
+[ 227.7s] # 25 gameplay          fast    wait                     Live court with the HUD-style player nameplate and players in play positions; the pause me
+[ 244.4s] # 26 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.523, under input 0.457
+[ 250.2s] # 27 cutscene          fast    A                        Pregame introduction, not play. The last START sent the game back to the pause menu, so th
+[ 262.9s] # 28 gameplay          fast    wait                     Live court with the HUD and the game clock counting down (4:59), and no menu is open. The 
+[ 281.3s] # 29 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.541, under input 0.591
+[ 285.8s] # 30 gameplay          fast    wait                     Live court with HUD, game clock counting (4:59 -> 4:43) and no menu open; the quarter leng
+[ 307.2s] # 31 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 STICK:left:1.2 STICK:right:1.2 control 0.408, under input 0.426
+[ 315.8s] # 32 gameplay          fast    wait                     The HUD is up, the game clock is counting down between captures, and no menu is open, so t
+[ 336.7s] # 33 probe             probe   STICK:down:1.5 STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.634, under input 0.408
+[ 345.3s] # 34 gameplay          fast    wait                     HUD and court are up with no menu, so this is the match. The 5-second inbound violation ba
+[ 366.5s] # 35 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.432, under input 0.508
+[ 378.6s] # 36 unknown           fast    wait                     The ghosted, multi-exposure frame with a close-up camera looks like a replay or camera tra
+[ 386.3s] # 37 gameplay          fast    wait                     HUD and court are live with no menu open; the 5-second violation banner is a brief stoppag
+[ 410.8s] # 38 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.391, under input 0.499
+[ 417.6s] # 39 gameplay          fast    wait                     Live play with HUD and running clock and no menu, so this is the match; the team-select as
+[ 432.6s] # 40 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.619, under input 0.507
+[ 437.1s] # 41 gameplay          fast    wait                     Live play with HUD, running clock and scoreboard, no menu. Previous probes were refused by
+[ 449.2s] # 42 probe             probe   STICK:left:1.5           control 0.024, under input 0.515
+hold-play: sports look {'clock': '3:39', 'period': '1st', 'human_controlled': True, 'why': 'Scoreboard reads 1st, NJ 7 – LAL 0 at 3:39; a green-marked controlled player (name tag with health bar) is in the foreground in the navy NJ jersey.'}
+hold-play: genre team, need 600 s of play
+hold-play: fps at 190 s: median 41.0, share>=30 0.869 over 122 samples
+hold-play: fps at 308 s: median 42.0, share>=30 0.907 over 204 samples
+hold-play: HELD 607/600 s of play; 
+held NBA 2K3 for 617s
+VERDICT NBA 2K3 ? PASS None gameplay=615.3s fps_ok=0.9204 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.1545 play_share=0.9881 fps_excluded=9.2s
+{"name": "NBA 2K3", "device": "nova", "result": "gameplay", "minutes": 7.49, "model_calls": 51, "steps": 42, "replayed": 0, "reason": "four probes refused", "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nba-2k3/hold3/frames/041-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256
+pathfind rc=0 at 18:13:14
+released: nova by lane.pathfind
+released rc=0

@@ -67,6 +67,7 @@
 
 #include <stb_image.h>
 #include <locale.h>
+#include <dirent.h>
 
 #ifdef __ANDROID__
 #include <android/log.h>
@@ -390,6 +391,16 @@ static void android_blit_frame(GLuint tex, bool flip)
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     glBindVertexArray(0);
     android_log_gl_error("blit-draw");
+}
+
+/* The window black, as the console's output is while the guest blanks it. */
+static void android_blank_frame(void)
+{
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    glDisable(GL_SCISSOR_TEST);
+    glClearColor(0, 0, 0, 0);
+    glClear(GL_COLOR_BUFFER_BIT);
 }
 #endif
 
@@ -1152,8 +1163,16 @@ static void sdl2_display_very_early_init(DisplayOptions *o)
     SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
 #else
     bool use_vulkan = (g_config.display.renderer == CONFIG_DISPLAY_RENDERER_VULKAN);
+    /*
+     * Nothing makes a Vulkan surface of this window (the frame reaches it
+     * through GL either way), and SDL's offscreen driver cannot create a
+     * Vulkan window at all, so a windowed run without a screen (#1045's
+     * present probe) asks for a GL one.
+     */
+    const char *vdrv = SDL_GetCurrentVideoDriver();
+    bool vk_window = use_vulkan && !(vdrv && !strcmp(vdrv, "offscreen"));
     SDL_WindowFlags window_flags = (SDL_WindowFlags)(
-        (use_vulkan ? SDL_WINDOW_VULKAN : SDL_WINDOW_OPENGL) | 
+        (vk_window ? SDL_WINDOW_VULKAN : SDL_WINDOW_OPENGL) |
         SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
 #endif
 
@@ -2018,6 +2037,413 @@ static void android_limiter_wait(int64_t deadline, int64_t now)
 }
 #endif
 
+/*
+ * [boot1045] The present probe (#1045, lane.bootstatic1017): what the window
+ * shows from the first present, and where it came from. The frame dumper
+ * (XEMU_FRAME_DUMP) runs on guest flips, so it sees neither the VGA fallback
+ * in sdl2_gl_refresh nor the window.
+ *
+ * HAKUX_BOOTPROBE=1 (or =<absolute dir>) arms it. For the first
+ * HAKUX_BOOTPROBE_SECS (default 20) seconds of presents it writes one line per
+ * present to <dir>/boot1045_log.txt: the source drawn (n: the nv2a display
+ * image, v: the VGA fallback, c: the CPU readback), the scan-out registers,
+ * numbers for guest RAM at the scan-out address, and numbers for the frame
+ * read back from the window. Each new frame (by hash) goes to
+ * boot1045_f<n>.ppm, at most 320 pixels wide, up to HAKUX_BOOTPROBE_MAXDUMP
+ * (default 600); after 30 presents of the nv2a source in a row only every
+ * 10th is written. While the VGA fallback is drawn in a real mode (bpp > 0, at
+ * least 320x200), guest RAM at the scan-out address goes to boot1045_r<n>.bin,
+ * one screen of it at the logged line offset, so the frame can be decoded from
+ * the RAM it shows: each new image by hash, at least 4 presents apart, up to
+ * 24; and on every change of the start address or SR01, the present before and
+ * this one, up to 16, because the desktop draws the VGA image one refresh late.
+ * For VGA fallback presents the line also carries tnb/tlit/tgrn, the same
+ * numbers taken over the console surface the texture was made from: what a
+ * present path that ignores SR01's screen-off would show. The dir defaults to
+ * the app's external files dir on Android and XEMU_FRAME_DUMP_DIR (or .) on
+ * the desktop. Unset, it is one getenv.
+ */
+static struct {
+    int armed; /* -1 not read yet, 0 off, 1 recording, 2 done */
+    char dir[512];
+    FILE *log;
+    int64_t t0_ns;
+    int64_t secs;
+    unsigned n;
+    unsigned dumps;
+    unsigned max_dumps;
+    uint32_t last_hash;
+    uint32_t last_ram_h;
+    unsigned ram_dumps;
+    unsigned edge_dumps;
+    unsigned last_ram_dump_n;
+    uint32_t last_start;
+    uint8_t last_sr01;
+    uint8_t *ram_prev; /* the previous present's screen of RAM, real mode */
+    size_t ram_prev_len;
+    unsigned ram_prev_n;
+    int ram_prev_ok;
+    int ram_prev_written;
+    char last_src;
+    unsigned src_run;
+    uint8_t *px;
+    size_t px_size;
+    uint8_t *ds;
+    size_t ds_size;
+    int t_valid;
+    double t_nb, t_lit, t_grn;
+} boot1045 = { .armed = -1 };
+
+static void G_GNUC_PRINTF(1, 2) boot1045_say(const char *fmt, ...)
+{
+    char buf[1024];
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+#ifdef __ANDROID__
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-boot1045", "%s", buf);
+#endif
+    fprintf(stderr, "[boot1045] %s\n", buf);
+}
+
+static uint32_t boot1045_fnv(const uint8_t *p, size_t n, uint32_t h)
+{
+    for (size_t i = 0; i < n; i++) {
+        h = (h ^ p[i]) * 16777619u;
+    }
+    return h;
+}
+
+static void boot1045_arm(void)
+{
+    const char *v = getenv("HAKUX_BOOTPROBE");
+    boot1045.armed = 0;
+    if (!v || !v[0] || !strcmp(v, "0")) {
+        return;
+    }
+    if (v[0] == '/') {
+        snprintf(boot1045.dir, sizeof(boot1045.dir), "%s", v);
+    } else {
+#ifdef __ANDROID__
+        const char *ext = SDL_AndroidGetExternalStoragePath();
+        snprintf(boot1045.dir, sizeof(boot1045.dir), "%s", ext ? ext : ".");
+#else
+        const char *fd = getenv("XEMU_FRAME_DUMP_DIR");
+        snprintf(boot1045.dir, sizeof(boot1045.dir), "%s",
+                 fd && fd[0] ? fd : ".");
+#endif
+    }
+    /* A previous run's files would otherwise be pulled with this run's. */
+    DIR *dh = opendir(boot1045.dir);
+    if (dh) {
+        struct dirent *de;
+        while ((de = readdir(dh)) != NULL) {
+            if (!strncmp(de->d_name, "boot1045_", 9)) {
+                char p[800];
+                snprintf(p, sizeof(p), "%s/%s", boot1045.dir, de->d_name);
+                unlink(p);
+            }
+        }
+        closedir(dh);
+    }
+    char path[800];
+    snprintf(path, sizeof(path), "%s/boot1045_log.txt", boot1045.dir);
+    boot1045.log = fopen(path, "w");
+    if (!boot1045.log) {
+        boot1045_say("off: cannot open %s: %s", path, strerror(errno));
+        return;
+    }
+    const char *s = getenv("HAKUX_BOOTPROBE_SECS");
+    boot1045.secs = (s && atoi(s) > 0) ? atoi(s) : 20;
+    s = getenv("HAKUX_BOOTPROBE_MAXDUMP");
+    boot1045.max_dumps = (s && s[0]) ? (unsigned)atoi(s) : 600;
+    boot1045.t0_ns = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
+    boot1045.armed = 1;
+    boot1045_say("armed: dir=%s secs=%" PRId64 " maxdump=%u wall_us=%" PRId64
+                 " gl=%s", boot1045.dir, boot1045.secs, boot1045.max_dumps,
+                 g_get_real_time(), (const char *)glGetString(GL_RENDERER));
+}
+
+/*
+ * The window's numbers (centre half, neighbour difference, lit and green
+ * shares) taken over the console surface the VGA fallback texture was just
+ * made from. Called right after xb_surface_gl_create_texture. At 4 bytes a
+ * pixel the green byte is the second in both byte orders, so the numbers do
+ * not depend on which of R and B comes first.
+ */
+static void boot1045_surface(DisplaySurface *s)
+{
+    if (boot1045.armed < 0) {
+        boot1045_arm();
+    }
+    if (boot1045.armed != 1 || !s || surface_bytes_per_pixel(s) != 4) {
+        return;
+    }
+    int w = surface_width(s), h = surface_height(s);
+    int stride = surface_stride(s);
+    const uint8_t *data = surface_data(s);
+    if (!data || w < 2 || h < 2) {
+        return;
+    }
+    uint64_t snb = 0, cnt = 0, lit = 0, grn = 0;
+    for (int y = h / 4; y < h * 3 / 4; y++) {
+        const uint8_t *row = data + (size_t)y * stride;
+        for (int x = w / 4; x < w * 3 / 4; x++) {
+            const uint8_t *p = row + (size_t)x * 4;
+            int c0 = p[0], g = p[1], c2 = p[2];
+            snb += abs(c0 - p[4]) + abs(g - p[5]) + abs(c2 - p[6]);
+            lit += MAX(c0, MAX(g, c2)) > 24;
+            grn += g >= 48 && g > c0 + 32 && g > c2 + 32;
+            cnt++;
+        }
+    }
+    if (!cnt) {
+        return;
+    }
+    boot1045.t_nb = (double)snb / (3.0 * cnt);
+    boot1045.t_lit = (double)lit / cnt;
+    boot1045.t_grn = (double)grn / cnt;
+    boot1045.t_valid = 1;
+}
+
+static int boot1045_write_ram(unsigned n, const uint8_t *p, size_t len)
+{
+    char path[800];
+    snprintf(path, sizeof(path), "%s/boot1045_r%05u.bin", boot1045.dir, n);
+    FILE *f = fopen(path, "wb");
+    if (!f) {
+        return 0;
+    }
+    fwrite(p, 1, len, f);
+    fclose(f);
+    return 1;
+}
+
+/*
+ * Called after the frame is drawn into the window's back buffer and before the
+ * swap, with the GL context current. `src` is which texture was drawn.
+ */
+static void boot1045_present(struct sdl2_console *scon, char src, GLuint tex,
+                             bool flip)
+{
+    if (boot1045.armed < 0) {
+        boot1045_arm();
+    }
+    if (boot1045.armed != 1) {
+        return;
+    }
+    int64_t now = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
+    if (now - boot1045.t0_ns > boot1045.secs * NANOSECONDS_PER_SECOND) {
+        boot1045_say("done: %u presents, %u frames written", boot1045.n,
+                     boot1045.dumps);
+        fclose(boot1045.log);
+        boot1045.log = NULL;
+        g_free(boot1045.px);
+        g_free(boot1045.ds);
+        g_free(boot1045.ram_prev);
+        boot1045.px = boot1045.ds = boot1045.ram_prev = NULL;
+        boot1045.armed = 2;
+        return;
+    }
+    unsigned n = boot1045.n++;
+    boot1045.src_run = (src == boot1045.last_src) ? boot1045.src_run + 1 : 0;
+    boot1045.last_src = src;
+
+    /* The scan-out state, read without the BQL: a probe's snapshot. */
+    NV2AState *d = g_nv2a;
+    uint32_t start = 0, lo = 0, gc = 0, pv = 0;
+    int vw = 0, vh = 0, bpp = -1;
+    uint8_t cr28 = 0, gr06 = 0, ari = 0, sr01 = 0, cr17 = 0;
+    uint32_t ram_nz = 0, ram_len = 0, ram_h = 2166136261u;
+    double ram_nb = 0;
+    if (d) {
+        VGACommonState *s = &d->vga;
+        VGADisplayParams vp;
+        s->get_params(s, &vp);
+        start = (uint32_t)d->pcrtc.start;
+        lo = vp.line_offset;
+        s->get_resolution(s, &vw, &vh);
+        bpp = s->get_bpp(s);
+        cr28 = s->cr[0x28];
+        gr06 = s->gr[0x06]; /* graphics misc: bit 0 = graphics mode */
+        ari = s->ar_index;  /* bit 5 = palette address source (0 blanks) */
+        sr01 = s->sr[0x01]; /* clocking mode: bit 5 = screen off */
+        cr17 = s->cr[0x17]; /* CRTC mode: bit 7 = sync enable */
+        gc = d->pramdac.general_control;
+        pv = d->pvideo.regs[NV_PVIDEO_BUFFER];
+        if (s->vram_ptr && start < s->vram_size) {
+            ram_len = MIN(65536u, s->vram_size - start);
+            const uint8_t *p = s->vram_ptr + start;
+            uint64_t nb = 0;
+            for (uint32_t i = 0; i < ram_len; i++) {
+                ram_nz += p[i] != 0;
+                if (i >= 4) {
+                    nb += abs((int)p[i] - (int)p[i - 4]);
+                }
+            }
+            ram_nb = ram_len > 4 ? (double)nb / (ram_len - 4) : 0;
+            ram_h = boot1045_fnv(p, ram_len, ram_h);
+        }
+    }
+    /*
+     * RAM dumps, in a real mode only: d1 spent its whole budget on the reset
+     * state (8x1, bpp 0). An edge is a change of start or SR01; the desktop
+     * draws the image the VGA update made one refresh earlier, so an edge
+     * writes the present before it as well.
+     */
+    int ram_dumped = 0;
+    bool real = bpp > 0 && vw >= 320 && vh >= 200;
+    bool edge = n > 0 && (start != boot1045.last_start ||
+                          sr01 != boot1045.last_sr01);
+    if (d && src == 'v' && real && d->vga.vram_ptr &&
+        start < d->vga.vram_size) {
+        const uint8_t *p = d->vga.vram_ptr + start;
+        size_t len = lo ? (size_t)lo * vh : (size_t)vw * vh * 4;
+        len = MIN(len, (size_t)(d->vga.vram_size - start));
+        if (edge && boot1045.edge_dumps < 16) {
+            if (boot1045.ram_prev_ok && !boot1045.ram_prev_written &&
+                boot1045.ram_prev_n + 1 == n &&
+                boot1045_write_ram(boot1045.ram_prev_n, boot1045.ram_prev,
+                                   boot1045.ram_prev_len)) {
+                ram_dumped |= 2;
+            }
+            if (boot1045_write_ram(n, p, len)) {
+                ram_dumped |= 1;
+            }
+            boot1045.edge_dumps++;
+        } else if (ram_h != boot1045.last_ram_h && boot1045.ram_dumps < 24 &&
+                   (!boot1045.ram_dumps ||
+                    n >= boot1045.last_ram_dump_n + 4) &&
+                   boot1045_write_ram(n, p, len)) {
+            ram_dumped |= 1;
+            boot1045.ram_dumps++;
+            boot1045.last_ram_dump_n = n;
+        }
+        if (ram_dumped & 1) {
+            boot1045.last_ram_h = ram_h;
+        }
+        if (boot1045.ram_prev_len < len || !boot1045.ram_prev) {
+            boot1045.ram_prev = g_realloc(boot1045.ram_prev, len);
+        }
+        memcpy(boot1045.ram_prev, p, len);
+        boot1045.ram_prev_len = len;
+        boot1045.ram_prev_n = n;
+        boot1045.ram_prev_ok = 1;
+        boot1045.ram_prev_written = ram_dumped & 1;
+    } else {
+        boot1045.ram_prev_ok = 0;
+    }
+    boot1045.last_start = start;
+    boot1045.last_sr01 = sr01;
+
+    /* The window as it will be shown. */
+    int w = 0, h = 0;
+    SDL_GL_GetDrawableSize(scon->real_window, &w, &h);
+    if (w <= 0 || h <= 0) {
+        return;
+    }
+    size_t need = (size_t)w * h * 4;
+    if (boot1045.px_size < need) {
+        boot1045.px = g_realloc(boot1045.px, need);
+        boot1045.px_size = need;
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glPixelStorei(GL_PACK_ALIGNMENT, 4);
+    glReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, boot1045.px);
+
+    /*
+     * Numbers over the centre half in each axis, which stays inside the
+     * picture whatever the letterboxing: the mean colour, the mean absolute
+     * difference between horizontal neighbours (noise is high, a picture or a
+     * flat fill is low), and the fractions of lit and of green pixels.
+     */
+    uint64_t sr = 0, sg = 0, sb = 0, snb = 0, cnt = 0, lit = 0, grn = 0;
+    for (int y = h / 4; y < h * 3 / 4; y++) {
+        const uint8_t *row = boot1045.px + (size_t)y * w * 4;
+        for (int x = w / 4; x < w * 3 / 4; x++) {
+            const uint8_t *p = row + (size_t)x * 4;
+            int r = p[0], g = p[1], b = p[2];
+            sr += r;
+            sg += g;
+            sb += b;
+            snb += abs(r - p[4]) + abs(g - p[5]) + abs(b - p[6]);
+            lit += MAX(r, MAX(g, b)) > 24;
+            grn += g >= 48 && g > r + 32 && g > b + 32;
+            cnt++;
+        }
+    }
+    if (!cnt) {
+        cnt = 1;
+    }
+
+    int step = MAX(1, (w + 319) / 320);
+    int dw = w / step, dh = h / step;
+    size_t dneed = (size_t)dw * dh * 3;
+    if (boot1045.ds_size < dneed) {
+        boot1045.ds = g_realloc(boot1045.ds, dneed);
+        boot1045.ds_size = dneed;
+    }
+    /* Top row first, as a PPM wants; GL rows are bottom-up. */
+    for (int y = 0; y < dh; y++) {
+        const uint8_t *row =
+            boot1045.px + (size_t)(h - 1 - y * step) * w * 4;
+        uint8_t *o = boot1045.ds + (size_t)y * dw * 3;
+        for (int x = 0; x < dw; x++) {
+            const uint8_t *p = row + (size_t)x * step * 4;
+            o[x * 3 + 0] = p[0];
+            o[x * 3 + 1] = p[1];
+            o[x * 3 + 2] = p[2];
+        }
+    }
+    uint32_t hash = boot1045_fnv(boot1045.ds, dneed, 2166136261u);
+
+    int dumped = 0;
+    if (hash != boot1045.last_hash && boot1045.dumps < boot1045.max_dumps &&
+        (src != 'n' || boot1045.src_run < 30 || n % 10 == 0)) {
+        char path[800];
+        snprintf(path, sizeof(path), "%s/boot1045_f%05u.ppm", boot1045.dir, n);
+        FILE *f = fopen(path, "wb");
+        if (f) {
+            fprintf(f, "P6\n%d %d\n255\n", dw, dh);
+            fwrite(boot1045.ds, 1, dneed, f);
+            fclose(f);
+            boot1045.dumps++;
+            boot1045.last_hash = hash;
+            dumped = 1;
+        }
+    }
+
+    char line[640];
+    snprintf(line, sizeof(line),
+             "n=%u t_ms=%.1f wall_us=%" PRId64 " vt_ms=%" PRId64
+             " src=%c tex=%u flip=%d start=0x%08x lo=%u vga=%dx%d bpp=%d"
+             " cr28=%02x gr06=%02x ari=%02x sr01=%02x cr17=%02x gc=%08x"
+             " pv=%08x surf=%dx%d ram_nz=%u/%u ram_nb=%.1f ram_h=%08x"
+             " win=%dx%d mean=%u,%u,%u nb=%.1f lit=%.3f grn=%.3f h=%08x"
+             " dump=%d ramdump=%d tnb=%.1f tlit=%.3f tgrn=%.3f",
+             n, (now - boot1045.t0_ns) / 1e6, g_get_real_time(),
+             qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) / 1000000, src,
+             (unsigned)tex, flip ? 1 : 0, start, lo, vw, vh, bpp, cr28, gr06,
+             ari, sr01, cr17, gc, pv,
+             scon->surface ? surface_width(scon->surface) : 0,
+             scon->surface ? surface_height(scon->surface) : 0, ram_nz,
+             ram_len, ram_nb, ram_h, w, h, (unsigned)(sr / cnt),
+             (unsigned)(sg / cnt), (unsigned)(sb / cnt),
+             (double)snb / (3.0 * cnt), (double)lit / cnt,
+             (double)grn / cnt, hash, dumped, ram_dumped,
+             (src == 'v' && boot1045.t_valid) ? boot1045.t_nb : -1.0,
+             (src == 'v' && boot1045.t_valid) ? boot1045.t_lit : -1.0,
+             (src == 'v' && boot1045.t_valid) ? boot1045.t_grn : -1.0);
+    boot1045.t_valid = 0;
+    fprintf(boot1045.log, "%s\n", line);
+    fflush(boot1045.log);
+    /* logcat gets the first presents, every source change and 1 in 60. */
+    if (n < 10 || boot1045.src_run == 0 || n % 60 == 0) {
+        boot1045_say("%s", line);
+    }
+}
+
 void sdl2_gl_refresh(DisplayChangeListener *dcl)
 {
     struct sdl2_console *scon = container_of(dcl, struct sdl2_console, dcl);
@@ -2149,6 +2575,11 @@ void sdl2_gl_refresh(DisplayChangeListener *dcl)
      * to the framebuffer, fall back to the VGA path.
      */
     GLuint tex = 0;
+    bool vga_read G_GNUC_UNUSED = false; /* the VGA view was read here */
+    bool vga_read_off G_GNUC_UNUSED = false; /* ... with the screen off */
+    /* The screen was off before either image was read (#1045) */
+    bool read_off G_GNUC_UNUSED = nv2a_get_screen_off();
+    char boot1045_src = 'n';
 #ifdef __ANDROID__
     if (force_cpu_blit) {
         /* Trigger a render/sync so the readback buffer gets updated. */
@@ -2203,6 +2634,7 @@ void sdl2_gl_refresh(DisplayChangeListener *dcl)
             }
             tex = g_android_cpu_tex;
             flip_required = true;
+            boot1045_src = 'c';
         } else if ((g_android_frame_counter % 120) == 0) {
             __android_log_print(ANDROID_LOG_WARN, "hakuX",
                                 "refresh: no readback available yet");
@@ -2300,18 +2732,31 @@ void sdl2_gl_refresh(DisplayChangeListener *dcl)
     }
 #endif
     if (tex == 0) {
-#ifdef __ANDROID__
+        /*
+         * The VGA view is read from guest RAM before the upload, so the frame
+         * drawn is this refresh's. The desktop used to read it at the end of
+         * the refresh, after the draw, so each VGA frame it drew was one
+         * refresh old: at boot, the kernel turns the screen on and moves the
+         * scan-out in one refresh, and the present after it drew the image
+         * read from the old start (its low memory, as whole-screen static)
+         * with nothing to blank it (#1045).
+         */
         qemu_mutex_lock_main_loop();
         bql_lock();
         graphic_hw_update(scon->dcl.con);
+        vga_read_off = nv2a_get_screen_off();
         bql_unlock();
         qemu_mutex_unlock_main_loop();
-#endif
+        vga_read = true;
         // FIXME: Don't upload if notdirty
         xb_surface_gl_create_texture(scon->surface);
+        if (boot1045.armed) {
+            boot1045_surface(scon->surface);
+        }
         scon->updates++;
         tex = scon->surface->texture;
         flip_required = true;
+        boot1045_src = 'v';
 #ifdef __ANDROID__
         if ((g_android_frame_counter % 120) == 0) {
             __android_log_print(ANDROID_LOG_INFO, "hakuX",
@@ -2340,7 +2785,21 @@ void sdl2_gl_refresh(DisplayChangeListener *dcl)
     glClearColor(0, 0, 0, 0);
     glClear(GL_COLOR_BUFFER_BIT);
 #ifdef __ANDROID__
-    android_blit_frame(tex, flip_required);
+    /*
+     * The guest's VGA screen-off (SR01 bit 5) blanks the picture on the
+     * console, and the desktop honours it in RenderFramebuffer (upstream
+     * 129c48dd6e). This path never did. While the kernel sets its video mode
+     * at boot it holds the screen off with the scan-out at address 0, and the
+     * VGA view of its low memory showed as whole-screen static before the
+     * Xbox logo, on every title (#1045). An image read while the screen was
+     * off stays blanked even if the guest turned it on since: the nv2a image
+     * read then is the one rendered before the screen went off.
+     */
+    if (nv2a_get_screen_off() || vga_read_off || read_off) {
+        android_blank_frame();
+    } else {
+        android_blit_frame(tex, flip_required);
+    }
 #else
 #endif
 #ifdef __ANDROID__
@@ -2363,6 +2822,7 @@ void sdl2_gl_refresh(DisplayChangeListener *dcl)
 #else
     glFinish();
 #endif
+    boot1045_present(scon, boot1045_src, tex, flip_required);
     nv2a_release_framebuffer_surface();
 #ifdef __ANDROID__
     android_log_gl_error("refresh-finish");
@@ -2397,10 +2857,15 @@ void sdl2_gl_refresh(DisplayChangeListener *dcl)
         }
     }
 #else
-    /* VGA update for dirty-region tracking */
+    /*
+     * VGA update for dirty-region tracking, unless the fallback above has
+     * already made this refresh's.
+     */
     qemu_mutex_lock_main_loop();
     bql_lock();
-    graphic_hw_update(scon->dcl.con);
+    if (!vga_read) {
+        graphic_hw_update(scon->dcl.con);
+    }
     if (scon->updates && scon->surface) {
         scon->updates = 0;
     }
@@ -2603,6 +3068,28 @@ static void setup_nvidia_profile(void)
 #endif
 
 #ifndef __ANDROID__
+/*
+ * #1039: a headless run (-display none) never reaches sdl2_display_init, so
+ * the main thread waits on display_init_sem for good and xemu_input_init never
+ * runs: no controller is bound and the guest sees no pad. With HAKUX_PAD_FILE
+ * set, input is set up once the machine is ready instead, so the pad file has
+ * a port to press on.
+ */
+static void headless_input_init(Notifier *n, void *data)
+{
+    bool held = bql_locked();
+    if (!held) {
+        bql_lock();
+    }
+    xemu_input_init();
+    if (!held) {
+        bql_unlock();
+    }
+    fprintf(stderr, "[pad1039] headless: input initialised\n");
+}
+
+static Notifier headless_input_notifier = { .notify = headless_input_init };
+
 int main(int argc, char **argv)
 {
     QemuThread thread;
@@ -2660,6 +3147,15 @@ int main(int argc, char **argv)
         exit(1);
     }
     atexit(xemu_settings_save);
+
+    for (int i = 1; i + 1 < argc; i++) {
+        const char *pad = getenv("HAKUX_PAD_FILE");
+        if (pad && pad[0] && argv[i] && argv[i + 1] &&
+            !strcmp(argv[i], "-display") && !strncmp(argv[i + 1], "none", 4)) {
+            qemu_add_machine_init_done_notifier(&headless_input_notifier);
+            break;
+        }
+    }
 
 #ifdef _WIN32
     if (g_config.display.setup_nvidia_profile) {

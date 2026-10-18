@@ -1,0 +1,61 @@
+pathfind: NFL Blitz Pro (None) on nova: /storage/E6C6-D7AA/Games/XBox/NFL_Blitz_Pro.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: - any, loaded all goldens (title not identified)
+[   9.0s] #  1 intro_video       fast    START                    Looks like a boot or splash/logo frame on a blank white background, not a menu or gameplay
+[  17.2s] #  2 publisher_logo    fast    A                        Midway Sports publisher logo before the title; per hints, skip with A first, then START if
+[  25.5s] #  3 publisher_logo    fast    A                        This is a Midway/NFL Blitz title splash still showing publisher logos, not a menu. Per hin
+[  33.7s] #  4 title_screen      fast    START                    Title screen with a 'PRESS START' prompt; per the title-screen rule, START is the input he
+[  41.5s] #  5 main_menu         fast    A                        Main menu with QUICKPLAY already highlighted; per the NFL Blitz hint, period length should
+[  53.6s] #  6 submenu           fast    B                        Controller 1 is in the middle column, so no team is assigned yet. The owner rule also requ
+[  61.9s] #  7 main_menu         fast    R1                       Owner rule requires setting the period length to the longest value before kickoff. OPTIONS
+[  72.4s] #  8 main_menu         fast    RIGHT                    R1 did not switch the tab. The GAME MODES header has a right-hand arrow, so RIGHT on the t
+[  81.3s] #  9 main_menu         fast    RIGHT                    Still on the GAME MODES tab with QUICKPLAY highlighted. OPTIONS (needed to set quarter len
+[  90.5s] # 10 main_menu         fast    L1                       R1 and RIGHT only cycled back to GAME MODES. The 'L' marker suggests the other tab (likely
+[ 102.5s] # 11 main_menu         fast    LEFT                     Still on GAME MODES with QUICKPLAY highlighted. R1, RIGHT and L1 all failed to reach OPTIO
+[ 113.1s] # 12 main_menu         fast    Y                        Still on GAME MODES with QUICKPLAY highlighted. R1, RIGHT, L1 and LEFT never reached an OP
+[ 122.5s] # 13 main_menu         fast    UP RIGHT                 Tab switching with R1/RIGHT/L1/LEFT on the list failed. The tab bar sits above the list, s
+[ 134.2s] # 14 main_menu         fast    UP UP UP UP UP RIGHT     Earlier RIGHT, R1, L1, LEFT and Y never changed the tab, and the highlight is on TOURNAMEN
+[ 149.2s] # 15 main_menu         fast    UP UP UP UP UP STICK:left:0.5 Still on GAME MODES with TOURNAMENT highlighted. Prior attempts of RIGHT, R1, L1, LEFT, Y 
+[ 164.2s] # 16 main_menu         fast    STICK:up:1.5             Tab switching (R1, RIGHT, L1, LEFT, Y) and d-pad UP presses all failed to change the highl
+[ 175.1s] # 17 main_menu         fast    STICK:right:1            Still on GAME MODES with QUICKPLAY highlighted. Earlier tab switches used R1, RIGHT, L1, L
+[ 187.9s] # 18 main_menu         fast    HOLD:R1:1.5              Tab switching with R1/L1/RIGHT/LEFT and d-pad moves never changed the tab after many tries
+[ 201.0s] # 19 main_menu         fast    DOWN A                   Tab switching has failed repeatedly, so I'm stopping that path. The highlight is on QUICKP
+[ 211.1s] # 20 controller_prompt fast    A                        Controllers 1 and 2 are already assigned (lit) and this is a Blitz select-controller step,
+[ 221.9s] # 21 submenu           fast    B                        Team select is not play, and the owner rule needs the quarter length set before the first 
+[ 231.4s] # 22 submenu           fast    B                        Still in the Quickplay setup flow, and the quarter length has not been set yet. Backing ou
+[ 240.7s] # 23 main_menu         fast    UP RIGHT                 Still on GAME MODES with QUICKPLAY highlighted. Earlier tab switches sent R1/L1/LEFT/RIGHT
+[ 254.6s] # 24 main_menu         fast    L3                       Still on the GAME MODES tab; the highlight has moved to TOURNAMENT. Tab switching has fail
+[ 265.2s] # 25 main_menu         fast    LEFT                     Still on GAME MODES with TOURNAMENT highlighted. Earlier tab switches with UP, RIGHT, R1 a
+[ 274.1s] # 26 main_menu         fast    STICK:right:0.5          Still on the GAME MODES tab with TOURNAMENT highlighted. D-pad and triggers have not switc
+[ 285.3s] # 27 main_menu         fast    UP UP UP UP UP LEFT      Still on the GAME MODES tab with TOURNAMENT highlighted, and the tab switches have failed.
+[ 301.6s] # 28 main_menu         fast    STICK:up:1 RIGHT         Earlier tab switches failed with D-pad, R1/L1, L3 and the stick. The cursor is on TOURNAME
+[ 314.2s] # 29 main_menu         fast    HOLD:R1:1.5              Still on the GAME MODES tab with TOURNAMENT highlighted. Earlier tab switches failed with 
+[ 325.3s] # 30 main_menu         fast    UP UP UP UP A            Tab switching has failed repeatedly, so I'm leaving the tab alone. The highlight is on TOU
+[ 339.5s] # 31 submenu           fast    LEFT                     Team controller select: controller 1 sits in the middle column, so no team is assigned yet
+[ 345.4s] # 32 submenu           fast    RIGHT                    Controller 1 is not assigned to a team; the selector under AWAY TEAM reads NONE. Per the s
+[ 354.9s] # 33 submenu           fast    STICK:left:0.3           Controller 1 still sits in the middle column, so no team is assigned. The earlier single L
+[ 368.4s] # 34 submenu           fast    RIGHT                    Controller 1 is still unassigned (selector reads NONE, no User Name plate). Per the sports
+[ 377.0s] # 35 submenu           fast    STICK:right:0.5          Controller 1 is still in the middle column after LEFT, RIGHT, STICK:left and RIGHT. Those 
+[ 388.4s] # 36 submenu           fast    A                        Controller 1 has moved out of the middle column into the HOME TEAM side column, which is t
+[ 401.1s] # 37 submenu           fast    A                        Team select is the last step before kickoff. The previous step put controller 1 into the h
+[ 410.4s] # 38 submenu           fast    A                        Team select is the last step before kickoff, per the prior steps. A is the confirm for the
+[ 418.1s] # 39 submenu           fast    A                        Team matchup card is a pre-game confirm screen, not gameplay; the previous step's A assign
+[ 425.8s] # 40 loading           fast    wait                     Game is loading into the match after team setup; no menu to answer and no player control y
+[ 435.6s] # 41 loading           fast    A                        A loading-tip screen, not gameplay or a menu; the 'LAUNCH GAME' prompt is the next step, s
+[ 445.4s] # 42 loading           fast    wait                     Pre-game matchup/stadium card with no menu cursor and no player control yet; the game is s
+[ 456.2s] # 43 cutscene          fast    START                    This looks like a pre-game stadium flyover or formation view with no HUD and no menu. The 
+[ 465.8s] # 44 pause             fast    A                        The last START opened the pause menu during kickoff setup; RESUME GAME is the lit item, so
+[ 476.2s] # 45 gameplay          fast    A                        Live HUD with a play clock counting down and no menu, so this is the pre-snap formation. P
+[ 497.2s] # 46 probe             probe   A A STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.466, under input 0.292
+[ 502.5s] # 47 submenu           fast    A                        This is a pre-snap play-call menu, not live play. The highlighted item is 4-3 and the A ma
+[ 516.0s] # 48 unknown           fast    A                        Pre-snap formation with HUD and play clock but no menu, which the hints say is not live pl
+[ 524.5s] # 49 submenu           fast    A                        Defensive play-call menu is open with 4-3 highlighted and the A marker on it. A picks the 
+[ 534.0s] # 50 submenu           fast    A                        Pre-snap play-call menu, not live play. The highlighted play is STING and the A marker is 
+[ 543.2s] # 51 gameplay          fast    wait                     Players are running and tackling on the field with the HUD and a counting clock up, and no
+[ 555.8s] # 52 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.542, under input 0.415
+[ 567.9s] # 53 unknown           fast    A                        Pre-snap formation with HUD and no play-call menu. Per the hints this is not live play yet
+[ 575.6s] # 54 submenu           fast    A                        A defensive play-call menu is open with 4-3 highlighted and the A marker on it, so A picks
+[ 582.8s] # 55 submenu           fast    A                        Defensive play-call menu is open with STING highlighted and the A marker on it; A picks th
+[ 598.7s] # 56 gameplay          fast    wait                     Players are running and the HUD with the clock and BURST meter is up with no menu open, so
+[ 613.4s] # 57 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.325, under input 0.357

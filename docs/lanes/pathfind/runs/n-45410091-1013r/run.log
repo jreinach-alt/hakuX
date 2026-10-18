@@ -1,0 +1,105 @@
+pathfind: Half Life 2 (45410091) on nova: /storage/E6C6-D7AA/Games/XBox/45410091-Half_Life_2.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 45410091 any, loaded none
+[  14.5s] #  1 publisher_logo    fast    A                        Publisher logo at cold boot; skip with A
+[  30.8s] #  2 publisher_logo    fast    A                        Valve logo at boot; this is a new publisher logo (progress from the previous one). Skip wi
+[  46.4s] #  3 publisher_logo    fast    START                    Valve logo is a new publisher logo (progress from step 1). A did not advance it; per hints
+[  50.8s] #  4 black             black   wait                     black frame
+[  54.3s] #  5 black             black   wait                     black frame
+[  57.9s] #  6 black             black   wait                     black frame
+[  69.6s] #  7 publisher_logo    fast    A                        Source engine logo is a new publisher/engine logo (progress from Valve logos); skip with A
+[  74.0s] #  8 black             black   wait                     black frame
+[  93.4s] #  9 intro_video       fast    START                    Title text is displaying after publisher logos and black frames; likely still part of intr
+[ 106.9s] # 10 main_menu         fast    A                        Main menu with cursor on NEW GAME (highlighted); select it to reach gameplay fastest
+[ 121.1s] # 11 submenu           fast    A                        Chapter select menu; Chapter 1 is the default highlighted; A confirms to proceed
+[ 133.6s] # 12 loading           fast    wait                     Progress bar mid-load; Point Insertion is the first level loading in Half-Life 2. Wait for
+[ 154.9s] # 13 intro_video       fast    START                    Title card displayed after loading bar completed; likely part of intro sequence or splash 
+[ 167.4s] # 14 pause             fast    A                        START was pressed on a title card (step 13), which paused gameplay instead of skipping it;
+[ 223.7s] # 15 cutscene          fast    START                    Character close-up shot consistent with an intro cinematic or story moment before full gam
+[ 237.7s] # 16 pause             fast    A                        Pause menu is open with RESUME GAME highlighted; this menu opened when START was pressed o
+[ 253.5s] # 17 loading           fast    wait                     Blank white screen after pressing A on RESUME GAME; the game is likely loading the level o
+[ 277.0s] # 18 cutscene          fast    START                    Scrolling character names (credits) and first-person cinematic framing indicate an intro s
+[ 293.7s] # 19 pause             fast    A                        Pause menu is open with RESUME GAME highlighted. This menu appeared after pressing START o
+[ 330.5s] # 20 gameplay          fast    wait                     First-person perspective in game world with HUD elements (tutorial text) showing player co
+[ 348.5s] # 21 probe             probe   STICK:up:1.5             control 0.030, under input 0.472
+[ 386.1s] # 30 retracted         probe   wait                     retracted after 30 s: Credits sequence showing character names (Kristen Perry, Jake Nichol
+[ 398.1s] # 31 cutscene          fast    START                    Credits sequence with character names rolling in a first-person game view; this is an intr
+[ 408.5s] # 32 pause             fast    A                        Pause menu is open with RESUME GAME highlighted. Press A to resume gameplay.
+[ 421.0s] # 33 cutscene          fast    START                    Credits/intro cinematics rolling in-game; needs to be skipped to reach actual gameplay
+[ 476.6s] # 34 pause             fast    B                        Stuck in loop: RESUME -> credits cutscene -> pause returns. Tried START then A to skip cut
+[ 524.2s] # 35 cutscene          fast    START DOWN A             Credits sequence playing; we have been looping START→pause menu→RESUME→cutscene→repeat. Tr
+[ 541.7s] # 36 save_load_prompt  fast    A                        Game is asking to save progress. After the looping cutscene/pause issue, this save prompt 
+[ 554.2s] # 37 save_load_prompt  fast    A                        The game has confirmed the save and is waiting for A to proceed. This is the confirmation 
+[ 571.1s] # 38 loading           fast    wait                     Game world visible but no HUD, health, ammo or crosshair yet; following save completion, g
+[ 577.0s] # 39 loading           static  wait                     load still on screen (barely changed)
+[ 581.9s] # 40 loading           static  wait                     load still on screen (barely changed)
+[ 586.7s] # 41 loading           static  wait                     load still on screen (barely changed)
+[ 591.5s] # 42 loading           static  wait                     load still on screen (barely changed)
+[ 596.3s] # 43 loading           static  wait                     load still on screen (barely changed)
+[ 622.0s] # 44 loading           fast    wait                     Game world is rendered and visible but no HUD (health/ammo/crosshair) has appeared yet; af
+[ 630.9s] # 45 loading           static  wait                     load still on screen (barely changed)
+[ 635.7s] # 46 loading           static  wait                     load still on screen (barely changed)
+[ 640.6s] # 47 loading           static  wait                     load still on screen (barely changed)
+[ 645.5s] # 48 loading           static  wait                     load still on screen (barely changed)
+[ 650.3s] # 49 loading           static  wait                     load still on screen (barely changed)
+[ 664.9s] # 50 loading           fast    wait                     Game world is rendered and visible but HUD has still not appeared; loading indicator dots 
+[ 670.7s] # 51 loading           static  wait                     load still on screen (barely changed)
+[ 675.6s] # 52 loading           static  wait                     load still on screen (barely changed)
+[ 680.4s] # 53 loading           static  wait                     load still on screen (barely changed)
+[ 685.2s] # 54 loading           static  wait                     load still on screen (barely changed)
+[ 690.0s] # 55 loading           static  wait                     load still on screen (barely changed)
+[ 706.7s] # 56 loading           fast    wait                     Loading indicator dots still present in center; game world is rendered but HUD has not app
+[ 712.5s] # 57 loading           static  wait                     load still on screen (barely changed)
+[ 717.3s] # 58 loading           static  wait                     load still on screen (barely changed)
+[ 722.2s] # 59 loading           static  wait                     load still on screen (barely changed)
+[ 727.0s] # 60 loading           static  wait                     load still on screen (barely changed)
+[ 731.8s] # 61 loading           static  wait                     load still on screen (barely changed)
+[ 744.3s] # 62 loading           fast    wait                     Loading dots still present; game world rendered but HUD not yet appeared; continuing the l
+[ 749.2s] # 63 loading           static  wait                     load still on screen (barely changed)
+[ 754.0s] # 64 loading           static  wait                     load still on screen (barely changed)
+[ 758.8s] # 65 loading           static  wait                     load still on screen (barely changed)
+[ 763.6s] # 66 loading           static  wait                     load still on screen (barely changed)
+[ 768.4s] # 67 loading           static  wait                     load still on screen (barely changed)
+[ 780.1s] # 68 loading           fast    wait                     Game world rendered but HUD not yet visible; loading dots present indicating load in progr
+[ 784.9s] # 69 loading           static  wait                     load still on screen (barely changed)
+[ 789.8s] # 70 loading           static  wait                     load still on screen (barely changed)
+[ 794.7s] # 71 loading           static  wait                     load still on screen (barely changed)
+[ 799.6s] # 72 loading           static  wait                     load still on screen (barely changed)
+[ 804.5s] # 73 loading           static  wait                     load still on screen (barely changed)
+[ 817.5s] # 74 loading           fast    wait                     Game world is rendering but still showing loading indicator (dots). No HUD visible yet. Pr
+[ 824.4s] # 75 loading           static  wait                     load still on screen (barely changed)
+[ 829.2s] # 76 loading           static  wait                     load still on screen (barely changed)
+[ 834.2s] # 77 loading           static  wait                     load still on screen (barely changed)
+[ 839.0s] # 78 loading           static  wait                     load still on screen (barely changed)
+[ 843.9s] # 79 loading           static  wait                     load still on screen (barely changed)
+[ 854.8s] # 80 loading           fast    wait                     Game world visible but loading indicator still present; continue waiting for load to compl
+[ 860.6s] # 81 loading           static  wait                     load still on screen (barely changed)
+[ 865.4s] # 82 loading           static  wait                     load still on screen (barely changed)
+[ 870.3s] # 83 loading           static  wait                     load still on screen (barely changed)
+[ 875.2s] # 84 loading           static  wait                     load still on screen (barely changed)
+[ 880.1s] # 85 loading           static  wait                     load still on screen (barely changed)
+[ 899.4s] # 86 loading           fast    wait                     Loading indicator (dark panel with animated spinner) still present; game world is renderin
+[ 905.3s] # 87 loading           static  wait                     load still on screen (barely changed)
+[ 910.1s] # 88 loading           static  wait                     load still on screen (barely changed)
+[ 915.0s] # 89 loading           static  wait                     load still on screen (barely changed)
+[ 919.8s] # 90 loading           static  wait                     load still on screen (barely changed)
+[ 924.7s] # 91 loading           static  wait                     load still on screen (barely changed)
+[ 939.2s] # 92 loading           fast    wait                     Loading spinner still present; game world rendering in background; FPS 29 suggests active 
+[ 945.0s] # 93 loading           static  wait                     load still on screen (barely changed)
+[ 949.9s] # 94 loading           static  wait                     load still on screen (barely changed)
+[ 954.7s] # 95 loading           static  wait                     load still on screen (barely changed)
+[ 959.6s] # 96 loading           static  wait                     load still on screen (barely changed)
+[ 964.5s] # 97 loading           static  wait                     load still on screen (barely changed)
+[1010.7s] # 98 gameplay          fast    wait                     Loading spinner vanished; game world fully rendered and clearly visible (transition from 6
+[1036.6s] # 99 probe             probe   STICK:up:1.5             control 0.000, under input 0.489
+hold-play: genre shooter, need 600 s of play
+hold-play: fps at 180 s: median 29.0, share>=30 0.667 over 87 samples
+hold-play: fps at 307 s: median 29.0, share>=30 0.582 over 146 samples
+hold-play: play disagrees: hold 610.7 s, verdict 618.4 s (verdict trusted)
+hold-play: validity check stop 0 s (hold 611 s of play, verdict 618.4)
+hold-play: not held 611/600 s of play; verdict stops the hold: fps_ok 0.741, crash False, hang False
+held Half Life 2 for 644s
+VERDICT Half Life 2 ? FAIL(fps: 74.2% of gameplay at >= 30 fps (bar 90%)) gameplay=643.1s fps_ok=0.7418 crash=False hang=False audio_short=0.0 hitches=4/0.412pm worst_ms=123.8 static_frac=0.0 play_share=0.9631 fps_excluded=24.4s
+{"name": "Half Life 2", "device": "nova", "result": "gameplay", "minutes": 17.28, "model_calls": 46, "steps": 91, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45410091-1013r/frames/098-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

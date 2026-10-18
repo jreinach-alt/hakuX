@@ -2906,6 +2906,12 @@ static uint8_t dcen_path, dcen_cp;
 static bool dcen_bound_shaders;
 static void drawcensus_frame(void);
 
+void pgraph_vk_draw_path(uint8_t *path, uint8_t *cp)
+{
+    *path = dcen_path;
+    *cp = dcen_cp;
+}
+
 static void create_pipeline(PGRAPHState *pg)
 {
     NV2A_VK_DGROUP_BEGIN("Creating pipeline");
@@ -3950,6 +3956,7 @@ static void begin_query(PGRAPHVkState *r)
         VK_QUERY_CONTROL_PRECISE_BIT : 0;
     vkCmdBeginQuery(r->command_buffer, r->query_pool, r->num_queries_in_flight,
                     query_flags);
+    r->query_serial_of[r->num_queries_in_flight] = ++r->query_serial;
 
     r->query_in_flight = true;
     r->new_query_needed = false;
@@ -10651,6 +10658,19 @@ static void copy_remapped_attributes_to_inline_buffer(PGRAPHState *pg,
     buffer->buffer_offset += remap.buffer_space_required;
 }
 
+/* #939, frame dump schema 9: a draw begin_pre_draw skipped for async
+ * compilation, recorded with why. */
+static void fdump_skip_async(NV2AState *d)
+{
+    if (nv2a_dbg_framedump_active()) {
+        PGRAPHVkState *r = d->pgraph.vk_renderer_state;
+        pgraph_vk_fdump_log_skip(
+            d, r->shader_binding && !qatomic_read(&r->shader_binding->ready)
+                   ? "shader_pending"
+                   : "no_vk_pipeline");
+    }
+}
+
 static void flush_draw_one_pass(NV2AState *d)
 {
     NV2A_PHASE_TIMER_BEGIN_EXCL(draw_dispatch);
@@ -10659,6 +10679,9 @@ static void flush_draw_one_pass(NV2AState *d)
 
     if (!(r->color_binding || r->zeta_binding)) {
         NV2A_VK_DPRINTF("No binding present!!!\n");
+        if (nv2a_dbg_framedump_active()) {
+            pgraph_vk_fdump_log_skip(d, "no_surface");
+        }
         NV2A_PHASE_TIMER_END_EXCL(draw_dispatch);
         return;
     }
@@ -10670,6 +10693,9 @@ static void flush_draw_one_pass(NV2AState *d)
         /* Pipeline not available (cache exhausted or async compile pending).
          * Skip this draw to avoid crashing in begin_pre_draw/begin_draw. */
         OPT_STAT_INC(draws_skipped_no_pipeline);
+        if (nv2a_dbg_framedump_active()) {
+            pgraph_vk_fdump_log_skip(d, "no_pipeline");
+        }
         NV2A_PHASE_TIMER_END_EXCL(draw_dispatch);
         return;
     }
@@ -10683,6 +10709,9 @@ static void flush_draw_one_pass(NV2AState *d)
          * a dozen times a run, and the validation layer reported each one
          * before crashing on the draw that followed (issue #34).
          */
+        if (nv2a_dbg_framedump_active()) {
+            pgraph_vk_fdump_log_skip(d, "empty_clip");
+        }
         NV2A_PHASE_TIMER_END_EXCL(draw_dispatch);
         return;
     }
@@ -10792,7 +10821,10 @@ static void flush_draw_one_pass(NV2AState *d)
         }
         begin_pre_draw(pg);
 #if OPT_ASYNC_COMPILE
-        if (r->async_draw_skip) goto draw_arrays_done;
+        if (r->async_draw_skip) {
+            fdump_skip_async(d);
+            goto draw_arrays_done;
+        }
 #endif
         NV2A_PHASE_TIMER_BEGIN_EXCL(draw_setup);
         copy_remapped_attributes_to_inline_buffer(pg, remap, 0, max_element);
@@ -10908,7 +10940,10 @@ draw_arrays_done:
         }
         begin_pre_draw(pg);
 #if OPT_ASYNC_COMPILE
-        if (r->async_draw_skip) goto inline_elements_done;
+        if (r->async_draw_skip) {
+            fdump_skip_async(d);
+            goto inline_elements_done;
+        }
 #endif
         NV2A_PHASE_TIMER_BEGIN_EXCL(draw_setup);
         copy_remapped_attributes_to_inline_buffer(pg, remap, 0, max_element + 1);
@@ -10983,7 +11018,10 @@ inline_elements_done:
         }
         begin_pre_draw(pg);
 #if OPT_ASYNC_COMPILE
-        if (r->async_draw_skip) goto inline_buffer_done;
+        if (r->async_draw_skip) {
+            fdump_skip_async(d);
+            goto inline_buffer_done;
+        }
 #endif
         NV2A_PHASE_TIMER_BEGIN_EXCL(draw_setup);
         VkDeviceSize buffer_offset = pgraph_vk_update_vertex_inline_buffer(
@@ -11074,7 +11112,10 @@ inline_buffer_done:
         }
         begin_pre_draw(pg);
 #if OPT_ASYNC_COMPILE
-        if (r->async_draw_skip) goto inline_array_done;
+        if (r->async_draw_skip) {
+            fdump_skip_async(d);
+            goto inline_array_done;
+        }
 #endif
         NV2A_PHASE_TIMER_BEGIN_EXCL(draw_setup);
         void *inline_array_data = pg->inline_array;

@@ -1,0 +1,93 @@
+taken: nova by lane.pathfind
+idle: nova is held and runs nothing
+held at 21:49:05
+pathfind: Tron 2.0 - Killer App (USA, Europe) (None) on nova: /storage/E6C6-D7AA/Games/XBox/Tron 2.0 - Killer App (USA, Europe).iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: - first-run, loaded all goldens (title not identified)
+[  11.0s] #  1 publisher_logo    fast    A                        Early boot: a plain white screen with a green geometric emblem, not a title or menu. Likel
+[  18.7s] #  2 loading           fast    wait                     Loading screen with a spinning/animated scene and a 'loading' label; no input needed, just
+[  27.9s] #  3 intro_video       fast    A                        ESRB rating/notice splash over key art before the title screen; not gameplay or a menu. Sk
+[  35.4s] #  4 publisher_logo    fast    wait                     A logo animation is mid-transition with no input prompt; it is not gameplay or a menu yet,
+[  43.9s] #  5 publisher_logo    fast    A                        Publisher logo (Monolith) with no input prompt; per hints, skip with A once and re-read, a
+[  51.1s] #  6 publisher_logo    fast    A                        This is a publisher logo (Monolith-style emblem), not a title or menu. Per hints, skip wit
+[  58.7s] #  7 title_screen      fast    START                    Title with 'PRESS START' prompt; per hints, START advances the title. Cursor not applicabl
+[  68.8s] #  8 controller_prompt fast    B                        Xbox Live sign-in screen with no controllers connected; per hints, B skips the online sign
+[  77.7s] #  9 main_menu         fast    A                        Main menu with Single Player highlighted, the fastest route to play. Pressing A selects it
+[  85.0s] # 10 main_menu         fast    DOWN A                   Single Player submenu; New Game is the fastest route to play, so I move the cursor down on
+[  94.7s] # 11 submenu           fast    DOWN A                   Fastest route to play is New Game; the difficulty panel defaults to Normal, which is fine.
+[ 104.0s] # 12 loading           fast    wait                     Loading screen with an animated loading bar and story text; no input is needed, so I wait 
+[ 114.9s] # 13 intro_video       fast    A                        Story text panel before the game; per hints, A advances it. Not gameplay, not a loading sc
+[ 123.7s] # 14 cutscene          fast    A                        Letterboxed cinematic of the character lying on the floor with no HUD and no response to c
+[ 132.7s] # 15 cutscene          fast    A                        Dialogue cutscene with letterbox bars and subtitles, not gameplay. Previous A advanced the
+[ 140.0s] # 16 cutscene          fast    A                        Dialogue cutscene with letterbox bars and subtitles, not player-controlled play; no HUD. A
+[ 149.1s] # 17 cutscene          fast    A                        Dialogue cutscene with letterbox bars and subtitles, not player-controlled play. Per the c
+[ 156.6s] # 18 cutscene          fast    A                        Dialogue cutscene with letterbox bars and subtitles, not player-controlled play. Per the h
+[ 165.1s] # 19 cutscene          fast    A                        Letterboxed cinematic with no HUD and no player control; not gameplay. Per the hints, A ad
+[ 172.3s] # 20 cutscene          fast    A                        Dialogue cutscene with letterbox bars and subtitles, not player-controlled play. Advancing
+[ 177.6s] # 21 black             black   wait                     black frame
+[ 186.1s] # 22 cutscene          fast    A                        Dialogue cutscene with letterbox bars and subtitles, not player control. Advancing the sto
+[ 194.7s] # 23 cutscene          fast    A                        Dialogue cutscene with letterbox bars and subtitles, not player control. Advancing the sto
+[ 202.9s] # 24 gameplay          fast    wait                     Player character is standing at an arcade cabinet in the game world with the camera behind
+[ 207.2s] # 25 probe             probe   STICK:up:1.5             control 0.515, under input 0.005
+[ 210.8s] # 26 cutscene          fast    A                        Dialogue cutscene with letterbox bars and subtitles, not player control. The previous STIC
+[ 220.4s] # 27 cutscene          fast    A                        Dialogue cutscene with letterbox bars and subtitles, not player control. Advancing the sto
+[ 228.0s] # 28 cutscene          fast    A                        Dialogue cutscene with letterbox bars and subtitles, no player control. Advancing the stor
+[ 235.2s] # 29 cutscene          fast    A                        Dialogue cutscene with letterbox bars and subtitles, no player control. Advancing the stor
+[ 242.9s] # 30 cutscene          fast    A                        Subtitled dialogue with letterbox bars is a cutscene, not player control. Advancing the st
+[ 252.2s] # 31 cutscene          fast    A                        Subtitled dialogue with letterbox bars is a cutscene, not player control. Advancing the st
+[ 259.7s] # 32 cutscene          fast    A                        Subtitled story dialogue with no player control; advancing it with A, as in the previous s
+[ 267.2s] # 33 gameplay          fast    wait                     Letterbox-free first-person view with a player-controlled camera in the world, but the pre
+[ 271.4s] # 34 probe             probe   STICK:up:1.5             control 0.000, under input 0.001
+[ 275.5s] # 35 cutscene          fast    A                        Subtitled dialogue with letterbox bars and no player control; the last probe got no respon
+[ 286.8s] # 36 cutscene          fast    A                        Letterbox bars and a scripted-looking camera with no HUD mean no player control. The last 
+[ 294.4s] # 37 cutscene          fast    A                        Subtitled story dialogue with a scripted NPC framing and no HUD, so no player control; adv
+[ 302.2s] # 38 gameplay          fast    wait                     Camera is in the world with no letterbox or subtitles; previous probe of STICK:up got no r
+[ 306.4s] # 39 probe             probe   STICK:left:1.5           control 0.448, under input 0.203
+[ 310.1s] # 40 cutscene          fast    A                        Letterbox bars and a scripted character close-up with no HUD mean a cutscene with no playe
+[ 320.2s] # 41 cutscene          fast    A                        Letterboxed scene with no HUD and the character is standing idle, not responding to input;
+[ 329.5s] # 42 cutscene          fast    A                        A scripted digitization-style effect with the character posed and no HUD or player control
+[ 337.9s] # 43 cutscene          fast    A                        Black letterbox bars and no HUD mean a scripted scene with no player control, as in the pr
+[ 345.8s] # 44 loading           fast    wait                     A loading screen with a reward hint and a 'loading' progress bar; no input needed, wait fo
+[ 353.7s] # 45 loading           static  wait                     load still on screen (barely changed)
+[ 358.7s] # 46 loading           static  wait                     load still on screen (barely changed)
+[ 363.7s] # 47 loading           static  wait                     load still on screen (barely changed)
+[ 368.7s] # 48 loading           static  wait                     load still on screen (barely changed)
+[ 373.7s] # 49 loading           static  wait                     load still on screen (barely changed)
+[ 381.6s] # 50 loading           fast    A                        A reward-hint screen with an explicit 'Press A to continue' prompt; the earlier loading st
+[ 395.1s] # 51 unknown           fast    wait                     Previous step was a loading screen with a 'Press A to continue' reward hint; this frame sh
+[ 401.3s] # 52 cutscene          fast    wait                     Looks like the 3D Tron grid world with a letterbox frame and no HUD or player control evid
+[ 409.0s] # 53 cutscene          fast    START                    Letterboxed 3D scene with no HUD or control evidence, so it is a cutscene, not gameplay. P
+[ 418.9s] # 54 cutscene          fast    START                    This is the scrolling credits roll over a letterboxed 3D scene, not player-controlled play
+[ 427.5s] # 55 cutscene          fast    A                        Scrolling credit names over a letterboxed 3D scene, not player control. Previous START pre
+[ 435.3s] # 56 cutscene          fast    START                    Credits roll over a letterboxed 3D scene with no HUD or control, so this is not gameplay. 
+[ 443.2s] # 57 cutscene          fast    START                    Credits roll over the 3D world with no HUD or control; the credits are skipped with START,
+[ 450.8s] # 58 cutscene          fast    START                    Letterboxed 3D scene with no HUD or control evidence, same as the prior steps; credits wer
+[ 460.1s] # 59 cutscene          fast    A                        Letterboxed 3D scene with no HUD or control evidence, same as prior steps; the credits wer
+[ 468.6s] # 60 cutscene          fast    START                    Title logo intro sequence in the cutscene state, not gameplay and no menu cursor. Previous
+[ 476.0s] # 61 cutscene          fast    START                    Title logo intro sequence in the cutscene state, not gameplay; no menu or HUD to read. Pre
+[ 481.4s] # 62 black             black   wait                     black frame
+[ 490.6s] # 63 cutscene          fast    A                        This is a tutorial prompt waiting for A, not gameplay, so I press A to continue past it.
+[ 497.1s] # 64 cutscene          fast    START                    Washed-out flash inside a letterboxed 3D scene with no HUD or control evidence; not gamepl
+[ 504.7s] # 65 cutscene          fast    A                        Subtitled letterboxed story scene with no HUD or player control; not gameplay. Dialogue ad
+[ 514.1s] # 66 cutscene          fast    A                        The HUD is present, but a subtitled story line is playing, which is a scripted scene rathe
+[ 518.6s] # 67 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 525.0s] # 68 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 535.6s] # 69 gameplay          fast    wait                     HUD (health/energy bars, Jet counter) is up over a playfield with no letterbox and no paus
+[ 546.3s] # 70 probe             probe   HOLD:A:3                 control 0.076, under input 0.449
+[ 552.6s] # 71 cutscene          fast    A                        A scripted subtitle with an I/O link request is on screen, and the earlier stick probe was
+[ 559.2s] # 72 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 563.9s] # 73 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 575.2s] # 74 gameplay          fast    wait                     HUD and playfield are up with no menu or letterbox; the repeated A presses were not advanc
+[ 587.4s] # 75 probe             probe   HOLD:A:3                 control 0.077, under input 0.406
+hold-play: genre shooter, need 600 s of play
+hold-play: fps at 183 s: median 36.0, share>=30 0.892 over 111 samples
+hold-play: fps at 311 s: median 37.0, share>=30 0.938 over 195 samples
+hold-play: HELD 612/600 s of play; 
+held Tron 2.0 - Killer App (USA, Europe) for 614s
+VERDICT Tron 2.0 - Killer App (USA, Europe) ? PASS None gameplay=612.5s fps_ok=0.9777 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0376 play_share=0.9994 fps_excluded=0.0s
+{"name": "Tron 2.0 - Killer App (USA, Europe)", "device": "nova", "result": "gameplay", "minutes": 9.79, "model_calls": 71, "steps": 75, "replayed": 0, "reason": "four probes refused", "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/retro-tron/frames/074-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256
+pathfind rc=0 at 22:09:58
+released: nova by lane.pathfind
+released rc=0

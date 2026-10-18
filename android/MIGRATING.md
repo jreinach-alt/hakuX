@@ -1,10 +1,10 @@
 # Moving from the official hakuX
 
-_Last updated 2026-10-13, for version 0.5.0._
+_Last updated 2026-10-17, for version 0.5.2._
 
 **You don't need to uninstall anything, and nothing you have is at risk.**
 
-This build installs as its own app, **hakuX (fork)**, next to the official
+This build installs as its own app, **hakuX CE**, next to the official
 hakuX. Each app keeps its own hard disk image, settings and saves. Nothing
 you do in this build changes the official one.
 
@@ -13,7 +13,7 @@ run setup again.
 
 ## Can your device run it?
 
-This build needs Android 10 and a Snapdragon 845-class chip or newer. On an
+This build needs Android 13 and a Snapdragon 845-class chip or newer. On an
 older chip (Snapdragon 835, 660, 665 or 460) it says so and exits. The
 official build supports those chips, so keep using it there.
 

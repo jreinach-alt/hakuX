@@ -1,6 +1,11 @@
 # Launching from ES-DE
 
-_Last updated 2026-10-13, for version 0.5.0._
+_Last updated 2026-10-17, for version 0.5.2._
+
+> Verified on real hardware (Thor, Android 13, hakuX 0.4.1): see
+> [`docs/frontends/es-de.md`](../frontends/es-de.md) for the tested writeup,
+> screenshots, and what a successful launch looks like. The steps below were
+> confirmed correct as written; nothing here needed to change.
 
 ES-DE's built-in hakuX entry starts the official app. This build installs
 under its own name so it can sit next to the official one. That means ES-DE
@@ -26,7 +31,7 @@ needs two small files to find it.
 3. **Restart ES-DE.** It reads these files only at startup. If ES-DE is your
    home screen, force-stop it or reboot.
 4. In ES-DE, open the Xbox system, press the menu button, choose
-   **Alternative emulator**, then choose **hakuX fork (Standalone)**.
+   **Alternative emulator**, then choose **hakuX CE (Standalone)**.
 
 When you quit a game, you return to ES-DE.
 
@@ -49,7 +54,7 @@ menu.
   your own `<path>` and other commands:
 
   ```xml
-  <command label="hakuX fork (Standalone)">%EMULATOR_HAKUX-FORK% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%</command>
+  <command label="hakuX CE (Standalone)">%EMULATOR_HAKUX-FORK% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%</command>
   ```
 
   It also needs the `HAKUX-FORK` block in `es_find_rules.xml`.

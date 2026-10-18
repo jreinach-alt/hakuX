@@ -1,0 +1,79 @@
+{
+ "title_id": "43430016",
+ "name": "Darkwatch",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/43430016-Darkwatch.xiso.iso",
+ "result": "gameplay",
+ "tool": "74dfc2db2c",
+ "started": "2026-10-13 11:15:08 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-43430016-1013r/frames/013-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-43430016-1013r/frames/013-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-43430016-1013r/frames/013-probe-c.jpg"
+ ],
+ "minutes": 3.29,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-43430016-1013r/frames/012-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-43430016-1013r/frames/014-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-43430016-1013r/frames/015-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-43430016-1013r/frames/016-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-43430016-1013r/frames/017-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-43430016-1013r/frames/018-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-43430016-1013r/frames/019-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-43430016-1013r/frames/020-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-43430016-1013r/frames/021-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-43430016-1013r/frames/022-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-4343.md"
+ ],
+ "hold": {
+  "genre": "shooter",
+  "why": "First-person view with gun in hand, centered crosshair, ammo counter (36), and indoor level environment designed for gunplay",
+  "ok": false,
+  "play_s": 432.2,
+  "need_s": 600.0,
+  "hold_s": 442.4,
+  "model_navs": 0,
+  "frames": 13,
+  "still_windows": 0,
+  "shed": [],
+  "reversals": 7,
+  "reason": "stuck_abort: scene unchanged for 6 consecutive samples (genre shooter); 2 unstick rung(s) tried, still stuck",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 186,
+    "median": 59.0,
+    "share": 1.0,
+    "at_s": 184.7,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 310,
+    "median": 59.0,
+    "share": 1.0,
+    "at_s": 309.2,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "stuck_abort": true,
+  "verdict": "VERDICT Darkwatch ? FAIL(duration: 443 s of gameplay < 600 s confirmation) gameplay=442.8s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0735 play_share=0.9995 fps_excluded=1.0s"
+ },
+ "model_calls": 19,
+ "calls_by_model": {
+  "claude-haiku-4-5-20251001": 19
+ },
+ "steps": 13,
+ "seconds": 693.6,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-43430016-1013r/frames/052-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 1,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-43430016-1013r/strip.jpg"
+}

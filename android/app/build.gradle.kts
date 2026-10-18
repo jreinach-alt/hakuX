@@ -79,13 +79,16 @@ android {
 
   defaultConfig {
     applicationId = "com.jreinach.hakux"
-    // 29 is the first API with native ELF TLS; below it every __thread access
-    // (tcg_ctx, current_cpu) is a call to __emutls_get_address. It also sets
-    // ANDROID_PLATFORM, which the glib cross build reads (#427).
-    minSdk = 29
+    // 33 (raised from 29 for the signing-key rotation, #433) is well above the
+    // native-ELF-TLS floor: 29 is the first API with native ELF TLS, below
+    // which every __thread access (tcg_ctx, current_cpu) is a call to
+    // __emutls_get_address, and minSdk also sets ANDROID_PLATFORM, which the
+    // glib cross build reads (#427). The owner confirmed no pre-13 handheld
+    // has the hardware to run this emulator, so the floor can move freely.
+    minSdk = 33
     targetSdk = 36
 
-    versionCode = 9
+    versionCode = 10
     versionName = versionedRelease ?: stampedVersionName()
 
     // The checkable marker on the artifact itself: release_build.sh verifies
@@ -161,7 +164,7 @@ android {
       matchingFallbacks += listOf("debug")
     }
     release {
-      resValue("string", "app_name", "hakuX (fork)")
+      resValue("string", "app_name", "hakuX CE")
       externalNativeBuild {
         cmake {
           arguments += listOf(

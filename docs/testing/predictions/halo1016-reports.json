@@ -1,0 +1,53 @@
+{
+  "registered_utc": "2026-10-17T09:40:00Z",
+  "who": "lane.halo1016",
+  "issues": ["1018"],
+  "kind": "soak env arms (one binary), two runs: the report trace (RT) and the catch-up remedy (RC)",
+  "title": "Halo Combat Evolved.iso",
+  "device": "nova",
+  "seconds": 420,
+  "route": "halo-cinematic (docs/lanes/halo1016/routes/halo-cinematic.route, queued with TITLE_ROUTES=docs/lanes/halo1016/routes)",
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "a_ref": "7da5534b6b",
+  "b_ref": "7da5534b6b",
+  "a_env": [
+    "HAKUX_FRAMETRACE=1",
+    "HAKUX_PROBE_WAITS=1",
+    "HAKUX_S2T_CVT=1",
+    "HAKUX_REPORT_TRACE=1"
+  ],
+  "b_env": [
+    "HAKUX_FRAMETRACE=1",
+    "HAKUX_PROBE_WAITS=1",
+    "HAKUX_S2T_CVT=1",
+    "HAKUX_REPORT_TRACE=1",
+    "HAKUX_REPORT_CATCHUP=1"
+  ],
+  "arms": {
+    "RT": ["HAKUX_FRAMETRACE=1", "HAKUX_PROBE_WAITS=1", "HAKUX_S2T_CVT=1", "HAKUX_REPORT_TRACE=1"],
+    "RC": ["HAKUX_FRAMETRACE=1", "HAKUX_PROBE_WAITS=1", "HAKUX_S2T_CVT=1", "HAKUX_REPORT_TRACE=1", "HAKUX_REPORT_CATCHUP=1"]
+  },
+  "queue_order": "Queued by the lane after halo1016-tier1.json's T and FIT, as two requests of one run each, RT then RC: TITLE_ROUTES=docs/lanes/halo1016/routes request.sh --who halo1016 --device nova --title 'Halo Combat Evolved.iso' --route halo-cinematic --seconds 420 --ref 7da5534b6b --perflog --pull 'frametrace_*' --env <the arm's list> --issue 1018 --expect this file (scratch/queue_reports.sh). a_env is RT's list and b_env RC's. The comparison arm A is halo1016-vcpu.json's (d70f782f45, the same env as RT less the trace).",
+  "judge": "python3 docs/lanes/halo1016/reportread.py --arm RT=<RT> --arm RC=<RC> --arm A=<vcpu A> --expect docs/testing/predictions/halo1016-reports.json (written before RT or RC ran; reuses vcpuread.py's accounting; exercised on vcpu A and IF, which it voids on V as it should, and whose spin shares it prints: 0.267 and 0.441).",
+  "baseline": "vcpu A (0-0-x-1792226875-halo1016-1762649, d70f782f45, HAKUX_S2T_CVT=1), [mark+131, mark+191], per guest frame: 42.6 ms; [tpc787] share of sampled TB time in the poll loop's entry pcs 0x63482, 0x63492, 0x1810f0, 0x18111b: 0.267 (IF: 0.441 at 39.2 ms/f). cblat: one PFIFO callback a frame, pnop 0, kick-to-dispatch 5-7 ms in the heavy windows. Census B: p_fence 1.25 ms/f, GPU 15.7 ms/f, PFIFO idle 24.1 ms/f.",
+  "prediction": "#1018: the heavy shots' remaining bound is the guest polling a visibility-test report (0x63482 -> D3D 0x1810f0, 'not ready' 0x88760828 while the record's status word is -1). RT measures where each GET_REPORT's time goes with HAKUX_REPORT_TRACE=1 (queued -> handed to the write q2e -> written q2w); RC adds HAKUX_REPORT_CATCHUP=1, which writes a queued value report at a caught-up FIFO when the STALLED finish would not run (no command buffer open, or no draw since the last STALLED finish). Q: RT's spin share >= 0.2, P 0.85 (the loop is there with the trace on). HS (the report waits in the queue for a finish): RT q2e >= 2 ms for >= 0.3 of its reports, P 0.25. HG (it waits on the GPU and fence after the handoff): q2w >= 2 ms share minus q2e >= 2 ms share >= 0.3, P 0.15. HB (it is written promptly once the PFIFO reaches it; the poll waits for the PFIFO's backlog or the guest's kick): q2w < 1 ms for >= 0.7, P 0.5. RM: RC's q2e >= 2 ms share <= 0.1 and >= 1 catch-up finish a frame, P 0.25. RS: RC's spin share <= 0.5 x RT's, P 0.2. RE: RC ms/f <= 0.9 x RT, P 0.2. RG: RC <= 33.4 ms/f over the span, P 0.05. TR: RT ms/f <= 1.05 x A (the trace costs little), P 0.85.",
+  "expect": {
+    "V_min_windows": 20,
+    "V_min_rtrace": 20,
+    "Q_spin_share_min": 0.2,
+    "HS_share_min": 0.3,
+    "HG_share_min": 0.3,
+    "HB_share_min": 0.7,
+    "RM_share_max": 0.1,
+    "RS_ratio_max": 0.5,
+    "RE_msf_ratio_max": 0.9,
+    "RG_msf_max": 33.4,
+    "TR_ratio_max": 1.05
+  },
+  "expect_note": "EMPTY of captures ON PURPOSE: a soak writes none. Named rules read by docs/lanes/halo1016/reportread.py --expect (legs V, Q, HS, HG, HB, RM, RS, RE, RG, TR). V: `mark cinematic`, `[s2tcvt] on`, >= 20 [rr425] windows, >= 20 `[rtrace] w` windows all mode=sync in RT and RC, `[rcatch1018] off` or no line in RT and `[rcatch1018] on` in RC. A V failure voids the legs that read that arm.",
+  "expect_counts": {},
+  "must_not_move": [],
+  "must_not_regress": []
+}

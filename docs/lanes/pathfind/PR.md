@@ -3,10 +3,35 @@
 State: ready
 
 Lane: pathfind            Issue: #433
-Base: master @ 76a2c15333 (origin/master merged into lane/pathfind 10-12)
-Files: docs/lanes/pathfind/**, docs/testing/titles/pathfind.py, docs/testing/titles/pathfind_selftest.py, docs/testing/titles/pathknow/hints/**, docs/testing/titles/pathknow/paths/**, docs/testing/jobs/selftest.d/95-stuckdetect.sh
-Prediction: none: no arm (tooling and a probe measure; no emulator code)
-Needs device: yes (held, direct driving; no dispatcher requests)    Needs NDK: no
+Base: master @ eb46eb2548 (the 10-18 08:03 offline fold of this branch, merged back in)
+Files: docs/lanes/pathfind/**
+Prediction: none: no arm (ledger/knowledge data and run evidence; no emulator code)
+Needs device: no    Needs NDK: no
+Selftest: none -- data only (docs/lanes/pathfind/**); no fragment reads it. Checked instead (2026-10-18): 207 pathknow/paths/*.json through load_paths/path_text 0 bad, 92 hints readable, below_bar_refusal over the real below-bar.tsv refuses the six below-bar pool titles and admits Halo 2 and AvP
+
+## 10-18 attempt 4 (after the 08:03 fold): run evidence, four below-bar refusals, one ledger correction
+
+The 08:03 fold took everything through `abe4efd7f0`. What is left against master is all under `docs/lanes/pathfind/`:
+- **The run backlog's text evidence** (`eb626c7a8d`, 1509 files): verdict, result, request and hdd json; steps,
+  calls and hold jsonl; run.log; and 9 VOID.txt / NOT-PLAYABLE.txt markers that the root `.gitignore`'s `*.txt` had
+  hidden. Frames, video and logcat (4.5 GB) stay on disk. `runs/.gitignore` explains why: C: is at 99%.
+- **Four below-bar rows** in `below-bar.tsv`, reseeded by `seed_below_bar()` from copied source verdicts: Top Spin
+  #992, Bloody Roar Extreme #743, Battlefield 2 MC #745, D&D Heroes #747. pathfind refuses each one until its issue
+  has a fix.
+- **The ledger correction.** Attempt 3 banked MK Shaolin Monks from a void sweep on a gpunonrender APK. The row is
+  off `pm/playable-accepted.tsv`, and `runs/sweep-4D570029/VOID.txt` says why. The real result is FAIL 0.4912 (#874,
+  #986).
+- **NOTES.md and OUTBOX.md:**
+  - pool identifications;
+  - a NEW ISSUE: classify.py's black test is mean-only, and it read Bloody Roar's save prompt as a load for 262 s;
+  - Amped 2's stale below-bar cause: now 0.9267 over 375 s, still failing on route length and 9 stalls;
+  - an offline_fold.py bug: `max()` over shard return codes passes a SIGTERMed re-run (rc -15).
+
+No device run: the Nova is owner-held and the Thor is offline.
+
+Release note (none): ledger/knowledge data and run evidence only, no emulator code changed.
+
+## Before the 08:03 fold
 
 10-05 to 10-12, the held-run chain on the Nova. Tool changes in `pathfind.py`:
 - **A stuck detector on the hold** (`docs/lanes/stuckdetect1007/stuckdetect.py`, imported only if present). A hold
@@ -102,3 +127,39 @@ Release note (none): test tooling only.
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
 ## 10-03 evening -- Black Stone and Dino Crisis 3 holds FAIL (#797, #795, #793); Panzer Dragoon Orta hold run 3 PASSED (counted Playable, ledger row 16); evidence runs/panzer-dragoon-hold3
+
+## 10-18 (cont. 2) -- below-bar.tsv regenerated via the tool's own seed_below_bar() (30 -> 150 rows), not hand-filed; 12 genuine new fps-bar refusals, 8 pre-existing owner `cause` entries verified intact
+
+## 10-18 (cont.) -- finished the backlog's pass=true scan; 10th title banked (Lemony Snicket, 4156001F), remaining untriaged backlog down from ~280 to 141 directories (fails + no-verdict navigation runs, named in NOTES.md)
+
+## 10-18 -- offline reconciliation of an unattended chain's uncommitted output (attempt 3); 9 new Playable, 2 caught false
+
+An unattended chain ran through at least 10-16 without anyone committing its output: by 10-18 the worktree held
+~290 uncommitted run directories (~5.2 GB) plus 134 unstaged `pathknow/` hint and path-replay files. This session
+did not run the device; it scanned every `verdict.json` under those run directories for `pass: true`, cross-referenced
+each hit against `pm/playable-accepted.tsv` (16 of the candidates were already banked by an intervening lane.local
+session this lane hadn't seen before), then frame-reviewed the rest against `contact.png`/`hold_strip.jpg` before
+touching the ledger -- no PASS goes on the ledger from the verdict flag alone.
+
+Result: **9 titles banked** to `pm/playable-accepted.tsv` (Mortal Kombat: Deadly Alliance, Mortal Kombat: Shaolin
+Monks, RalliSport Challenge, Cel Damage, Bad Boys: Miami Takedown, Scooby-Doo: Mystery Mayhem, Nickelodeon Avatar:
+The Last Airbender, Micro Machines, Tron 2.0: Killer App). 2 already carried a void marker from a past session
+(Auto Modellista, Beyond Good & Evil) and needed no action. **2 caught false** despite `pass: true` -- found only by
+looking at the frames, not the gate numbers:
+- **Black Stone: Magic & Steel** -- the Tork STICK:up/STICK:down cancel bug (ledger row 22's known mechanism):
+  the character stands turning in place for the whole ~550 s hold; 0 route-frames meant static_window/position were
+  never measured, so nothing caught it automatically.
+- **NHL 2K3** -- ~470 of 605 scored seconds are the post-goal instant-replay/net camera (the in-game VCR control bar
+  is visible in 2 of the 4 route-frames), scored "gameplay" by the per-tick model because crowd/board blur kept the
+  stuck-frame gate from firing.
+
+Both get a `NOT-PLAYABLE.txt` in their run dir and a `false-playable` row in `pm/pathfind-pool.tsv` (a new pool class,
+for a verdict that needs a code fix rather than a route fix). `pm/` is outside this git repo, so the ledger and pool
+edits are disk writes only, no commit. This commit lands `pathknow/`'s hint/path accumulation in full and the 13 run
+directories this session actually reviewed (9 banked + 2 void + 2 caught-false); NOTES.md names the other ~280
+untracked run directories as still-unreviewed backlog for the next session, not touched here.
+
+`Files:` is unchanged (`docs/lanes/pathfind/**` already covers `runs/**`).
+Release note (none): ledger/knowledge-store data and test tooling only, no emulator code changed.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)

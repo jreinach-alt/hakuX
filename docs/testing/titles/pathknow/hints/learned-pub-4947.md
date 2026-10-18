@@ -4,3 +4,5 @@
 - Dragon Ball Z Sagas (4947007A, nova, pathfind 2026-10-07): gameplay in 1.8 min via publisher_logo START A -> title_screen START -> main_menu A -> submenu A -> cutscene A
 - Forgotten Realms Demon Stone USA (49470074, nova, pathfind 2026-10-08): gameplay in 2.6 min via publisher_logo START A -> submenu A -> publisher_logo START A -> cutscene START A
 - Mission Impossible Operation Surma USA (4947001F, nova, pathfind 2026-10-12): gameplay in 8.1 min via publisher_logo START A -> cutscene START A -> title_screen START -> main_menu A -> submenu A -> save_load_prompt A -> submenu A -> save_load_prompt A -> cutscene START A -> cutscene A -> cutscene A START A -> cutscene A A
+- Micro Machines Europe En Fr De Es It (4947001C, nova, pathfind 2026-10-14): gameplay in 4.7 min via publisher_logo START -> cutscene A -> title_screen START -> cutscene START -> main_menu A -> submenu A
+- Slam Tennis Europe (49470011, nova, pathfind 2026-10-16): gameplay in 2.0 min via publisher_logo START A -> title_screen START A -> save_load_prompt A -> main_menu A -> submenu A -> cutscene A

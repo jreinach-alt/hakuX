@@ -1,0 +1,41 @@
+pathfind: American Chopper USA Europe (4156003D) on nova: /storage/E6C6-D7AA/Games/XBox/4156003D-American_Chopper_USA_Europe.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4156003D any, loaded none
+[  16.7s] #  1 publisher_logo    fast    START                    The rotating geometric shape and partial logo arc indicate an intro/publisher logo screen,
+[  31.2s] #  2 cutscene          fast    START                    Black letterbox bars top and bottom; animated cinematic after the publisher logo, not inte
+[  43.3s] #  3 title_screen      fast    START                    Title displayed with 'Press START to begin' prompt; after publisher logo and intro cutscen
+[  60.8s] #  4 main_menu         fast    DOWN A                   Main menu after title screen. CAREER MODE is highlighted. INSTANT MODE is visible below an
+[  79.0s] #  5 submenu           fast    A                        Chapter/level select screen after choosing the game mode; Prologue (first campaign chapter
+[ 100.8s] #  6 cutscene          fast    A                        Level briefing/objective preview with on-screen instructions and confirm prompt; not yet l
+[ 115.1s] #  7 submenu           fast    A                        Vehicle/bike selection screen after the level briefing cutscene; Black Widow Bike is alrea
+[ 127.7s] #  8 submenu           fast    A                        Bike information/preview screen after the previous selection; still need to confirm to pro
+[ 145.8s] #  9 submenu           fast    A                        Tutorial/control tips screen before gameplay; the 'A Next' button explicitly instructs the
+[ 158.3s] # 10 submenu           fast    A                        Control tips tutorial screen before gameplay; 'A Next' button is lit and explicitly instru
+[ 188.1s] # 11 submenu           fast    Y                        Tutorial screen looped when pressing A twice (steps 9→10→11). A again will loop. Try Y to 
+[ 225.5s] # 12 submenu           fast    B                        Tutorial screen stuck looping: pressing A at step 11 produced no change (steps 9→10→11 cyc
+[ 284.9s] # 13 submenu           fast    START                    Tutorial screen before gameplay. Previous attempts (A, A, Y, B) looped or returned here. T
+[ 313.7s] # 14 submenu           fast    A                        Tutorial/help screen before gameplay. START didn't work; A button is explicitly labeled 'N
+[ 379.4s] # 15 submenu           fast    DOWN                     Tutorial screen looped with A multiple times (steps 9-14). B at step 12 showed change but 
+[ 427.1s] # 16 submenu           fast    X                        Tutorial/control tips screen blocking progress to gameplay. Previous attempts (A, Y, B, ST
+[ 444.0s] # 17 submenu           fast    A                        Tutorial/control tips screen explicitly labeled with 'A Continue' action. This is a help s
+[ 482.3s] # 18 submenu           fast    B                        Tutorial/help screen blocking progression. A has looped multiple times (steps 9-17). Battl
+[ 504.8s] # 19 submenu           fast    Y                        Tutorial tips screen before gameplay. A has cycled through multiple tip screens (steps 9-1
+[ 518.4s] # 20 submenu           fast    START                    Tutorial/help screen before gameplay. Button explicitly says 'A Next', indicating A advanc
+[ 572.3s] # 21 submenu           fast    A                        Tutorial/tips submenu blocking gameplay. Button explicitly labeled 'A Next' indicates A ad
+[ 631.0s] # 22 submenu           fast    B                        This tips screen is looping: A cycles through tips and returns; B changed screen by 0.05 p
+[ 664.4s] # 23 submenu           fast    L1                       Tutorial/help screen blocking progression; A has cycled through multiple tips (steps 9-22)
+[ 703.6s] # 24 submenu           fast    BACK                     Tutorial tips screen blocking progression. A cycles through tips without exiting (steps 9-
+[ 749.2s] # 25 submenu           fast    B                        Still trapped in tutorial/tips loop. A cycles through tips without exiting (steps 9-22). B
+[ 771.6s] # 26 submenu           fast    Y                        Tutorial/tips screen blocking progression. A cycles through multiple tips without exiting 
+[ 797.8s] # 27 submenu           fast    START                    Tutorial/tips screen blocking gameplay progression. A has cycled through tips (steps 21-22
+[ 819.3s] # 28 submenu           fast    X                        Stuck in tips loop. A cycles through tips without exiting (steps 9-27); START, Y, B, BACK,
+[ 894.9s] # 29 submenu           fast    A                        Tutorial tips screen blocking progression. The visible 'A Next' button on screen indicates
+[ 965.7s] # 30 submenu           fast    BACK                     Trapped in tips dialog. B and A have both been tried repeatedly; cycling strategy failed. 
+[1028.7s] # 31 submenu           fast    A                        Tutorial tips screen stuck in a cycle. Step 29 shows A made progress (changed 0.03); step 
+[1093.0s] # 32 submenu           fast    B                        Stuck in tutorial tips screen that has cycled through many input attempts (A, B, X, Y, STA
+[1158.3s] # 33 submenu           fast    Y                        Stuck in tips dialog. Tried A (cycles tips), B, X, Y, START, BACK, L1 without exiting. The
+[1173.6s] # 34 submenu           fast    B                        This is a tutorial tips carousel. The 'B Back' button is clearly labeled to exit. Previous
+[1210.8s] # 35 submenu           fast    R1                       Stuck in tutorial tips carousel; steps 29-34 cycled A/B repeatedly but kept returning to t
+{"name": "American Chopper USA Europe", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 35, "steps": 35, "replayed": 0, "reason": "budget 20 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156003D": "8a52365a6dac", "4156005D": "a1647bf6ddb4", "4253

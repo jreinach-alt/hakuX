@@ -1,0 +1,24 @@
+pathfind: Rayman 3 Hoodlum Havoc (55530002) on nova: /storage/E6C6-D7AA/Games/XBox/55530002-Rayman_3_Hoodlum_Havoc.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 55530002 any, loaded none
+[  25.1s] #  1 publisher_logo    fast    START                    Ubisoft logo at boot; Rayman 3 is a Ubisoft title; 0.1 min in; skip with START per hints
+[  37.3s] #  2 title_screen      fast    START                    Title screen asking for START input; Ubisoft logo was skipped in step 1, now on the main t
+[  52.0s] #  3 main_menu         fast    A                        Menu screen after the title; 'New' is highlighted in yellow; fastest path to play.
+[  65.8s] #  4 name_entry        fast    A                        Profile name entry with default name 'RAY' filled; OK button is highlighted and ready. A o
+[  89.9s] #  5 save_load_prompt  fast    A                        Save game created confirmation after profile setup; A required to dismiss and proceed to g
+[  93.5s] #  6 black             black   wait                     black frame
+[ 118.8s] #  7 publisher_logo    fast    START                    Ubisoft logo appearing; after black loading screen in step 6, the intro sequence is resumi
+[ 149.0s] #  8 cutscene          fast    A                        Intro cinematic showing the game world and character after the publisher logo was skipped;
+[ 153.8s] #  9 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 185.6s] # 10 gameplay          fast    wait                     Player character visible and interactive in the game world; instruction is asking for acti
+[ 208.5s] # 11 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.609, under input 0.687
+hold-play: genre onrails, need 600 s of play
+hold-play: fps at 198 s: median 59.0, share>=30 1.0 over 199 samples
+hold-play: fps at 301 s: median 59.0, share>=30 1.0 over 302 samples
+hold-play: validity check stop 0 s (hold 601 s of play, verdict 602.7)
+hold-play: not held 601/600 s of play; verdict stops the hold: fps_ok 1.0, crash False, hang False
+held Rayman 3 Hoodlum Havoc for 604s
+VERDICT Rayman 3 Hoodlum Havoc ? PASS None gameplay=603.5s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0004 play_share=0.9995 fps_excluded=2.0s
+{"name": "Rayman 3 Hoodlum Havoc", "device": "nova", "result": "gameplay", "minutes": 3.48, "model_calls": 17, "steps": 11, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-55530002-1013r/frames/010-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

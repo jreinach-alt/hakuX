@@ -38,12 +38,13 @@ body:
       label: Install type
       description: >-
         A test (debug) build installs as a separate app, labelled
-        "hakuX (test builds)", alongside a release install.
+        "hakuX (test builds)", alongside a release install. Leave blank if
+        you're not sure.
       options:
         - Release build
         - Test build (debug)
     validations:
-      required: true
+      required: false
   - type: input
     id: device-model
     attributes:
@@ -55,9 +56,10 @@ body:
     id: device-chip
     attributes:
       label: SoC / GPU
+      description: Leave blank if you don't know it.
       placeholder: "Snapdragon 8 Gen 2 / Adreno 740"
     validations:
-      required: true
+      required: false
   - type: input
     id: android-version
     attributes:

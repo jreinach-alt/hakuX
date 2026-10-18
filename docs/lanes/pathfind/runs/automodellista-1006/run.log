@@ -1,0 +1,77 @@
+pathfind: Auto Modellista (4343000E) on nova: /storage/E6C6-D7AA/Games/XBox/4343000E-Auto_Modellista.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4343000E any, loaded none
+[  10.6s] #  1 publisher_logo    fast    START A                  A logo graphic on a blank background right after boot, no title text or menu yet; standard
+[  15.2s] #  2 black             black   wait                     black frame
+[  22.7s] #  3 publisher_logo    fast    START A                  Standard middleware logo screen (Sofdec/ADX codec logos) shown after boot; skip with START
+[  34.1s] #  4 title_screen      fast    START                    Title screen showing PRESS START prompt; pressing START should advance to the main menu
+[  41.5s] #  5 save_load_prompt  fast    A                        A save-creation prompt; Yes is fine for creating new save data, needed to proceed into the
+[  49.1s] #  6 save_load_prompt  fast    A                        Confirming save data creation; press A to proceed into the game
+[  57.2s] #  7 main_menu         fast    A                        Arcade is already highlighted (dashed selection box) and is the fastest path to a single r
+[  67.5s] #  8 main_menu         fast    A                        Single race is already highlighted as the fastest path to actual driving gameplay with def
+[  76.6s] #  9 submenu           fast    A                        Suzuka course is already highlighted with dashed selection box; confirming with A should p
+[  89.8s] # 10 submenu           fast    A                        This is a BGM/music selection submenu before the race starts; confirming the highlighted B
+[  97.5s] # 11 submenu           fast    A                        Car company selection screen; Dodge is already highlighted, confirm with A to proceed to c
+[ 107.1s] # 12 submenu           fast    A                        Car selection screen with Viper GTS already highlighted/selected in dashed box as default;
+[ 115.3s] # 13 submenu           fast    A                        Car customization/style selection submenu before race start; 'normal' (default style) is a
+[ 124.0s] # 14 submenu           fast    RIGHT A                  This is a color selection submenu before the race; default red color appears selected (das
+[ 132.0s] # 15 submenu           fast    A                        Pre-race setup submenu chain continues; AT (automatic) is already the highlighted/default 
+[ 144.1s] # 16 submenu           fast    A                        This is the final settings confirmation screen in the pre-race setup chain; 'next' is high
+[ 151.4s] # 17 submenu           fast    A                        Final pre-race confirmation screen with 'go race' highlighted as the default selected opti
+[ 161.7s] # 18 loading           fast    wait                     This is a pre-race track/laps announcement splash, not yet player-controlled gameplay; wai
+[ 179.1s] # 19 loading           fast    wait                     This looks like a pre-race starting-grid splash/cinematic shot (banner overlay, no HUD/spe
+[ 188.9s] # 20 gameplay          fast    RT:2                     Full racing HUD with position, lap counter, speedometer and tachometer is up; car is on th
+[ 207.3s] # 21 probe             probe   RT:2 RT:2                control 0.001, under input 0.007
+hold-play: genre drive, need 600 s of play
+hold-play: 3 still looks: walk reversed (back) at 28 s
+hold-play: 3 still looks: walk reversed (forward) at 67 s
+hold-play: fps at 197 s: median 59.0, share>=30 1.0 over 146 samples
+hold-play: fps at 300 s: median 59.0, share>=30 1.0 over 232 samples
+hold-play: validity check share 1213 s (hold 615 s of play, verdict 613.6)
+hold-play: verdict short on share by 1213 s; holding on (budget 1334 s left)
+hold-play: validity check share 1145 s (hold 682 s of play, verdict 681.6)
+hold-play: verdict short on share by 1145 s; holding on (budget 1266 s left)
+hold-play: validity check share 1075 s (hold 753 s of play, verdict 752.9)
+hold-play: verdict short on share by 1075 s; holding on (budget 1195 s left)
+hold-play: validity check share 1006 s (hold 821 s of play, verdict 821.6)
+hold-play: verdict short on share by 1006 s; holding on (budget 1126 s left)
+hold-play: validity check share 940 s (hold 887 s of play, verdict 887.6)
+hold-play: verdict short on share by 940 s; holding on (budget 1060 s left)
+hold-play: validity check share 870 s (hold 956 s of play, verdict 956.9)
+hold-play: verdict short on share by 870 s; holding on (budget 991 s left)
+hold-play: validity check share 800 s (hold 1026 s of play, verdict 1027.4)
+hold-play: verdict short on share by 800 s; holding on (budget 921 s left)
+hold-play: validity check share 739 s (hold 1086 s of play, verdict 1089.0)
+hold-play: verdict short on share by 739 s; holding on (budget 861 s left)
+hold-play: validity check share 671 s (hold 1153 s of play, verdict 1156.3)
+hold-play: verdict short on share by 671 s; holding on (budget 793 s left)
+hold-play: validity check share 609 s (hold 1215 s of play, verdict 1219.1)
+hold-play: verdict short on share by 609 s; holding on (budget 730 s left)
+hold-play: validity check share 545 s (hold 1278 s of play, verdict 1281.6)
+hold-play: verdict short on share by 545 s; holding on (budget 668 s left)
+hold-play: validity check share 477 s (hold 1346 s of play, verdict 1349.9)
+hold-play: verdict short on share by 477 s; holding on (budget 599 s left)
+hold-play: validity check share 416 s (hold 1409 s of play, verdict 1412.3)
+hold-play: verdict short on share by 416 s; holding on (budget 536 s left)
+hold-play: validity check share 352 s (hold 1472 s of play, verdict 1475.5)
+hold-play: verdict short on share by 352 s; holding on (budget 473 s left)
+hold-play: validity check share 280 s (hold 1544 s of play, verdict 1548.1)
+hold-play: verdict short on share by 280 s; holding on (budget 400 s left)
+hold-play: validity check share 210 s (hold 1612 s of play, verdict 1616.8)
+hold-play: verdict short on share by 210 s; holding on (budget 332 s left)
+hold-play: validity check share 146 s (hold 1676 s of play, verdict 1680.8)
+hold-play: verdict short on share by 146 s; holding on (budget 267 s left)
+hold-play: play disagrees: hold 1742.0 s, verdict 1747.2 s (verdict trusted)
+hold-play: validity check share 80 s (hold 1742 s of play, verdict 1747.2)
+hold-play: verdict short on share by 80 s; holding on (budget 201 s left)
+hold-play: play disagrees: hold 1810.2 s, verdict 1815.8 s (verdict trusted)
+hold-play: validity check share 11 s (hold 1810 s of play, verdict 1815.8)
+hold-play: verdict short on share by 11 s; holding on (budget 132 s left)
+hold-play: play disagrees: hold 1871.3 s, verdict 1879.2 s (verdict trusted)
+hold-play: validity check stop 0 s (hold 1871 s of play, verdict 1879.2)
+hold-play: not held 1871/600 s of play; verdict stops the hold: fps_ok 1.0, crash False, hang False
+held Auto Modellista for 2085s
+VERDICT Auto Modellista ? PASS None gameplay=2083.2s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0912 play_share=0.9025 fps_excluded=204.6s
+{"name": "Auto Modellista", "device": "nova", "result": "gameplay", "minutes": 3.45, "model_calls": 55, "steps": 21, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/automodellista-1006/frames/020-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256
