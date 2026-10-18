@@ -1,6 +1,6 @@
 # compat1017b: the compatibility page catches up from 88 to 90 Playable
 
-State: draft
+State: ready
 
 Lane: compat1017b             Issue: #433 (0.5: 50 Playable)
 Base: master @ ad567fae7e
