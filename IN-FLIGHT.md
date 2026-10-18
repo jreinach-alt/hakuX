@@ -8,14 +8,15 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `gta3car1018` | claude-opus-5-5 | 3 min |  |
-| `holdcap1018` | claude-sonnet-5 | 3h 15m | holdcap1018: an owner-play hold starts a host logcat capture |
-| `ralli2audio1018` | claude-opus-5-5 | 3 min |  |
+| `gta3car1018` | claude-opus-5-5 | 18 min | gta3car1018: GTA III in the car -- what the extra render passes are (#1049) |
+| `holdcap1018` | claude-sonnet-5 | 3h 30m | holdcap1018: an owner-play hold starts a host logcat capture |
+| `mkdawhite1018` | claude-opus-5-5 | 8 min | mkdawhite1018: Mortal Kombat: Deadly Alliance arena floors and walls draw flat white (#1058) |
+| `ralli2audio1018` | claude-opus-5-5 | 18 min | ralli2audio1018: RalliSport Challenge 2 audio dropouts and early-race freezes |
 
 - **Handhelds:** 2 connected.
-  - Nova: held by `lane.gta3car1018`
+  - Nova: free for the queue
   - Thor: held by `lanelocal-offline`
-- **Device queue:** 0 waiting, 0 running.
+- **Device queue:** 2 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -125,10 +126,14 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
+| `lane/gta3car1018` | gta3car1018: GTA III in the car -- what the extra render passes are (#1049) | `a9906ccb2c` | 2026-10-18 10:46 |
 | `lane/holdcap1018` | holdcap1018: an owner-play hold starts a host logcat capture | `6a009e01b6` | 2026-10-18 07:38 |
+| `lane/mkdawhite1018` | mkdawhite1018: Mortal Kombat: Deadly Alliance arena floors and walls draw flat white (#1058) | `5e25495242` | 2026-10-18 10:54 |
+| `lane/ralli2audio1018` | ralli2audio1018: RalliSport Challenge 2 audio dropouts and early-race freezes | `52443b301b` | 2026-10-18 10:49 |
 
 ## Recently landed on master
 
+- 2026-10-18 dispatcher: fix the staged-disc push's /mnt/d path so adb.exe can open it
 - 2026-10-18 The compatibility page adds RalliSport Challenge and Mortal Kombat: Shaolin Monks to Playable (92 -> 94)
 - 2026-10-18 compat1018b: drop GTA III and Vice City from Playable (#433, #1049)
 - 2026-10-18 pathfind: a screen-reading agent that drives a title from boot into gameplay
@@ -140,6 +145,5 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-18 compat1018: the compatibility page catches up to the 95-row Playable ledger
 - 2026-10-18 snaptargets1018: the dispatcher snapshot ships titlestate.py but not targets.toml (#433)
 - 2026-10-18 dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what stops a run
-- 2026-10-18 Top Spin: a state:any route that gets past Controller Select
 
-_Updated 2026-10-18 10:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 11:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
