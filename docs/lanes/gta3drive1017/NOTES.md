@@ -1,9 +1,15 @@
 # lane.gta3drive1017 -- GTA III drops into the teens while driving (#433)
 
-Status (attempt 2, 10-17 16:55 PDT): the wait is located (section 6). R1 is built (c6ca5296fd, section 7). Its
-arms are registered and running on the Nova (section 8).
+Status (attempt 3, 10-17 17:20 PDT): the wait is located (section 6). R1 is built (c6ca5296fd, section 7). Its
+arms are registered (section 8).
 - Step 1, the pixel suites, is judged (8.1): the same code ran in both arms, and every mover is run-to-run variance.
-- The first drive pair is running. It is also the proof of the route's new gate (section 6.3).
+- Drive pair 1 is VOID (8.2): the help-box gate never matched, so neither run entered the car. The gate is now the
+  scene beside the Kuruma, and the pair is requeued.
+
+**Why attempt 2 did not finish.** It ended at ~16:55 while drive pair 1 was on the Nova (B 16:40-16:50, A
+16:50-17:00), so there was nothing to judge yet. Its last act was to check out a new local branch,
+`lane/gta3drive1017-r2`, at c6ca5296fd with nothing committed on it, probably the start of R2's instrument (section
+7). Attempt 3 moved this worktree back to `lane/gta3drive1017` (2680600812, the pushed head). Nothing was lost.
 
 **Why attempt 1 did not finish.** It ended its session on purpose, waiting on two Nova pilots queued behind lane.local's
 hold:
@@ -383,6 +389,43 @@ order the copy") assumed B would take the skip. It never did, so these moves say
 drive arms go ahead.
 
 Not repeated: a rerun of pixel B. It would run the same code path again and decide nothing about R1.
+
+### 8.2 Drive pair 1: VOID, the route never entered the car
+
+B `1-1792280173-lane.gta3drive1017-1364097`, A `1-1792280181-lane.gta3drive1017-1364296`. Both ran on Turnip
+(`Loading custom Vulkan driver: vulkan.purple.so`), and the switch acted as set: B printed `[s2tdrain] first skip`, A
+printed `[s2tdrain] on`. drive_judge.py: both VOID, with 0 scored windows, because there is no `mark gameplay`.
+
+**The cause is the route's gate, not the build.**
+- Both runs reached the same frame at `pregameplay`: Claude on foot beside the Kuruma on the bridge ramp, clock 05:16,
+  HUD up (164333-pregameplay.png, 165312-pregameplay.png).
+- `waitfor enter-help` then polled for the "Enter or exit a vehicle: Y" box. The box is shown only in the mission's
+  first seconds, which the A-train covers, so it was never on screen again.
+- Each run stood there until the waitfor timed out (`35.6 NOMATCH`, 16:50:00 and 17:00:32), then the route died at
+  537 s. The timeout frames show the same scene, dimmed by the display's idle timeout.
+- The same frame also ends the Playable run 32437's A-train (012710-pregameplay.png). So this is the usual state.
+  The pilots' state (already in a car, at Red Light District or in Chinatown) is the odd one.
+
+**The fix (route only).**
+- The new gate is the scene itself: `refs/gta-3-drive/at-kuruma.png`, the car and the wall behind it, cut from
+  1364097's pregameplay frame at 830,440,450,220.
+- tools/route_gate.py over every frame of the five runs on hand (this pair, both pilots, 32437):
+
+  | frames | scores |
+  |---|---|
+  | beside the car: 1364097's pregameplay (the source), 1364296's, 32437's | 0.00, 0.25, 0.37-0.67 |
+  | the 31 others (cutscenes, in-car, the pilots' drives, the dimmed timeouts) | 19.87 and up |
+
+  Threshold 10.
+- `press-until Y at-kuruma` presses Y until that region changes: Claude walks to the door, gets in, and the camera
+  swings behind the car. It presses up to 3 times, 5 s apart.
+- A run whose A-train ends anywhere else (as in the pilots) times out at the gate and is void. It cannot score on-foot
+  frames as driving.
+- `route.sh --check` passes.
+
+**Requeued:** the same pair, B then A, same build, env and prediction. This is a route fix for a void with a known
+cause, not a blind rerun. The pilot verdict (`pilots/lane.gta3drive1017.ok`) is written only once B's frames show the
+car moving.
 
 ## Questions
 

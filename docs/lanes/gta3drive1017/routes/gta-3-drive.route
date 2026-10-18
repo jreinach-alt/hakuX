@@ -7,27 +7,36 @@
 # Boot: copied verbatim from gta-3.route up to its `waitfor fist-hud` (see
 # that file's header for why there is no START).
 #
-# Entry gate: NOT fist-hud. Both pilots (1-1792275531-...-343857 and
-# 1-1792275540-...-346093) matched fist-hud at once on the game's own intro
-# drive (Chinatown, clock 05:23, $0, HUD up: route-frames/154632-fist-hud.png),
-# which runs before the "Give Me Liberty" cutscene; the Y press landed there
-# and Claude was never put in the car by it. The weapon icon is up on every
-# in-game screen, so it cannot say "on foot next to the Kuruma". The tutorial
-# box "Enter or exit a vehicle: Y" can: it is up only then (pilot 2,
-# 154830-drive.png and 154907-drive.png, ~2 min after `pregameplay`).
-# refs/gta-3-drive/enter-help.png is that box cut from 154830-drive.png at
-# 104,84,380,88. tools/route_gate.py scored the region on every frame of both
-# pilots and of the Playable run 1-1791792686-lane.local-32437: 0.00 and 4.45
-# on the two frames with the box, 31.45 and up on the 26 without it, including
-# the same box with other text ("Brake or reverse", 31.62). Threshold 15.
+# Entry gate: the scene itself, Claude on foot beside the Kuruma on the
+# bridge ramp (refs/gta-3-drive/at-kuruma.png, the car and the wall behind
+# it, cut from 1-1792280173-...-1364097 164333-pregameplay.png at
+# 830,440,450,220). Three of five runs reach exactly this frame by
+# `pregameplay` (1364097, 1364296, and the Playable run
+# 1-1791792686-lane.local-32437) and stand in it until input moves them
+# (1364097: unchanged from 16:43:33 to 16:50:00). tools/route_gate.py: 0.00,
+# 0.25, 0.37-0.67 on those frames; 19.87 and up on the 31 others (cutscenes,
+# the in-car frames, the drives). Threshold 10.
 #
-# Entry: press Y until the box changes (press-until's reference is the state
-# before the press works). The game takes the nearest upright car within 10
-# units (re3 CPlayerInfo::FindClosestCarSectorList, `dist <= 10.0f`), so one Y
-# walks Claude to the door and in; up to 3 presses 5 s apart cover a press
-# the host's adb drops (both pilots logged vsock accept timeouts). The 6 s
-# after it lets 8-Ball take the passenger seat before the throttle.
-# `mark gameplay` is after the entry, so the scored window is driving.
+# Two gates before this one failed:
+# - fist-hud (gta-3.route's) matched at once in both pilots
+#   (1-1792275531-...-343857, 1-1792275540-...-346093), whose A-train ended
+#   with Claude already in a car in Red Light District / Chinatown at a 05:xx
+#   clock (153645-pregameplay.png, 154630-pregameplay.png); the Y press
+#   there exited the car. The weapon icon is up on every in-game screen.
+# - the tutorial box "Enter or exit a vehicle: Y" (enter-help.png) never
+#   showed after `pregameplay` in either run of the first drive pair: it is
+#   up only in the first seconds of the mission, which the A-train covers.
+#   Both runs timed out on it, standing beside the car.
+# A run whose A-train ends anywhere else times out here and is void.
+#
+# Entry: press Y until the scene changes (press-until's reference is the
+# state before the press works). The game takes the nearest upright car
+# within 10 units (re3 CPlayerInfo::FindClosestCarSectorList,
+# `dist <= 10.0f`), so one Y walks Claude to the door and in, and the camera
+# swings behind the car; up to 3 presses 5 s apart cover a press the host's
+# adb drops (both pilots logged vsock accept timeouts). The 6 s after it
+# lets 8-Ball take the passenger seat before the throttle. `mark gameplay`
+# is after the entry, so the scored window is driving.
 #
 # Driving: RT accelerates (pad.sh: the triggers are not swapped; max is full
 # throttle), LT brakes and reverses, LX steers. Equal left and right pulses
@@ -46,9 +55,9 @@ repeat 12 {
     wait 5
 }
 shot pregameplay
-waitfor enter-help 240 104,84,380,88 15
+waitfor at-kuruma 240 830,440,450,220 10
 shot onfoot
-press-until Y enter-help 3 5 104,84,380,88 15
+press-until Y at-kuruma 3 5 830,440,450,220 10
 wait 6
 shot incar
 mark gameplay
