@@ -2997,6 +2997,7 @@ note = "STARTED lane.local 2026-10-17 ~21:50 PDT on the owner's word (GTA III fp
 issues = ["433"]
 standing = false
 files = ["docs/lanes/compat1017/**", "docs/testing/compat_notes.tsv", "docs/testing/compat_page.py", "docs/testing/compat_page_selftest.py", "docs/compatibility.csv", "docs/COMPATIBILITY.md", "README.md", "docs/testing/titles/targets.toml"]
+released = ["docs/lanes/compat1017/**", "docs/testing/compat_notes.tsv", "docs/testing/compat_page.py", "docs/testing/compat_page_selftest.py", "docs/compatibility.csv", "docs/COMPATIBILITY.md", "README.md", "docs/testing/titles/targets.toml"]
 note = "STARTED lane.local 2026-10-17 ~22:05 PDT on the owner's word (move Marvel Nemesis to Playable in all references; lots of titles were tested before 0.5.2 and are not downgraded): bring the compatibility page, CSV and README in line with pm/playable-accepted.tsv (88 rows; the page stops at 57/72). compat_page.py refuses until the 31 ledger titles missing from compat_notes.tsv have rows. Replaces the never-started [lane.compat1016]. README.md and targets.toml are taken from folded lanes (release052c, titlekey1016); targets.toml is the Marvel notes line only. Brief: briefs/compat1017.md."
 
 [retired.storydoc1017]
