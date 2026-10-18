@@ -111,7 +111,22 @@ jobs/allowed-tools.doctor jobs/roles/dispatchdoctor.md"
 # is listed here rather than in SCRIPT_DEPS: without it every dispatched `drive generic`
 # step would fail closed with `pathclass unavailable` for a reason that is purely a
 # snapshot omission, not a real unavailability.
-SNAPSHOT_GLOBS="titles/drive-profiles/*.toml titles/drive-profiles/*/*.png titles/pathknow/classifier/head.npz"
+#
+# titlestate.py's `admit` (profile_gate_check's only subcommand) opens three more files
+# beside itself, none of them in SCRIPT_DEPS: targets.toml (titlestate.py targets(), read
+# on every claim), routes/<name>.route (titlestate.py proven_route(), the --find-route R3
+# check) and profile-transition.toml (titlestate.py live_transition(), the returning/
+# first-run claim path). Without targets.toml a claim that reaches it crashes outright
+# (snaptargets1018, #433): any first-run or find-route title, since a title with a golden
+# short-circuits admit() before targets() is ever called. The other two fail closed and
+# silent instead of crashing -- proven_route()'s and load_transitions()'s opens are both
+# try/excepted -- which is worse: a title with an already-proven route looks unproven (R3
+# stops protecting anything) and the transition grandfather never fires, both from the
+# worker only, with nothing in the log to say why. All three are a fixed file (or, for
+# routes, a file per title, same shape as a drive profile), so they ship here, not in
+# SCRIPT_DEPS; src_hash already covers whatever this matches.
+SNAPSHOT_GLOBS="titles/drive-profiles/*.toml titles/drive-profiles/*/*.png titles/pathknow/classifier/head.npz \
+titles/targets.toml titles/profile-transition.toml titles/routes/*.route"
 snapshot_globbed() {   # every file SNAPSHOT_GLOBS matches in $SRC, relative to it
     ( cd "$SRC" 2>/dev/null || exit 0
       local f
