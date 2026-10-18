@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Desktop boot of one disc with the [boot1045] present probe on (#1045), through the xemu window, not -display none.
 
-usage: deskboot.py NAME TOTAL_S PROBE_S [--iso PATH] [--video offscreen|wayland] [ENV=V ...]
+usage: deskboot.py NAME TOTAL_S PROBE_S [--iso PATH] [--bin PATH] [--video offscreen|wayland] [ENV=V ...]
+
+--bin runs another build (default build-linux/qemu-system-i386); the before/after desktop arms keep a copy of each.
 
 Writes to build-linux/runs/NAME (git-ignored): xemu.toml, a fresh copy of the goldens disk, qemu.log, and probe/
 (boot1045_log.txt, boot1045_f*.ppm, boot1045_r*.bin). The window is SDL's offscreen driver (EGL, llvmpipe) by
@@ -34,10 +36,15 @@ def main():
     a = sys.argv[1:]
     name, total, probe_s = a[0], int(a[1]), int(a[2])
     iso, video, extra = ISO, "offscreen", {}
+    binary = f"{B}/qemu-system-i386"
     i = 3
     while i < len(a):
         if a[i] == "--iso":
             iso = a[i + 1]
+            i += 2
+            continue
+        if a[i] == "--bin":
+            binary = a[i + 1]
             i += 2
             continue
         if a[i] == "--video":
@@ -99,10 +106,10 @@ dvd_path = '{iso}'
     before = set(os.listdir(CRASH)) if os.path.isdir(CRASH) else set()
     log = open(os.path.join(out, "qemu.log"), "w")
     t0 = time.time()
-    p = subprocess.Popen([f"{B}/qemu-system-i386", "-config_path", toml], env=env, stdout=log,
+    p = subprocess.Popen([binary, "-config_path", toml], env=env, stdout=log,
                          stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
-    print("pid %d, iso %s, video %s, total %d s, probe %d s" % (p.pid, os.path.basename(iso), video, total, probe_s),
-          flush=True)
+    print("pid %d, bin %s, iso %s, video %s, total %d s, probe %d s" % (
+        p.pid, os.path.basename(binary), os.path.basename(iso), video, total, probe_s), flush=True)
     try:
         rc = p.wait(timeout=total)
     except subprocess.TimeoutExpired:
