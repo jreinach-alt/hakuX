@@ -212,5 +212,14 @@ The same failure twice for one cause: stop and report.
 
 ## Status
 
-[lane.ralli2audio1018] working: instrument and priority change committed;
-queueing the pilot once the Nova's current hold (gta3car1018) ends.
+[lane.ralli2audio1018] waiting: dispatch request
+1-1792348243-lane.ralli2audio1018-2335205 (Nova, ref 988b7e91f0, 870 s,
+route ralli2audio1018-drive, env HAKUX_APU_PRIO=0 HAKUX_PLC_WIPE=1; queued
+11:44 PDT behind gta3car1018's hold). On its result:
+
+1. Check `GPU: PurpleVK` and that the route raced (frames: race clock,
+   LAP, minimap).
+2. Read `tools/timeline.py <logcat> --prod`.
+3. Write the pilot verdict to `pilots/lane.ralli2audio1018.ok`.
+4. Queue `HAKUX_PLC_WIPE=1` (priority on), then two default runs for the
+   bar.
