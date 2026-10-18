@@ -2957,6 +2957,12 @@ standing = false
 files = ["docs/lanes/bootstatic1017/**", "docs/testing/predictions/bootstatic1017-*"]
 note = "BRIEFED by lane.xbox 2026-10-17 14:40 PDT on the owner's request: the brief static or green distortion at every title start. Desktop and code reading first; device captures queue behind the owner's sweep; emulator and app files come by the lane's own board request. Brief: briefs/bootstatic1017.md."
 
+[lane.nearbar1017]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/nearbar1017/**"]
+note = "BRIEFED by lane.local 2026-10-17 ~18:45 PDT on the owner's word: three near-bar titles (Panzer Elite, Aeon Flux, Medal of Honor: Frontline) on the 0.5.2 build, held runs on the Nova, telemetry on a miss, then stop and report. Docs only."
+
 [lane.release052b]
 issues = ["433"]
 standing = false
