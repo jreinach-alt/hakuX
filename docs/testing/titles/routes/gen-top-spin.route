@@ -1,8 +1,92 @@
-# state: any   (classifier-path benchmark opening; #433 step 6c)
-# Top Spin (4D530035), classifier-path benchmark (#433): drive generic
-# replaces the blind opening and marks gameplay itself once play is
-# confirmed. Tennis: move to the ball, swing -- never START.
-drive generic 300 mark
+# state: any   (classifier-path benchmark opening, fixed for Controller
+# Select -- #433 lane.topspinroute1018, from dispatch/results/
+# z-1792314505-lanelocal-3439642, 10-18 02:08)
+#
+# Top Spin (4D530035). `drive generic` correctly presses A through Main
+# Menu, Settings, Venue and Court (that run's route-state.tsv: "ingame_menu"
+# presses 1-4, all of them right), then gets stuck on Controller Select the
+# same way -- pathclass names it the same `ingame_menu`/`submenu` as the
+# four screens before it, and A alone does nothing there: both pads sit in
+# the middle with no team assigned. 25 presses later: ROUTE FAIL "stuck on
+# ingame_menu after 25 presses". The recorded first-run route
+# (fps786-topspin.route, step 16) clears it with `axis HATX min` then
+# `axis HATX mid`, then A.
+#
+# So this route splits in two: `drive` for boot/intro/logo/title and the
+# four menu screens the classifier already gets right -- its whole point is
+# not needing to know how long an intro video plays, which varied by two
+# skip cycles and ~29 s in the one run on record -- then fps786's own
+# steps 14-25, copied verbatim (same waits, same presses, including its own
+# wasted A and START on Controller Select before the hat move that actually
+# works), since that stretch does not depend on first-run vs kept-profile.
+#
+# 75 s for the `drive` step: the tsv shows Controller Select first reached
+# at t=52.5 and the 25th press (FAIL) at t=123.4 -- a 70.9 s gap fixed by
+# the profile's menu_gap_s, not by anything that varies run to run. 75 s
+# clears 52.5 with margin and sits under a worst-case FAIL floor estimated
+# at ~85-87 s. See docs/lanes/topspinroute1018/NOTES.md for the full
+# reasoning and the residual risk (an unusually fast run could still rack up
+# 25 stuck presses before 75 s) -- not device-proven; the run after this
+# lane checks it for real.
+drive generic 75
+# Whatever screen that left us on (Controller Select, or Court/Venue/
+# Settings if the bound undershot), fps786-topspin.route steps 14-16,
+# unchanged: a press A and a press START that only do something if we are
+# not already on Controller Select, then the hat move that clears it.
+press A 120
+wait 0.6
+wait 17.0
+shot s15-submenu
+# step 15 [submenu] Controller Select screen unchanged after A (or Venue/Court, advanced by it)
+press START 120
+wait 0.6
+wait 10.3
+shot s16-submenu
+# step 16 [submenu] Controller Select screen: 1P still in the middle with no team, A/START do nothing
+axis HATX min
+axis HATX mid
+wait 0.6
+press A 120
+wait 0.6
+wait 12.5
+shot s17-submenu
+# step 17 [submenu] Player Select: 1P and COM both show P. Sampras, avatar highlighted bottom-left
+press A 120
+wait 0.6
+wait 8.7
+shot s18-submenu
+# step 18 [submenu] Exhibition Player Select: 1P shows P. Sampras with READY banner, COM with stats
+press A 120
+wait 0.6
+wait 11.8
+shot s19-submenu
+# step 19 [submenu] Head-to-Head exhibition screen, both players READY; prompt shows 'A Play match'
+press A 120
+wait 0.6
+wait 17.7
+shot s20-loading
+# step 20 [loading] Match intro: 'The Oceania Tennis Championship' stadium and court, LOADING
+wait 13.8
+shot s21-loading
+wait 13.4
+shot s22-loading
+wait 11.5
+shot s23-loading
+# step 23 [loading] Match intro loading, EXHIBITION/PRESS START banner
+press START 120
+wait 0.6
+wait 13.3
+shot s24-loading
+# step 24 [loading] Melbourne stadium, player walking out with racket bag
+press START 120
+wait 0.6
+wait 17.0
+shot s25-gameplay
+# step 25 [gameplay] Match has loaded; player at baseline ready to serve
+wait 3
+mark gameplay
+# genre loop: tennis, move to the ball and swing -- never START (unchanged
+# from the previous gen-top-spin.route)
 repeat forever {
     axis LX max
     wait 0.8
