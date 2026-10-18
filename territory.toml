@@ -3098,8 +3098,9 @@ note = "STARTED lane.local 2026-10-18 ~08:45 PDT (Sonnet): take GTA III and Vice
 [lane.dispatchpush1018]
 issues = ["433"]
 standing = false
-files = ["docs/lanes/dispatchpush1018/**", "docs/testing/dispatcher.sh", "docs/testing/jobs/selftest.d/98-dev-push-windows-path.sh"]
-note = "STARTED lane.local 2026-10-18 ~09:15 PDT (Sonnet): the dispatcher staged-disc push gives adb.exe a /mnt/d path it cannot open; no off-device title can be staged (found by mkdawhite1018)."
+files = ["docs/lanes/dispatchpush1018/**", "docs/testing/dispatcher.sh", "docs/testing/jobs/selftest.d/99-dev-push-wslpath.sh", "docs/testing/jobs/selftest.d/99-hdd-split.sh", "docs/testing/jobs/selftest.d/85-savestate.sh", "docs/testing/jobs/selftest.d/98-dispatch-doctor.sh"]
+released = ["docs/lanes/dispatchpush1018/**", "docs/testing/dispatcher.sh", "docs/testing/jobs/selftest.d/99-dev-push-wslpath.sh", "docs/testing/jobs/selftest.d/99-hdd-split.sh", "docs/testing/jobs/selftest.d/85-savestate.sh", "docs/testing/jobs/selftest.d/98-dispatch-doctor.sh"]
+note = "STARTED lane.local 2026-10-18 ~09:15 PDT (Sonnet): the dispatcher staged-disc push gives adb.exe a /mnt/d path it cannot open; no off-device title can be staged (found by mkdawhite1018). || WIDENED (hostops, jam duty, 2026-10-18 09:30 PDT): row named a phantom file (98-dev-push-windows-path.sh, never created) instead of the lane's real edits -- foldqueue FAILED 09:25 PDT, outside-files on dispatcher.sh's actual companions. The fix (wslpath -w in dev_push) forces 3 pre-existing fake-adb selftest fragments to match the new call contract (85-savestate.sh, 98-dispatch-doctor.sh, 99-hdd-split.sh, each adding a matching wslpath -u in their push stub) plus its own new fragment 99-dev-push-wslpath.sh. Checked all 3 pre-existing files live: unclaimed by any row's files= line (only in historical [free] release notes from lane.savestate433/hddcrash/dispatchdoctor1017's retirements), not double-claimed. Lane is finished (PR #1073 State: ready, branch 6ba8ca9fce, unit inactive): released the whole row at ready so it retires cleanly on fold, matching tonight's compat1018b/pathfind pattern."
 
 [lane.gta3instr1018]
 issues = ["1049", "433"]
