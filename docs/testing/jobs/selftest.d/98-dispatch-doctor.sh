@@ -59,7 +59,9 @@ case "$1" in
     push)    local="$2" remote="$3"
              dest="${remote//\/storage\//$DD_FS/storage/}"
              mkdir -p "$(dirname "$dest")" 2>/dev/null
-             cp "$local" "$dest" ;;
+             # dev_push hands adb a wslpath -w'd source (#433); wslpath -u
+             # round-trips it back to the real path this fake device copies from.
+             cp "$(wslpath -u "$local")" "$dest" ;;
     pull)    remote="$2" local="$3"
              src="${remote//\/storage\//$DD_FS/storage/}"
              mkdir -p "$(dirname "$local")" 2>/dev/null

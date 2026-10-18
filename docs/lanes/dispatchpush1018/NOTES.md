@@ -79,6 +79,13 @@ unconverted `/mnt/d` path fails against the real device exactly as logged, and `
 fixes both a `/mnt/d` source and a `/home`-style source (so `titles.qcow2`'s existing call site
 is unaffected).
 
+After the fix (section 2), the *patched* `dev_push` function itself was exercised directly
+(sourcing dispatcher.sh, `device_env ee317437`, then calling `dev_push` with a fresh
+`/mnt/d/hakux-staging/dispatchpush1018/scratch2.txt`), not just a hand-typed `adb push`:
+`dev_push` returned 0, the device file's sha256 matched the source
+(`c506529b1ef...c53738621`, both sides) and its mode was 660 as `dev_push` requires before the
+rename. Removed from the device and moved aside then removed from D: immediately after.
+
 ## 2. The fix
 
 `dev_push` (dispatcher.sh) now resolves its host-path argument through `wslpath -w` before
@@ -86,8 +93,9 @@ handing it to `adb push`, instead of passing `$src` unchanged. One line change; 
 `dev_push` (the `.new`-then-rename, sha check, mode-660 check) is unchanged. All three call
 sites (`ensure_title_staged`'s `/mnt/d` push, the titles-disk `build` push, the hdd-guard
 rebuild push -- all `/home`-rooted except the first) go through the same converted path, so
-none needed a separate change. No second fault appeared in the real push (section 1); nothing
-else in `ensure_title_staged` was touched.
+none needed a separate change. No second fault appeared in the real push against the Nova
+(section 1); nothing else in `ensure_title_staged` was touched. The second fault that *did*
+appear was in three existing selftest fixtures, not the real device -- see section 3.1.
 
 ## 3. Selftest
 
@@ -100,6 +108,38 @@ form. The fragment's fake `adb push` asserts its first argument is in one of tho
 fails loudly (not silently) if it sees an unconverted `/mnt/...` or bare `/home/...` string --
 the exact bug this lane fixes. This is a different gap than `99-iso-roots.sh` (section 0.2),
 which never calls `push` at all.
+
+### 3.1 Second fault: three existing fixtures assumed `dev_push`'s old (unconverted) argument
+
+`grep -rln '^\s*push)' docs/testing/jobs/selftest.d/*.sh` finds every fragment whose fake `adb`
+implements `push` -- the only operation `dev_push`'s fix could affect. Four hits: this lane's
+own `99-dev-push-wslpath.sh` (safe by construction, section 3), and three pre-existing fixtures
+that all assumed their fake `push`'s source argument (`$2`, what `dev_push` hands `adb`) is a
+literal path `cp` can open directly. Once `dev_push` started handing it a `wslpath -w`-converted
+Windows-form string, each `cp` failed to find that string as a Linux path:
+
+| fragment | line | fix |
+|---|---|---|
+| `99-hdd-split.sh` | 37 | `push) cp "$(wslpath -u "$2")" "$(map "$3")" ...` |
+| `85-savestate.sh` | 32 | `push) cp "$(wslpath -u "$2")" "$(map "$3")" ...` |
+| `98-dispatch-doctor.sh` | 59-62 | `cp "$(wslpath -u "$local")" "$dest"` (its push case names the arg `local` instead of positional `$2`, same fix) |
+
+Each was confirmed with the stash A/B technique before touching it: dispatcher.sh's fix stashed
+out (pathspec-limited to that one file, captured by SHA, restored with `git stash apply`, never
+`pop`), the fragment run alone under `SELFTEST_ONLY`, clean every time at baseline (72/0, 27/0,
+76/0 respectively) and failing only with the fix in place (34 failures in a combined run for
+hdd-split; 15 of 27 for savestate; 2 of 78 for dispatch-doctor, in `fix push-iso` and
+`diagnose retry`, both of which call `dev_push`/`push-iso` under the hood). `wslpath -u` round-
+trips `wslpath -w`'s output exactly (verified separately, including paths with spaces), so this
+is the same one-line class of fix as the production fix itself, not a new mechanism. All four
+push-stubbing fragments run together after the fixes: 178 passed, 0 failed.
+
+A full 150-fragment suite run was attempted to look for any further fallout outside the four
+fragments the grep found; it did not finish inside a single command's time budget (5 of 150
+fragments completed in ~580s with 0 failures before the budget ran out). The grep-based scan
+is exhaustive for this change's blast radius -- `dev_push`'s fix can only affect a fixture that
+fakes `push`, and there are exactly four, all accounted for above -- so this was not pursued
+further.
 
 ## 4. Deploy (not done by this lane)
 
@@ -114,5 +154,6 @@ not start or re-queue any Nova request beyond the one scratch-file push in secti
 ## 5. Status
 
 Ready. Real-adb proof done (section 1), fix applied (section 2), selftest fragment added
-(section 3), deploy path named for the fold (section 4). No second fault found; no device run
+(section 3), a second fault found and fixed in three pre-existing fixtures (section 3.1), deploy
+path named for the fold (section 4). No second fault in the real device push; no device run
 beyond the one scratch-file push.

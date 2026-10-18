@@ -1,10 +1,10 @@
 # dispatcher: fix the staged-disc push's /mnt/d path so adb.exe can open it
 
-State: draft
+State: ready
 
 Lane: dispatchpush1018            Issue: #433
 Base: master @ 1b3b3db8f4
-Files: docs/lanes/dispatchpush1018/**, docs/testing/dispatcher.sh, docs/testing/jobs/selftest.d/90-dev-push-wslpath.sh
+Files: docs/lanes/dispatchpush1018/**, docs/testing/dispatcher.sh, docs/testing/jobs/selftest.d/99-dev-push-wslpath.sh, docs/testing/jobs/selftest.d/99-hdd-split.sh, docs/testing/jobs/selftest.d/85-savestate.sh, docs/testing/jobs/selftest.d/98-dispatch-doctor.sh
 Prediction: none: harness defect, no device-facing behavior change to predict
 Needs device: no (already proved against the Nova in NOTES.md section 1; nothing further needed)    Needs NDK: no
 
@@ -22,12 +22,20 @@ same file through `wslpath -w` pushes and its on-device sha256 matches. Both the
 and a `/home`-style source were checked. The device copy was removed immediately after; nothing
 near the 25 GB free floor was touched; no app data or install state was touched.
 
-`docs/testing/jobs/selftest.d/90-dev-push-wslpath.sh` fails on the pre-fix line: its fake `adb`
+`docs/testing/jobs/selftest.d/99-dev-push-wslpath.sh` fails on the pre-fix line: its fake `adb`
 stubs only the device transport (there is no real device in CI), not `wslpath`, which runs for
 real and must resolve a `/mnt/d/...` source and a `/home/...` source each to a form the fake
 `push` accepts; an unconverted `/mnt/...` or bare `/home/...` argument fails the fragment. This
 is a different gap than the existing `99-iso-roots.sh`, which never calls `push` at all (NOTES.md
 section 0.2).
+
+A second fault turned up in three pre-existing fixtures, not the real device: `99-hdd-split.sh`,
+`85-savestate.sh` and `98-dispatch-doctor.sh` each fake `push` by `cp`-ing the source argument
+directly, which `dev_push`'s fix broke since that argument is now a Windows-form path. Each is
+fixed with the same one-line `wslpath -u` round-trip, confirmed by the stash A/B technique
+(clean at baseline, broken only with the fix, clean again after) before and after
+(docs/lanes/dispatchpush1018/NOTES.md section 3.1). All four push-stubbing fragments pass
+together: 178 passed, 0 failed.
 
 **Deploy**: the host dispatcher runs a separate copy of this file, snapshotted into
 `/home/justin/hakux-work/dispatch/bin/dispatcher.sh` whenever the dispatcher service restarts
@@ -39,6 +47,6 @@ beyond the one scratch-file push above.
 
 Release note (other): none -- a harness/dispatcher fix, not an emulator behavior change.
 
-Selftest: docs/testing/jobs/selftest.d/90-dev-push-wslpath.sh
+Selftest: docs/testing/jobs/selftest.d/99-dev-push-wslpath.sh
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
