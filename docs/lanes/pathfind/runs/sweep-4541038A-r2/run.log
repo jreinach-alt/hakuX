@@ -1,0 +1,77 @@
+pathfind: Marvel Nemesis Rise of the Imperfects (4541038A) on nova: /storage/E6C6-D7AA/Games/XBox/4541038A-Marvel_Nemesis_Rise_of_the_Imperfects.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4541038A any, loaded none
+[   5.6s] #  1 publisher_logo    replay  A                        replay step 0: This looks like the early boot/logo animation; the green faceted emblem is 
+[   9.7s] #  2 publisher_logo    replay  A                        replay step 1: replay step 1: EA publisher logo; per EA hints, A skips RenderWare/EA logos
+[  18.0s] #  3 publisher_logo    fast    A                        EA publisher logo is still animating in; per the EA/RenderWare hint A skips logos, and the
+[  25.3s] #  4 cutscene          fast    START A                  Intro cinematic with letterbox bars after the EA logo, not a title, menu or gameplay. Per 
+[  30.3s] #  5 cutscene          replay  START A                  replay step 4: replay step 2: Intro cinematic with letterbox bars after the EA logo; not a
+[  35.2s] #  6 cutscene          replay  START A                  replay step 5: replay step 3: repeat START: it advanced the cutscene
+[  43.5s] #  7 main_menu         fast    A                        Main menu with VERSUS highlighted; the recorded path and the quick-play rule say A selects
+[  48.8s] #  8 cutscene          replay  START A                  replay step 7: replay step 5: repeat START: it advanced the cutscene
+[  58.4s] #  9 submenu           fast    A                        Match-type quick play setup. Per the recorded path, TIMED MATCH is the default and A accep
+[  62.8s] # 10 cutscene          replay  START A                  replay step 9: replay step 7: repeat START: it advanced the cutscene
+[  67.9s] # 11 cutscene          replay  START A                  replay step 10: replay step 8: repeat START: it advanced the cutscene
+[  80.2s] # 12 submenu           fast    A                        Character select, not gameplay. Per the select-screen rule, accept the highlighted default
+[  90.3s] # 13 submenu           fast    A                        Character select with both fighters READY. Per the select-screen rule and the recorded pat
+[ 102.2s] # 14 submenu           fast    HOLD:A:1                 Still on character select. Player 1's cursor (gold box) sits on Spider-Man and he is not R
+[ 117.4s] # 15 submenu           fast    LEFT A                   Still on character select; START A, A, A and HOLD:A:1 all returned here. Spider-Man is not
+[ 127.6s] # 16 submenu           fast    A                        Stage/level select, not gameplay. THE BRIDGE is the highlighted default, so A accepts it a
+[ 138.5s] # 17 cutscene          fast    START                    Stage/level select was accepted last step and the scene is now a live-looking 3D city with
+[ 143.2s] # 18 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 149.0s] # 19 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 153.6s] # 20 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 169.3s] # 21 unknown           fast    wait                     The 'CLASH' banner over a live HUD is a round-start banner, not yet confirmed live control
+[ 177.4s] # 22 gameplay          fast    wait                     HUD is up over a live fight with no banner or menu, and the player's Spider-Man is in the 
+[ 193.7s] # 23 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.421, under input 0.428
+[ 200.3s] # 24 gameplay          fast    wait                     The HUD is up over a live fight with no banner, menu or cutscene bars, so this is player-c
+[ 218.9s] # 25 probe             probe   STICK:upleft:1.5 STICK:left:1.2 STICK:right:1.2 control 0.182, under input 0.329
+[ 225.5s] # 26 gameplay          fast    wait                     HUD and both health bars are up over a live fight with the player's Spider-Man in the worl
+[ 241.0s] # 27 probe             probe   STICK:down:1.5 STICK:left:1.2 STICK:right:1.2 control 0.267, under input 0.551
+[ 248.5s] # 28 gameplay          fast    wait                     Player-controlled fight with HUD and no menu or cutscene bars. Earlier stick probes were r
+[ 263.6s] # 29 probe             probe   A STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.677, under input 0.578
+[ 268.0s] # 30 gameplay          fast    wait                     Live fight with HUD up and no menu or cutscene bars; earlier stick probes registered contr
+[ 284.8s] # 31 probe             probe   STICK:left:1.5 STICK:right:1.2 control 0.139, under input 0.436
+[ 290.8s] # 32 gameplay          fast    wait                     The HUD with both health bars and portraits is up over a live fight with the player's Spid
+[ 307.5s] # 33 probe             probe   STICK:upright:1.5 STICK:right:1.2 control 0.034, under input 0.214
+[ 315.7s] # 34 gameplay          fast    wait                     HUD and health bars are up over a live fight with no menu or cutscene bars. Earlier stick 
+[ 327.6s] # 35 probe             probe   A STICK:left:1.5         control 0.017, under input 0.279
+[ 333.7s] # 36 gameplay          fast    wait                     The HUD is up over a live fight with Spider-Man as the player character and no menu or cut
+[ 354.4s] # 37 probe             probe   STICK:upleft:1.5 STICK:left:1.2 STICK:right:1.2 control 0.527, under input 0.543
+[ 360.0s] # 38 game_over         fast    wait                     The 'VANQUISHED' banner means the player's character was defeated, so this is not gameplay
+[ 368.0s] # 39 game_over         fast    wait                     The 'YOU LOSE' banner means the player's fighter was defeated, so this is a game-over resu
+[ 374.5s] # 40 results           fast    A                        The player's fighter was defeated, so this is the end-of-match results panel, not gameplay
+[ 384.2s] # 41 submenu           fast    UP A                     A confirmation dialog for REMATCH, not gameplay. The cursor is on NO (gold). I want the fi
+[ 393.8s] # 42 cutscene          fast    START A                  This is a scenic establishing shot with no HUD or player character visible, following the 
+[ 399.0s] # 43 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 408.6s] # 44 gameplay          fast    wait                     HUD and health bars are up over a live fight with the player's Spider-Man in the arena, no
+[ 428.1s] # 45 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.339, under input 0.208
+[ 434.5s] # 46 gameplay          fast    wait                     HUD and health bars are up over a live fight with no menu or cutscene bars. Earlier left-s
+[ 456.3s] # 47 probe             probe   RSTICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.265, under input 0.615
+[ 462.5s] # 48 gameplay          fast    wait                     The HUD (health bars, portraits, pips, DANGER flag) is up over a live fight with the playe
+[ 479.1s] # 49 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.623, under input 0.520
+[ 484.3s] # 50 gameplay          fast    wait                     HUD and health bars are up over a live fight with the player's Spider-Man in the arena, no
+[ 500.6s] # 51 probe             probe   STICK:upright:1.5 STICK:left:1.2 STICK:right:1.2 control 0.464, under input 0.285
+[ 505.2s] # 52 gameplay          fast    wait                     HUD and health bars are up over a live fight with no menu, pause panel or cutscene bars. E
+[ 521.4s] # 53 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.676, under input 0.449
+[ 527.3s] # 54 gameplay          fast    wait                     HUD with both health bars is up over a live arena with the player's Spider-Man, and no men
+[ 543.1s] # 55 probe             probe   RT:3 RT+left:1.2 RT+right:1.2 control 0.654, under input 0.680
+[ 548.6s] # 56 gameplay          fast    wait                     HUD and both health bars are up over a live fight with no menu or cutscene bars. Earlier s
+[ 565.4s] # 57 probe             probe   RT:3 RT+left:1.2 RT+right:1.2 control 0.677, under input 0.117
+[ 570.6s] # 58 gameplay          fast    wait                     HUD with both health bars is up over a live arena with the player's Spider-Man and no menu
+[ 584.4s] # 59 probe             probe   STICK:upright:1.5 STICK:left:1.2 STICK:right:1.2 control 0.654, under input 0.508
+[ 588.4s] # 60 game_over         fast    wait                     'YOU LOSE' banner over a dead-end scene after a lost fight; this is a game-over result, no
+[ 596.2s] # 61 results           fast    A                        Post-fight end-of-match menu after the lost fight. REMATCH is highlighted and is the faste
+[ 605.6s] # 62 submenu           fast    DOWN A                   Confirmation dialog after choosing REMATCH on the end-of-match menu. Rematch leads back to
+[ 617.3s] # 63 cutscene          fast    START A                  Letterboxed cinematic after the rematch confirmation; no HUD, no control prompt, not live 
+[ 622.3s] # 64 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 633.1s] # 65 gameplay          fast    wait                     The HUD with health bars is up over a live fight with both fighters in the world and no me
+[ 645.7s] # 66 probe             probe   HOLD:X:3                 control 0.037, under input 0.375
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 186 s: median 29.0, share>=30 1.0 over 94 samples
+hold-play: not held 186/600 s of play; off play for 13 steps: continue (Post-match 'Are you sure you want to REMATCH?' confirmation with NO highlighted; not live play.)
+held Marvel Nemesis Rise of the Imperfects for 285s
+VERDICT Marvel Nemesis Rise of the Imperfects ? FAIL(duration: 284 s of gameplay < 600 s confirmation) gameplay=284.1s fps_ok=0.988 crash=False hang=False audio_short=0.0 hitches=1/0.268pm worst_ms=311.0 static_frac=0.0024 play_share=0.6704 fps_excluded=94.1s
+{"name": "Marvel Nemesis Rise of the Imperfects", "device": "nova", "result": "gameplay", "minutes": 10.76, "model_calls": 71, "steps": 66, "replayed": 7, "reason": "four probes refused", "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A-r2/frames/065-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

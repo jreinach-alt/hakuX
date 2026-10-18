@@ -1,0 +1,20 @@
+{"n": 26, "hold_s": 0.9, "play_s": 10.5, "changed": null, "off": false, "src": "genre", "action": ["STICK:up:1", "A", "RSTICK:right:0.6", "X", "STICK:down:1", "STICK:left:1", "B"], "kept": true}
+{"n": 27, "hold_s": 11.2, "play_s": 19.9, "changed": 0.5817, "off": false, "shift_look": 24.7, "src": "genre", "action": ["STICK:up:1", "A", "RSTICK:right:0.6", "X", "STICK:down:1", "STICK:left:1", "B"], "kept": false}
+{"n": 28, "hold_s": 20.8, "play_s": 29.6, "changed": 0.5279, "off": false, "shift_look": 27.46, "src": "genre", "action": ["STICK:up:1", "A", "RSTICK:right:0.6", "X", "STICK:down:1", "STICK:left:1", "B"], "kept": false}
+{"n": 29, "hold_s": 30.5, "play_s": 39.1, "changed": 0.361, "off": false, "shift_look": 23.0, "src": "genre", "action": ["STICK:up:1", "A", "RSTICK:right:0.6", "X", "STICK:down:1", "STICK:left:1", "B"], "kept": false}
+{"n": 30, "hold_s": 40.1, "play_s": 49.9, "changed": 0.3121, "off": false, "shift_look": 12.04, "src": "genre", "action": ["STICK:up:1", "A", "RSTICK:right:0.6", "X", "STICK:down:1", "STICK:left:1", "B"], "window": 0.0288, "kept": true}
+{"n": 31, "hold_s": 50.9, "play_s": 49.9, "changed": 0.5828, "off": false, "shift_look": 32.7, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 32, "hold_s": 58.7, "play_s": 49.9, "changed": 0.1026, "off": false, "shift_look": 0.0, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 33, "hold_s": 66.6, "play_s": 49.9, "changed": 0.0951, "off": false, "shift_look": 0.0, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 34, "hold_s": 74.9, "play_s": 49.9, "changed": 0.1243, "off": false, "shift_look": 0.0, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.5891, "kept": true}
+{"n": 35, "hold_s": 84.0, "play_s": 57.8, "changed": 0.1485, "off": false, "shift_look": 0.0, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 36, "hold_s": 92.0, "play_s": 68.1, "changed": 0.0501, "off": false, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Player is set up for a pitch shot with club/distance HUD visible, actively aiming", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 37, "hold_s": 102.3, "play_s": 77.2, "changed": 0.0953, "off": false, "shift_look": 0.0, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 38, "hold_s": 111.3, "play_s": 85.1, "changed": 0.0686, "off": false, "shift_look": 0.0, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.1444, "kept": true}
+{"n": 39, "hold_s": 119.2, "play_s": 92.9, "changed": 0.0408, "off": false, "shift_look": 0.0, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 40, "hold_s": 127.2, "play_s": 100.9, "changed": 0.0901, "off": false, "shift_look": 0.0, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 41, "hold_s": 135.2, "play_s": 109.8, "changed": 0.1064, "off": false, "shift_look": 0.0, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 42, "hold_s": 144.0, "play_s": 117.8, "changed": 0.0696, "off": false, "shift_look": 0.0, "src": "genre", "action": ["X", "RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.007, "kept": true}
+{"n": 43, "hold_s": 152.2, "play_s": 117.8, "changed": 0.0505, "off": false, "shift_look": 0.0, "src": "genre", "action": ["B", "STICK:up:1", "X", "A", "RSTICK:right:0.5", "STICK:down:1", "B", "RSTICK:left:0.5", "X"], "kept": false}
+{"n": 44, "hold_s": 162.8, "play_s": 117.8, "changed": 0.5124, "off": false, "shift_look": 24.08, "src": "genre", "action": ["B", "STICK:up:1", "X", "A", "RSTICK:right:0.5", "STICK:down:1", "B", "RSTICK:left:0.5", "X"], "kept": false}
+{"n": 45, "hold_s": 173.6, "play_s": 117.8, "changed": 0.3435, "off": false, "shift_look": 23.0, "src": "genre", "action": ["B", "STICK:up:1", "X", "A", "RSTICK:right:0.5", "STICK:down:1", "B", "RSTICK:left:0.5", "X"], "kept": false}

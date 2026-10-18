@@ -1,0 +1,115 @@
+pathfind: MTV Music Generator 3 This Is the Remix USA En Es (434D0029) on nova: /storage/E6C6-D7AA/Games/XBox/434D0029-MTV_Music_Generator_3_This_Is_the_Remix_USA_En_Es.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 434D0029 any, loaded none
+[   9.8s] #  1 loading           fast    wait                     This appears to be an early boot/loading screen with a simple logo animation, not yet in-g
+[  15.9s] #  2 black             black   wait                     black frame
+[  23.7s] #  3 publisher_logo    fast    START A                  A mixmax tool logo splash screen during boot sequence, not yet at title or gameplay
+[  33.2s] #  4 publisher_logo    fast    START A                  Legal/copyright text screen during boot sequence, not yet title or gameplay; skip it
+[  41.8s] #  5 loading           fast    wait                     Loading bar at 98%, near complete; just wait for it to finish
+[  50.7s] #  6 title_screen      fast    START                    Title screen explicitly prompts to press START to begin
+[  60.2s] #  7 main_menu         fast    A                        Remixer tab is highlighted as the default first option; selecting it should lead into the 
+[  70.5s] #  8 submenu           fast    A                        Artist selection submenu with Carl Cox highlighted; need to confirm selection with A to pr
+[  78.1s] #  9 loading           fast    wait                     Dark transitional screen with abstract shapes, likely a loading or transition screen betwe
+[  87.2s] # 10 gameplay          fast    RIGHT A                  This is the music remix interface with a HUD showing track info, BPM meters, and mixable e
+[  98.4s] # 11 probe             probe   RIGHT A RIGHT HOLD:A:1.5 control 0.007, under input 0.452
+[ 106.6s] # 12 gameplay          fast    DOWN A                   This is the core remix/mixing interface where the player selects and toggles musical eleme
+[ 124.9s] # 13 probe             probe   DOWN A DOWN A RIGHT HOLD:A:1.5 HOLD:A:1.5 HOLD:A:1.5 control 0.083, under input 0.085
+[ 136.1s] # 14 gameplay          fast    UP UP DOWN               This is the core remix-building interface (mixing deck with track elements, BPM, sliders) 
+[ 150.4s] # 15 probe             probe   UP UP DOWN UP STICK:up:1.5 control 0.032, under input 0.101
+[ 185.7s] # 24 retracted         probe   wait                     retracted after 30 s: This is the Remixer mixing/editing menu interface, not in-world game
+[ 199.5s] # 25 gameplay          fast    UP UP UP                 This is the core remix-building interface where the player actively adjusts instrument lay
+[ 213.4s] # 26 probe             probe   UP UP UP UP UP STICK:up:1.5 control 0.063, under input 0.100
+[ 227.7s] # 27 submenu           fast    B B                      This is the track-mixing editor (faders, BPM, structure/effects) with A Select / B Cancel 
+[ 248.3s] # 28 submenu           fast    A                        This is the track-mixing editor grid, not live gameplay; middle 'Drums' slot is highlighte
+[ 269.2s] # 29 gameplay          fast    UP UP DOWN               This is the core remix/mixing interface of the music-creation title: Drums channel is sele
+[ 288.0s] # 30 probe             probe   UP UP DOWN UP UP DOWN STICK:down:1.5 STICK:down:1.5 STICK:down:1.5 control 0.059, under input 0.050
+[ 305.2s] # 31 gameplay          fast    A STICK:up:1.5           This is the core remix/mixing loop of the music-generator title itself (not a menu to anot
+[ 322.2s] # 32 probe             probe   A STICK:up:1.5 RT:3 RT:3 RT:3 control 0.077, under input 0.087
+[ 337.3s] # 33 submenu           fast    LEFT A                   This is the remix editing/mixing screen with tab selection, not live playback; 'Reset' tab
+[ 352.2s] # 34 submenu           fast    A                        Confirmation prompt before leaving the Remixer; No is highlighted by default and declining
+[ 366.0s] # 35 gameplay          fast    DOWN A                   This is the Studio tab of the Remixer, the core track-building interface where the player 
+[ 382.3s] # 36 probe             probe   DOWN A DOWN RT:3 RT:3 RT:3 control 0.073, under input 0.042
+[ 395.1s] # 37 submenu           fast    A                        This is the track-selection/editing screen of the Remixer (choosing loops per instrument c
+[ 429.9s] # 38 submenu           fast    UP RIGHT A               Still on the Remixer hub screen (Menu tab); repeated A on Drums loops back here. Try switc
+[ 440.9s] # 39 submenu           fast    LEFT A                   Confirmation dialog defaults to No; need to move LEFT to select Yes to proceed into the St
+[ 457.7s] # 40 gameplay          fast    DOWN DOWN                This is the core Studio sequencer grid where loops are placed/arranged on the timeline per
+[ 468.8s] # 41 probe             probe   DOWN DOWN DOWN STICK:down:1.5 control 0.069, under input 0.235
+[ 480.5s] # 42 gameplay          fast    RIGHT RIGHT A            This is the core Studio sequencer/remix grid where the player places and arranges loop blo
+[ 497.6s] # 43 probe             probe   RIGHT RIGHT A RIGHT HOLD:X:3 HOLD:X:3 HOLD:X:3 control 0.102, under input 0.109
+[ 512.7s] # 44 gameplay          fast    A                        This is the core Studio loop-arranging grid, the actual gameplay of this music-creation ti
+[ 529.2s] # 45 probe             probe   A A RIGHT HOLD:X:3 HOLD:X:3 HOLD:X:3 control 0.103, under input 0.099
+[ 537.7s] # 46 gameplay          fast    RIGHT RIGHT A            Core loop-arranging grid is the actual gameplay of this music title; cursor/placement tool
+[ 555.5s] # 47 probe             probe   RIGHT RIGHT A DOWN DOWN LT:2 LT:2 LT:2 control 0.101, under input 0.109
+[ 563.9s] # 48 gameplay          fast    RIGHT RIGHT DOWN A       This is the music-sequencing grid itself, the core creative gameplay of MTV Music Generato
+[ 581.8s] # 49 probe             probe   RIGHT RIGHT DOWN A RIGHT RIGHT LT:2 LT:2 LT:2 control 0.094, under input 0.103
+[ 591.1s] # 50 gameplay          fast    RIGHT RIGHT A            This is the core sequencer grid where the player places/edits beat blocks on a timeline wi
+[ 608.2s] # 51 probe             probe   RIGHT RIGHT A RIGHT RIGHT STICK:left:1.5 STICK:left:1.5 STICK:left:1.5 control 0.110, under input 0.133
+[ 614.1s] # 52 gameplay          fast    RIGHT RIGHT A            This is the core beat-sequencing grid with a moving playhead (white line) actively scrolli
+[ 630.3s] # 53 probe             probe   RIGHT RIGHT A STICK:left:1.5 STICK:left:1.5 STICK:left:1.5 control 0.090, under input 0.091
+[ 663.2s] # 54 gameplay          fast    DOWN DOWN A DOWN A       This is the beat-placement grid itself (core creative gameplay), not a menu; RIGHT RIGHT A
+[ 680.4s] # 55 probe             probe   DOWN DOWN A DOWN A STICK:right:1.5 STICK:right:1.5 STICK:right:1.5 control 0.085, under input 0.096
+[ 689.0s] # 56 gameplay          fast    A                        This is the core sequencer grid with a moving playhead actively scrolling through the time
+[ 709.1s] # 57 probe             probe   A HOLD:B:3               control 0.075, under input 0.402
+[ 744.1s] # 66 retracted         probe   wait                     retracted after 30 s: This is the Studio track-editing/sequencer menu interface, not in-wo
+[ 773.5s] # 67 submenu           fast    DOWN DOWN DOWN DOWN A    This is the Studio track-editing interface with a top tab bar; 'Menu' tab is highlighted, 
+[ 794.9s] # 68 gameplay          fast    RIGHT RIGHT A            This is the beat-placement sequencer grid, the core creative gameplay loop of MTV Music Ge
+[ 810.7s] # 69 probe             probe   RIGHT RIGHT A STICK:right:1.5 STICK:right:1.5 STICK:right:1.5 control 0.101, under input 0.130
+[ 821.9s] # 70 gameplay          fast    A RIGHT A                This is the core beat-placement sequencer grid, the main creative gameplay loop of MTV Mus
+[ 833.1s] # 71 probe             probe   A RIGHT A HOLD:B:3       control 0.110, under input 0.367
+[ 846.8s] # 72 gameplay          fast    RIGHT RIGHT A            This is the core beat-placement sequencer grid (the creative gameplay loop of MTV Music Ge
+[ 858.9s] # 73 probe             probe   RIGHT RIGHT A STICK:right:1.5 control 0.052, under input 0.098
+[ 866.5s] # 74 main_menu         fast    A                        Studio tab is already highlighted (yellow box); pressing A should enter the Studio mode wh
+[ 880.6s] # 75 submenu           fast    A                        This is the artist-select screen inside Studio mode; the Continue button is highlighted ye
+[ 898.6s] # 76 gameplay          fast    RIGHT A                  This is the core beat-placement sequencer grid of MTV Music Generator, the game's primary 
+[ 910.0s] # 77 probe             probe   RIGHT A RIGHT HOLD:A:1.5 control 0.052, under input 0.581
+[ 920.0s] # 78 submenu           fast    A                        This dialog would discard the current mix if confirmed; No is highlighted in red so pressi
+[ 929.0s] # 79 main_menu         fast    LEFT A                   Playlist is currently highlighted; need to move LEFT to Studio tab to resume beat-sequence
+[ 938.5s] # 80 main_menu         fast    A                        Continue button is highlighted yellow; pressing A should return to the beat-sequencer game
+[ 959.2s] # 81 gameplay          fast    DOWN DOWN RIGHT RIGHT    This is the core beat-placement sequencer grid with tracks and placed notes visible - the 
+[ 976.4s] # 82 probe             probe   DOWN DOWN RIGHT RIGHT RIGHT RIGHT HOLD:A:1.5 HOLD:A:1.5 HOLD:A:1.5 control 0.046, under input 0.044
+[ 997.5s] # 83 gameplay          fast    RIGHT RIGHT DOWN A       This is the core beat-sequencer editing grid for the kicker track - the primary creative g
+[1015.6s] # 84 probe             probe   RIGHT RIGHT DOWN A RIGHT RIGHT HOLD:A:1.5 HOLD:A:1.5 HOLD:A:1.5 control 0.045, under input 0.030
+[1024.3s] # 85 gameplay          fast    RIGHT RIGHT A RIGHT RIGHT A This is the beat-placement sequencer grid, the core creative loop; cursor appears near row
+[1042.4s] # 86 probe             probe   RIGHT RIGHT A RIGHT RIGHT A DOWN STICK:down:1.5 STICK:down:1.5 STICK:down:1.5 control 0.041, under input 0.046
+[1051.7s] # 87 gameplay          fast    RIGHT RIGHT A RIGHT RIGHT A DOWN A Core beat-placement sequencer grid for the kicker track is the primary creative gameplay l
+[1080.3s] # 88 probe             probe   RIGHT RIGHT A RIGHT RIGHT A DOWN HOLD:A:1.5 HOLD:A:1.5 HOLD:A:1.5 control 0.031, under input 0.038
+[1090.7s] # 89 gameplay          fast    RIGHT A RIGHT A          This is the core beat-placement sequencer grid, the primary creative gameplay loop of this
+[1106.6s] # 90 probe             probe   RIGHT A RIGHT A STICK:down:1.5 STICK:down:1.5 STICK:down:1.5 control 0.036, under input 0.027
+[1113.1s] # 91 gameplay          fast    RIGHT RIGHT A DOWN DOWN A This is the beat-placement sequencer grid, the core creative gameplay loop of this music g
+[1130.5s] # 92 probe             probe   RIGHT RIGHT A DOWN DOWN A STICK:down:1.5 STICK:down:1.5 STICK:down:1.5 control 0.054, under input 0.044
+[1138.5s] # 93 gameplay          fast    RIGHT RIGHT A RIGHT A    Beat-placement sequencer grid is the core creative gameplay loop; placing kicker beats on 
+[1156.2s] # 94 probe             probe   RIGHT RIGHT A RIGHT A STICK:down:1.5 STICK:down:1.5 STICK:down:1.5 control 0.039, under input 0.037
+[1161.5s] # 95 gameplay          fast    RIGHT A RIGHT A RIGHT A  This is the beat-placement sequencer grid, the core creative loop of this music game; beat
+[1180.3s] # 96 probe             probe   RIGHT A RIGHT A RIGHT A STICK:down:1.5 STICK:down:1.5 STICK:down:1.5 control 0.018, under input 0.026
+[1185.7s] # 97 gameplay          fast    A                        This is the beat-placement sequencer grid, the core creative gameplay loop of MTV Music Ge
+[1200.2s] # 98 probe             probe   A HOLD:A:1.5 HOLD:A:1.5 HOLD:A:1.5 control 0.059, under input 0.060
+[1215.2s] # 99 gameplay          fast    A                        This is the core sequencer editing loop of MTV Music Generator; beats are already placed o
+[1229.0s] #100 probe             probe   A HOLD:A:1.5 HOLD:A:1.5 HOLD:A:1.5 control 0.032, under input 0.021
+[1239.1s] #101 gameplay          fast    A                        This is the beat-placement sequencer grid with beats already placed on the kicker track; p
+[1253.6s] #102 probe             probe   A HOLD:A:1.5 HOLD:A:1.5 HOLD:A:1.5 control 0.048, under input 0.055
+[1260.9s] #103 gameplay          fast    A                        Core beat-placement sequencer with a pattern already programmed on the kicker row; Play is
+[1275.4s] #104 probe             probe   A HOLD:A:1.5 HOLD:A:1.5 HOLD:A:1.5 control 0.036, under input 0.037
+[1294.0s] #105 gameplay          fast    START START              Sequencer editing screen; A was pressed repeatedly per history with no change, so the Play
+[1304.8s] #106 probe             probe   START START HOLD:START:1.5 control 0.035, under input 0.178
+hold-play: genre other, need 600 s of play
+hold-play: off play for 12 steps (menu): ladder round 1
+hold-play: fps at 184 s: median 29.0, share>=30 0.946 over 92 samples
+hold-play: off play for 12 steps (menu): ladder round 2
+hold-play: fps at 301 s: median 29.0, share>=30 0.967 over 151 samples
+hold-play: off play for 12 steps (menu): ladder round 3
+hold-play: off play for 12 steps (menu): ladder round 4
+hold-play: off play for 12 steps (menu): ladder round 5
+hold-play: off play for 12 steps (menu): ladder round 6
+hold-play: off play for 12 steps (menu): ladder round 7
+hold-play: off play for 12 steps (menu): ladder round 8
+hold-play: off play for 12 steps (menu): ladder round 9
+hold-play: off play for 12 steps (menu): ladder round 10
+hold-play: off play for 12 steps (menu): ladder round 11
+hold-play: off play for 12 steps (menu): ladder round 12
+hold-play: off play for 12 steps (menu): ladder round 13
+hold-play: not held 73/600 s of play; off play for 13 steps: menu (Remixer menu for selecting artist, not in-game play)
+held MTV Music Generator 3 This Is the Remix USA En Es for 1347s
+VERDICT MTV Music Generator 3 This Is the Remix USA En Es ? FAIL(menu time: 5.8% of the scored window in `play` (bar 90%; menu 1260 s, play 78 s, loading 7 s, no-timeline 0 s)) gameplay=1345.3s fps_ok=0.8785 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0328 play_share=0.058 fps_excluded=1267.3s
+{"name": "MTV Music Generator 3 This Is the Remix USA En Es", "device": "nova", "result": "gameplay", "minutes": 21.75, "model_calls": 249, "steps": 90, "replayed": 0, "reason": "four probes refused", "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-434D0029-1007/frames/105-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

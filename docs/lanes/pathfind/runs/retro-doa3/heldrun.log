@@ -1,0 +1,50 @@
+taken: nova by lane.pathfind
+NOT IDLE: nova is held but busy -- do not touch it yet:
+dispatcher pid 3235567 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+running: 1791167624-lane.accuracy804-3669384 on nova
+run: hold.sh wait-idle nova <timeout_s>, and touch the device only on exit 0
+waiting for nova: dispatcher pid 3235567 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+running: 1791167624-lane.accuracy804-3669384 on nova
+idle: nova is held and runs nothing
+held at 20:40:20
+pathfind: Dead or Alive 3 (54430001) on nova: /storage/E6C6-D7AA/Games/XBox/54430001-Dead_or_Alive_3.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 54430001 first-run, loaded none
+[   8.5s] #  1 loading           fast    wait                     Only a centered green logo animation on white with no prompt; not a title or menu. Nothing
+[  16.1s] #  2 intro_video       fast    wait                     DOA3 copyright/federal warning scroll on a cold boot; START and A do not skip it per hints
+[  31.8s] #  3 intro_video       fast    wait                     DOA3 copyright warning scrolls on a cold boot; hints say START and A do not skip it and it
+[  43.0s] #  4 intro_video       fast    wait                     DOA3 copyright warning still scrolling on a cold boot; hints say START and A do not skip i
+[  55.1s] #  5 intro_video       fast    wait                     This is the DOA3 copyright/federal-warning scroll or the stormy sea cinematic that follows
+[  66.2s] #  6 cutscene          fast    START                    Still the intro cinematic (stormy/misty cutscene that follows the DOA3 copyright scroll pe
+[  71.8s] #  7 black             black   wait                     black frame
+[  80.3s] #  8 title_screen      fast    START                    Logo over a night castle backdrop with no HUD or prompt; the DOA3 path is copyright scroll
+[  89.5s] #  9 title_screen      fast    START                    DOA3 title with 'PRESS START BUTTON'; hints say START is the only key that passes this pro
+[ 101.0s] # 10 main_menu         fast    A                        Mode select with STORY MODE highlighted in the centre; the hints name Story as the route p
+[ 110.1s] # 11 submenu           fast    A                        Character select screen on the Story path; per the select-screen rule, A on the highlighte
+[ 118.0s] # 12 submenu           fast    A                        Story-mode character select: per the select-screen rule, A on the highlighted character (K
+[ 126.6s] # 13 submenu           fast    A                        Story-mode character select; per the select-screen rule, A confirms the highlighted charac
+[ 138.0s] # 14 cutscene          fast    A                        A subtitled line of dialogue over a 3D scene with no HUD is a story cutscene, not player c
+[ 145.5s] # 15 gameplay          fast    wait                     A live DOA3 round with HUD, health bars and a running timer; the round is in progress so t
+[ 161.7s] # 16 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.318, under input 0.187
+[ 174.0s] # 17 gameplay          fast    wait                     Live fighting round with HUD (health bars, infinity timer) and both fighters in the arena;
+[ 195.5s] # 18 probe             probe   STICK:left:1.5 STICK:right:1.2 STICK:left:1.2 STICK:right:1.2 control 0.739, under input 0.509
+[ 201.7s] # 19 gameplay          fast    wait                     Live round with HUD, health bars and infinity timer, both fighters standing in the arena. 
+[ 218.2s] # 20 probe             probe   STICK:left:2 STICK:left:1.2 STICK:right:1.2 control 0.704, under input 0.485
+[ 224.1s] # 21 cutscene          fast    START                    A KO/victory-style scene with no HUD and no prompt, so it is not a live round. Per the DOA
+[ 232.0s] # 22 cutscene          fast    START                    Round is over (YOU LOSE banner), not live gameplay. Per the DOA3 hints, after a lost round
+[ 244.0s] # 23 cutscene          fast    A                        A subtitled character line with no HUD is a scripted scene, not live play. Advancing it wi
+[ 259.2s] # 24 cutscene          fast    A                        TINA is knocked down, so the round has ended and this is a KO or victory moment, not live 
+[ 272.9s] # 25 gameplay          fast    wait                     Live round with HUD, health bars and the timer up, and a combo counter running, so this is
+[ 284.4s] # 26 probe             probe   HOLD:A:3                 control 0.128, under input 0.514
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 191 s: median 35.0, share>=30 0.705 over 105 samples
+hold-play: fps at 307 s: median 30.0, share>=30 0.552 over 145 samples
+hold-play: HELD 602/600 s of play; 
+held Dead or Alive 3 for 857s
+VERDICT Dead or Alive 3 ? FAIL(menu time: 70.1% of the scored window in `play` (bar 90%; play 600 s, cutscene 123 s, menu 88 s, game_over 22 s)) gameplay=855.9s fps_ok=0.4394 crash=False hang=False audio_short=5e-05 hitches=20/1.508pm worst_ms=653.2 static_frac=0.0 play_share=0.7014 fps_excluded=253.9s
+{"name": "Dead or Alive 3", "device": "nova", "result": "gameplay", "minutes": 4.74, "model_calls": 58, "steps": 26, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/retro-doa3/frames/025-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256
+pathfind rc=0 at 21:00:28
+released: nova by lane.pathfind
+released rc=0

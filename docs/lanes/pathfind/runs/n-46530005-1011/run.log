@@ -1,0 +1,85 @@
+pathfind: Tenchu 3 Kaiki no Shou Japan (46530005) on nova: /storage/E6C6-D7AA/Games/XBox/46530005-Tenchu_3_Kaiki_no_Shou_Japan.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 46530005 any, loaded none
+[  11.0s] #  1 loading           fast    wait                     This is an Android system loading indicator shown before the game/emulator has started ren
+[  19.4s] #  2 intro_video       fast    START                    This is the Xbox boot logo animation that plays before any game content; no interaction ne
+[  27.0s] #  3 publisher_logo    fast    START A                  Publisher logo screen before gameplay; skip with START then A per protocol
+[  36.1s] #  4 publisher_logo    fast    START A                  This is a legal/copyright splash screen before gameplay; skip with START then A per protoc
+[  48.6s] #  5 save_load_prompt  fast    A                        No save data found message requires A to dismiss before reaching the main menu, per protoc
+[  56.8s] #  6 main_menu         fast    A                        Title menu with red arrow cursor on '任務開始' (Mission Start), the default fastest path to si
+[  65.1s] #  7 loading           fast    wait                     This appears to be a transition/loading screen (possibly a cutscene fade or scene transiti
+[  75.5s] #  8 submenu           fast    A                        This is a character select screen with the left character highlighted by default (fire glo
+[  82.7s] #  9 loading           fast    wait                     Loading screen shown after character select confirmation; must wait for level to load befo
+[  88.3s] # 10 black             black   wait                     black frame
+[  91.8s] # 11 black             black   wait                     black frame
+[  98.9s] # 12 cutscene          fast    START                    Close-up character shot with no HUD, likely an intro cutscene after character select and l
+[ 112.4s] # 13 gameplay          fast    STICK:up:1.5             Screen changed from the previous close-up cutscene shot to a full environment view with no
+[ 130.5s] # 14 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 control 0.024, under input 0.021
+[ 136.8s] # 15 cutscene          fast    STICK:down:1.5           No HUD and repeated STICK:up produced almost no change (0.02), suggesting this is still a 
+[ 147.2s] # 16 cutscene          fast    START                    Still no HUD and stick inputs produced no change; likely an unskippable intro cutscene/loa
+[ 156.4s] # 17 cutscene          fast    B                        No HUD and previous inputs (START, STICK:down) produced no change on this frame; likely a 
+[ 168.0s] # 18 cutscene          fast    A                        Screen remains dark with no HUD; previous B, START, STICK:down did nothing, so trying A as
+[ 179.1s] # 19 loading           fast    wait                     The text '待機中' literally translates to 'standing by/waiting' - this is likely a loading/st
+[ 186.0s] # 20 loading           static  wait                     load still on screen (barely changed)
+[ 191.0s] # 21 loading           static  wait                     load still on screen (barely changed)
+[ 196.0s] # 22 loading           static  wait                     load still on screen (barely changed)
+[ 201.0s] # 23 loading           static  wait                     load still on screen (barely changed)
+[ 206.0s] # 24 loading           static  wait                     load still on screen (barely changed)
+[ 215.8s] # 25 loading           fast    RIGHT                    Standby text still displayed; prior inputs A/B/START/STICK:down did nothing, so trying a d
+[ 228.6s] # 26 cutscene          fast    START A                  This is a rendered 3D forest environment, not a loading spinner - likely an intro cutscene
+[ 245.2s] # 27 cutscene          fast    X Y STICK:up:1.5         Static dark forest render with no UI; START/A/B/RIGHT/STICK:down already tried with no cha
+[ 256.8s] # 28 cutscene          fast    B                        Unchanged rendered scene with no HUD; many inputs already tried with no effect. Try B to s
+[ 267.8s] # 29 cutscene          fast    Y                        Unchanging dark forest render with no HUD; many inputs (B, X, Y, START, A, RIGHT, STICK) a
+[ 281.2s] # 30 cutscene          fast    LEFT L1                  Unchanged dark forest render persists; many inputs (A, B, X, Y, START, RIGHT, STICK) alrea
+[ 293.5s] # 31 cutscene          fast    R1 BACK                  Screen has been static across many steps and inputs; many buttons already tried (A,B,X,Y,S
+[ 308.4s] # 32 cutscene          fast    wait                     Screen remains unchanged after exhausting nearly every single-button input; haven't tried 
+[ 327.2s] # 33 unknown           fast    wait                     Screen has been completely static for many steps despite nearly every single/combo input t
+[ 345.7s] # 34 unknown           fast    wait                     Screen has been completely unresponsive across many steps and nearly every button/combo tr
+[ 362.5s] # 35 unknown           fast    R3 L3                    Screen has been static across many steps with nearly every button tried; this may be a dar
+[ 383.8s] # 36 unknown           fast    wait                     Screen has remained completely unchanged across many steps despite exhausting nearly every
+[ 408.1s] # 37 unknown           fast    L1                       Screen is static and dark with no menu/HUD cues; nearly every button tried with no change.
+[ 425.3s] # 38 unknown           fast    wait                     Screen has been unresponsive for many steps across almost every input tried; possibly a fr
+[ 443.8s] # 39 unknown           fast    wait                     Screen has been static across dozens of attempted inputs including menu confirms, movement
+[ 468.4s] # 40 unknown           fast    RSTICK:right:2           Screen has been static across many prior inputs; this could be a very dark gameplay scene 
+[ 489.7s] # 41 unknown           fast    STICK:up:2               Screen remains unchanged after many varied inputs; this could be a dark gameplay scene whe
+[ 520.1s] # 42 unknown           fast    STICK:left:2             Screen has been static across many varied inputs per history; this may be an oppressively 
+[ 536.3s] # 43 unknown           fast    STICK:right:2            Screen has remained static across dozens of varied inputs per history including menu, move
+[ 558.6s] # 44 unknown           fast    LT:2                     Screen has stayed pixel-identical across dozens of varied inputs (sticks, buttons, START, 
+[ 599.5s] # 45 gameplay          fast    L3 STICK:up:2            This matches Tenchu 3's extremely dark stealth missions; no menu/HUD overlay is present, s
+[ 613.6s] # 46 probe             probe   L3 STICK:up:2 STICK:up:2 control 0.015, under input 0.023
+[ 618.1s] # 47 gameplay          fast    STICK:up:2               Dark stealth mission environment consistent with Tenchu 3; no menu/HUD overlay present; tr
+[ 637.0s] # 48 probe             probe   STICK:up:2 HOLD:A:3 HOLD:A:3 HOLD:A:3 control 0.020, under input 0.028
+[ 647.5s] # 49 gameplay          fast    X STICK:down:1 STICK:up:2 B STICK:up:2 Dark stealth-mission environment matches Tenchu 3's design; prior directional stick/trigge
+[ 665.3s] # 50 probe             probe   X STICK:down:1 STICK:up:2 B STICK:up:2 HOLD:A:3 control 0.022, under input 0.054
+[ 673.5s] # 51 gameplay          fast    STICK:down:2 STICK:left:2 STICK:up:2 Dark stealth mission scene with no menu/HUD overlay; prior forward-stick attempts barely c
+[ 698.9s] # 52 probe             probe   STICK:down:2 STICK:left:2 STICK:up:2 RT:3 RT:3 RT:3 control 0.019, under input 0.018
+[ 705.0s] # 53 gameplay          fast    STICK:right:2 STICK:up:2 STICK:right:1 Stealth mission scene with no menu; previous up/left/down/trigger inputs looped back to th
+[ 729.6s] # 54 probe             probe   STICK:right:2 STICK:up:2 STICK:right:1 RT:3 RT:3 RT:3 control 0.021, under input 0.017
+[ 734.7s] # 55 gameplay          fast    STICK:up:2 STICK:right:1 STICK:up:2 Static dark forest scene matching Tenchu 3's stealth gameplay, no menu/HUD text; prior sti
+[ 752.1s] # 56 probe             probe   STICK:up:2 STICK:right:1 STICK:up:2 HOLD:X:3 control 0.013, under input 0.021
+[ 756.5s] # 57 gameplay          fast    STICK:up:2               Static dark stealth scene consistent with Tenchu gameplay; no menu/HUD overlay present, so
+[ 775.3s] # 58 probe             probe   STICK:up:2 HOLD:X:3 HOLD:X:3 HOLD:X:3 control 0.018, under input 0.024
+[ 784.5s] # 59 gameplay          fast    RSTICK:left:2 STICK:down:2 STICK:left:2 Static dark stealth scene with no menu; prior up/right stick combos looped back here, so t
+[ 801.4s] # 60 probe             probe   RSTICK:left:2 STICK:down:2 STICK:left:2 STICK:left:2 control 0.016, under input 0.043
+hold-play: genre attack, need 600 s of play
+hold-play: 3 still looks: walk reversed (back) at 40 s
+hold-play: fps at 191 s: median 44.0, share>=30 1.0 over 142 samples
+hold-play: 3 still looks: walk reversed (forward) at 237 s
+hold-play: fps at 301 s: median 47.0, share>=30 0.996 over 226 samples
+hold-play: 3 still looks: walk reversed (back) at 392 s
+hold-play: 3 still looks: walk reversed (forward) at 411 s
+hold-play: 3 still looks: walk reversed (back) at 434 s
+hold-play: off play for 12 steps (loading): ladder round 1
+hold-play: stuck (scene unchanged for 4 consecutive samples (genre attack)): unstick STICK:right:2 A at 452 s
+hold-play: 3 still looks: walk reversed (forward) at 480 s
+hold-play: stuck (scene unchanged for 5 consecutive samples (genre attack)): unstick STICK:up:2 A at 486 s
+hold-play: 3 still looks: walk reversed (back) at 501 s
+hold-play: stuck (scene unchanged for 6 consecutive samples (genre attack)): unstick STICK:left:2 A at 520 s
+hold-play: off play for 12 steps (loading): ladder round 2
+hold-play: stuck_abort: scene unchanged for 7 consecutive samples (genre attack); 3 unstick rung(s) tried, still stuck
+hold-play: not held 207/600 s of play; stuck_abort: scene unchanged for 7 consecutive samples (genre attack); 3 unstick rung(s) tried, still stuck
+held Tenchu 3 Kaiki no Shou Japan for 562s
+VERDICT Tenchu 3 Kaiki no Shou Japan ? FAIL(duration: 560 s of gameplay < 600 s confirmation) gameplay=560.1s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0341 play_share=0.3757 fps_excluded=349.1s
+{"name": "Tenchu 3 Kaiki no Shou Japan", "device": "nova", "result": "gameplay", "minutes": 13.36, "model_calls": 103, "steps": 60, "replayed": 0, "reason": "four probes refused", "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-46530005-1011/frames/059-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

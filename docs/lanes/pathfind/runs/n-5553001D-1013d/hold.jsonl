@@ -1,0 +1,352 @@
+{"n": 32, "hold_s": 0.8, "play_s": 8.6, "changed": null, "off": false, "src": "genre", "action": ["STICK:up:1", "X", "A", "RSTICK:right:0.5", "STICK:down:1", "B", "RSTICK:left:0.5", "X"], "kept": true}
+{"n": 33, "hold_s": 9.5, "play_s": 17.5, "changed": 0.7201, "off": false, "shift_look": 0.0, "src": "genre", "action": ["STICK:up:1", "X", "A", "RSTICK:right:0.5", "STICK:down:1", "B", "RSTICK:left:0.5", "X"], "kept": false}
+{"n": 34, "hold_s": 18.2, "play_s": 26.1, "changed": 0.7046, "off": false, "shift_look": 0.0, "src": "genre", "action": ["STICK:up:1", "X", "A", "RSTICK:right:0.5", "STICK:down:1", "B", "RSTICK:left:0.5", "X"], "kept": false}
+{"n": 35, "hold_s": 26.9, "play_s": 35.2, "changed": 0.4662, "off": false, "shift_look": 0.0, "src": "genre", "action": ["STICK:up:1", "X", "A", "RSTICK:right:0.5", "STICK:down:1", "B", "RSTICK:left:0.5", "X"], "kept": false}
+{"n": 36, "hold_s": 36.2, "play_s": 44.5, "changed": 0.7103, "off": false, "shift_look": 0.0, "src": "genre", "action": ["STICK:up:1", "X", "A", "RSTICK:right:0.5", "STICK:down:1", "B", "RSTICK:left:0.5", "X"], "window": 0.5728, "shift": 0.0, "kept": true}
+{"n": 37, "hold_s": 45.6, "play_s": 44.5, "changed": 0.5934, "off": false, "shift_look": 0.0, "src": "genre", "action": ["STICK:right:2", "A", "STICK:up:1", "X", "A", "RSTICK:right:0.5", "STICK:down:1", "B", "RSTICK:left:0.5", "X"], "kept": false}
+{"n": 38, "hold_s": 58.3, "play_s": 44.5, "changed": 0.5215, "off": false, "shift_look": 0.0, "src": "genre", "action": ["STICK:right:2", "A", "STICK:up:1", "X", "A", "RSTICK:right:0.5", "STICK:down:1", "B", "RSTICK:left:0.5", "X"], "kept": false}
+{"n": 39, "hold_s": 70.9, "play_s": 44.5, "changed": 0.5111, "off": false, "shift_look": 0.0, "src": "genre", "action": ["STICK:right:2", "A", "STICK:up:1", "X", "A", "RSTICK:right:0.5", "STICK:down:1", "B", "RSTICK:left:0.5", "X"], "window": 0.7656, "shift": 0.0, "kept": true}
+{"n": 40, "hold_s": 83.4, "play_s": 44.5, "changed": 0.7903, "off": false, "shift_look": 0.0, "src": "genre", "action": ["STICK:up:2", "A", "STICK:up:1", "X", "A", "RSTICK:right:0.5", "STICK:down:1", "B", "RSTICK:left:0.5", "X"], "kept": false}
+{"n": 41, "hold_s": 95.9, "play_s": 44.5, "changed": 0.7952, "off": false, "shift_look": 17.49, "src": "check", "state": "gameplay", "why": "Player character visible in game world, health bar active, game running at 29 FPS", "action": ["STICK:up:2", "A", "STICK:up:1", "X", "A", "RSTICK:right:0.5", "STICK:down:1", "B", "RSTICK:left:0.5", "X"], "kept": false}
+{"n": 42, "hold_s": 118.2, "play_s": 44.5, "changed": 0.7735, "off": false, "shift_look": 25.18, "src": "genre", "action": ["STICK:up:2", "A", "STICK:up:1", "X", "A", "RSTICK:right:0.5", "STICK:down:1", "B", "RSTICK:left:0.5", "X"], "window": 0.7847, "shift": 15.8, "kept": true}
+{"n": 43, "hold_s": 130.5, "play_s": 56.7, "changed": 0.3456, "off": false, "shift_look": 40.16, "src": "genre", "action": ["STICK:up:2", "A", "STICK:up:1", "X", "A", "RSTICK:right:0.5", "STICK:down:1", "B", "RSTICK:left:0.5", "X"], "kept": false}
+{"n": 44, "hold_s": 142.7, "play_s": 68.9, "changed": 0.5534, "off": false, "shift_look": 13.0, "src": "genre", "action": ["STICK:up:2", "A", "STICK:up:1", "X", "A", "RSTICK:right:0.5", "STICK:down:1", "B", "RSTICK:left:0.5", "X"], "kept": false}
+{"n": 45, "hold_s": 155.2, "play_s": 81.7, "changed": 0.7863, "off": false, "shift_look": 11.7, "src": "genre", "action": ["STICK:up:2", "A", "STICK:up:1", "X", "A", "RSTICK:right:0.5", "STICK:down:1", "B", "RSTICK:left:0.5", "X"], "window": 0.849, "shift": 15.0, "kept": true}
+{"n": 46, "hold_s": 168.1, "play_s": 94.4, "changed": 0.8242, "off": false, "shift_look": 16.16, "src": "genre", "action": ["STICK:up:2", "A", "STICK:up:1", "X", "A", "RSTICK:right:0.5", "STICK:down:1", "B", "RSTICK:left:0.5", "X"], "kept": false}
+{"n": 47, "hold_s": 180.7, "play_s": 107.0, "changed": 0.647, "off": false, "shift_look": 14.76, "src": "genre", "action": ["STICK:up:2", "A", "STICK:up:1", "X", "A", "RSTICK:right:0.5", "STICK:down:1", "B", "RSTICK:left:0.5", "X"], "kept": false}
+{"n": 48, "hold_s": 193.1, "play_s": 107.0, "changed": 0.6469, "off": false, "shift_look": 2.0, "src": "check", "state": "loading", "why": "Blue loading bar visible at top-left; character present in world but static", "action": [], "kept": true}
+{"n": 49, "hold_s": 217.2, "play_s": 135.3, "changed": 0.0114, "off": true, "shift_look": 0.0, "src": "check", "state": "gameplay", "why": "Player character standing in game world amid fortress ruins; no menu, pause, cutscene, or loading overlay visible", "action": ["STICK:up:2", "A", "STICK:up:1", "X", "A", "RSTICK:right:0.5", "STICK:down:1", "B", "RSTICK:left:0.5", "X"], "kept": false}
+{"n": 50, "hold_s": 245.5, "play_s": 147.6, "changed": 0.4095, "off": false, "shift_look": 10.3, "src": "genre", "action": ["STICK:up:2", "A", "STICK:up:1", "X", "A", "RSTICK:right:0.5", "STICK:down:1", "B", "RSTICK:left:0.5", "X"], "window": 0.7888, "shift": 15.1, "kept": true}
+{"n": 51, "hold_s": 258.1, "play_s": 160.0, "changed": 0.7176, "off": false, "shift_look": 10.0, "src": "genre", "action": ["STICK:up:2", "A", "STICK:up:1", "X", "A", "RSTICK:right:0.5", "STICK:down:1", "B", "RSTICK:left:0.5", "X"], "kept": false}
+{"n": 52, "hold_s": 270.5, "play_s": 172.2, "changed": 0.6217, "off": false, "shift_look": 9.22, "src": "genre", "action": ["STICK:up:2", "A", "STICK:up:1", "X", "A", "RSTICK:right:0.5", "STICK:down:1", "B", "RSTICK:left:0.5", "X"], "kept": false}
+{"n": 53, "hold_s": 282.6, "play_s": 184.6, "changed": 0.2277, "off": false, "shift_look": 1.0, "src": "genre", "action": ["STICK:up:2", "A", "STICK:up:1", "X", "A", "RSTICK:right:0.5", "STICK:down:1", "B", "RSTICK:left:0.5", "X"], "window": 0.8529, "shift": 12.8, "kept": true}
+{"n": 54, "hold_s": 295.2, "play_s": 197.1, "changed": 0.5835, "off": false, "shift_look": 17.8, "src": "genre", "action": ["STICK:up:2", "A", "STICK:up:1", "X", "A", "RSTICK:right:0.5", "STICK:down:1", "B", "RSTICK:left:0.5", "X"], "kept": false}
+{"n": 55, "hold_s": 307.4, "play_s": 197.1, "changed": 0.6918, "off": false, "shift_look": 30.59, "src": "check", "state": "game_over", "why": "Game Over screen with Retry/Quit menu; player character not in game world", "action": ["A"], "kept": false}
+{"n": 56, "hold_s": 316.5, "play_s": 197.1, "changed": 0.8776, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 57, "hold_s": 319.0, "play_s": 197.1, "changed": 0.8994, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 58, "hold_s": 321.3, "play_s": 197.1, "changed": 0.8807, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 59, "hold_s": 323.7, "play_s": 197.1, "changed": 0.8827, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "Game Over screen displayed with Retry and Quit options; player character is not in the game world", "action": ["A"], "kept": false}
+{"n": 60, "hold_s": 332.3, "play_s": 197.1, "changed": 0.8936, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 61, "hold_s": 335.7, "play_s": 197.1, "changed": 0.9232, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 62, "hold_s": 338.9, "play_s": 197.1, "changed": 0.9389, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 63, "hold_s": 342.4, "play_s": 197.1, "changed": 0.856, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "GAME OVER screen with RETRY and QUIT menu options displayed", "action": ["A"], "kept": false}
+{"n": 64, "hold_s": 352.8, "play_s": 197.1, "changed": 0.8853, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 65, "hold_s": 357.3, "play_s": 197.1, "changed": 0.8652, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 66, "hold_s": 361.6, "play_s": 197.1, "changed": 0.8698, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 67, "hold_s": 366.1, "play_s": 197.1, "changed": 0.8224, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "Game Over screen with Retry and Quit menu options displayed", "action": ["A"], "kept": false}
+{"n": 68, "hold_s": 375.6, "play_s": 197.1, "changed": 0.8534, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 69, "hold_s": 379.0, "play_s": 197.1, "changed": 0.8985, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 70, "hold_s": 382.4, "play_s": 197.1, "changed": 0.9124, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 71, "hold_s": 385.9, "play_s": 197.1, "changed": 0.9187, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "Game Over screen with Retry/Quit menu options; player character not in game world", "action": ["A"], "kept": true}
+{"n": 72, "hold_s": 395.4, "play_s": 197.1, "changed": 0.9339, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 73, "hold_s": 397.8, "play_s": 197.1, "changed": 0.9203, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 74, "hold_s": 400.2, "play_s": 197.1, "changed": 0.9049, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 75, "hold_s": 402.7, "play_s": 197.1, "changed": 0.9068, "off": true, "shift_look": 28.64, "src": "check", "state": "game_over", "why": "Game Over screen with RETRY and QUIT options; player character is not active", "action": ["A"], "kept": false}
+{"n": 76, "hold_s": 411.9, "play_s": 197.1, "changed": 0.8986, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 77, "hold_s": 415.5, "play_s": 197.1, "changed": 0.8402, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 78, "hold_s": 419.1, "play_s": 197.1, "changed": 0.8771, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 79, "hold_s": 422.7, "play_s": 197.1, "changed": 0.9073, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "Game Over screen with Retry/Quit options; player character not in game world", "action": ["A"], "kept": false}
+{"n": 80, "hold_s": 434.0, "play_s": 197.1, "changed": 0.9102, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 81, "hold_s": 436.4, "play_s": 197.1, "changed": 0.9255, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 82, "hold_s": 438.8, "play_s": 197.1, "changed": 0.9233, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 83, "hold_s": 441.1, "play_s": 197.1, "changed": 0.8798, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "Game Over screen with Retry/Quit menu options displayed", "action": ["A"], "kept": false}
+{"n": 84, "hold_s": 451.4, "play_s": 197.1, "changed": 0.9139, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 85, "hold_s": 455.9, "play_s": 197.1, "changed": 0.9062, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 86, "hold_s": 460.2, "play_s": 197.1, "changed": 0.8956, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 87, "hold_s": 464.6, "play_s": 197.1, "changed": 0.8318, "off": true, "shift_look": 28.64, "src": "check", "state": "game_over", "why": "GAME OVER screen with RETRY and QUIT menu options", "action": ["A"], "kept": false}
+{"n": 88, "hold_s": 472.6, "play_s": 197.1, "changed": 0.8561, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 89, "hold_s": 474.5, "play_s": 197.1, "changed": 0.9024, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 90, "hold_s": 476.4, "play_s": 197.1, "changed": 0.9227, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 91, "hold_s": 478.3, "play_s": 197.1, "changed": 0.9122, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "Game over menu displayed with RETRY and QUIT options; player character is not active in the game world", "action": ["A"], "kept": false}
+{"n": 92, "hold_s": 486.7, "play_s": 197.1, "changed": 0.8653, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 93, "hold_s": 489.1, "play_s": 197.1, "changed": 0.8587, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 94, "hold_s": 491.5, "play_s": 197.1, "changed": 0.896, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 95, "hold_s": 493.9, "play_s": 197.1, "changed": 0.8896, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "Game over screen with Retry/Quit menu; player character not in world", "action": ["A"], "kept": false}
+{"n": 96, "hold_s": 504.2, "play_s": 197.1, "changed": 0.829, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 97, "hold_s": 507.6, "play_s": 197.1, "changed": 0.8382, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 98, "hold_s": 510.9, "play_s": 197.1, "changed": 0.8298, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 99, "hold_s": 514.4, "play_s": 197.1, "changed": 0.8748, "off": true, "shift_look": 28.64, "src": "check", "state": "game_over", "why": "Game-over screen displayed with RETRY and QUIT menu options; player is not in the game world", "action": ["A"], "kept": false}
+{"n": 100, "hold_s": 524.0, "play_s": 197.1, "changed": 0.8681, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 101, "hold_s": 527.4, "play_s": 197.1, "changed": 0.8598, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 102, "hold_s": 530.7, "play_s": 197.1, "changed": 0.865, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 103, "hold_s": 534.0, "play_s": 197.1, "changed": 0.8972, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "Game Over screen with Retry/Quit menu displayed; player character not in game world", "ladder_round": 1, "ladder": 1, "action": ["A"], "kept": false}
+{"n": 104, "hold_s": 544.0, "play_s": 197.1, "changed": 0.9005, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 105, "hold_s": 547.3, "play_s": 197.1, "changed": 0.9136, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 106, "hold_s": 550.6, "play_s": 197.1, "changed": 0.841, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 107, "hold_s": 554.0, "play_s": 197.1, "changed": 0.8932, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "Game Over screen displayed with Retry/Quit menu; player character not in world", "ladder": 2, "action": ["START"], "kept": false}
+{"n": 108, "hold_s": 563.8, "play_s": 197.1, "changed": 0.9193, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["START"], "kept": true}
+{"n": 109, "hold_s": 567.3, "play_s": 197.1, "changed": 0.8615, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 110, "hold_s": 570.6, "play_s": 197.1, "changed": 0.8664, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 111, "hold_s": 573.9, "play_s": 197.1, "changed": 0.9095, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "Game Over screen with Retry and Quit menu options; player character not in game world", "ladder": 3, "action": ["A"], "kept": false}
+{"n": 112, "hold_s": 584.3, "play_s": 197.1, "changed": 0.9069, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 113, "hold_s": 587.7, "play_s": 197.1, "changed": 0.9093, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 114, "hold_s": 590.9, "play_s": 197.1, "changed": 0.9177, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 115, "hold_s": 594.2, "play_s": 197.1, "changed": 0.8128, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "Game Over screen displaying Retry and Quit options; player died", "ladder": 4, "action": ["A"], "kept": true}
+{"n": 116, "hold_s": 603.7, "play_s": 197.1, "changed": 0.8226, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 117, "hold_s": 607.1, "play_s": 197.1, "changed": 0.8801, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 118, "hold_s": 610.4, "play_s": 197.1, "changed": 0.8878, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 119, "hold_s": 613.9, "play_s": 197.1, "changed": 0.8761, "off": true, "shift_look": 28.64, "src": "check", "state": "game_over", "why": "Game Over screen with Retry/Quit menu displayed", "ladder": 5, "action": ["B"], "kept": false}
+{"n": 120, "hold_s": 623.7, "play_s": 197.1, "changed": 0.1394, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 121, "hold_s": 627.1, "play_s": 197.1, "changed": 0.1137, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": true}
+{"n": 122, "hold_s": 630.5, "play_s": 197.1, "changed": 0.1554, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 123, "hold_s": 634.0, "play_s": 197.1, "changed": 0.1314, "off": true, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Game over screen displayed with Retry/Quit menu options", "ladder": 6, "action": ["START"], "kept": false}
+{"n": 124, "hold_s": 644.1, "play_s": 197.1, "changed": 0.9153, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 125, "hold_s": 647.4, "play_s": 197.1, "changed": 0.8941, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 126, "hold_s": 650.7, "play_s": 197.1, "changed": 0.8256, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 127, "hold_s": 654.0, "play_s": 197.1, "changed": 0.8924, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "Game Over screen with Retry and Quit menu options; player character not in game world", "ladder": 7, "action": ["A"], "kept": false}
+{"n": 128, "hold_s": 662.9, "play_s": 197.1, "changed": 0.8957, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 129, "hold_s": 666.3, "play_s": 197.1, "changed": 0.8374, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 130, "hold_s": 669.6, "play_s": 197.1, "changed": 0.8605, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 131, "hold_s": 672.9, "play_s": 197.1, "changed": 0.913, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "Game Over screen with Retry/Quit menu options", "ladder": 8, "action": ["START"], "kept": false}
+{"n": 132, "hold_s": 682.0, "play_s": 197.1, "changed": 0.8786, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 133, "hold_s": 685.4, "play_s": 197.1, "changed": 0.9165, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 134, "hold_s": 688.7, "play_s": 197.1, "changed": 0.8741, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 135, "hold_s": 692.1, "play_s": 197.1, "changed": 0.9236, "off": true, "shift_look": 28.64, "src": "check", "state": "game_over", "why": "Game Over screen displayed with Retry and Quit options; player character not active", "ladder": 9, "action": ["A"], "kept": false}
+{"n": 136, "hold_s": 702.2, "play_s": 197.1, "changed": 0.9166, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 137, "hold_s": 705.6, "play_s": 197.1, "changed": 0.9024, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 138, "hold_s": 708.8, "play_s": 197.1, "changed": 0.9247, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 139, "hold_s": 712.2, "play_s": 197.1, "changed": 0.9341, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "Game Over menu shown with RETRY and QUIT options; player not in active gameplay", "ladder": 10, "action": ["A"], "kept": false}
+{"n": 140, "hold_s": 720.6, "play_s": 197.1, "changed": 0.9338, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 141, "hold_s": 724.0, "play_s": 197.1, "changed": 0.9127, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 142, "hold_s": 727.3, "play_s": 197.1, "changed": 0.8889, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 143, "hold_s": 730.8, "play_s": 197.1, "changed": 0.8599, "off": true, "shift_look": 28.64, "src": "check", "state": "game_over", "why": "Game Over screen with Retry and Quit menu options displayed", "ladder": 11, "action": ["B"], "kept": false}
+{"n": 144, "hold_s": 742.9, "play_s": 197.1, "changed": 0.1567, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": true}
+{"n": 145, "hold_s": 746.4, "play_s": 197.1, "changed": 0.1611, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 146, "hold_s": 749.9, "play_s": 197.1, "changed": 0.1992, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 147, "hold_s": 753.4, "play_s": 197.1, "changed": 0.1363, "off": true, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Game over screen showing retry and quit options", "ladder": 12, "action": ["START"], "kept": false}
+{"n": 148, "hold_s": 764.1, "play_s": 197.1, "changed": 0.8848, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 149, "hold_s": 767.5, "play_s": 197.1, "changed": 0.8803, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 150, "hold_s": 770.9, "play_s": 197.1, "changed": 0.8862, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 151, "hold_s": 774.4, "play_s": 197.1, "changed": 0.9007, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "Game over screen with RETRY/QUIT menu options visible", "ladder": 13, "action": ["A"], "kept": true}
+{"n": 152, "hold_s": 785.1, "play_s": 197.1, "changed": 0.9004, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 153, "hold_s": 788.5, "play_s": 197.1, "changed": 0.9206, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 154, "hold_s": 791.8, "play_s": 197.1, "changed": 0.932, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 155, "hold_s": 795.3, "play_s": 197.1, "changed": 0.7863, "off": true, "shift_look": 28.64, "src": "check", "state": "game_over", "why": "Game over screen displayed with retry and quit options; player character not in the game world", "ladder_round": 2, "ladder": 1, "action": ["A"], "kept": false}
+{"n": 156, "hold_s": 807.1, "play_s": 197.1, "changed": 0.7625, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 157, "hold_s": 810.5, "play_s": 197.1, "changed": 0.9018, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 158, "hold_s": 813.7, "play_s": 197.1, "changed": 0.9017, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 159, "hold_s": 817.1, "play_s": 197.1, "changed": 0.8621, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "Game Over screen with Retry/Quit menu options", "ladder": 2, "action": ["START"], "kept": false}
+{"n": 160, "hold_s": 824.9, "play_s": 197.1, "changed": 0.819, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 161, "hold_s": 828.3, "play_s": 197.1, "changed": 0.8718, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 162, "hold_s": 831.6, "play_s": 197.1, "changed": 0.8576, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 163, "hold_s": 835.0, "play_s": 197.1, "changed": 0.8577, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "GAME OVER screen with RETRY/QUIT menu; no active gameplay", "ladder": 3, "action": ["A"], "kept": false}
+{"n": 164, "hold_s": 845.7, "play_s": 197.1, "changed": 0.9021, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 165, "hold_s": 849.1, "play_s": 197.1, "changed": 0.9131, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 166, "hold_s": 852.4, "play_s": 197.1, "changed": 0.874, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 167, "hold_s": 855.8, "play_s": 197.1, "changed": 0.9062, "off": true, "shift_look": 28.64, "src": "check", "state": "game_over", "why": "Game Over screen with RETRY/QUIT menu options; gameplay has ended", "ladder": 4, "action": ["A"], "kept": false}
+{"n": 168, "hold_s": 865.4, "play_s": 197.1, "changed": 0.9205, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 169, "hold_s": 868.8, "play_s": 197.1, "changed": 0.8542, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 170, "hold_s": 872.0, "play_s": 197.1, "changed": 0.8406, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 171, "hold_s": 875.4, "play_s": 197.1, "changed": 0.9241, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "Game Over screen with Retry/Quit menu options; player character not in world", "ladder": 5, "action": ["B"], "kept": false}
+{"n": 172, "hold_s": 884.8, "play_s": 197.1, "changed": 0.2021, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": true}
+{"n": 173, "hold_s": 888.3, "play_s": 197.1, "changed": 0.1434, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 174, "hold_s": 891.7, "play_s": 197.1, "changed": 0.1075, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 175, "hold_s": 895.0, "play_s": 197.1, "changed": 0.1676, "off": true, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Game Over screen with Retry and Quit options; player not in game world", "ladder": 6, "action": ["START"], "kept": false}
+{"n": 176, "hold_s": 905.3, "play_s": 197.1, "changed": 0.8415, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 177, "hold_s": 908.8, "play_s": 197.1, "changed": 0.8859, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 178, "hold_s": 912.2, "play_s": 197.1, "changed": 0.8773, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 179, "hold_s": 915.7, "play_s": 197.1, "changed": 0.8658, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "Game Over screen displayed with RETRY and QUIT menu options; player not in game world", "ladder": 7, "action": ["A"], "kept": true}
+{"n": 180, "hold_s": 927.9, "play_s": 197.1, "changed": 0.9036, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 181, "hold_s": 931.4, "play_s": 197.1, "changed": 0.8869, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 182, "hold_s": 934.7, "play_s": 197.1, "changed": 0.9253, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 183, "hold_s": 938.2, "play_s": 197.1, "changed": 0.9219, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "Game Over screen with Retry and Quit menu options displayed", "ladder": 8, "action": ["START"], "kept": false}
+{"n": 184, "hold_s": 947.3, "play_s": 197.1, "changed": 0.9015, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["START"], "kept": true}
+{"n": 185, "hold_s": 950.8, "play_s": 197.1, "changed": 0.9183, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 186, "hold_s": 954.1, "play_s": 197.1, "changed": 0.8869, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 187, "hold_s": 957.5, "play_s": 197.1, "changed": 0.9062, "off": true, "shift_look": 28.64, "src": "check", "state": "game_over", "why": "Game Over screen with Retry/Quit menu options displayed", "ladder": 9, "action": ["A"], "kept": false}
+{"n": 188, "hold_s": 967.0, "play_s": 197.1, "changed": 0.9158, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 189, "hold_s": 970.4, "play_s": 197.1, "changed": 0.8601, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 190, "hold_s": 973.7, "play_s": 197.1, "changed": 0.854, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 191, "hold_s": 977.1, "play_s": 197.1, "changed": 0.9275, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "Game Over screen with RETRY and QUIT menu options; player character not active", "ladder": 10, "action": ["A"], "kept": false}
+{"n": 192, "hold_s": 987.5, "play_s": 197.1, "changed": 0.9192, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 193, "hold_s": 990.9, "play_s": 197.1, "changed": 0.901, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 194, "hold_s": 994.2, "play_s": 197.1, "changed": 0.9018, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 195, "hold_s": 997.7, "play_s": 197.1, "changed": 0.8827, "off": true, "shift_look": 28.64, "src": "check", "state": "game_over", "why": "Game Over screen with Retry/Quit menu options - player not actively in game world", "ladder": 11, "action": ["B"], "kept": false}
+{"n": 196, "hold_s": 1010.0, "play_s": 197.1, "changed": 0.2425, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 197, "hold_s": 1013.4, "play_s": 197.1, "changed": 0.1516, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 198, "hold_s": 1016.9, "play_s": 197.1, "changed": 0.1555, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 199, "hold_s": 1020.5, "play_s": 197.1, "changed": 0.0946, "off": true, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Game Over screen showing Retry/Quit menu options; player is dead", "ladder": 12, "action": ["START"], "kept": true}
+{"n": 200, "hold_s": 1032.8, "play_s": 197.1, "changed": 0.8504, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 201, "hold_s": 1036.2, "play_s": 197.1, "changed": 0.8812, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 202, "hold_s": 1039.5, "play_s": 197.1, "changed": 0.8347, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 203, "hold_s": 1042.9, "play_s": 197.1, "changed": 0.9022, "off": true, "shift_look": 28.64, "src": "check", "state": "game_over", "why": "Game Over screen displayed with Retry/Quit menu options", "ladder": 13, "action": ["A"], "kept": false}
+{"n": 204, "hold_s": 1055.9, "play_s": 197.1, "changed": 0.9244, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 205, "hold_s": 1059.3, "play_s": 197.1, "changed": 0.9019, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 206, "hold_s": 1062.6, "play_s": 197.1, "changed": 0.8954, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 207, "hold_s": 1065.9, "play_s": 197.1, "changed": 0.8591, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "Game Over screen with Retry/Quit menu; player character not in game world", "ladder_round": 3, "ladder": 1, "action": ["A"], "kept": false}
+{"n": 208, "hold_s": 1075.8, "play_s": 197.1, "changed": 0.8996, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 209, "hold_s": 1079.2, "play_s": 197.1, "changed": 0.9083, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 210, "hold_s": 1082.6, "play_s": 197.1, "changed": 0.8726, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 211, "hold_s": 1086.0, "play_s": 197.1, "changed": 0.8579, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "Game Over screen with RETRY and QUIT menu options visible", "ladder": 2, "action": ["START"], "kept": true}
+{"n": 212, "hold_s": 1095.1, "play_s": 197.1, "changed": 0.8772, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 213, "hold_s": 1098.5, "play_s": 197.1, "changed": 0.8505, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 214, "hold_s": 1101.7, "play_s": 197.1, "changed": 0.8059, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 215, "hold_s": 1105.1, "play_s": 197.1, "changed": 0.863, "off": true, "shift_look": 28.64, "src": "check", "state": "game_over", "why": "Game Over screen with Retry/Quit menu; player character is not in the game world", "ladder": 3, "action": ["A"], "kept": false}
+{"n": 216, "hold_s": 1114.4, "play_s": 197.1, "changed": 0.8977, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 217, "hold_s": 1117.8, "play_s": 197.1, "changed": 0.8538, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 218, "hold_s": 1121.1, "play_s": 197.1, "changed": 0.9187, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 219, "hold_s": 1124.5, "play_s": 197.1, "changed": 0.8924, "off": true, "shift_look": 28.64, "src": "check", "state": "game_over", "why": "Game Over screen with Retry and Quit menu options; no active gameplay", "ladder": 4, "action": ["A"], "kept": false}
+{"n": 220, "hold_s": 1134.4, "play_s": 197.1, "changed": 0.823, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 221, "hold_s": 1137.8, "play_s": 197.1, "changed": 0.8961, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 222, "hold_s": 1141.3, "play_s": 197.1, "changed": 0.8607, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 223, "hold_s": 1144.8, "play_s": 197.1, "changed": 0.8982, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "GAME OVER screen with RETRY and QUIT menu options visible", "ladder": 5, "action": ["B"], "kept": false}
+{"n": 224, "hold_s": 1153.9, "play_s": 197.1, "changed": 0.1606, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": true}
+{"n": 225, "hold_s": 1157.4, "play_s": 197.1, "changed": 0.1268, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 226, "hold_s": 1161.0, "play_s": 197.1, "changed": 0.094, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 227, "hold_s": 1164.3, "play_s": 197.1, "changed": 0.119, "off": true, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Game over screen with RETRY and QUIT menu options displayed", "ladder": 6, "action": ["START"], "kept": false}
+{"n": 228, "hold_s": 1173.7, "play_s": 197.1, "changed": 0.9111, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 229, "hold_s": 1177.1, "play_s": 197.1, "changed": 0.9187, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 230, "hold_s": 1180.4, "play_s": 197.1, "changed": 0.9134, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 231, "hold_s": 1183.9, "play_s": 197.1, "changed": 0.8716, "off": true, "shift_look": 28.64, "src": "check", "state": "game_over", "why": "Game Over screen with Retry/Quit menu, no active gameplay", "ladder": 7, "action": ["A"], "kept": true}
+{"n": 232, "hold_s": 1193.3, "play_s": 197.1, "changed": 0.8555, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 233, "hold_s": 1196.8, "play_s": 197.1, "changed": 0.7986, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 234, "hold_s": 1200.1, "play_s": 197.1, "changed": 0.8641, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 235, "hold_s": 1203.7, "play_s": 197.1, "changed": 0.8866, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "Game Over screen showing Retry/Quit options; player character not in world", "ladder": 8, "action": ["START"], "kept": false}
+{"n": 236, "hold_s": 1213.8, "play_s": 197.1, "changed": 0.8679, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 237, "hold_s": 1217.3, "play_s": 197.1, "changed": 0.8526, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["START"], "kept": true}
+{"n": 238, "hold_s": 1220.7, "play_s": 197.1, "changed": 0.9227, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 239, "hold_s": 1224.1, "play_s": 197.1, "changed": 0.8257, "off": true, "shift_look": 28.64, "src": "check", "state": "game_over", "why": "Game Over screen with Retry and Quit menu options; player is not in the game world", "ladder": 9, "action": ["A"], "kept": false}
+{"n": 240, "hold_s": 1233.2, "play_s": 197.1, "changed": 0.8032, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 241, "hold_s": 1236.6, "play_s": 197.1, "changed": 0.8857, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 242, "hold_s": 1240.0, "play_s": 197.1, "changed": 0.8596, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 243, "hold_s": 1243.5, "play_s": 197.1, "changed": 0.8941, "off": true, "shift_look": 28.64, "src": "check", "state": "game_over", "why": "Game Over screen displayed with Retry and Quit menu options", "ladder": 10, "action": ["A"], "kept": false}
+{"n": 244, "hold_s": 1254.1, "play_s": 197.1, "changed": 0.9033, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 245, "hold_s": 1257.6, "play_s": 197.1, "changed": 0.8864, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 246, "hold_s": 1261.0, "play_s": 197.1, "changed": 0.8749, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 247, "hold_s": 1264.4, "play_s": 197.1, "changed": 0.9231, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "Game Over screen with Retry and Quit options; player's character not in game world", "ladder": 11, "action": ["B"], "kept": false}
+{"n": 248, "hold_s": 1274.1, "play_s": 197.1, "changed": 0.1909, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 249, "hold_s": 1277.6, "play_s": 197.1, "changed": 0.1941, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 250, "hold_s": 1281.0, "play_s": 197.1, "changed": 0.1169, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 251, "hold_s": 1284.5, "play_s": 197.1, "changed": 0.1761, "off": true, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Game over screen with retry and quit options displayed", "ladder": 12, "action": ["START"], "kept": true}
+{"n": 252, "hold_s": 1296.3, "play_s": 197.1, "changed": 0.9106, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 253, "hold_s": 1299.8, "play_s": 197.1, "changed": 0.8485, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 254, "hold_s": 1303.3, "play_s": 197.1, "changed": 0.8297, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 255, "hold_s": 1306.8, "play_s": 197.1, "changed": 0.8792, "off": true, "shift_look": 28.64, "src": "check", "state": "game_over", "why": "Game Over screen displayed with Retry and Quit menu options", "ladder": 13, "action": ["A"], "kept": false}
+{"n": 256, "hold_s": 1316.2, "play_s": 197.1, "changed": 0.8994, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 257, "hold_s": 1319.6, "play_s": 197.1, "changed": 0.8556, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 258, "hold_s": 1322.8, "play_s": 197.1, "changed": 0.8855, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 259, "hold_s": 1326.3, "play_s": 197.1, "changed": 0.9017, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "Game Over screen with Retry/Quit options; player is not in live play", "ladder_round": 4, "ladder": 1, "action": ["A"], "kept": false}
+{"n": 260, "hold_s": 1335.6, "play_s": 197.1, "changed": 0.8575, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 261, "hold_s": 1339.1, "play_s": 197.1, "changed": 0.8674, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 262, "hold_s": 1342.5, "play_s": 197.1, "changed": 0.8484, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 263, "hold_s": 1345.8, "play_s": 197.1, "changed": 0.8876, "off": true, "shift_look": 28.64, "src": "check", "state": "game_over", "why": "Game Over screen with Retry/Quit menu; Retry is highlighted", "ladder": 2, "action": ["START"], "kept": false}
+{"n": 264, "hold_s": 1354.6, "play_s": 197.1, "changed": 0.8971, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["START"], "kept": true}
+{"n": 265, "hold_s": 1358.3, "play_s": 197.1, "changed": 0.9023, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 266, "hold_s": 1361.7, "play_s": 197.1, "changed": 0.8972, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 267, "hold_s": 1365.2, "play_s": 197.1, "changed": 0.917, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "Game Over screen with Retry and Quit options; player character not active", "ladder": 3, "action": ["A"], "kept": false}
+{"n": 268, "hold_s": 1374.9, "play_s": 197.1, "changed": 0.8941, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 269, "hold_s": 1378.3, "play_s": 197.1, "changed": 0.9293, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 270, "hold_s": 1381.8, "play_s": 197.1, "changed": 0.9128, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 271, "hold_s": 1385.3, "play_s": 197.1, "changed": 0.8814, "off": true, "shift_look": 28.64, "src": "check", "state": "game_over", "why": "Game Over screen displayed with RETRY and QUIT menu options", "ladder": 4, "action": ["A"], "kept": true}
+{"n": 272, "hold_s": 1394.8, "play_s": 197.1, "changed": 0.8519, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 273, "hold_s": 1398.4, "play_s": 197.1, "changed": 0.7847, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 274, "hold_s": 1401.8, "play_s": 197.1, "changed": 0.8567, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 275, "hold_s": 1405.3, "play_s": 197.1, "changed": 0.9119, "off": true, "shift_look": 28.64, "src": "check", "state": "game_over", "why": "Game Over screen with Retry/Quit menu options displayed", "ladder": 5, "action": ["B"], "kept": false}
+{"n": 276, "hold_s": 1415.4, "play_s": 197.1, "changed": 0.1971, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": true}
+{"n": 277, "hold_s": 1419.1, "play_s": 197.1, "changed": 0.1805, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 278, "hold_s": 1422.6, "play_s": 197.1, "changed": 0.1102, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 279, "hold_s": 1426.1, "play_s": 197.1, "changed": 0.1836, "off": true, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Game Over screen with Retry and Quit menu options", "ladder": 6, "action": ["START"], "kept": false}
+{"n": 280, "hold_s": 1436.1, "play_s": 197.1, "changed": 0.8743, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 281, "hold_s": 1439.9, "play_s": 197.1, "changed": 0.9294, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 282, "hold_s": 1443.4, "play_s": 197.1, "changed": 0.9079, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 283, "hold_s": 1447.1, "play_s": 197.1, "changed": 0.8954, "off": true, "shift_look": 28.64, "src": "check", "state": "game_over", "why": "Game Over screen with Retry and Quit menu options displayed; player is not in active gameplay", "ladder": 7, "action": ["A"], "kept": true}
+{"n": 284, "hold_s": 1457.8, "play_s": 197.1, "changed": 0.894, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 285, "hold_s": 1461.4, "play_s": 197.1, "changed": 0.8862, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 286, "hold_s": 1465.1, "play_s": 197.1, "changed": 0.8852, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 287, "hold_s": 1468.7, "play_s": 197.1, "changed": 0.8351, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "Game Over screen with Retry/Quit menu options displayed", "ladder": 8, "action": ["START"], "kept": false}
+{"n": 288, "hold_s": 1479.6, "play_s": 197.1, "changed": 0.8621, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["START"], "kept": true}
+{"n": 289, "hold_s": 1483.5, "play_s": 197.1, "changed": 0.8723, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 290, "hold_s": 1487.3, "play_s": 197.1, "changed": 0.9303, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 291, "hold_s": 1491.3, "play_s": 197.1, "changed": 0.924, "off": true, "shift_look": 28.64, "src": "check", "state": "game_over", "why": "Game over screen with RETRY and QUIT menu options visible", "ladder": 9, "action": ["A"], "kept": false}
+{"n": 292, "hold_s": 1501.9, "play_s": 197.1, "changed": 0.9091, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 293, "hold_s": 1505.5, "play_s": 197.1, "changed": 0.9292, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 294, "hold_s": 1509.0, "play_s": 197.1, "changed": 0.9163, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 295, "hold_s": 1512.6, "play_s": 197.1, "changed": 0.8966, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "Game Over screen with RETRY and QUIT menu options visible", "ladder": 10, "action": ["A"], "kept": true}
+{"n": 296, "hold_s": 1521.5, "play_s": 197.1, "changed": 0.8705, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 297, "hold_s": 1525.2, "play_s": 197.1, "changed": 0.8615, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 298, "hold_s": 1528.8, "play_s": 197.1, "changed": 0.8703, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 299, "hold_s": 1532.4, "play_s": 197.1, "changed": 0.882, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "Game over screen displayed with RETRY and QUIT menu options", "ladder": 11, "action": ["B"], "kept": false}
+{"n": 300, "hold_s": 1541.7, "play_s": 197.1, "changed": 0.0248, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 301, "hold_s": 1545.2, "play_s": 197.1, "changed": 0.0612, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": true}
+{"n": 302, "hold_s": 1548.9, "play_s": 197.1, "changed": 0.1776, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 303, "hold_s": 1552.5, "play_s": 197.1, "changed": 0.1423, "off": true, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Game Over screen with Retry and Quit menu options displayed", "ladder": 12, "action": ["START"], "kept": false}
+{"n": 304, "hold_s": 1564.0, "play_s": 197.1, "changed": 0.8737, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 305, "hold_s": 1568.0, "play_s": 197.1, "changed": 0.8774, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 306, "hold_s": 1571.6, "play_s": 197.1, "changed": 0.894, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 307, "hold_s": 1575.2, "play_s": 197.1, "changed": 0.8666, "off": true, "shift_look": 28.64, "src": "check", "state": "game_over", "why": "Game over screen displayed with menu options (Retry, Quit); player not in the game world", "ladder": 13, "action": ["A"], "kept": true}
+{"n": 308, "hold_s": 1589.6, "play_s": 197.1, "changed": 0.8659, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 309, "hold_s": 1593.1, "play_s": 197.1, "changed": 0.9206, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 310, "hold_s": 1596.7, "play_s": 197.1, "changed": 0.9136, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 311, "hold_s": 1600.5, "play_s": 197.1, "changed": 0.8107, "off": true, "shift_look": 28.64, "src": "check", "state": "game_over", "why": "Game Over screen with Retry/Quit menu; player is dead", "ladder_round": 5, "ladder": 1, "action": ["A"], "kept": false}
+{"n": 312, "hold_s": 1613.1, "play_s": 197.1, "changed": 0.7882, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 313, "hold_s": 1616.8, "play_s": 197.1, "changed": 0.9079, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 314, "hold_s": 1620.4, "play_s": 197.1, "changed": 0.8699, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 315, "hold_s": 1624.1, "play_s": 197.1, "changed": 0.8846, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "Game Over screen with Retry/Quit menu displayed; no gameplay active", "ladder": 2, "action": ["START"], "kept": false}
+{"n": 316, "hold_s": 1633.8, "play_s": 197.1, "changed": 0.8487, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 317, "hold_s": 1637.5, "play_s": 197.1, "changed": 0.8756, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 318, "hold_s": 1640.9, "play_s": 197.1, "changed": 0.8815, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 319, "hold_s": 1644.4, "play_s": 197.1, "changed": 0.8947, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "GAME OVER screen displayed with RETRY and QUIT options; player not in gameplay", "ladder": 3, "action": ["A"], "kept": true}
+{"n": 320, "hold_s": 1657.2, "play_s": 197.1, "changed": 0.9094, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 321, "hold_s": 1660.9, "play_s": 197.1, "changed": 0.9022, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 322, "hold_s": 1664.5, "play_s": 197.1, "changed": 0.9021, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 323, "hold_s": 1668.5, "play_s": 197.1, "changed": 0.8872, "off": true, "shift_look": 28.64, "src": "check", "state": "game_over", "why": "Game Over screen displayed with Retry/Quit menu options", "ladder": 4, "action": ["A"], "kept": false}
+{"n": 324, "hold_s": 1678.0, "play_s": 197.1, "changed": 0.9016, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 325, "hold_s": 1681.7, "play_s": 197.1, "changed": 0.9165, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 326, "hold_s": 1685.2, "play_s": 197.1, "changed": 0.8765, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 327, "hold_s": 1688.9, "play_s": 197.1, "changed": 0.8887, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "GAME OVER screen with RETRY and QUIT options; player character not in game world", "ladder": 5, "action": ["B"], "kept": false}
+{"n": 328, "hold_s": 1698.2, "play_s": 197.1, "changed": 0.0334, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 329, "hold_s": 1701.8, "play_s": 197.1, "changed": 0.0995, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 330, "hold_s": 1705.5, "play_s": 197.1, "changed": 0.1727, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 331, "hold_s": 1709.2, "play_s": 197.1, "changed": 0.1237, "off": true, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Game Over screen showing Retry/Quit menu; player failed and game ended", "ladder": 6, "action": ["START"], "kept": true}
+{"n": 332, "hold_s": 1720.0, "play_s": 197.1, "changed": 0.9153, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 333, "hold_s": 1723.7, "play_s": 197.1, "changed": 0.8972, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 334, "hold_s": 1727.3, "play_s": 197.1, "changed": 0.9001, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 335, "hold_s": 1731.0, "play_s": 197.1, "changed": 0.9289, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "Game Over screen with Retry and Quit menu options", "ladder": 7, "action": ["A"], "kept": false}
+{"n": 336, "hold_s": 1741.2, "play_s": 197.1, "changed": 0.8874, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 337, "hold_s": 1745.1, "play_s": 197.1, "changed": 0.8728, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 338, "hold_s": 1748.7, "play_s": 197.1, "changed": 0.8897, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 339, "hold_s": 1752.4, "play_s": 197.1, "changed": 0.9035, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "GAME OVER screen with RETRY and QUIT menu options displayed", "ladder": 8, "action": ["START"], "kept": false}
+{"n": 340, "hold_s": 1765.0, "play_s": 197.1, "changed": 0.8492, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 341, "hold_s": 1768.8, "play_s": 197.1, "changed": 0.8882, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 342, "hold_s": 1772.8, "play_s": 197.1, "changed": 0.8961, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["START"], "kept": true}
+{"n": 343, "hold_s": 1777.1, "play_s": 197.1, "changed": 0.8854, "off": true, "shift_look": 28.64, "src": "check", "state": "game_over", "why": "Game Over screen with Retry and Quit menu options; player not in live play", "ladder": 9, "action": ["A"], "kept": false}
+{"n": 344, "hold_s": 1787.3, "play_s": 197.1, "changed": 0.8756, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 345, "hold_s": 1791.0, "play_s": 197.1, "changed": 0.8702, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 346, "hold_s": 1794.5, "play_s": 197.1, "changed": 0.8658, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 347, "hold_s": 1798.1, "play_s": 197.1, "changed": 0.8924, "off": true, "shift_look": 28.64, "src": "check", "state": "game_over", "why": "Game Over screen displaying with Retry and Quit options; player is not in live play", "ladder": 10, "action": ["A"], "kept": false}
+{"n": 348, "hold_s": 1808.0, "play_s": 197.1, "changed": 0.9009, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 349, "hold_s": 1811.8, "play_s": 197.1, "changed": 0.8817, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 350, "hold_s": 1815.4, "play_s": 197.1, "changed": 0.8832, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 351, "hold_s": 1819.1, "play_s": 197.1, "changed": 0.8963, "off": true, "shift_look": 28.64, "src": "check", "state": "game_over", "why": "Game Over screen with RETRY and QUIT options displayed", "ladder": 11, "action": ["B"], "kept": false}
+{"n": 352, "hold_s": 1830.6, "play_s": 197.1, "changed": 0.1683, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 353, "hold_s": 1834.3, "play_s": 197.1, "changed": 0.1284, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 354, "hold_s": 1838.1, "play_s": 197.1, "changed": 0.0989, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": true}
+{"n": 355, "hold_s": 1842.0, "play_s": 197.1, "changed": 0.1261, "off": true, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Game Over screen with Retry and Quit menu options displayed", "ladder": 12, "action": ["START"], "kept": false}
+{"n": 356, "hold_s": 1855.3, "play_s": 197.1, "changed": 0.8885, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 357, "hold_s": 1859.0, "play_s": 197.1, "changed": 0.9113, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 358, "hold_s": 1862.6, "play_s": 197.1, "changed": 0.9249, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 359, "hold_s": 1866.4, "play_s": 197.1, "changed": 0.9003, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "Game over screen with RETRY and QUIT menu options displayed", "ladder": 13, "action": ["A"], "kept": false}
+{"n": 360, "hold_s": 1876.2, "play_s": 197.1, "changed": 0.9085, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 361, "hold_s": 1879.9, "play_s": 197.1, "changed": 0.9264, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 362, "hold_s": 1883.5, "play_s": 197.1, "changed": 0.8988, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 363, "hold_s": 1887.3, "play_s": 197.1, "changed": 0.8353, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "Game Over menu with Retry/Quit options displayed; player character not in world", "ladder_round": 6, "ladder": 1, "action": ["A"], "kept": false}
+{"n": 364, "hold_s": 1897.3, "play_s": 197.1, "changed": 0.8774, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 365, "hold_s": 1901.1, "play_s": 197.1, "changed": 0.8404, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 366, "hold_s": 1905.1, "play_s": 197.1, "changed": 0.8694, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 367, "hold_s": 1908.9, "play_s": 197.1, "changed": 0.9166, "off": true, "shift_look": 28.64, "src": "check", "state": "game_over", "why": "Game Over screen with Retry/Quit options; player character not in game world", "ladder": 2, "action": ["START"], "kept": true}
+{"n": 368, "hold_s": 1919.7, "play_s": 197.1, "changed": 0.9229, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 369, "hold_s": 1923.6, "play_s": 197.1, "changed": 0.8834, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 370, "hold_s": 1927.4, "play_s": 197.1, "changed": 0.9242, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["START"], "kept": false}
+{"n": 371, "hold_s": 1931.3, "play_s": 197.1, "changed": 0.9184, "off": true, "shift_look": 21.84, "src": "check", "state": "game_over", "why": "Game Over menu displayed with Retry and Quit options", "ladder": 3, "action": ["A"], "kept": false}
+{"n": 372, "hold_s": 1943.0, "play_s": 197.1, "changed": 0.8971, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 373, "hold_s": 1946.9, "play_s": 197.1, "changed": 0.8958, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 374, "hold_s": 1950.5, "play_s": 197.1, "changed": 0.9164, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 375, "hold_s": 1954.3, "play_s": 197.1, "changed": 0.9067, "off": true, "shift_look": 28.64, "src": "check", "state": "game_over", "why": "Game Over screen with Retry/Quit menu; game is not running", "ladder": 4, "action": ["A"], "kept": false}
+{"n": 376, "hold_s": 1967.1, "play_s": 197.1, "changed": 0.8661, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 377, "hold_s": 1971.1, "play_s": 197.1, "changed": 0.861, "off": true, "shift_look": 21.84, "src": "repeat", "state": "game_over", "action": ["A"], "kept": false}
+{"n": 378, "hold_s": 1974.9, "play_s": 197.1, "changed": 0.9051, "off": true, "shift_look": 28.64, "src": "repeat", "state": "game_over", "action": ["A"], "kept": true}
+{"n": 379, "hold_s": 1979.0, "play_s": 197.1, "changed": 0.8671, "off": true, "shift_look": 28.64, "src": "check", "state": "game_over", "why": "Game Over menu shown with RETRY and QUIT options; player not in the game world", "ladder": 5, "action": ["B"], "kept": false}
+{"n": 380, "hold_s": 1989.6, "play_s": 197.1, "changed": 0.0938, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 381, "hold_s": 1993.6, "play_s": 197.1, "changed": 0.1674, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 382, "hold_s": 1997.9, "play_s": 197.1, "changed": 0.0898, "off": true, "shift_look": 0.0, "src": "repeat", "state": "game_over", "action": ["B"], "kept": false}
+{"n": 383, "hold_s": 2001.8, "play_s": 197.1, "changed": 0.1354, "off": true, "shift_look": 0.0, "src": "check", "state": "game_over", "why": "Game Over screen with RETRY and QUIT menu options displayed", "ladder": 6, "action": ["START"], "kept": false}

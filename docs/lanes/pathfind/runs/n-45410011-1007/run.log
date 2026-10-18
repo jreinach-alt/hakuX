@@ -1,0 +1,40 @@
+pathfind: Cel Damage (45410011) on nova: /storage/E6C6-D7AA/Games/XBox/45410011-Cel_Damage.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 45410011 any, loaded none
+[  10.0s] #  1 loading           fast    wait                     This looks like an early boot/loading splash (possibly the Xbox or emulator boot logo) bef
+[  20.2s] #  2 publisher_logo    fast    START A                  Developer logo screen (Pseudo Interactive) before title; skip it with START then A per con
+[  30.1s] #  3 main_menu         fast    A                        PLAY is highlighted as the default option; confirming it leads fastest to gameplay.
+[  40.7s] #  4 controller_prompt fast    A                        Need to join as player 1 by pressing A to proceed into the game
+[  51.9s] #  5 main_menu         fast    A                        JUST PLAY is the highlighted/selected option for 1P; confirming it should start the game i
+[  71.5s] #  6 submenu           fast    A                        This is the 1P character/vehicle select screen; default character Violet is shown with SEL
+[  91.2s] #  7 controller_prompt fast    START                    A has been sent 3 times already and looped back to this same 1P confirm screen, so try STA
+[ 104.8s] #  8 submenu           fast    A                        Mode selection screen for Smack Attack event; EVENT SETTINGS panel appears highlighted/sel
+[ 115.8s] #  9 submenu           fast    A                        PLAY is highlighted at bottom right; confirming with A should start the event with the unl
+[ 125.1s] # 10 loading           fast    wait                     Level loading screen for Wild Wooly West track/event; no input needed, just wait for load 
+[ 138.6s] # 11 gameplay          fast    RT:1.5                   Player vehicle is in the game world with no menu/HUD chrome, matching the loading screen t
+[ 164.9s] # 12 probe             probe   RT:1.5 RT:1.5 RT+left:1.2 RT+right:1.2 control 0.736, under input 0.538
+hold-play: genre drive, need 600 s of play
+hold-play: fps at 186 s: median 29.0, share>=30 0.86 over 93 samples
+hold-play: fps at 305 s: median 29.0, share>=30 0.849 over 152 samples
+hold-play: validity check share 423 s (hold 608 s of play, verdict 608.2)
+hold-play: verdict short on share by 423 s; holding on (budget 1470 s left)
+hold-play: validity check share 360 s (hold 672 s of play, verdict 671.4)
+hold-play: verdict short on share by 360 s; holding on (budget 1407 s left)
+hold-play: validity check share 296 s (hold 735 s of play, verdict 734.7)
+hold-play: verdict short on share by 296 s; holding on (budget 1343 s left)
+hold-play: validity check share 218 s (hold 813 s of play, verdict 813.7)
+hold-play: verdict short on share by 218 s; holding on (budget 1264 s left)
+hold-play: validity check share 142 s (hold 887 s of play, verdict 888.2)
+hold-play: verdict short on share by 142 s; holding on (budget 1190 s left)
+hold-play: validity check share 80 s (hold 950 s of play, verdict 951.0)
+hold-play: verdict short on share by 80 s; holding on (budget 1127 s left)
+hold-play: validity check share 13 s (hold 1016 s of play, verdict 1017.1)
+hold-play: verdict short on share by 13 s; holding on (budget 1061 s left)
+hold-play: play disagrees: hold 1075.9 s, verdict 1082.1 s (verdict trusted)
+hold-play: validity check stop 0 s (hold 1076 s of play, verdict 1082.1)
+hold-play: not held 1076/600 s of play; verdict stops the hold: fps_ok 0.9815, crash False, hang False
+held Cel Damage for 1200s
+VERDICT Cel Damage ? PASS None gameplay=1199.0s fps_ok=0.9815 crash=False hang=False audio_short=0.0 hitches=3/0.158pm worst_ms=347.7 static_frac=0.0002 play_share=0.9025 fps_excluded=120.5s
+{"name": "Cel Damage", "device": "nova", "result": "gameplay", "minutes": 2.75, "model_calls": 34, "steps": 12, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45410011-1007/frames/011-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

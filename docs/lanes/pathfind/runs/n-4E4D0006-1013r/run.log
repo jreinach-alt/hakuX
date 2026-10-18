@@ -1,0 +1,43 @@
+pathfind: Pac Man World 2 (4E4D0006) on nova: /storage/E6C6-D7AA/Games/XBox/4E4D0006-Pac_Man_World_2.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4E4D0006 any, loaded none
+[  51.5s] #  1 publisher_logo    fast    A                        First screen after boot; shows a publisher logo before the title screen or menu. Skip with
+[  64.6s] #  2 title_screen      fast    START                    The screen displays 'PRESS START' with the Pac-Man character and game world scene; this is
+[  80.5s] #  3 main_menu         fast    A                        NEW GAME is highlighted at the top of the menu; this is the fastest path to gameplay.
+[ 106.7s] #  4 submenu           fast    A                        After selecting NEW GAME from the main menu, this is a game slot/quest selection submenu; 
+[ 183.2s] #  5 loading           fast    wait                     After selecting NEW QUEST from the menu, the game is loading the level. The clean, fully-r
+[ 268.9s] #  6 loading           fast    wait                     Level geometry and characters fully loaded, but no HUD elements visible yet; likely final 
+[ 291.4s] #  7 cutscene          fast    A                        This is a story/dialogue introduction cutscene with a text box and prompt arrow; it comes 
+[ 295.3s] #  8 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 300.0s] #  9 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 303.9s] # 10 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 307.7s] # 11 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 311.7s] # 12 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 315.6s] # 13 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 338.7s] # 14 cutscene          fast    A                        Letterbox black bars and on-screen instruction text identify this as a tutorial/instructio
+[ 343.7s] # 15 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 348.5s] # 16 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 353.4s] # 17 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 358.3s] # 18 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 363.9s] # 19 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 368.9s] # 20 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 386.2s] # 21 cutscene          fast    A                        Tutorial/informational cutscene explaining game mechanics; letterbox bars with text, navig
+[ 390.0s] # 22 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 394.0s] # 23 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 398.6s] # 24 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 402.4s] # 25 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 406.4s] # 26 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 410.3s] # 27 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 443.3s] # 28 gameplay          fast    wait                     Pac-Man character visible in the playable game world with HUD elements after advancing thr
+[ 458.6s] # 29 probe             probe   STICK:up:1.5             control 0.019, under input 0.351
+hold-play: genre other, need 600 s of play
+hold-play: fps at 188 s: median 59.0, share>=30 1.0 over 189 samples
+hold-play: fps at 307 s: median 59.0, share>=30 1.0 over 308 samples
+hold-play: play disagrees: hold 608.7 s, verdict 593.8 s (verdict trusted)
+hold-play: validity check stop 0 s (hold 609 s of play, verdict 593.8)
+hold-play: not held 609/600 s of play; verdict stops the hold: fps_ok 1.0, crash False, hang False
+held Pac Man World 2 for 626s
+VERDICT Pac Man World 2 ? FAIL(hitches: a 590 ms stall after the first 60 s (bar 500 ms)) gameplay=624.6s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=4/0.425pm worst_ms=590.3 static_frac=0.0007 play_share=0.9523 fps_excluded=31.0s
+{"name": "Pac Man World 2", "device": "nova", "result": "gameplay", "minutes": 7.64, "model_calls": 20, "steps": 29, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4E4D0006-1013r/frames/028-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

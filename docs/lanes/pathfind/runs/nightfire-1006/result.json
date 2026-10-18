@@ -1,0 +1,79 @@
+{
+ "title_id": "45410026",
+ "name": "007: Nightfire",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/45410026-007_Nightfire.xiso.iso",
+ "result": "gameplay",
+ "tool": "2cce4a963b",
+ "started": "2026-10-06 19:47:57 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nightfire-1006/frames/010-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nightfire-1006/frames/010-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nightfire-1006/frames/010-probe-c.jpg"
+ ],
+ "minutes": 1.46,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nightfire-1006/frames/009-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nightfire-1006/frames/011-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nightfire-1006/frames/012-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nightfire-1006/frames/013-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nightfire-1006/frames/014-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nightfire-1006/frames/015-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nightfire-1006/frames/016-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nightfire-1006/frames/017-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nightfire-1006/frames/018-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nightfire-1006/frames/019-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-4541.md",
+  "hints/learned-series-007.md"
+ ],
+ "hold": {
+  "genre": "onrails",
+  "why": "A tutorial reads \"Limited weapon control\" over a fixed car-hood view with an auto-aim reticle, so the player only aims and fires while the scene moves on its ow",
+  "ok": false,
+  "play_s": 600.3,
+  "need_s": 600.0,
+  "hold_s": 692.2,
+  "model_navs": 11,
+  "frames": 23,
+  "still_windows": 0,
+  "shed": [],
+  "reversals": 0,
+  "reason": "verdict stops the hold: fps_ok 0.8914, crash False, hang False",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 120,
+    "median": 40.0,
+    "share": 0.908,
+    "at_s": 180.7,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 201,
+    "median": 40.0,
+    "share": 0.91,
+    "at_s": 300.2,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "verdict": "VERDICT 007: Nightfire ? FAIL(menu time: 86.6% of the scored window in `play` (bar 90%; play 600 s, menu 36 s, other 24 s, game_over 17 s)) gameplay=693.3s fps_ok=0.8916 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.008 play_share=0.8656 fps_excluded=92.0s"
+ },
+ "model_calls": 35,
+ "calls_by_model": {
+  "claude-sonnet-5": 35
+ },
+ "steps": 10,
+ "seconds": 828.9,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nightfire-1006/frames/768-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nightfire-1006/strip.jpg"
+}

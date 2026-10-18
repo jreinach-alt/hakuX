@@ -1,0 +1,40 @@
+pathfind: RalliSport Challenge 2 (4D530039) on nova: /storage/E6C6-D7AA/Games/XBox/RalliSport Challenge 2 (Japan, Europe).iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4D530039 any, loaded golden e84d24bb437c
+[  10.9s] #  1 black             fast    wait                     This is the emulator/launcher loading indicator, not game content yet; no input needed, ju
+[  21.2s] #  2 intro_video       fast    START A                  This is a cinematic/FMV sequence (red-tinted damaged footage, motion blur, no HUD or menu)
+[  35.1s] #  3 cutscene          fast    START                    No race HUD elements (speed, timer) are visible despite seeing a car hood; this looks like
+[  44.5s] #  4 title_screen      fast    START                    Title screen explicitly prompts PRESS START TO BEGIN; no menu cursor yet.
+[  52.8s] #  5 submenu           fast    A                        Fresh disk shows only Create new Profile option, which is highlighted; per hints, accept w
+[  65.1s] #  6 main_menu         fast    LEFT A                   Career is currently highlighted but requires career setup; Single Race is the faster path 
+[  76.3s] #  7 submenu           fast    RIGHT A                  CROSSOVER is currently highlighted but RALLY is the standard fastest default race type one
+[  86.7s] #  8 submenu           fast    A                        Track select menu with the default first track (SS1 Cooper Hill I) already highlighted; ac
+[  96.0s] #  9 submenu           fast    A                        Race settings menu with Damage Model currently highlighted; these are all fine at default,
+[ 104.2s] # 10 submenu           fast    A                        Car select with default first car highlighted; accept default with A to proceed toward the
+[ 116.2s] # 11 submenu           fast    A                        Pre-race menu with START RACE already highlighted; confirm with A to begin the race.
+[ 130.8s] # 12 gameplay          fast    RT:2                     Cars are positioned on the starting grid with headlights on and a marshal present, no menu
+[ 149.2s] # 13 probe             probe   RT:2 RT:2 RT+left:1.2 RT+right:1.2 control 0.346, under input 0.130
+[ 155.4s] # 14 gameplay          fast    RT:2                     Live race HUD with running race clock and position indicator, car on dirt track; speed rea
+[ 169.1s] # 15 probe             probe   RT:2 RT:1.5              control 0.013, under input 0.036
+[ 180.3s] # 16 gameplay          fast    LT+left:1.2 RT+right:1.2 RT:2 HUD and race clock are live and progressing, but speed has stuck at 0 across prior throttl
+[ 202.7s] # 17 probe             probe   LT+left:1.2 RT+right:1.2 RT:2 HOLD:A:3 HOLD:A:3 HOLD:A:3 control 0.037, under input 0.031
+[ 220.1s] # 18 gameplay          fast    RT:3                     Live race HUD with a running, advancing race clock (01:16.450) confirms this is gameplay, 
+[ 239.4s] # 19 probe             probe   RT:3 HOLD:A:3 HOLD:A:3 HOLD:A:3 control 0.023, under input 0.021
+[ 249.2s] # 20 gameplay          fast    LT+left:1.5 RT+right:1.5 RT:2 Live race HUD with an advancing race clock confirms gameplay; car speed is still pinned at
+[ 273.9s] # 21 probe             probe   LT+left:1.5 RT+right:1.5 RT:2 STICK:up:2 STICK:left:1.2 STICK:right:1.2 control 0.258, under input 0.342
+[ 284.7s] # 22 gameplay          fast    RT:3 RT:2                Running race clock and HUD confirm live gameplay; speed reads 0 so car appears stopped des
+[ 306.8s] # 23 probe             probe   RT:3 RT:2 STICK:up:2 STICK:up:2 STICK:up:2 control 0.020, under input 0.020
+[ 315.3s] # 24 gameplay          fast    LT+left:2 RT+right:2 RT:3 Race clock is advancing confirming live gameplay, but speed is pinned at 0 despite prior R
+[ 340.5s] # 25 probe             probe   LT+left:2 RT+right:2 RT:3 HOLD:X:3 HOLD:X:3 HOLD:X:3 control 0.027, under input 0.018
+[ 355.5s] # 26 gameplay          fast    LT:3 LT+right:2 RT+left:2 Race clock keeps advancing but speed stays 0: the car is still wedged nose-first into the 
+[ 374.2s] # 27 probe             probe   LT:3 LT+right:2 RT+left:2 RT+left:2 control 0.023, under input 0.234
+hold-play: genre drive, need 600 s of play
+hold-play: fps at 189 s: median 42.0, share>=30 0.985 over 137 samples
+hold-play: fps at 307 s: median 42.0, share>=30 0.968 over 218 samples
+hold-play: validity check stop 0 s (hold 602 s of play, verdict 601.9)
+hold-play: not held 602/600 s of play; verdict stops the hold: fps_ok 0.9645, crash False, hang False
+held RalliSport Challenge 2 for 646s
+VERDICT RalliSport Challenge 2 ? FAIL(audio: 0.230% of callbacks short (max 0.100%)) gameplay=644.8s fps_ok=0.9646 crash=False hang=False audio_short=0.0023 hitches=2/0.205pm worst_ms=147.4 static_frac=0.0101 play_share=0.9345 fps_excluded=44.2s
+{"name": "RalliSport Challenge 2", "device": "nova", "result": "gameplay", "minutes": 6.24, "model_calls": 33, "steps": 27, "replayed": 0, "reason": "four probes refused", "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rallisport2-1006/frames/026-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

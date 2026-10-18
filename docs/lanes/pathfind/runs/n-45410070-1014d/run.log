@@ -1,0 +1,38 @@
+pathfind: UEFA Champions League 2004 2005 Europe (45410070) on nova: /storage/E6C6-D7AA/Games/XBox/45410070-UEFA_Champions_League_2004_2005_Europe.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 45410070 any, loaded none
+[   5.9s] #  1 publisher_logo    sibreplay A                        sibling 45410038 step 0: sibling 45410050 step 0: Early boot publisher/splash logo (EA-sty
+[  20.5s] #  2 publisher_logo    fast    A                        System boot logo sequence before game content; EA titles show publisher/system logos at bo
+[  32.1s] #  3 publisher_logo    fast    A                        UEFA PRESENTS is a league/publisher logo before game content; skip with A per the publishe
+[  70.3s] #  4 title_screen      fast    START                    Title screen with explicit 'Please press START to begin' prompt. UEFA Champions League log
+[  94.4s] #  5 main_menu         fast    DOWN A                   Main menu with cursor on 'The Season'; 'Play Now' is the fastest path to gameplay in EA sp
+[ 118.7s] #  6 submenu           fast    A                        Team selection screen before match setup; A Select prompt visible at bottom; no controller
+[ 165.3s] #  7 submenu           fast    A                        Team selection screen before match setup; the A Select prompt at bottom confirms this is a
+[ 205.9s] #  8 submenu           fast    A                        Team selection menu; Away team (AS Monaco from French Division 1) visible and selected; Ho
+[ 265.7s] #  9 submenu           fast    LEFT A                   Team selection menu; away team (AS Monaco) is selected (arrows visible); 'Waiting For Othe
+[ 324.0s] # 10 submenu           fast    Y                        Both Home and Away teams are now assigned with controllers (LEFT A in step 9 moved control
+[ 423.6s] # 11 submenu           fast    DOWN RIGHT RIGHT RIGHT RIGHT Sports setup menu before match begins. Per the owner rule (10-05), I must set Half Length 
+[ 503.9s] # 12 submenu           fast    DOWN                     Sports setup menu before match; cursor on 'Select Stadium' but sports rule (owner 10-05) r
+[ 558.2s] # 13 submenu           fast    RIGHT RIGHT RIGHT RIGHT RIGHT Game settings menu before match kickoff. Half Length is highlighted at 6 mins with adjustm
+[ 630.2s] # 14 submenu           fast    A                        Sports game settings before first whistle; Half Length at 6 mins must change to longest va
+[ 689.7s] # 15 submenu           fast    R1                       Stuck on game settings before kickoff; RIGHT d-pad didn't cycle the Half Length value, sug
+[ 705.9s] # 16 submenu           fast    A                        Sports setup menu before match: Half Length is selected but not yet in edit mode. Previous
+[ 734.7s] # 17 submenu           fast    LEFT                     Sports game settings before match kickoff. Half Length field is selected but hasn't change
+[ 781.7s] # 18 submenu           fast    X                        Sports settings before kickoff. Half Length shows 4 mins but needs to be set to longest va
+[ 814.3s] # 19 submenu           fast    DOWN                     Sports game settings menu before kickoff. Half Length needs to change to longest value per
+[ 871.8s] # 20 submenu           fast    B                        Sports setup menu before kickoff. Half Length is 4 mins but needs to be the longest value 
+[ 904.0s] # 21 save_load_prompt  fast    DOWN A                   Dialog prompting to save game settings. Yes is currently highlighted, but Half Length is s
+[ 947.6s] # 22 submenu           fast    LEFT                     Sports team select screen. Per the sports rule, both controllers appear in the middle colu
+[1017.0s] # 23 submenu           fast    A                        Team-select screen for sports match setup. Controller assignment from step 22's LEFT shoul
+[1033.7s] # 24 submenu           fast    A                        Team formation/management selection before match start. Left team is ready with 'Done' hig
+[1047.0s] # 25 loading           fast    wait                     LOADING text and progress animation visible; this follows team setup/formation. Waiting fo
+[1079.0s] # 26 cutscene          fast    START                    The pitch is shown with letterbox bars (black bars top/bottom), which per the rules indica
+[1084.0s] # 27 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[1101.1s] # 28 pause             fast    A                        Pause menu is open with Resume Match highlighted in blue; pressing A will resume the match
+[1115.5s] # 29 cutscene          fast    START                    Black letterbox bars at top and bottom indicate a cinematic. The posed player and static s
+[1139.9s] # 30 pause             fast    A                        Game is paused; Resume Match is highlighted. Press A to resume the live match into active 
+[1156.2s] # 31 cutscene          fast    START                    Letterbox bars (black bars top/bottom) indicate a cinematic, not active gameplay. The play
+[1211.9s] # 32 pause             fast    START                    Pause menu: A was sent twice and caused a loop (resumed → cutscene → pause menu). Try STAR
+{"name": "UEFA Champions League 2004 2005 Europe", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 30, "steps": 32, "replayed": 0, "reason": "budget 20 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

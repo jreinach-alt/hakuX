@@ -1,0 +1,99 @@
+taken: nova by lane.pathfind
+idle: nova is held and runs nothing
+held at 12:44:01
+pathfind: NBA 2K2 (None) on nova: /storage/E6C6-D7AA/Games/XBox/NBA_2K2.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: - any, loaded all goldens (title not identified)
+[   9.4s] #  1 publisher_logo    fast    A                        Early boot splash (green geometric logo, no title or menu yet); skip with A and re-read pe
+[  17.1s] #  2 publisher_logo    fast    A                        A publisher logo with no menu yet; per the hints, skip with A and re-read. Nothing is high
+[  24.5s] #  3 publisher_logo    fast    A                        Publisher logo with no menu yet; per hints, skip with A and re-read. Nothing is highlighte
+[  32.2s] #  4 publisher_logo    fast    A                        NBA trademark/legal notice screen before the title; no menu yet. Per hints, skip with A an
+[  41.3s] #  5 publisher_logo    fast    A                        Logo grid is a publisher/legal-style splash with no menu yet; per the hints skip with A an
+[  49.1s] #  6 loading           fast    wait                     Game is loading after the logos; no menu, title, or input prompt is shown, so pressing not
+[  58.0s] #  7 title_screen      fast    START                    Title screen with a 'PRESS START' prompt; per hints, START is the input for this prompt.
+[  69.6s] #  8 main_menu         fast    wait                     Main menu, but the highlight isn't readable in this frame, so I can't tell where the curso
+[  77.4s] #  9 main_menu         fast    DOWN                     Need Options to set quarter length and game clock before tip-off. The highlight is not rea
+[  86.1s] # 10 main_menu         fast    LEFT                     The goal needs the quarter length set in Options before tip-off. Quickstart is highlighted
+[  94.2s] # 11 main_menu         fast    RIGHT                    Options must be reached to set quarter length and game clock before tip-off. Load/Save is 
+[ 100.4s] # 12 main_menu         fast    A                        Options is highlighted, and the goal needs the quarter length and game clock set there bef
+[ 110.6s] # 13 submenu           fast    LEFT                     Options is open; the goal needs Game Play (quarter length and game clock), but the highlig
+[ 119.5s] # 14 submenu           fast    UP                       Options ring is open and the highlight is on High Scores at lower-left. Game Play sits up 
+[ 129.6s] # 15 submenu           fast    RIGHT                    Options is open and Game Play (quarter length, game clock) is the goal, but UP did not mov
+[ 139.6s] # 16 submenu           fast    STICK:up:0.3             Options ring is open and Game Play is the goal, but d-pad presses have not moved the highl
+[ 148.2s] # 17 submenu           fast    STICK:upleft:0.4         Game Play is up and slightly left of the centre reticle, and the d-pad and straight-up sti
+[ 158.3s] # 18 submenu           fast    R1                       Earlier d-pad and stick moves never brought Game Play under the reticle, and repeating the
+[ 168.5s] # 19 submenu           fast    A                        Options submenu is open. D-pad, stick and R1 have not moved the highlight to Game Play, so
+[ 178.4s] # 20 submenu           fast    RSTICK:up:0.3            Earlier d-pad, left-stick and R1 moves never brought Game Play under the reticle, so I'm t
+[ 186.5s] # 21 submenu           fast    B                        Options ring has not moved Game Play under the reticle after many tries, and the same inpu
+[ 196.1s] # 22 main_menu         fast    RIGHT                    Back on the main ring after the Options submenu dead end. Exhibition is the play path that
+[ 206.3s] # 23 main_menu         fast    DOWN                     Back on the main ring after the Options dead end; RIGHT and LEFT moves already tried witho
+[ 216.1s] # 24 main_menu         fast    UP                       Options was a dead end and the highlight is on Fantasy. Exhibition is the play path that l
+[ 225.9s] # 25 main_menu         fast    UP                       Options has been a dead end. Exhibition is the top-ring item that leads to a game. Moving 
+[ 235.7s] # 26 main_menu         fast    A                        Options has been a dead end, and Season is the item already highlighted on the ring. A con
+[ 244.2s] # 27 save_load_prompt  fast    DOWN A                   Yes is needed to start the new season and reach a game, but the default highlight is No, s
+[ 253.0s] # 28 save_load_prompt  fast    A                        This is a Yes/No prompt, not gameplay. Default highlight is No; customizing the league is 
+[ 262.0s] # 29 main_menu         fast    A                        Team select for a human-controlled team. The highlighted row is 76ers at the top of the li
+[ 274.5s] # 30 main_menu         fast    LEFT A                   Team select; A on the 76ers did nothing, so the controller icon may need a different input
+[ 284.5s] # 31 main_menu         fast    START                    Team select is the screen after Season setup. Earlier A and LEFT+A on the highlighted 76er
+[ 295.0s] # 32 main_menu         fast    DOWN                     Team Select is the human-team step, and the last attempts to reach it from this hub did no
+[ 303.6s] # 33 main_menu         fast    RIGHT                    Save is the highlighted node at bottom centre; Team Select sits one step right of it on th
+[ 313.2s] # 34 main_menu         fast    STICK:right:0.4          Previous D-pad moves did not land on Team Select. The highlight is a free-floating glow, n
+[ 322.5s] # 35 main_menu         fast    wait                     Season hub, not gameplay. Team Select is at the lower-right node of the ring. Earlier D-pa
+[ 331.4s] # 36 main_menu         fast    wait                     Season hub, not gameplay. Earlier D-pad and stick moves along the ring did not reach Team 
+[ 338.9s] # 37 main_menu         fast    wait                     Season hub, not gameplay. Team Select is the lower-right node. Earlier D-pad and stick mov
+[ 347.1s] # 38 main_menu         fast    wait                     Season hub, not gameplay. D-pad and right-stick moves have not reached Team Select. The ce
+[ 355.5s] # 39 main_menu         fast    DOWN RIGHT               Season hub, not gameplay. Team Select is the lower-right node. Earlier RIGHT and right-sti
+[ 363.9s] # 40 main_menu         fast    A                        Season hub, not gameplay. The bright glowing node is Team Select, which is the path to cho
+[ 373.1s] # 41 submenu           fast    A                        Team select list, not gameplay. The 76ers row is highlighted at the top, so A picks it as 
+[ 383.5s] # 42 submenu           fast    RIGHT A                  Team Select is open and the 76ers are highlighted, but A on the highlighted row changed no
+[ 393.9s] # 43 submenu           fast    LEFT A                   Team select, not gameplay. A and RIGHT+A on the highlighted 76ers row changed nothing, so 
+[ 405.9s] # 44 submenu           fast    START                    A and LEFT/RIGHT+A changed nothing on the team list. The footer offers START as 'advance',
+[ 416.5s] # 45 main_menu         fast    RIGHT A                  Season hub, not gameplay. The highlight sits on Save; Team Select is the lower-right node,
+[ 428.3s] # 46 submenu           fast    DOWN A                   Team list is open, but A and LEFT/RIGHT+A on the highlighted 76ers row changed nothing. Mo
+[ 439.6s] # 47 submenu           fast    A                        Still on the team list, with no controller assigned. The highlight moved to Blazers, so th
+[ 450.4s] # 48 submenu           fast    STICK:left:0.3 A         Team select, not gameplay. No controller is assigned yet; the highlight is on Blazers. Ear
+[ 461.0s] # 49 submenu           fast    X                        Team list with no controller assigned yet; earlier A, LEFT/RIGHT+A and STICK+A did nothing
+[ 468.2s] # 50 submenu           fast    X                        The help overlay from step 49's X is open, covering the team list. X toggles it off, which
+[ 478.6s] # 51 submenu           fast    Y                        Team list with no controller assigned. A, D-pad/stick+A, STICK+A and X already failed here
+[ 491.2s] # 52 submenu           fast    HOLD:A:1.5               Team select still has no controller assigned after A, D-pad/stick+A, X and Y all failed. I
+[ 504.7s] # 53 submenu           fast    R1 A                     Team select with no controller assigned after A, D-pad/stick+A, X, Y and HOLD:A all failed
+[ 515.7s] # 54 submenu           fast    L1                       Team select, still no controller assigned to any team after A, D-pad/stick+A, X, Y and HOL
+[ 525.5s] # 55 submenu           fast    START                    Team list with no controller assigned after A, D-pad/stick+A, X, Y, HOLD:A and R1+A all fa
+[ 535.8s] # 56 main_menu         fast    RIGHT                    Season hub, not gameplay. Team Select is the route to assigning a controller to a team, wh
+[ 544.4s] # 57 main_menu         fast    wait                     Season hub, not gameplay. The highlight is not clearly on Team Select, so I'll move the ri
+[ 551.3s] # 58 main_menu         fast    wait                     Season hub, not gameplay. The yellow ring is the selector, and it is not on Team Select ye
+[ 560.0s] # 59 main_menu         fast    wait                     Season hub, not gameplay. Team Select is at lower right and the selector is in the centre,
+[ 568.2s] # 60 main_menu         fast    A                        Season hub, not gameplay. Previous attempts with RIGHT and wait did not move the selector 
+[ 578.6s] # 61 main_menu         fast    wait                     Season hub, not gameplay. Earlier RIGHT and wait presses and an A did not move the selecto
+[ 586.0s] # 62 main_menu         fast    wait                     Season hub, not gameplay. Past D-pad RIGHT and wait presses did not move the yellow select
+[ 594.5s] # 63 main_menu         fast    wait                     Season hub, not gameplay. Team Select is the node at lower right. Earlier D-pad RIGHT and 
+[ 603.0s] # 64 main_menu         fast    wait                     Season hub, not gameplay. D-pad RIGHT and A did not move the selector in earlier attempts,
+[ 610.9s] # 65 main_menu         fast    wait                     Season hub, not gameplay. Previous RIGHT and A presses did not move the selector, so I'll 
+[ 619.5s] # 66 main_menu         fast    wait                     Season hub, not gameplay. Earlier D-pad RIGHT and A presses never moved the selector, so I
+[ 628.5s] # 67 main_menu         fast    wait                     Season hub, not gameplay. D-pad and A did not move the selector in earlier attempts, so I'
+[ 636.2s] # 68 main_menu         fast    wait                     Season hub, not gameplay. D-pad and A never moved the selector in earlier steps, so I swit
+[ 644.8s] # 69 main_menu         fast    wait                     Season hub, not gameplay. D-pad presses and A did not move the selector in earlier steps, 
+[ 653.4s] # 70 main_menu         fast    START                    Season hub, not gameplay. D-pad and A have not moved the selector in six steps, so I chang
+[ 664.1s] # 71 main_menu         fast    START                    Season schedule screen. The footer says START advances, and the last step's START changed 
+[ 671.6s] # 72 loading           fast    wait                     Game is loading after the menus; no input is needed, so wait for the next screen to appear
+[ 681.3s] # 73 cutscene          fast    START                    This is a pre-game arena intro/presentation shot, not yet live play: players are standing 
+[ 692.8s] # 74 pause             fast    START                    A pause menu is open over the game, and controller 1 is assigned to a team. The footer say
+[ 700.2s] # 75 cutscene          fast    START                    Pre-game arena presentation with players standing still, not yet live play; no HUD and no 
+[ 711.1s] # 76 pause             fast    START                    A pause overlay is open over the game, and the footer says START un-pauses. Nothing in the
+[ 720.6s] # 77 cutscene          fast    A                        Player introduction presentation, not live play. The last two START presses toggled a paus
+[ 731.8s] # 78 cutscene          fast    A                        Tip-off setup before the first whistle, not yet live play. The ball is held by the ref and
+[ 743.3s] # 79 gameplay          fast    wait                     Live play: the quarter clock is running with a HUD and players spread out in the court, no
+[ 754.8s] # 80 probe             probe   STICK:up:1.5             control 0.021, under input 0.273
+hold-play: sports look {'clock': '4:52', 'period': '1st', 'human_controlled': True, 'why': "Scoreboard shows 1st quarter at 4:52 (POR 0, LAL 0), and the player 'Wells' is marked with a yellow highlight/controller indicator, so a human controls that pla"}
+hold-play: genre team, need 600 s of play
+hold-play: fps at 191 s: median 59.0, share>=30 0.994 over 160 samples
+hold-play: fps at 310 s: median 59.0, share>=30 0.996 over 261 samples
+hold-play: HELD 606/600 s of play; 
+held NBA 2K2 for 608s
+VERDICT NBA 2K2 ? PASS None gameplay=606.8s fps_ok=0.9951 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.1542 play_share=0.9996 fps_excluded=1.4s
+{"name": "NBA 2K2", "device": "nova", "result": "gameplay", "minutes": 12.58, "model_calls": 89, "steps": 80, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nba-2k2/hold/frames/079-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256
+pathfind rc=0 at 13:07:32
+released: nova by lane.pathfind
+released rc=0

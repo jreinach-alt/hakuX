@@ -1,0 +1,81 @@
+{
+ "title_id": "53430006",
+ "name": "Conflict Desert Storm II Back to Baghdad USA",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/53430006-Conflict_Desert_Storm_II_Back_to_Baghdad_USA.xiso.iso",
+ "result": "gameplay",
+ "tool": "74dfc2db2c",
+ "started": "2026-10-13 05:54:51 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-53430006-1013/frames/024-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-53430006-1013/frames/024-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-53430006-1013/frames/024-probe-c.jpg"
+ ],
+ "minutes": 8.84,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-53430006-1013/frames/023-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-53430006-1013/frames/025-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-53430006-1013/frames/026-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-53430006-1013/frames/027-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-53430006-1013/frames/028-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-53430006-1013/frames/029-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-53430006-1013/frames/030-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-53430006-1013/frames/031-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-53430006-1013/frames/032-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-53430006-1013/frames/033-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-5343.md"
+ ],
+ "hold": {
+  "genre": "drive",
+  "why": "Player controls a military Jeep vehicle with mounted weapons navigating through a desert environment",
+  "ok": false,
+  "play_s": 283.9,
+  "need_s": 600.0,
+  "hold_s": 1819.4,
+  "model_navs": 71,
+  "frames": 55,
+  "still_windows": 0,
+  "shed": [],
+  "reversals": 0,
+  "reason": "budget 40 min with 284 s of play",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 108,
+    "median": 35.0,
+    "share": 0.907,
+    "at_s": 182.8,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 218,
+    "median": 42.0,
+    "share": 0.954,
+    "at_s": 302.2,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "stuck_abort": false,
+  "verdict": "VERDICT Conflict Desert Storm II Back to Baghdad USA ? FAIL(menu time: 16.0% of the scored window in `play` (bar 90%; game_over 1407 s, play 292 s, results 69 s, menu 40 s)) gameplay=1820.0s fps_ok=0.9321 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.093 play_share=0.1602 fps_excluded=1529.6s"
+ },
+ "model_calls": 98,
+ "calls_by_model": {
+  "claude-haiku-4-5-20251001": 98
+ },
+ "steps": 24,
+ "seconds": 2415.7,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-53430006-1013/frames/320-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [
+  "5343000C"
+ ],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-53430006-1013/strip.jpg"
+}

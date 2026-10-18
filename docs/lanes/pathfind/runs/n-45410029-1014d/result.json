@@ -1,0 +1,81 @@
+{
+ "title_id": "45410029",
+ "name": "TY the Tasmanian Tiger USA",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/45410029-TY_the_Tasmanian_Tiger_USA.xiso.iso",
+ "result": "gameplay",
+ "tool": "920a61de3c",
+ "started": "2026-10-14 11:17:40 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45410029-1014d/frames/018-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45410029-1014d/frames/018-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45410029-1014d/frames/018-probe-c.jpg"
+ ],
+ "minutes": 6.26,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45410029-1014d/frames/017-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45410029-1014d/frames/019-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45410029-1014d/frames/020-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45410029-1014d/frames/021-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45410029-1014d/frames/022-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45410029-1014d/frames/023-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45410029-1014d/frames/024-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45410029-1014d/frames/025-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45410029-1014d/frames/026-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-4541.md"
+ ],
+ "hold": {
+  "genre": "attack",
+  "why": "Character in combat stance with enemies present in a free-roaming 3D environment",
+  "ok": false,
+  "play_s": 633.1,
+  "need_s": 630.0,
+  "hold_s": 780.1,
+  "model_navs": 3,
+  "frames": 18,
+  "still_windows": 2,
+  "shed": [],
+  "reversals": 0,
+  "reason": "share short by 804 s with no budget left",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 101,
+    "median": 29.0,
+    "share": 1.0,
+    "at_s": 200.2,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 156,
+    "median": 29.0,
+    "share": 1.0,
+    "at_s": 310.5,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "stuck_abort": false,
+  "verdict": "VERDICT TY the Tasmanian Tiger USA ? FAIL(menu time: 79.7% of the scored window in `play` (bar 90%; play 622 s, still 81 s, cutscene 77 s, no-timeline 0 s)) gameplay=780.8s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0 play_share=0.7972 fps_excluded=160.1s"
+ },
+ "model_calls": 27,
+ "calls_by_model": {
+  "claude-haiku-4-5-20251001": 27
+ },
+ "steps": 18,
+ "seconds": 1208.9,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45410029-1014d/frames/084-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [
+  "4541003A",
+  "45410054"
+ ],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45410029-1014d/strip.jpg"
+}

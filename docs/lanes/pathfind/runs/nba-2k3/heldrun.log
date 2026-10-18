@@ -1,0 +1,95 @@
+taken: nova by lane.pathfind
+NOT IDLE: nova is held but busy -- do not touch it yet:
+dispatcher pid 518495 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+run: hold.sh wait-idle nova <timeout_s>, and touch the device only on exit 0
+waiting for nova: dispatcher pid 518495 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+idle: nova is held and runs nothing
+held at 15:31:23
+pathfind: NBA 2K3 (None) on nova: /storage/E6C6-D7AA/Games/XBox/NBA_2K3.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: - any, loaded all goldens (title not identified)
+[  10.2s] #  1 publisher_logo    fast    A                        Early boot splash or publisher logo with no skippable prompt yet; no menu or cursor to rea
+[  19.2s] #  2 publisher_logo    fast    A                        Publisher logo with no skip prompt visible; per the hints, A is the first skip press, and 
+[  27.3s] #  3 publisher_logo    fast    A                        Publisher/developer logo with no menu; per the hints, A is the skip press. The previous A 
+[  36.0s] #  4 publisher_logo    fast    A                        Legal notice screen after the logos, no menu yet; per the hints A is the first skip press 
+[  40.4s] #  5 black             black   wait                     black frame
+[  49.0s] #  6 publisher_logo    fast    A                        Intro logo animation with no skip prompt or menu; per hints A is the skip press. Previous 
+[  53.4s] #  7 black             black   wait                     black frame
+[  60.9s] #  8 title_screen      fast    START                    Title screen with a 'Press START' prompt; per the hints, START advances past it. Not a men
+[  69.2s] #  9 main_menu         fast    A                        Main menu with Quick Game highlighted by the arrow; Quick Game is the fastest route to a g
+[  81.4s] # 10 main_menu         fast    LEFT A                   Team select with controllers in the middle column means nobody is assigned and the CPU wou
+[  91.3s] # 11 main_menu         fast    STICK:left:0.5           Team select with controllers in the middle column means the CPU would play both sides. The
+[ 102.4s] # 12 main_menu         fast    LEFT                     Team select with controllers in the middle column, so the CPU would play both sides. The e
+[ 112.9s] # 13 main_menu         fast    RIGHT                    Team select with the controllers still in the middle column, so no human is assigned. LEFT
+[ 123.4s] # 14 main_menu         fast    LEFT                     Team select, and the controllers are still in the middle column, so no human is assigned y
+[ 135.0s] # 15 main_menu         fast    A LEFT                   Team select with the controllers still in the middle column, so no human is assigned. Earl
+[ 147.8s] # 16 main_menu         fast    STICK:left:1             Team select with all controllers still in the middle column, so no human is assigned and t
+[ 159.4s] # 17 main_menu         fast    DOWN RIGHT               Team select, controllers still in the middle column so no human is assigned. LEFT, RIGHT a
+[ 170.5s] # 18 main_menu         fast    UP A                     Team select with no controller assigned to a team, so the CPU would play both sides. LEFT,
+[ 183.9s] # 19 main_menu         fast    RIGHT                    Team select, controllers still in the middle column, so no human is assigned. Earlier LEFT
+[ 194.2s] # 20 main_menu         fast    L1                       Still on team select with no controller under a team. LEFT, RIGHT, UP+A and stick moves al
+[ 204.8s] # 21 main_menu         fast    RSTICK:left:1            Still team select with no controller assigned to either team, so the CPU would play both s
+[ 217.3s] # 22 main_menu         fast    R1                       Still team select with no controller assigned. LEFT, RIGHT, UP+A, L1, RSTICK and stick mov
+[ 228.9s] # 23 main_menu         fast    DOWN LEFT A              Team select, still no controller under a team. The 'User Name' bar on the top controller i
+[ 240.7s] # 24 main_menu         fast    DOWN DOWN LEFT A         Team select with no controller under either team, so the CPU would play both sides. Earlie
+[ 253.9s] # 25 main_menu         fast    RT:1 LEFT A              Team select with no controller assigned, so the CPU plays both sides. Left/right, stick, t
+[ 266.1s] # 26 main_menu         fast    X                        Team select with no controller assigned to either team, so the CPU would play both sides. 
+[ 276.1s] # 27 main_menu         fast    L3 RIGHT A               Team select with no controller assigned to either team, so the CPU would play both sides. 
+[ 287.8s] # 28 main_menu         fast    STICK:left:0.3 A         Team select with no controller assigned, so the CPU would play both sides. The rule is to 
+[ 298.1s] # 29 main_menu         fast    LEFT                     Team select with no controller under either team, so the CPU would play both sides. Earlie
+[ 307.8s] # 30 main_menu         fast    STICK:left:1             Team select with controller 1 not assigned under either team, so the CPU would play both s
+[ 320.7s] # 31 main_menu         fast    STICK:right:0.5          Team select with controller 1 still unassigned, so the CPU would play both sides. The D-pa
+[ 332.7s] # 32 main_menu         fast    STICK:left:2             Team select with no controller assigned to either team, so the CPU would play both sides. 
+[ 346.6s] # 33 main_menu         fast    RSTICK:left:0.5 A        Team select with controller 1 unassigned, so the CPU would play both sides. Earlier stick 
+[ 358.9s] # 34 main_menu         fast    A                        Controller 1 is still unassigned in the middle column; the CPU would play both sides. Untr
+[ 368.1s] # 35 main_menu         fast    UP LEFT                  Team select, controller 1 still unassigned in the middle column. Inputs already tried on t
+[ 380.4s] # 36 main_menu         fast    HOLD:A:1.5               Team select with controller 1 still unassigned in the middle column, so the CPU would play
+[ 392.5s] # 37 main_menu         fast    DOWN A                   Team select, controller 1 still unassigned in the middle column; the CPU would play both s
+[ 403.3s] # 38 main_menu         fast    RIGHT RIGHT A            Team select, controller 1 unassigned in the middle column so the CPU would play both sides
+[ 416.4s] # 39 main_menu         fast    STICK:down:0.5 A         Team select is still open and controller 1 is unassigned in the middle column, so the CPU 
+[ 426.8s] # 40 main_menu         fast    STICK:right:2            Team select with controller 1 still unassigned in the middle column. Previously tried stic
+[ 440.1s] # 41 main_menu         fast    L1 STICK:left:3          Controller 1 is still unassigned in the middle column after many stick, D-pad and A tries.
+[ 454.0s] # 42 main_menu         fast    X                        Still on team select with controller 1 in the middle column. Earlier stick, D-pad, A, L1 a
+[ 464.7s] # 43 main_menu         fast    RT:1 LT:1                Team select, controller 1 still unassigned in the middle column. Stick, D-pad, A, L1, L3 a
+[ 478.2s] # 44 main_menu         fast    R1 LEFT A                Team select, controller 1 still unassigned in the middle column. Tried stick, D-pad, A, L1
+[ 489.4s] # 45 main_menu         fast    RSTICK:left:1.5 LEFT     Still on team select with controller 1 unassigned in the middle column, so the CPU would p
+[ 502.0s] # 46 main_menu         fast    HOLD:A:1.5               Team select, controller 1 still unassigned in the middle column, and every input tried so 
+[ 514.5s] # 47 main_menu         fast    RSTICK:up:1 A RIGHT A    Still team select with controller 1 unassigned in the middle column. Earlier stick, D-pad,
+[ 527.2s] # 48 main_menu         fast    STICK:right:0.3 A        Still on team select with controller 1 unassigned in the middle column, so the CPU would p
+[ 538.2s] # 49 main_menu         fast    LEFT LEFT A              Team select with controller 1 still unassigned in the middle column, so the CPU would play
+[ 550.1s] # 50 main_menu         fast    UP LEFT A                Team select with controller 1 still unassigned in the middle column. Earlier stick, D-pad 
+[ 561.4s] # 51 main_menu         fast    DOWN LEFT                Team select with controller 1 unassigned in the middle column, so the CPU plays both sides
+[ 571.2s] # 52 main_menu         fast    RIGHT                    Still team select with controller 1 unassigned in the middle column, so the CPU would play
+[ 582.2s] # 53 main_menu         fast    LEFT                     Team select, controller 1 still sits in the middle column, so no human controls a team and
+[ 595.3s] # 54 main_menu         fast    STICK:left:0.6 A         Still team select with no controller assigned to a team. Earlier D-pad and stick moves did
+[ 607.7s] # 55 main_menu         fast    L1                       Controller 1 is still unassigned in the middle column, and the D-pad, stick and A inputs t
+[ 618.6s] # 56 main_menu         fast    STICK:right:0.3 A        Team select with controller 1 still unassigned in the middle column, so the CPU would play
+[ 629.9s] # 57 main_menu         fast    X                        Still team select with controller 1 unassigned. D-pad, stick, A, L1 and R-stick all failed
+[ 640.4s] # 58 main_menu         fast    LEFT LEFT LEFT           Team select, and controller 1 is still in the middle column, so no human controls a team. 
+[ 653.9s] # 59 main_menu         fast    UP RIGHT A               Still team select with controller 1 in the middle column, so no human team is assigned. Ea
+[ 667.2s] # 60 main_menu         fast    HOLD:A:1 STICK:right:0.5 Team select with controller 1 still unassigned in the middle column. Earlier D-pad, stick,
+[ 680.4s] # 61 main_menu         fast    STICK:left:1 A           Team select with controller 1 still unassigned in the middle column; previous D-pad, A and
+[ 692.8s] # 62 main_menu         fast    STICK:left:1.5           Team select with controller 1 unassigned in the middle, so the CPU would play both sides. 
+[ 703.8s] # 63 main_menu         fast    STICK:right:0.3 RIGHT    Team select with controller 1 still unassigned in the middle column. Earlier left-stick, D
+[ 716.6s] # 64 main_menu         fast    UP LEFT                  Still team select with controller 1 unassigned in the middle column. Previous D-pad, stick
+[ 727.1s] # 65 main_menu         fast    X                        Team select, controller 1 still unassigned in the middle column; six direct moves already 
+[ 739.3s] # 66 main_menu         fast    LEFT LEFT                Team select, controller 1 still unassigned in the middle column; earlier D-pad, stick and 
+[ 752.3s] # 67 main_menu         fast    STICK:left:2.5 A         Team select, controller 1 still unassigned in the middle column, so the CPU would play bot
+[ 766.5s] # 68 main_menu         fast    R1 RIGHT                 Team select with controller 1 still unassigned in the middle column, so the CPU would play
+[ 778.5s] # 69 main_menu         fast    STICK:right:1            Still team select with no controller assigned to a team, so the CPU would play both sides.
+[ 789.1s] # 70 main_menu         fast    RSTICK:left:1.5          Team select with controller 1 still unassigned in the middle column, so the CPU would play
+[ 800.1s] # 71 main_menu         fast    LEFT                     Still team select with controller 1 unassigned in the middle column, so the CPU would play
+[ 811.5s] # 72 main_menu         fast    STICK:left:0.3 A         Team select with controller 1 still unassigned in the middle column, so the CPU would play
+[ 822.2s] # 73 main_menu         fast    LEFT LEFT LEFT           Team select, and controller 1 is still unassigned in the middle column, so the CPU would p
+[ 835.4s] # 74 main_menu         fast    DOWN                     Still team select with no controller assigned to a team, so the CPU would play both sides.
+[ 847.9s] # 75 main_menu         fast    A                        Team select with controller 1 still unassigned in the middle column, so the CPU would play
+[ 858.4s] # 76 main_menu         fast    RIGHT                    Team select with controller 1 still in the middle column, so no human controls a team. Ear
+[ 868.9s] # 77 main_menu         fast    STICK:right:0.5 A        Still team select with controller 1 unassigned in the middle column. Earlier LEFT and stic
+[ 883.2s] # 78 main_menu         fast    STICK:down:0.3 A         Team select with controller 1 still unassigned in the middle column. Earlier LEFT/RIGHT an
+[ 896.4s] # 79 main_menu         fast    STICK:left:1 A           Team select with controller 1 still unassigned in the middle column, so no human controls 
+{"name": "NBA 2K3", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 77, "steps": 79, "replayed": 0, "reason": "budget 15 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256
+pathfind rc=1 at 15:46:26
+released: nova by lane.pathfind
+released rc=0

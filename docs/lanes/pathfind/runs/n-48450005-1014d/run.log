@@ -1,0 +1,37 @@
+pathfind: Rugby League 2 Europe (48450005) on nova: /storage/E6C6-D7AA/Games/XBox/48450005-Rugby_League_2_Europe.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 48450005 any, loaded none
+[  15.4s] #  1 publisher_logo    fast    A                        Publisher startup logo on cold boot; green shape is a known publisher mark in Rugby League
+[  29.3s] #  2 publisher_logo    fast    A                        New publisher logo after the first one; this is progress; skip with A
+[  51.3s] #  3 intro_video       fast    A                        Intro cinematic after publisher logos; part of the startup sequence that needs to be skipp
+[  62.5s] #  4 title_screen      fast    A                        Title screen with explicit PRESS A prompt; post-intro, ready to advance to main menu
+[  77.9s] #  5 main_menu         fast    A                        Main menu with INSTANT ACTION already highlighted; this is the fastest path to gameplay wi
+[ 133.2s] #  6 submenu           fast    LEFT A                   Controller assignment screen. Both controllers sit in the middle column between teams, mea
+[ 146.1s] #  7 loading           fast    wait                     Explicit LOADING text with progress bar; game initializing in background while displaying 
+[ 151.8s] #  8 loading           static  wait                     load still on screen (barely changed)
+[ 156.7s] #  9 loading           static  wait                     load still on screen (barely changed)
+[ 161.5s] # 10 loading           static  wait                     load still on screen (barely changed)
+[ 166.2s] # 11 loading           static  wait                     load still on screen (barely changed)
+[ 171.0s] # 12 loading           static  wait                     load still on screen (barely changed)
+[ 196.9s] # 13 controller_prompt fast    A                        Controls tutorial screen displayed after loading; explicit PRESS A prompt at bottom; not y
+[ 250.2s] # 14 submenu           fast    A                        Pre-kickoff formation screen after the controller tutorial; players are positioned on the 
+[ 272.4s] # 15 submenu           fast    A                        Players positioned for kickoff but the match has not yet begun; this is a pre-kickoff form
+[ 298.4s] # 16 submenu           fast    A                        Pre-kickoff play-call menu; players positioned and match timer running, but play has not s
+[ 367.3s] # 17 submenu           fast    A                        Kick execution setup screen following the play-call menu from step 16. Player is positione
+[ 395.9s] # 18 submenu           fast    A                        This is a play-call/kick execution setup screen following the earlier formation menu. The 
+[ 451.8s] # 19 submenu           fast    START                    This is a pre-snap play-call or kick-execution screen (as per history: step 18 was identic
+[ 480.0s] # 20 pause             fast    A                        START was pressed on the pre-kick setup screen in step 19, which opened the pause menu ins
+[ 515.0s] # 21 submenu           fast    Y X                      This is a kick execution setup screen during active match time; the player is positioned b
+[ 541.0s] # 22 gameplay          fast    wait                     Full playing field with active players positioned for live play, match timer running, HUD 
+[ 581.0s] # 23 probe             probe   STICK:up:1.5             control 0.002, under input 0.685
+hold-play: sports look {'clock': '2:17', 'period': 'First Half', 'human_controlled': True, 'why': 'Active button prompts (SPRINT, KICK THE FREE BALL, PASS TO) visible at top right indicate human control during live play'}
+hold-play: genre team, need 630 s of play
+hold-play: fps at 184 s: median 51.0, share>=30 0.994 over 154 samples
+hold-play: fps at 326 s: median 59.0, share>=30 0.997 over 289 samples
+hold-play: off play 158 s of a 404 s scored window cannot drop to 10% with 999 s of budget left: no amount of further play can pass
+hold-play: not held 252/630 s of play; off play 158 s of a 404 s scored window cannot drop to 10% with 999 s of budget left: no amount of further play can pass
+held Rugby League 2 Europe for 406s
+VERDICT Rugby League 2 Europe ? FAIL(duration: 404 s of gameplay < 600 s confirmation) gameplay=404.5s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0001 play_share=0.6096 fps_excluded=158.4s
+{"name": "Rugby League 2 Europe", "device": "nova", "result": "gameplay", "minutes": 9.68, "model_calls": 31, "steps": 23, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-48450005-1014d/frames/022-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

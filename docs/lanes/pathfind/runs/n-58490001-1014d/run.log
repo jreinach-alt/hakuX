@@ -1,0 +1,45 @@
+pathfind: Metal Dungeon USA (58490001) on nova: /storage/E6C6-D7AA/Games/XBox/58490001-Metal_Dungeon_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 58490001 any, loaded none
+[  13.0s] #  1 publisher_logo    fast    A                        Green geometric logo is a publisher logo at boot; skip with A to proceed to title screen
+[  29.4s] #  2 intro_video       fast    A                        Content warning screen before the title; skip with A like publisher logos and intro screen
+[  40.9s] #  3 title_screen      fast    START                    Title screen with 'PRESS START' prompt visible. This is the standard Xbox title screen req
+[  54.9s] #  4 main_menu         fast    A                        NEWGAME is already highlighted; fastest path to gameplay is to press A and start a new gam
+[  58.2s] #  5 black             black   wait                     black frame
+[  71.9s] #  6 loading           fast    wait                     Post-New Game selection, this appears to be a loading or intro sequence showing the game e
+[  99.4s] #  7 cutscene          fast    START                    Story exposition cutscene after loading; narrative text over game environment; not yet int
+[ 156.6s] #  8 gameplay          fast    wait                     Fully rendered game environment after cutscene skip; 3D playfield with character/control p
+[ 161.4s] #  9 probe             probe   STICK:up:1.5             control 0.000, under input 0.000
+[ 272.1s] # 10 gameplay          fast    wait                     Fully rendered interactive game environment after cutscene skip and loading sequence; this
+[ 276.7s] # 11 probe             probe   STICK:left:1.5           control 0.000, under input 0.000
+[ 334.2s] # 12 gameplay          fast    A                        Appears to be gameplay environment but stuck; previous stick probes (steps 9 and 11: STICK
+[ 342.5s] # 13 probe             probe   X A STICK:up:1.5         control 0.000, under input 0.000
+[ 409.3s] # 14 gameplay          fast    Y                        Interactive 3D environment with active HUD display; previous movement inputs (STICK:up:1.5
+[ 417.0s] # 15 probe             probe   B Y HOLD:A:3             control 0.000, under input 0.000
+[ 435.1s] # 16 gameplay          fast    UP UP UP                 HUD visible with game stats (G, W); fully rendered interactive 3D environment; previous st
+[ 472.4s] # 17 probe             probe   Y UP UP UP UP HOLD:A:3   control 0.000, under input 0.454
+[ 535.2s] # 18 profile_creation  fast    DOWN DOWN DOWN DOWN DOWN DOWN A Character profile customization screen; NAME field is currently selected; need to navigate
+[ 578.9s] # 19 profile_creation  fast    A                        Character selection/confirmation screen after name field navigation; character is selected
+[ 620.9s] # 20 profile_creation  fast    A                        Character is highlighted and ready for confirmation after name entry was completed on the 
+[ 656.7s] # 21 profile_creation  fast    START                    Character confirmation screen after name entry; A-button pressed twice brought back to sam
+[ 669.4s] # 22 profile_creation  fast    B                        Stuck in character confirmation loop after A and START both returned to this same screen. 
+[ 723.2s] # 23 profile_creation  fast    RIGHT                    Stuck in loop after A, START, B all returned to same screen. Navigating RIGHT to find conf
+[ 744.1s] # 24 profile_creation  fast    DOWN                     Stuck in a confirmation loop after name entry. A, START, B, and RIGHT have all returned to
+[ 761.7s] # 25 profile_creation  fast    LEFT                     Stuck in confirmation loop after A, START, B, RIGHT, DOWN all returned to this same charac
+[ 783.6s] # 26 profile_creation  fast    UP                       Character selection after name entry. Previous attempts (A, START, B, RIGHT, DOWN, LEFT) a
+[ 826.9s] # 27 profile_creation  fast    BACK                     Character confirmation loop after name entry. History shows A, START, B, RIGHT, DOWN, LEFT
+[ 859.6s] # 28 profile_creation  fast    X                        Stuck in character confirmation loop after 8 different inputs (A, START, B, RIGHT, DOWN, L
+[ 887.7s] # 29 profile_creation  fast    Y                        Character select after name entry. All standard menu inputs (A, START, B, UP/DOWN/LEFT/RIG
+[ 913.2s] # 30 profile_creation  fast    STICK:right:1            Stuck in character confirmation after name entry; tried A, START, B, UP/DOWN/LEFT/RIGHT, B
+[ 940.4s] # 31 profile_creation  fast    STICK:left:1             Character selection/confirmation after name entry; stuck in loop after 12 attempts with st
+[ 976.9s] # 32 profile_creation  fast    A                        Still in character selection loop after 6 different failed attempts; screen shows the sele
+[1004.8s] # 33 profile_creation  fast    wait                     Still in character selection confirmation after name entry. Multiple inputs (A, START, B, 
+[1028.8s] # 34 profile_creation  fast    UP                       Character is selected and displayed but we haven't advanced past character confirmation ye
+[1074.5s] # 35 profile_creation  fast    A                        Stuck in character select loop after name entry; A succeeded once at step 32 but the subse
+[1111.0s] # 36 profile_creation  fast    A                        Character is selected and displayed; OK button visible at bottom of profile panel; need to
+[1133.8s] # 37 profile_creation  fast    DOWN                     Character is selected and displayed, but we're stuck in confirmation loop. Previous inputs
+[1190.5s] # 38 profile_creation  fast    RIGHT                    Character is selected and displayed, but stuck in confirmation loop after multiple attempt
+[1258.8s] # 39 profile_creation  fast    START                    Stuck in character selection loop; tried A and all directions repeatedly without advancing
+{"name": "Metal Dungeon USA", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 35, "steps": 39, "replayed": 0, "reason": "budget 20 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

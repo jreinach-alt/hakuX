@@ -1,0 +1,88 @@
+{
+ "title_id": "434D004E",
+ "name": "Brian Lara International Cricket 2005 Europe",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/434D004E-Brian_Lara_International_Cricket_2005_Europe.xiso.iso",
+ "result": "gameplay",
+ "tool": "920a61de3c",
+ "started": "2026-10-15 02:12:06 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-434D004E-1014d/frames/019-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-434D004E-1014d/frames/019-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-434D004E-1014d/frames/019-probe-c.jpg"
+ ],
+ "minutes": 7.78,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-434D004E-1014d/frames/018-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-434D004E-1014d/frames/020-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-434D004E-1014d/frames/021-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-434D004E-1014d/frames/022-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-434D004E-1014d/frames/023-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-434D004E-1014d/frames/024-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-434D004E-1014d/frames/025-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-434D004E-1014d/frames/026-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-434D004E-1014d/frames/027-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-434D004E-1014d/frames/028-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-434D.md"
+ ],
+ "hold": {
+  "genre": "team",
+  "why": "Cricket is a team sport played on a field with batsmen, bowlers, and fielders competing as opposing teams.",
+  "sports": {
+   "clock": "Overs 0-0",
+   "period": "First over",
+   "human_controlled": true,
+   "why": "P1 label visible in bottom left corner indicates human player 1 is actively controlling the fielding side"
+  },
+  "ok": false,
+  "play_s": 373.0,
+  "need_s": 630.0,
+  "hold_s": 528.5,
+  "model_navs": 7,
+  "frames": 13,
+  "still_windows": 1,
+  "shed": [
+   "B",
+   "X"
+  ],
+  "reversals": 1,
+  "reason": "off play 168 s of a 528 s scored window cannot drop to 10% with 874 s of budget left: no amount of further play can pass",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 163,
+    "median": 59.0,
+    "share": 0.969,
+    "at_s": 181.4,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 275,
+    "median": 59.0,
+    "share": 0.982,
+    "at_s": 305.7,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "stuck_abort": false,
+  "verdict": "VERDICT Brian Lara International Cricket 2005 Europe ? FAIL(duration: 529 s of gameplay < 600 s confirmation) gameplay=529.0s fps_ok=0.9626 crash=False hang=False audio_short=0.0 hitches=20/2.559pm worst_ms=335.1 static_frac=0.004 play_share=0.6812 fps_excluded=169.4s"
+ },
+ "model_calls": 33,
+ "calls_by_model": {
+  "claude-haiku-4-5-20251001": 33
+ },
+ "steps": 19,
+ "seconds": 1054.2,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-434D004E-1014d/frames/060-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-434D004E-1014d/strip.jpg"
+}

@@ -1,0 +1,537 @@
+pathfind: Area 51 (4D570005) on nova: /storage/E6C6-D7AA/Games/XBox/4D570005-Area_51_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4D570005 any, loaded none
+[   8.0s] #  1 unknown           none    wait                     model gave no answer
+[  10.6s] #  2 black             black   wait                     black frame
+[  14.1s] #  3 black             black   wait                     black frame
+[  19.1s] #  4 unknown           none    wait                     model gave no answer
+[  23.2s] #  5 unknown           none    wait                     model gave no answer
+[  28.8s] #  6 unknown           none    wait                     model gave no answer
+[  33.1s] #  7 unknown           none    wait                     model gave no answer
+[  37.2s] #  8 unknown           none    wait                     model gave no answer
+[  41.3s] #  9 unknown           none    wait                     model gave no answer
+[  45.4s] # 10 unknown           none    wait                     model gave no answer
+[  49.4s] # 11 unknown           none    wait                     model gave no answer
+[  53.6s] # 12 unknown           none    wait                     model gave no answer
+[  57.7s] # 13 unknown           none    wait                     model gave no answer
+[  63.4s] # 14 unknown           none    wait                     model gave no answer
+[  67.5s] # 15 unknown           none    wait                     model gave no answer
+[  71.8s] # 16 unknown           none    wait                     model gave no answer
+[  75.9s] # 17 unknown           none    wait                     model gave no answer
+[  80.0s] # 18 unknown           none    wait                     model gave no answer
+[  84.1s] # 19 unknown           none    wait                     model gave no answer
+[  88.4s] # 20 unknown           none    wait                     model gave no answer
+[  92.6s] # 21 unknown           none    wait                     model gave no answer
+[  98.4s] # 22 unknown           none    wait                     model gave no answer
+[ 102.6s] # 23 unknown           none    wait                     model gave no answer
+[ 106.7s] # 24 unknown           none    wait                     model gave no answer
+[ 110.9s] # 25 unknown           none    wait                     model gave no answer
+[ 115.1s] # 26 unknown           none    wait                     model gave no answer
+[ 119.5s] # 27 unknown           none    wait                     model gave no answer
+[ 123.8s] # 28 unknown           none    wait                     model gave no answer
+[ 129.6s] # 29 unknown           none    wait                     model gave no answer
+[ 134.0s] # 30 unknown           none    wait                     model gave no answer
+[ 138.2s] # 31 unknown           none    wait                     model gave no answer
+[ 142.2s] # 32 unknown           none    wait                     model gave no answer
+[ 146.4s] # 33 unknown           none    wait                     model gave no answer
+[ 150.6s] # 34 unknown           none    wait                     model gave no answer
+[ 154.9s] # 35 unknown           none    wait                     model gave no answer
+[ 159.1s] # 36 unknown           none    wait                     model gave no answer
+[ 164.8s] # 37 unknown           none    wait                     model gave no answer
+[ 169.0s] # 38 unknown           none    wait                     model gave no answer
+[ 173.4s] # 39 unknown           none    wait                     model gave no answer
+[ 177.6s] # 40 unknown           none    wait                     model gave no answer
+[ 181.9s] # 41 unknown           none    wait                     model gave no answer
+[ 186.2s] # 42 unknown           none    wait                     model gave no answer
+[ 190.5s] # 43 unknown           none    wait                     model gave no answer
+[ 194.9s] # 44 unknown           none    wait                     model gave no answer
+[ 200.7s] # 45 unknown           none    wait                     model gave no answer
+[ 205.0s] # 46 unknown           none    wait                     model gave no answer
+[ 209.2s] # 47 unknown           none    wait                     model gave no answer
+[ 213.5s] # 48 unknown           none    wait                     model gave no answer
+[ 217.9s] # 49 unknown           none    wait                     model gave no answer
+[ 222.3s] # 50 unknown           none    wait                     model gave no answer
+[ 226.5s] # 51 unknown           none    wait                     model gave no answer
+[ 232.5s] # 52 unknown           none    wait                     model gave no answer
+[ 236.9s] # 53 unknown           none    wait                     model gave no answer
+[ 241.4s] # 54 unknown           none    wait                     model gave no answer
+[ 245.6s] # 55 unknown           none    wait                     model gave no answer
+[ 249.9s] # 56 unknown           none    wait                     model gave no answer
+[ 254.3s] # 57 unknown           none    wait                     model gave no answer
+[ 258.8s] # 58 unknown           none    wait                     model gave no answer
+[ 264.7s] # 59 unknown           none    wait                     model gave no answer
+[ 269.0s] # 60 unknown           none    wait                     model gave no answer
+[ 273.2s] # 61 unknown           none    wait                     model gave no answer
+[ 277.7s] # 62 unknown           none    wait                     model gave no answer
+[ 282.0s] # 63 unknown           none    wait                     model gave no answer
+[ 286.2s] # 64 unknown           none    wait                     model gave no answer
+[ 290.5s] # 65 unknown           none    wait                     model gave no answer
+[ 295.0s] # 66 unknown           none    wait                     model gave no answer
+[ 300.9s] # 67 unknown           none    wait                     model gave no answer
+[ 305.2s] # 68 unknown           none    wait                     model gave no answer
+[ 309.7s] # 69 unknown           none    wait                     model gave no answer
+[ 313.9s] # 70 unknown           none    wait                     model gave no answer
+[ 318.3s] # 71 unknown           none    wait                     model gave no answer
+[ 322.7s] # 72 unknown           none    wait                     model gave no answer
+[ 327.1s] # 73 unknown           none    wait                     model gave no answer
+[ 333.1s] # 74 unknown           none    wait                     model gave no answer
+[ 337.3s] # 75 unknown           none    wait                     model gave no answer
+[ 341.5s] # 76 unknown           none    wait                     model gave no answer
+[ 346.0s] # 77 unknown           none    wait                     model gave no answer
+[ 350.3s] # 78 unknown           none    wait                     model gave no answer
+[ 354.3s] # 79 unknown           none    wait                     model gave no answer
+[ 358.9s] # 80 unknown           none    wait                     model gave no answer
+[ 363.4s] # 81 unknown           none    wait                     model gave no answer
+[ 369.3s] # 82 unknown           none    wait                     model gave no answer
+[ 373.4s] # 83 unknown           none    wait                     model gave no answer
+[ 377.7s] # 84 unknown           none    wait                     model gave no answer
+[ 381.8s] # 85 unknown           none    wait                     model gave no answer
+[ 386.2s] # 86 unknown           none    wait                     model gave no answer
+[ 390.6s] # 87 unknown           none    wait                     model gave no answer
+[ 394.7s] # 88 unknown           none    wait                     model gave no answer
+[ 400.5s] # 89 unknown           none    wait                     model gave no answer
+[ 404.8s] # 90 unknown           none    wait                     model gave no answer
+[ 408.9s] # 91 unknown           none    wait                     model gave no answer
+[ 413.3s] # 92 unknown           none    wait                     model gave no answer
+[ 417.9s] # 93 unknown           none    wait                     model gave no answer
+[ 422.2s] # 94 unknown           none    wait                     model gave no answer
+[ 426.5s] # 95 unknown           none    wait                     model gave no answer
+[ 431.3s] # 96 unknown           none    wait                     model gave no answer
+[ 437.0s] # 97 unknown           none    wait                     model gave no answer
+[ 441.2s] # 98 unknown           none    wait                     model gave no answer
+[ 445.5s] # 99 unknown           none    wait                     model gave no answer
+[ 450.0s] #100 unknown           none    wait                     model gave no answer
+[ 454.3s] #101 unknown           none    wait                     model gave no answer
+[ 458.6s] #102 unknown           none    wait                     model gave no answer
+[ 462.9s] #103 unknown           none    wait                     model gave no answer
+[ 468.7s] #104 unknown           none    wait                     model gave no answer
+[ 473.0s] #105 unknown           none    wait                     model gave no answer
+[ 477.1s] #106 unknown           none    wait                     model gave no answer
+[ 481.4s] #107 unknown           none    wait                     model gave no answer
+[ 485.5s] #108 unknown           none    wait                     model gave no answer
+[ 489.9s] #109 unknown           none    wait                     model gave no answer
+[ 494.2s] #110 unknown           none    wait                     model gave no answer
+[ 498.5s] #111 unknown           none    wait                     model gave no answer
+[ 504.3s] #112 unknown           none    wait                     model gave no answer
+[ 508.5s] #113 unknown           none    wait                     model gave no answer
+[ 512.8s] #114 unknown           none    wait                     model gave no answer
+[ 517.1s] #115 unknown           none    wait                     model gave no answer
+[ 521.5s] #116 unknown           none    wait                     model gave no answer
+[ 525.6s] #117 unknown           none    wait                     model gave no answer
+[ 530.0s] #118 unknown           none    wait                     model gave no answer
+[ 535.7s] #119 unknown           none    wait                     model gave no answer
+[ 540.0s] #120 unknown           none    wait                     model gave no answer
+[ 544.5s] #121 unknown           none    wait                     model gave no answer
+[ 548.7s] #122 unknown           none    wait                     model gave no answer
+[ 553.0s] #123 unknown           none    wait                     model gave no answer
+[ 557.4s] #124 unknown           none    wait                     model gave no answer
+[ 561.8s] #125 unknown           none    wait                     model gave no answer
+[ 566.2s] #126 unknown           none    wait                     model gave no answer
+[ 571.8s] #127 unknown           none    wait                     model gave no answer
+[ 576.1s] #128 unknown           none    wait                     model gave no answer
+[ 580.4s] #129 unknown           none    wait                     model gave no answer
+[ 584.6s] #130 unknown           none    wait                     model gave no answer
+[ 588.9s] #131 unknown           none    wait                     model gave no answer
+[ 593.2s] #132 unknown           none    wait                     model gave no answer
+[ 597.4s] #133 unknown           none    wait                     model gave no answer
+[ 603.0s] #134 unknown           none    wait                     model gave no answer
+[ 607.2s] #135 unknown           none    wait                     model gave no answer
+[ 611.4s] #136 unknown           none    wait                     model gave no answer
+[ 615.6s] #137 unknown           none    wait                     model gave no answer
+[ 619.9s] #138 unknown           none    wait                     model gave no answer
+[ 624.2s] #139 unknown           none    wait                     model gave no answer
+[ 628.5s] #140 unknown           none    wait                     model gave no answer
+[ 632.7s] #141 unknown           none    wait                     model gave no answer
+[ 638.5s] #142 unknown           none    wait                     model gave no answer
+[ 642.9s] #143 unknown           none    wait                     model gave no answer
+[ 647.0s] #144 unknown           none    wait                     model gave no answer
+[ 651.3s] #145 unknown           none    wait                     model gave no answer
+[ 655.5s] #146 unknown           none    wait                     model gave no answer
+[ 659.7s] #147 unknown           none    wait                     model gave no answer
+[ 664.1s] #148 unknown           none    wait                     model gave no answer
+[ 669.8s] #149 unknown           none    wait                     model gave no answer
+[ 674.0s] #150 unknown           none    wait                     model gave no answer
+[ 678.3s] #151 unknown           none    wait                     model gave no answer
+[ 682.5s] #152 unknown           none    wait                     model gave no answer
+[ 687.0s] #153 unknown           none    wait                     model gave no answer
+[ 691.3s] #154 unknown           none    wait                     model gave no answer
+[ 695.6s] #155 unknown           none    wait                     model gave no answer
+[ 699.8s] #156 unknown           none    wait                     model gave no answer
+[ 705.7s] #157 unknown           none    wait                     model gave no answer
+[ 710.0s] #158 unknown           none    wait                     model gave no answer
+[ 714.3s] #159 unknown           none    wait                     model gave no answer
+[ 718.6s] #160 unknown           none    wait                     model gave no answer
+[ 722.8s] #161 unknown           none    wait                     model gave no answer
+[ 727.1s] #162 unknown           none    wait                     model gave no answer
+[ 731.4s] #163 unknown           none    wait                     model gave no answer
+[ 736.9s] #164 unknown           none    wait                     model gave no answer
+[ 741.3s] #165 unknown           none    wait                     model gave no answer
+[ 745.4s] #166 unknown           none    wait                     model gave no answer
+[ 749.7s] #167 unknown           none    wait                     model gave no answer
+[ 754.2s] #168 unknown           none    wait                     model gave no answer
+[ 758.5s] #169 unknown           none    wait                     model gave no answer
+[ 762.8s] #170 unknown           none    wait                     model gave no answer
+[ 767.0s] #171 unknown           none    wait                     model gave no answer
+[ 772.5s] #172 unknown           none    wait                     model gave no answer
+[ 776.9s] #173 unknown           none    wait                     model gave no answer
+[ 781.2s] #174 unknown           none    wait                     model gave no answer
+[ 785.5s] #175 unknown           none    wait                     model gave no answer
+[ 790.0s] #176 unknown           none    wait                     model gave no answer
+[ 794.2s] #177 unknown           none    wait                     model gave no answer
+[ 798.3s] #178 unknown           none    wait                     model gave no answer
+[ 803.8s] #179 unknown           none    wait                     model gave no answer
+[ 808.3s] #180 unknown           none    wait                     model gave no answer
+[ 812.6s] #181 unknown           none    wait                     model gave no answer
+[ 816.7s] #182 unknown           none    wait                     model gave no answer
+[ 821.0s] #183 unknown           none    wait                     model gave no answer
+[ 825.2s] #184 unknown           none    wait                     model gave no answer
+[ 829.5s] #185 unknown           none    wait                     model gave no answer
+[ 833.8s] #186 unknown           none    wait                     model gave no answer
+[ 839.4s] #187 unknown           none    wait                     model gave no answer
+[ 843.7s] #188 unknown           none    wait                     model gave no answer
+[ 848.0s] #189 unknown           none    wait                     model gave no answer
+[ 852.5s] #190 unknown           none    wait                     model gave no answer
+[ 856.7s] #191 unknown           none    wait                     model gave no answer
+[ 861.0s] #192 unknown           none    wait                     model gave no answer
+[ 865.4s] #193 unknown           none    wait                     model gave no answer
+[ 871.1s] #194 unknown           none    wait                     model gave no answer
+[ 875.3s] #195 unknown           none    wait                     model gave no answer
+[ 879.7s] #196 unknown           none    wait                     model gave no answer
+[ 884.0s] #197 unknown           none    wait                     model gave no answer
+[ 888.3s] #198 unknown           none    wait                     model gave no answer
+[ 892.6s] #199 unknown           none    wait                     model gave no answer
+[ 897.0s] #200 unknown           none    wait                     model gave no answer
+[ 901.3s] #201 unknown           none    wait                     model gave no answer
+[ 907.0s] #202 unknown           none    wait                     model gave no answer
+[ 911.5s] #203 unknown           none    wait                     model gave no answer
+[ 915.8s] #204 unknown           none    wait                     model gave no answer
+[ 920.2s] #205 unknown           none    wait                     model gave no answer
+[ 924.5s] #206 unknown           none    wait                     model gave no answer
+[ 928.8s] #207 unknown           none    wait                     model gave no answer
+[ 933.0s] #208 unknown           none    wait                     model gave no answer
+[ 938.9s] #209 unknown           none    wait                     model gave no answer
+[ 943.3s] #210 unknown           none    wait                     model gave no answer
+[ 947.6s] #211 unknown           none    wait                     model gave no answer
+[ 951.8s] #212 unknown           none    wait                     model gave no answer
+[ 956.4s] #213 unknown           none    wait                     model gave no answer
+[ 960.7s] #214 unknown           none    wait                     model gave no answer
+[ 965.1s] #215 unknown           none    wait                     model gave no answer
+[ 969.3s] #216 unknown           none    wait                     model gave no answer
+[ 975.0s] #217 unknown           none    wait                     model gave no answer
+[ 979.4s] #218 unknown           none    wait                     model gave no answer
+[ 983.8s] #219 unknown           none    wait                     model gave no answer
+[ 988.1s] #220 unknown           none    wait                     model gave no answer
+[ 992.4s] #221 unknown           none    wait                     model gave no answer
+[ 996.7s] #222 unknown           none    wait                     model gave no answer
+[1001.0s] #223 unknown           none    wait                     model gave no answer
+[1006.6s] #224 unknown           none    wait                     model gave no answer
+[1011.2s] #225 unknown           none    wait                     model gave no answer
+[1015.5s] #226 unknown           none    wait                     model gave no answer
+[1019.8s] #227 unknown           none    wait                     model gave no answer
+[1024.1s] #228 unknown           none    wait                     model gave no answer
+[1028.4s] #229 unknown           none    wait                     model gave no answer
+[1032.8s] #230 unknown           none    wait                     model gave no answer
+[1038.5s] #231 unknown           none    wait                     model gave no answer
+[1042.8s] #232 unknown           none    wait                     model gave no answer
+[1046.9s] #233 unknown           none    wait                     model gave no answer
+[1051.2s] #234 unknown           none    wait                     model gave no answer
+[1055.6s] #235 unknown           none    wait                     model gave no answer
+[1060.0s] #236 unknown           none    wait                     model gave no answer
+[1064.2s] #237 unknown           none    wait                     model gave no answer
+[1068.6s] #238 unknown           none    wait                     model gave no answer
+[1074.3s] #239 unknown           none    wait                     model gave no answer
+[1078.8s] #240 unknown           none    wait                     model gave no answer
+[1083.2s] #241 unknown           none    wait                     model gave no answer
+[1087.4s] #242 unknown           none    wait                     model gave no answer
+[1091.8s] #243 unknown           none    wait                     model gave no answer
+[1096.0s] #244 unknown           none    wait                     model gave no answer
+[1100.3s] #245 unknown           none    wait                     model gave no answer
+[1106.0s] #246 unknown           none    wait                     model gave no answer
+[1110.4s] #247 unknown           none    wait                     model gave no answer
+[1114.8s] #248 unknown           none    wait                     model gave no answer
+[1119.1s] #249 unknown           none    wait                     model gave no answer
+[1123.2s] #250 unknown           none    wait                     model gave no answer
+[1127.4s] #251 unknown           none    wait                     model gave no answer
+[1131.7s] #252 unknown           none    wait                     model gave no answer
+[1136.0s] #253 unknown           none    wait                     model gave no answer
+[1141.7s] #254 unknown           none    wait                     model gave no answer
+[1146.1s] #255 unknown           none    wait                     model gave no answer
+[1150.5s] #256 unknown           none    wait                     model gave no answer
+[1154.7s] #257 unknown           none    wait                     model gave no answer
+[1158.8s] #258 unknown           none    wait                     model gave no answer
+[1163.2s] #259 unknown           none    wait                     model gave no answer
+[1167.6s] #260 unknown           none    wait                     model gave no answer
+[1173.3s] #261 unknown           none    wait                     model gave no answer
+[1177.8s] #262 unknown           none    wait                     model gave no answer
+[1182.0s] #263 unknown           none    wait                     model gave no answer
+[1186.2s] #264 unknown           none    wait                     model gave no answer
+[1190.5s] #265 unknown           none    wait                     model gave no answer
+[1194.9s] #266 unknown           none    wait                     model gave no answer
+[1199.2s] #267 unknown           none    wait                     model gave no answer
+[1203.5s] #268 unknown           none    wait                     model gave no answer
+[1209.3s] #269 unknown           none    wait                     model gave no answer
+[1213.6s] #270 unknown           none    wait                     model gave no answer
+[1217.9s] #271 unknown           none    wait                     model gave no answer
+[1222.2s] #272 unknown           none    wait                     model gave no answer
+[1226.4s] #273 unknown           none    wait                     model gave no answer
+[1230.8s] #274 unknown           none    wait                     model gave no answer
+[1235.1s] #275 unknown           none    wait                     model gave no answer
+[1241.3s] #276 unknown           none    wait                     model gave no answer
+[1245.9s] #277 unknown           none    wait                     model gave no answer
+[1250.2s] #278 unknown           none    wait                     model gave no answer
+[1254.5s] #279 unknown           none    wait                     model gave no answer
+[1258.8s] #280 unknown           none    wait                     model gave no answer
+[1263.1s] #281 unknown           none    wait                     model gave no answer
+[1267.5s] #282 unknown           none    wait                     model gave no answer
+[1272.0s] #283 unknown           none    wait                     model gave no answer
+[1278.1s] #284 unknown           none    wait                     model gave no answer
+[1282.3s] #285 unknown           none    wait                     model gave no answer
+[1286.7s] #286 unknown           none    wait                     model gave no answer
+[1290.8s] #287 unknown           none    wait                     model gave no answer
+[1295.1s] #288 unknown           none    wait                     model gave no answer
+[1299.4s] #289 unknown           none    wait                     model gave no answer
+[1303.6s] #290 unknown           none    wait                     model gave no answer
+[1309.5s] #291 unknown           none    wait                     model gave no answer
+[1313.9s] #292 unknown           none    wait                     model gave no answer
+[1318.2s] #293 unknown           none    wait                     model gave no answer
+[1322.4s] #294 unknown           none    wait                     model gave no answer
+[1326.6s] #295 unknown           none    wait                     model gave no answer
+[1330.9s] #296 unknown           none    wait                     model gave no answer
+[1335.2s] #297 unknown           none    wait                     model gave no answer
+[1339.8s] #298 unknown           none    wait                     model gave no answer
+[1345.8s] #299 unknown           none    wait                     model gave no answer
+[1350.2s] #300 unknown           none    wait                     model gave no answer
+[1354.5s] #301 unknown           none    wait                     model gave no answer
+[1358.8s] #302 unknown           none    wait                     model gave no answer
+[1363.2s] #303 unknown           none    wait                     model gave no answer
+[1367.5s] #304 unknown           none    wait                     model gave no answer
+[1371.7s] #305 unknown           none    wait                     model gave no answer
+[1377.7s] #306 unknown           none    wait                     model gave no answer
+[1381.9s] #307 unknown           none    wait                     model gave no answer
+[1386.2s] #308 unknown           none    wait                     model gave no answer
+[1390.4s] #309 unknown           none    wait                     model gave no answer
+[1395.0s] #310 unknown           none    wait                     model gave no answer
+[1399.4s] #311 unknown           none    wait                     model gave no answer
+[1403.8s] #312 unknown           none    wait                     model gave no answer
+[1409.6s] #313 unknown           none    wait                     model gave no answer
+[1413.9s] #314 unknown           none    wait                     model gave no answer
+[1418.2s] #315 unknown           none    wait                     model gave no answer
+[1422.5s] #316 unknown           none    wait                     model gave no answer
+[1426.8s] #317 unknown           none    wait                     model gave no answer
+[1431.1s] #318 unknown           none    wait                     model gave no answer
+[1435.7s] #319 unknown           none    wait                     model gave no answer
+[1440.0s] #320 unknown           none    wait                     model gave no answer
+[1444.3s] #321 unknown           none    wait                     model gave no answer
+[1448.6s] #322 unknown           none    wait                     model gave no answer
+[1453.0s] #323 unknown           none    wait                     model gave no answer
+[1459.1s] #324 unknown           none    wait                     model gave no answer
+[1463.4s] #325 unknown           none    wait                     model gave no answer
+[1467.9s] #326 unknown           none    wait                     model gave no answer
+[1472.2s] #327 unknown           none    wait                     model gave no answer
+[1476.6s] #328 unknown           none    wait                     model gave no answer
+[1480.8s] #329 unknown           none    wait                     model gave no answer
+[1485.3s] #330 unknown           none    wait                     model gave no answer
+[1489.8s] #331 unknown           none    wait                     model gave no answer
+[1495.9s] #332 unknown           none    wait                     model gave no answer
+[1500.1s] #333 unknown           none    wait                     model gave no answer
+[1504.4s] #334 unknown           none    wait                     model gave no answer
+[1508.6s] #335 unknown           none    wait                     model gave no answer
+[1512.8s] #336 unknown           none    wait                     model gave no answer
+[1517.3s] #337 unknown           none    wait                     model gave no answer
+[1521.5s] #338 unknown           none    wait                     model gave no answer
+[1527.5s] #339 unknown           none    wait                     model gave no answer
+[1532.0s] #340 unknown           none    wait                     model gave no answer
+[1536.4s] #341 unknown           none    wait                     model gave no answer
+[1540.6s] #342 unknown           none    wait                     model gave no answer
+[1545.0s] #343 unknown           none    wait                     model gave no answer
+[1549.4s] #344 unknown           none    wait                     model gave no answer
+[1553.8s] #345 unknown           none    wait                     model gave no answer
+[1558.2s] #346 unknown           none    wait                     model gave no answer
+[1564.1s] #347 unknown           none    wait                     model gave no answer
+[1568.5s] #348 unknown           none    wait                     model gave no answer
+[1572.9s] #349 unknown           none    wait                     model gave no answer
+[1577.4s] #350 unknown           none    wait                     model gave no answer
+[1581.6s] #351 unknown           none    wait                     model gave no answer
+[1585.8s] #352 unknown           none    wait                     model gave no answer
+[1590.1s] #353 unknown           none    wait                     model gave no answer
+[1595.9s] #354 unknown           none    wait                     model gave no answer
+[1600.1s] #355 unknown           none    wait                     model gave no answer
+[1604.5s] #356 unknown           none    wait                     model gave no answer
+[1608.7s] #357 unknown           none    wait                     model gave no answer
+[1612.9s] #358 unknown           none    wait                     model gave no answer
+[1617.1s] #359 unknown           none    wait                     model gave no answer
+[1621.4s] #360 unknown           none    wait                     model gave no answer
+[1625.6s] #361 unknown           none    wait                     model gave no answer
+[1631.3s] #362 unknown           none    wait                     model gave no answer
+[1635.5s] #363 unknown           none    wait                     model gave no answer
+[1639.8s] #364 unknown           none    wait                     model gave no answer
+[1644.0s] #365 unknown           none    wait                     model gave no answer
+[1648.3s] #366 unknown           none    wait                     model gave no answer
+[1652.6s] #367 unknown           none    wait                     model gave no answer
+[1657.0s] #368 unknown           none    wait                     model gave no answer
+[1663.2s] #369 unknown           none    wait                     model gave no answer
+[1667.4s] #370 unknown           none    wait                     model gave no answer
+[1671.8s] #371 unknown           none    wait                     model gave no answer
+[1676.2s] #372 unknown           none    wait                     model gave no answer
+[1680.7s] #373 unknown           none    wait                     model gave no answer
+[1685.0s] #374 unknown           none    wait                     model gave no answer
+[1689.4s] #375 unknown           none    wait                     model gave no answer
+[1693.7s] #376 unknown           none    wait                     model gave no answer
+[1699.5s] #377 unknown           none    wait                     model gave no answer
+[1703.8s] #378 unknown           none    wait                     model gave no answer
+[1708.2s] #379 unknown           none    wait                     model gave no answer
+[1712.7s] #380 unknown           none    wait                     model gave no answer
+[1717.1s] #381 unknown           none    wait                     model gave no answer
+[1721.4s] #382 unknown           none    wait                     model gave no answer
+[1725.7s] #383 unknown           none    wait                     model gave no answer
+[1731.7s] #384 unknown           none    wait                     model gave no answer
+[1735.9s] #385 unknown           none    wait                     model gave no answer
+[1740.3s] #386 unknown           none    wait                     model gave no answer
+[1744.8s] #387 unknown           none    wait                     model gave no answer
+[1749.0s] #388 unknown           none    wait                     model gave no answer
+[1753.3s] #389 unknown           none    wait                     model gave no answer
+[1757.5s] #390 unknown           none    wait                     model gave no answer
+[1761.7s] #391 unknown           none    wait                     model gave no answer
+[1766.0s] #392 unknown           none    wait                     model gave no answer
+[1770.6s] #393 unknown           none    wait                     model gave no answer
+[1774.9s] #394 unknown           none    wait                     model gave no answer
+[1781.7s] #395 unknown           none    wait                     model gave no answer
+[1785.9s] #396 unknown           none    wait                     model gave no answer
+[1790.3s] #397 unknown           none    wait                     model gave no answer
+[1794.6s] #398 unknown           none    wait                     model gave no answer
+[1798.9s] #399 unknown           none    wait                     model gave no answer
+[1803.2s] #400 unknown           none    wait                     model gave no answer
+[1807.5s] #401 unknown           none    wait                     model gave no answer
+[1813.3s] #402 unknown           none    wait                     model gave no answer
+[1817.6s] #403 unknown           none    wait                     model gave no answer
+[1821.7s] #404 unknown           none    wait                     model gave no answer
+[1826.1s] #405 unknown           none    wait                     model gave no answer
+[1830.4s] #406 unknown           none    wait                     model gave no answer
+[1834.8s] #407 unknown           none    wait                     model gave no answer
+[1839.0s] #408 unknown           none    wait                     model gave no answer
+[1843.3s] #409 unknown           none    wait                     model gave no answer
+[1849.4s] #410 unknown           none    wait                     model gave no answer
+[1854.0s] #411 unknown           none    wait                     model gave no answer
+[1858.3s] #412 unknown           none    wait                     model gave no answer
+[1862.5s] #413 unknown           none    wait                     model gave no answer
+[1866.8s] #414 unknown           none    wait                     model gave no answer
+[1871.1s] #415 unknown           none    wait                     model gave no answer
+[1875.3s] #416 unknown           none    wait                     model gave no answer
+[1881.2s] #417 unknown           none    wait                     model gave no answer
+[1885.4s] #418 unknown           none    wait                     model gave no answer
+[1889.7s] #419 unknown           none    wait                     model gave no answer
+[1894.0s] #420 unknown           none    wait                     model gave no answer
+[1898.3s] #421 unknown           none    wait                     model gave no answer
+[1907.3s] #422 unknown           none    wait                     model gave no answer
+[1911.5s] #423 unknown           none    wait                     model gave no answer
+[1917.5s] #424 unknown           none    wait                     model gave no answer
+[1921.9s] #425 unknown           none    wait                     model gave no answer
+[1926.0s] #426 unknown           none    wait                     model gave no answer
+[1930.8s] #427 unknown           none    wait                     model gave no answer
+[1935.4s] #428 unknown           none    wait                     model gave no answer
+[1939.8s] #429 unknown           none    wait                     model gave no answer
+[1944.0s] #430 unknown           none    wait                     model gave no answer
+[1950.0s] #431 unknown           none    wait                     model gave no answer
+[1954.2s] #432 unknown           none    wait                     model gave no answer
+[1958.4s] #433 unknown           none    wait                     model gave no answer
+[1962.7s] #434 unknown           none    wait                     model gave no answer
+[1967.0s] #435 unknown           none    wait                     model gave no answer
+[1971.4s] #436 unknown           none    wait                     model gave no answer
+[1975.8s] #437 unknown           none    wait                     model gave no answer
+[1980.0s] #438 unknown           none    wait                     model gave no answer
+[1985.9s] #439 unknown           none    wait                     model gave no answer
+[1990.2s] #440 unknown           none    wait                     model gave no answer
+[1994.4s] #441 unknown           none    wait                     model gave no answer
+[1998.5s] #442 unknown           none    wait                     model gave no answer
+[2002.8s] #443 unknown           none    wait                     model gave no answer
+[2007.3s] #444 unknown           none    wait                     model gave no answer
+[2011.4s] #445 unknown           none    wait                     model gave no answer
+[2017.3s] #446 unknown           none    wait                     model gave no answer
+[2021.6s] #447 unknown           none    wait                     model gave no answer
+[2025.8s] #448 unknown           none    wait                     model gave no answer
+[2030.1s] #449 unknown           none    wait                     model gave no answer
+[2034.4s] #450 unknown           none    wait                     model gave no answer
+[2038.9s] #451 unknown           none    wait                     model gave no answer
+[2043.1s] #452 unknown           none    wait                     model gave no answer
+[2047.2s] #453 unknown           none    wait                     model gave no answer
+[2053.0s] #454 unknown           none    wait                     model gave no answer
+[2057.3s] #455 unknown           none    wait                     model gave no answer
+[2061.6s] #456 unknown           none    wait                     model gave no answer
+[2065.9s] #457 unknown           none    wait                     model gave no answer
+[2070.0s] #458 unknown           none    wait                     model gave no answer
+[2074.3s] #459 unknown           none    wait                     model gave no answer
+[2078.8s] #460 unknown           none    wait                     model gave no answer
+[2084.4s] #461 unknown           none    wait                     model gave no answer
+[2088.9s] #462 unknown           none    wait                     model gave no answer
+[2093.1s] #463 unknown           none    wait                     model gave no answer
+[2097.6s] #464 unknown           none    wait                     model gave no answer
+[2101.8s] #465 unknown           none    wait                     model gave no answer
+[2106.0s] #466 unknown           none    wait                     model gave no answer
+[2110.4s] #467 unknown           none    wait                     model gave no answer
+[2115.0s] #468 unknown           none    wait                     model gave no answer
+[2120.8s] #469 unknown           none    wait                     model gave no answer
+[2124.9s] #470 unknown           none    wait                     model gave no answer
+[2129.2s] #471 unknown           none    wait                     model gave no answer
+[2133.5s] #472 unknown           none    wait                     model gave no answer
+[2138.8s] #473 unknown           none    wait                     model gave no answer
+[2143.1s] #474 unknown           none    wait                     model gave no answer
+[2147.5s] #475 unknown           none    wait                     model gave no answer
+[2153.1s] #476 unknown           none    wait                     model gave no answer
+[2157.4s] #477 unknown           none    wait                     model gave no answer
+[2161.8s] #478 unknown           none    wait                     model gave no answer
+[2166.0s] #479 unknown           none    wait                     model gave no answer
+[2170.4s] #480 unknown           none    wait                     model gave no answer
+[2174.9s] #481 unknown           none    wait                     model gave no answer
+[2179.2s] #482 unknown           none    wait                     model gave no answer
+[2185.0s] #483 unknown           none    wait                     model gave no answer
+[2189.3s] #484 unknown           none    wait                     model gave no answer
+[2193.6s] #485 unknown           none    wait                     model gave no answer
+[2198.1s] #486 unknown           none    wait                     model gave no answer
+[2202.4s] #487 unknown           none    wait                     model gave no answer
+[2206.8s] #488 unknown           none    wait                     model gave no answer
+[2211.1s] #489 unknown           none    wait                     model gave no answer
+[2215.4s] #490 unknown           none    wait                     model gave no answer
+[2221.1s] #491 unknown           none    wait                     model gave no answer
+[2225.4s] #492 unknown           none    wait                     model gave no answer
+[2229.7s] #493 unknown           none    wait                     model gave no answer
+[2234.0s] #494 unknown           none    wait                     model gave no answer
+[2238.3s] #495 unknown           none    wait                     model gave no answer
+[2242.5s] #496 unknown           none    wait                     model gave no answer
+[2246.7s] #497 unknown           none    wait                     model gave no answer
+[2252.6s] #498 unknown           none    wait                     model gave no answer
+[2256.9s] #499 unknown           none    wait                     model gave no answer
+[2261.6s] #500 unknown           none    wait                     model gave no answer
+[2265.9s] #501 unknown           none    wait                     model gave no answer
+[2270.0s] #502 unknown           none    wait                     model gave no answer
+[2274.9s] #503 unknown           none    wait                     model gave no answer
+[2279.2s] #504 unknown           none    wait                     model gave no answer
+[2283.7s] #505 unknown           none    wait                     model gave no answer
+[2289.7s] #506 unknown           none    wait                     model gave no answer
+[2293.9s] #507 unknown           none    wait                     model gave no answer
+[2298.2s] #508 unknown           none    wait                     model gave no answer
+[2302.2s] #509 unknown           none    wait                     model gave no answer
+[2306.5s] #510 unknown           none    wait                     model gave no answer
+[2310.8s] #511 unknown           none    wait                     model gave no answer
+[2315.0s] #512 unknown           none    wait                     model gave no answer
+[2320.9s] #513 unknown           none    wait                     model gave no answer
+[2325.1s] #514 unknown           none    wait                     model gave no answer
+[2329.4s] #515 unknown           none    wait                     model gave no answer
+[2333.6s] #516 unknown           none    wait                     model gave no answer
+[2337.8s] #517 unknown           none    wait                     model gave no answer
+[2342.0s] #518 unknown           none    wait                     model gave no answer
+[2346.3s] #519 unknown           none    wait                     model gave no answer
+[2350.6s] #520 unknown           none    wait                     model gave no answer
+[2356.6s] #521 unknown           none    wait                     model gave no answer
+[2360.9s] #522 unknown           none    wait                     model gave no answer
+[2365.2s] #523 unknown           none    wait                     model gave no answer
+[2369.7s] #524 unknown           none    wait                     model gave no answer
+[2374.0s] #525 unknown           none    wait                     model gave no answer
+[2378.3s] #526 unknown           none    wait                     model gave no answer
+[2382.7s] #527 unknown           none    wait                     model gave no answer
+[2388.6s] #528 unknown           none    wait                     model gave no answer
+[2392.9s] #529 unknown           none    wait                     model gave no answer
+[2397.1s] #530 unknown           none    wait                     model gave no answer
+[2401.4s] #531 unknown           none    wait                     model gave no answer
+{"name": "Area 51", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 529, "steps": 531, "replayed": 0, "reason": "budget 40 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

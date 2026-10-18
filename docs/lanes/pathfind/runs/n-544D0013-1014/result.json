@@ -1,0 +1,78 @@
+{
+ "title_id": "544D0013",
+ "name": "Knights of the Temple II Europe En Fr De Es It",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/544D0013-Knights_of_the_Temple_II_Europe_En_Fr_De_Es_It.xiso.iso",
+ "result": "gameplay",
+ "tool": "35c0856bf1",
+ "started": "2026-10-14 00:03:25 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544D0013-1014/frames/020-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544D0013-1014/frames/020-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544D0013-1014/frames/020-probe-c.jpg"
+ ],
+ "minutes": 6.52,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544D0013-1014/frames/019-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544D0013-1014/frames/021-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544D0013-1014/frames/022-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544D0013-1014/frames/023-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544D0013-1014/frames/024-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544D0013-1014/frames/025-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544D0013-1014/frames/026-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544D0013-1014/frames/027-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544D0013-1014/frames/028-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-544D.md"
+ ],
+ "hold": {
+  "genre": "attack",
+  "why": "Third-person character wielding melee weapons, engaged in combat with enemies in a medieval environment",
+  "ok": false,
+  "play_s": 435.6,
+  "need_s": 600.0,
+  "hold_s": 598.3,
+  "model_navs": 0,
+  "frames": 16,
+  "still_windows": 4,
+  "shed": [],
+  "reversals": 0,
+  "reason": "off play 160 s of a 598 s scored window cannot drop to 10% with 752 s of budget left: no amount of further play can pass",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 95,
+    "median": 29.0,
+    "share": 0.947,
+    "at_s": 192.1,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 157,
+    "median": 29.0,
+    "share": 0.968,
+    "at_s": 316.0,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "stuck_abort": false,
+  "verdict": "VERDICT Knights of the Temple II Europe En Fr De Es It ? FAIL(duration: 599 s of gameplay < 600 s confirmation) gameplay=598.7s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=3/0.334pm worst_ms=455.1 static_frac=0.0124 play_share=0.7321 fps_excluded=161.7s"
+ },
+ "model_calls": 28,
+ "calls_by_model": {
+  "claude-haiku-4-5-20251001": 28
+ },
+ "steps": 20,
+ "seconds": 1044.3,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544D0013-1014/frames/071-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544D0013-1014/strip.jpg"
+}

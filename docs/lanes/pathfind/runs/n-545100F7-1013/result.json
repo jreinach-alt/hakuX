@@ -1,0 +1,81 @@
+{
+ "title_id": "545100F7",
+ "name": "Scooby Doo Unmasked Europe",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/545100F7-Scooby_Doo_Unmasked_Europe.xiso.iso",
+ "result": "gameplay",
+ "tool": "74dfc2db2c",
+ "started": "2026-10-13 03:57:05 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-545100F7-1013/frames/014-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-545100F7-1013/frames/014-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-545100F7-1013/frames/014-probe-c.jpg"
+ ],
+ "minutes": 4.72,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-545100F7-1013/frames/013-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-545100F7-1013/frames/015-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-545100F7-1013/frames/016-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-545100F7-1013/frames/017-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-545100F7-1013/frames/018-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-545100F7-1013/frames/019-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-545100F7-1013/frames/020-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-545100F7-1013/frames/021-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-545100F7-1013/frames/022-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-545100F7-1013/frames/023-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-5451.md"
+ ],
+ "hold": {
+  "genre": "attack",
+  "why": "Third-person character using melee spin attacks to interact with and break environmental objects",
+  "ok": false,
+  "play_s": 1145.5,
+  "need_s": 600.0,
+  "hold_s": 1363.8,
+  "model_navs": 0,
+  "frames": 35,
+  "still_windows": 6,
+  "shed": [],
+  "reversals": 0,
+  "reason": "share short by 769 s with no budget left",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 181,
+    "median": 59.0,
+    "share": 1.0,
+    "at_s": 187.4,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 294,
+    "median": 59.0,
+    "share": 0.997,
+    "at_s": 307.1,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "stuck_abort": false,
+  "verdict": "VERDICT Scooby Doo Unmasked Europe ? FAIL(menu time: 84.3% of the scored window in `play` (bar 90%; play 1150 s, still 214 s, no-timeline 0 s)) gameplay=1364.3s fps_ok=0.9943 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0004 play_share=0.8432 fps_excluded=215.7s"
+ },
+ "model_calls": 28,
+ "calls_by_model": {
+  "claude-haiku-4-5-20251001": 28
+ },
+ "steps": 14,
+ "seconds": 1697.3,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-545100F7-1013/frames/127-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [
+  "5451000E"
+ ],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-545100F7-1013/strip.jpg"
+}

@@ -1,0 +1,21 @@
+pathfind: Blowout (4D4A0008) on nova: /storage/E6C6-D7AA/Games/XBox/4D4A0008-Blowout.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4D4A0008 any, loaded none
+[   5.8s] #  1 publisher_logo    replay  A                        replay step 0: replay step 0: Publisher/developer logo still animating after cold boot; pe
+[  10.2s] #  2 title_screen      replay  START                    replay step 1: replay step 1: replay step 1: Title screen with 'Press START' prompt; START
+[  21.3s] #  3 main_menu         fast    UP A                     Fastest route to play is New Game, and the highlight looks like it is on Load Game (the ro
+[  29.5s] #  4 submenu           fast    A                        New Game confirmation; the recorded path for this title confirms Yes with A. Yes is the it
+[  34.9s] #  5 main_menu         replay  A                        replay step 4: replay step 3: replay step 4: Game's main menu; 'Next Mission' is the top, 
+[  41.9s] #  6 main_menu         replay  A                        replay step 5: replay step 4: replay step 5: Start Mission is the highlighted item and lea
+[  54.9s] #  7 gameplay          fast    wait                     A player-style character stands in the 3D world with no menu, title or letterbox, matching
+[  64.9s] #  8 probe             probe   STICK:right:1.5          control 0.097, under input 0.205
+hold-play: genre shooter, need 600 s of play
+hold-play: fps at 192 s: median 29.0, share>=30 1.0 over 96 samples
+hold-play: fps at 309 s: median 29.0, share>=30 0.994 over 154 samples
+hold-play: validity check stop 0 s (hold 608 s of play, verdict 608.2)
+hold-play: not held 608/600 s of play; verdict stops the hold: fps_ok 1.0, crash False, hang False
+held Blowout for 621s
+VERDICT Blowout ? FAIL(static window: 44% of pixels never moved more than 10/255 from the window's first frame, over 17 sampled frames from route-frames (bar 20%)) gameplay=620.4s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=1/0.107pm worst_ms=102.0 static_frac=0.4381 play_share=0.9811 fps_excluded=14.0s
+{"name": "Blowout", "device": "nova", "result": "gameplay", "minutes": 1.08, "model_calls": 20, "steps": 8, "replayed": 4, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/blowout-val2/frames/007-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

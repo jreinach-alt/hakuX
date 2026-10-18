@@ -1,0 +1,101 @@
+taken: nova by lane.pathfind
+idle: nova is held and runs nothing
+held at 09:38:02
+pathfind: MTV Celebrity Deathmatch (5454000B) on nova: /storage/E6C6-D7AA/Games/XBox/5454000B-MTV_Celebrity_Deathmatch.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 5454000B any, loaded golden b206649c8fff
+[   5.4s] #  1 publisher_logo    replay  A                        replay step 0: replay step 0: A logo or splash on a white background before any title or m
+[   9.6s] #  2 black             black   wait                     black frame
+[  13.3s] #  3 publisher_logo    replay  A                        replay step 1: replay step 1: Legal/copyright splash before any title screen; skip with A 
+[  20.9s] #  4 publisher_logo    fast    START                    Legal/copyright splash before any title screen. A did nothing on this unchanged screen, so
+[  25.3s] #  5 cutscene          replay  A                        replay step 3: replay step 2: A close-up cinematic shot with no menu, HUD, or playable cha
+[  29.6s] #  6 publisher_logo    replay  A                        replay step 4: replay step 3: A legal/disclaimer splash before any title or menu is a skip
+[  33.9s] #  7 title_screen      replay  START                    replay step 5: Title screen with 'Press START' prompt; hint says Rockstar/this title takes
+[  38.4s] #  8 main_menu         replay  DOWN A                   replay step 6: replay step 4: Main menu with the cursor on EPISODE. DEATHMATCH is the quic
+[  46.4s] #  9 submenu           fast    A                        Deathmatch is open and the 1P vs CPU item is already highlighted, the fastest single-playe
+[  50.9s] # 10 submenu           replay  A                        replay step 8: replay step 6: Character select with defaults already filled in (1P Mr. T v
+[  59.1s] # 11 submenu           fast    A                        Character select with defaults already filled in (1P Mr. T vs CPU). Per the hint, accept t
+[  70.5s] # 12 submenu           fast    RIGHT LEFT A             Character select on a select screen, A did nothing twice on this unchanged screen, so I'm 
+[  76.7s] # 13 submenu           replay  A                        replay step 12: replay step 10: Arena select with a default already chosen (Deathmatch Are
+[  82.4s] # 14 cutscene          replay  START                    replay step 13: replay step 11: This is a presentation scene with announcers, not player-c
+[  87.1s] # 15 cutscene          replay  A                        replay step 14: replay step 12: A posed character in a ring with a crowd and no HUD looks 
+[ 102.7s] # 16 gameplay          fast    wait                     Fight HUD (names, health bars, MTV corner logos) over a live ring with no menu or banner; 
+[ 121.1s] # 17 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.675, under input 0.090
+[ 134.3s] # 18 gameplay          fast    wait                     Live fight HUD with health bars and names over an active ring with no menu, banner, or pin
+[ 150.7s] # 19 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.174, under input 0.273
+[ 162.1s] # 20 unknown           fast    A                        A fight HUD is up, but the fighter is on the mat in a pinned pose and the last stick probe
+[ 178.7s] # 21 gameplay          fast    wait                     Live fight HUD with both fighters standing upright in an active ring and no pinned or scri
+[ 194.7s] # 22 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.254, under input 0.373
+[ 200.4s] # 23 cutscene          fast    A                        Posed presentation with the referee holding the fighter's arm and no HUD, so not confirmed
+[ 208.2s] # 24 results           fast    A                        Post-fight results screen, not live play. Retry is the fastest route back into a fight; th
+[ 216.8s] # 25 title_screen      fast    START                    Title screen with 'Press START' prompt; the hint and the recorded path both say START at t
+[ 224.8s] # 26 main_menu         fast    DOWN A                   Main menu with cursor on EPISODE. DEATHMATCH is the quick single match, so one DOWN to mov
+[ 234.0s] # 27 submenu           fast    A                        Deathmatch is open and the highlighted submenu entry is 1P vs CPU, the fastest single-play
+[ 242.6s] # 28 submenu           fast    A                        Character select with defaults filled (1P Mr. T vs CPU). Hint says accept the default with
+[ 252.5s] # 29 main_menu         fast    A                        Still on the character select with the defaults filled in. The last A changed the screen o
+[ 262.7s] # 30 submenu           fast    HOLD:A:1.5               Character select with defaults filled. A was pressed twice with no change, so the input mu
+[ 272.4s] # 31 submenu           fast    A                        Arena select with the default already chosen. Accepting the default with A moves toward th
+[ 281.4s] # 32 cutscene          fast    A                        Presentation scene with announcers and no player-controlled character or HUD; not gameplay
+[ 289.6s] # 33 cutscene          fast    A                        This is a pre-fight presentation view with no HUD and no visible player control prompt; th
+[ 303.8s] # 34 gameplay          fast    wait                     Fight HUD with both names and health bars over a live arena, no menu, banner or results te
+[ 321.5s] # 35 probe             probe   STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.180, under input 0.250
+[ 326.0s] # 36 gameplay          fast    X                        Fight HUD with both health bars and names over a live arena, no menu or banner. Earlier st
+[ 340.6s] # 37 probe             probe   X X STICK:left:1.5       control 0.093, under input 0.636
+[ 354.1s] # 38 unknown           fast    STICK:upleft:1.5         Fight HUD with both health bars is up, but earlier stick and button probes on this screen 
+[ 371.8s] # 39 unknown           fast    LEFT LEFT RIGHT          The HUD is up, but stick and X were already refused here, so player control is not confirm
+[ 385.5s] # 40 gameplay          fast    wait                     Live fight HUD with both health bars and a finisher banner; the scene is in play, though a
+[ 401.2s] # 41 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.240, under input 0.250
+[ 413.5s] # 42 unknown           fast    wait                     The screen looks like a finisher or pinned presentation with no HUD, and earlier stick, A 
+[ 422.0s] # 43 cutscene          fast    A                        Non-interactive presenter scene with no HUD or player character; not gameplay. The recorde
+[ 426.6s] # 44 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 431.0s] # 45 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 440.5s] # 46 main_menu         fast    DOWN A                   Main menu with the cursor on EPISODE. DEATHMATCH is the quick single match, so one DOWN mo
+[ 449.6s] # 47 submenu           fast    A                        Deathmatch is selected and the submenu's highlight is on 1P vs CPU, the fastest single-pla
+[ 457.9s] # 48 submenu           fast    A                        Character select with defaults already filled (1P Mr. T vs CPU). Per the title's recorded 
+[ 467.7s] # 49 submenu           fast    HOLD:A:1.5               Character select with defaults already filled. The last A barely changed the screen (0.01)
+[ 481.8s] # 50 main_menu         fast    DOWN A                   Still on the character select with defaults; A and HOLD:A did nothing. Changing input: DOW
+[ 490.8s] # 51 submenu           fast    A                        Arena select with the default arena already chosen. Accepting the default with A moves tow
+[ 500.6s] # 52 cutscene          fast    START A                  Non-interactive announcer presentation after the arena select, not player control. Per the
+[ 511.4s] # 53 gameplay          fast    wait                     Fight HUD with both health bars and names over a live arena, with no banner or menu. Earli
+[ 526.4s] # 54 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.312, under input 0.369
+[ 530.7s] # 55 gameplay          fast    X                        Live fight HUD with names and health bars and no menu. Earlier stick probes were refused, 
+[ 551.9s] # 56 probe             probe   X RT:3 RT+left:1.2 RT+right:1.2 control 0.309, under input 0.396
+[ 558.7s] # 57 gameplay          fast    wait                     Fight HUD with health bars over a live ring, no menu. Earlier stick probes were refused, s
+[ 572.4s] # 58 probe             probe   STICK:upleft:1.5         control 0.110, under input 0.534
+[ 583.8s] # 59 unknown           fast    R1                       Live fight HUD, but the stick and A/X/B/Y probes were refused on this pinned pose, so play
+[ 600.3s] # 60 unknown           fast    wait                     Fight HUD is up, but earlier stick and button probes were refused on this same pinned-look
+[ 609.1s] # 61 cutscene          fast    A                        Presentation scene with announcers and no player-controlled character or HUD, so not gamep
+[ 613.7s] # 62 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 618.1s] # 63 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 626.5s] # 64 main_menu         fast    DOWN A                   Main menu with the cursor on EPISODE. DEATHMATCH is the quick single match, so one DOWN to
+[ 635.9s] # 65 submenu           fast    A                        Deathmatch is highlighted on the main menu and its submenu is open; 1P vs CPU is the faste
+[ 644.5s] # 66 submenu           fast    A                        Character select with the defaults already filled (1P Mr. T vs CPU). Per the select-screen
+[ 654.8s] # 67 submenu           fast    A                        Character select with defaults already filled. The last A changed almost nothing, so this 
+[ 665.1s] # 68 submenu           fast    HOLD:A:1.5               Character select with defaults set. A has been pressed three times with no change, so swit
+[ 674.6s] # 69 submenu           fast    A                        Arena select with the default already chosen. The footer shows A Accept, so A confirms the
+[ 683.8s] # 70 cutscene          fast    A                        Presentation scene with announcers and no HUD or player character, so not gameplay. The re
+[ 692.7s] # 71 cutscene          fast    A                        A posed presentation shot in the ring with no HUD and no player control confirmed, so not 
+[ 703.5s] # 72 gameplay          fast    wait                     Live fight HUD with both health bars and names over an active ring, no menu or banner. Ear
+[ 719.6s] # 73 probe             probe   STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.374, under input 0.206
+[ 732.7s] # 74 unknown           fast    R1                       Fight HUD is up, but the earlier stick probes on this screen were refused and A, X, B and 
+[ 747.9s] # 75 unknown           fast    RT:1.5                   Live fight HUD, but earlier stick probes, A, X, B, Y and R1 were refused on this screen, s
+[ 766.0s] # 76 unknown           fast    LEFT LT:1.5              Fight HUD is up, but earlier stick, A, X, B, Y, R1 and RT probes were refused on this scre
+[ 784.5s] # 77 unknown           fast    RIGHT RIGHT RIGHT        A fight HUD is up, but stick, A, X, B, Y, R1, RT and LT probes were all refused on this sc
+[ 801.8s] # 78 unknown           fast    L1                       Fight HUD is up, but stick, A, X, B, Y, R1, RT, LT and the D-pad probes were all refused o
+[ 809.8s] # 79 cutscene          fast    START A                  A presentation scene with no HUD or player character, so it is not gameplay. Skipping with
+[ 815.0s] # 80 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 824.0s] # 81 main_menu         fast    DOWN A                   Main menu with the cursor on EPISODE. DEATHMATCH is the quick single match, so one DOWN mo
+[ 833.4s] # 82 submenu           fast    A                        Deathmatch is open and the submenu's first item, 1P vs CPU, is the highlighted fastest sin
+[ 841.4s] # 83 submenu           fast    A                        Character select with defaults already filled in (1P Mr. T vs CPU). Per the hint, accept t
+[ 850.8s] # 84 submenu           fast    HOLD:A:1.5               Character select with defaults filled in. Plain A taps on this screen have not advanced it
+[ 863.6s] # 85 submenu           fast    RIGHT LEFT A             Character select still unchanged after A and held A. Per the no-change rule I must change 
+[ 873.2s] # 86 submenu           fast    A                        Arena select with the default Deathmatch Arena already chosen. Accepting the default with 
+[ 881.1s] # 87 cutscene          fast    START A                  Non-interactive presentation with announcers and no HUD, so not gameplay. Skipping with ST
+[ 893.2s] # 88 gameplay          fast    wait                     Live fight HUD with both health bars over an active arena, no menu or banner. Not yet conf
+[ 910.7s] # 89 probe             probe   RT:3 RT+left:1.2 RT+right:1.2 control 0.408, under input 0.394
+{"name": "MTV Celebrity Deathmatch", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 89, "steps": 89, "replayed": 10, "reason": "budget 15 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256
+pathfind rc=1 at 09:53:16
+released: nova by lane.pathfind
+released rc=0

@@ -1,0 +1,37 @@
+pathfind: Micro Machines Europe En Fr De Es It (4947001C) on nova: /storage/E6C6-D7AA/Games/XBox/4947001C-Micro_Machines_Europe_En_Fr_De_Es_It.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4947001C any, loaded none
+[  16.8s] #  1 publisher_logo    fast    START                    Startup logo screen; skip with START per hint pattern
+[  36.3s] #  2 cutscene          fast    A                        This is an intro cinematic showing the Micro Machines game world (a toy car in a detailed 
+[  48.0s] #  3 loading           fast    wait                     Explicit 'Loading...' text indicates the game is loading; no input needed
+[  54.2s] #  4 loading           static  wait                     load still on screen (barely changed)
+[  59.5s] #  5 loading           static  wait                     load still on screen (barely changed)
+[  64.8s] #  6 loading           static  wait                     load still on screen (barely changed)
+[  70.1s] #  7 loading           static  wait                     load still on screen (barely changed)
+[  76.4s] #  8 loading           static  wait                     load still on screen (barely changed)
+[ 102.3s] #  9 title_screen      fast    START                    After loading, the game displays its presentation with cars and branding. No visible menu 
+[ 129.7s] # 10 cutscene          fast    START                    A labeled demo sequence with an active countdown, running automatically with no player HUD
+[ 143.0s] # 11 loading           fast    wait                     The 'Loading...' message is visible with a progress indicator; the screen is waiting for c
+[ 160.0s] # 12 main_menu         fast    A                        Game has loaded into main menu; 'Race' is already highlighted as the first option. A will 
+[ 175.1s] # 13 submenu           fast    A                        This is a race mode selection menu with Quick Start highlighted. Quick Start leads to game
+[ 186.8s] # 14 loading           fast    wait                     Loading screen with 'loading...' message and progress indicator visible; content still str
+[ 201.6s] # 15 gameplay          fast    wait                     Player controls a racing car on the track with full HUD (position, lap counter, minimap). 
+[ 217.6s] # 16 probe             probe   RT:1.5 RT:1.5 RT:1.5     control 0.106, under input 0.090
+[ 232.7s] # 17 gameplay          fast    wait                     Player controls a racing car with full HUD (position, lap counter). The scene responds to 
+[ 248.4s] # 18 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 control 0.053, under input 0.056
+[ 261.5s] # 19 gameplay          fast    wait                     The player controls a racing car on the track with a full HUD (position, lap counter, mini
+[ 282.1s] # 20 probe             probe   STICK:up:1.5             control 0.049, under input 0.394
+hold-play: genre drive, need 630 s of play
+hold-play: gas probe RT: band change 0.013 (refused)
+hold-play: gas probe A: band change 0.333 (confirmed)
+hold-play: drive gas confirmed A (tried ['RT', 'A'])
+hold-play: fps at 192 s: median 59.0, share>=30 1.0 over 192 samples
+hold-play: fps at 302 s: median 59.0, share>=30 1.0 over 303 samples
+hold-play: play disagrees: hold 632.5 s, verdict 672.3 s (verdict trusted)
+hold-play: validity check stop 0 s (hold 633 s of play, verdict 672.3)
+hold-play: not held 633/630 s of play; verdict stops the hold: fps_ok 1.0, crash False, hang False
+held Micro Machines Europe En Fr De Es It for 675s
+VERDICT Micro Machines Europe En Fr De Es It ? PASS None gameplay=673.1s fps_ok=1.0 crash=False hang=False audio_short=6.4e-05 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0208 play_share=0.9996 fps_excluded=1.0s
+{"name": "Micro Machines Europe En Fr De Es It", "device": "nova", "result": "gameplay", "minutes": 4.7, "model_calls": 22, "steps": 20, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4947001C-1014d/frames/019-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

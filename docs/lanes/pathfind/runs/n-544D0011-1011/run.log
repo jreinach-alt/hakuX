@@ -1,0 +1,56 @@
+pathfind: Gene Troopers Europe En Fr De Es It (544D0011) on nova: /storage/E6C6-D7AA/Games/XBox/544D0011-Gene_Troopers_Europe_En_Fr_De_Es_It.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 544D0011 any, loaded none
+[  12.7s] #  1 loading           fast    wait                     This looks like an early loading/boot screen with a spinner graphic, not yet a game logo o
+[  21.8s] #  2 publisher_logo    fast    START A                  Publisher logo screen, new logo appeared after loading (progress). Skip with START then A 
+[  31.7s] #  3 cutscene          fast    START A                  This appears to be an intro cinematic with blurred/bright visuals, no HUD or player contro
+[  40.2s] #  4 title_screen      fast    START                    Title screen explicitly prompts START to begin.
+[  49.3s] #  5 submenu           fast    A                        This is a notification dialog needing acknowledgment before proceeding to the main menu; c
+[  56.6s] #  6 loading           fast    wait                     System is saving options after menu confirmation; must wait for it to finish before anythi
+[  65.0s] #  7 main_menu         fast    A                        Main menu with New highlighted at top; selecting New starts a new game, fastest path to ga
+[  73.2s] #  8 submenu           fast    A                        Difficulty selection submenu; Normal is already highlighted as default, confirm with A to 
+[  84.5s] #  9 loading           fast    wait                     No HUD or menu text visible, just a stylized cracked-glass transition image likely between
+[  95.9s] # 10 gameplay          fast    STICK:up:1.5             In-engine third-person view of the player character in a game world corridor, no HUD text 
+[ 103.7s] # 11 probe             probe   STICK:up:1.5 STICK:up:1.5 control 0.767, under input 0.766
+[ 110.1s] # 12 cutscene          fast    START A                  Letterbox bars indicate a cutscene, not player-controlled gameplay; previous probe confirm
+[ 115.4s] # 13 black             black   wait                     black frame
+[ 127.2s] # 14 cutscene          fast    START A                  No HUD or player control indicators visible, heavily distorted rendering suggests a cutsce
+[ 138.7s] # 15 gameplay          fast    STICK:up:1.5             Full HUD with health, ammo, and objective text plus first-person weapon view indicates pla
+[ 157.5s] # 16 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.326, under input 0.029
+[ 165.8s] # 17 cutscene          fast    A                        A conversation/dialogue tree is active over the gameplay HUD; stick movement was refused p
+[ 169.7s] # 18 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 173.8s] # 19 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 178.7s] # 20 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 188.7s] # 21 cutscene          fast    A                        A conversation/dialogue menu is active over the HUD; the white line is selected, so A shou
+[ 192.7s] # 22 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 196.7s] # 23 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 200.6s] # 24 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 210.9s] # 25 cutscene          fast    DOWN A                   This is a dialogue choice menu; repeated A on the same highlighted line looped back here, 
+[ 231.3s] # 26 cutscene          fast    DOWN DOWN A              Dialogue menu with white line on top appearing selected; A and DOWN+A already tried and lo
+[ 244.2s] # 27 cutscene          fast    A                        Dialogue menu with top line in white (selected); previous DOWN+A attempts looped back to t
+[ 248.1s] # 28 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 252.3s] # 29 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 256.4s] # 30 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 269.3s] # 31 cutscene          fast    DOWN DOWN DOWN A         Dialogue choice menu; A, DOWN+A, and DOWN DOWN+A all looped back to this same screen per h
+[ 294.2s] # 32 cutscene          fast    X                        Dialogue menu persists after A, DOWN+A, DOWN DOWN+A, DOWN DOWN DOWN A all looped back here
+[ 298.1s] # 33 cutscene          repeat  X                        repeat X: it advanced the cutscene
+[ 302.0s] # 34 cutscene          repeat  X                        repeat X: it advanced the cutscene
+[ 306.0s] # 35 cutscene          repeat  X                        repeat X: it advanced the cutscene
+[ 317.2s] # 36 cutscene          fast    X                        Dialogue/cutscene text box is present; X has been advancing this cutscene reliably the las
+[ 321.2s] # 37 cutscene          repeat  X                        repeat X: it advanced the cutscene
+[ 325.1s] # 38 cutscene          repeat  X                        repeat X: it advanced the cutscene
+[ 329.0s] # 39 cutscene          repeat  X                        repeat X: it advanced the cutscene
+[ 342.8s] # 40 cutscene          fast    A                        A dialogue choice menu is shown with one line in white (likely selected) and others in blu
+[ 346.8s] # 41 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 350.7s] # 42 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 354.7s] # 43 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 365.9s] # 44 cutscene          fast    A                        Dialogue line text is displayed; previous X,X,A loop returned to this same screen, so tryi
+[ 370.1s] # 45 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 374.9s] # 46 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 379.0s] # 47 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 389.6s] # 48 gameplay          fast    STICK:up:1.5             Full HUD with health and ammo counters is present, first-person perspective with visible h
+[ 408.3s] # 49 probe             probe   STICK:up:1.5 HOLD:A:3 HOLD:A:3 HOLD:A:3 control 0.134, under input 0.087
+[ 409.2s] # 50 diverged          diverged wait                     replay diverged at recorded step 0 (unknown: model gave no answer)
+{"name": "Gene Troopers Europe En Fr De Es It", "device": "nova", "result": "diverged", "minutes": 6.82, "model_calls": 25, "steps": 50, "replayed": 0, "reason": "replay diverged at recorded step 0 (unknown: model gave no answer)", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

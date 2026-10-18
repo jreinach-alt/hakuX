@@ -1,0 +1,78 @@
+{
+ "title_id": "4156001A",
+ "name": "Fantastic 4",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/4156001A-Fantastic_4.xiso.iso",
+ "result": "gameplay",
+ "tool": "3624b0a01d",
+ "started": "2026-10-07 10:36:02 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4156001A-1007/frames/022-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4156001A-1007/frames/022-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4156001A-1007/frames/022-probe-c.jpg"
+ ],
+ "minutes": 3.09,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4156001A-1007/frames/021-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4156001A-1007/frames/023-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4156001A-1007/frames/024-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4156001A-1007/frames/025-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4156001A-1007/frames/026-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4156001A-1007/frames/027-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4156001A-1007/frames/028-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4156001A-1007/frames/029-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4156001A-1007/frames/030-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4156001A-1007/frames/031-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-4156.md"
+ ],
+ "hold": {
+  "genre": "onrails",
+  "why": "The view climbs an automatic track up the tower structure with no visible movement control, only a tip prompt shown.",
+  "ok": false,
+  "play_s": 607.0,
+  "need_s": 600.0,
+  "hold_s": 1674.3,
+  "model_navs": 66,
+  "frames": 49,
+  "still_windows": 1,
+  "shed": [],
+  "reversals": 0,
+  "reason": "verdict stops the hold: fps_ok 0.4251, crash False, hang False",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 89,
+    "median": 26.0,
+    "share": 0.461,
+    "at_s": 185.6,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 149,
+    "median": 30.0,
+    "share": 0.51,
+    "at_s": 300.5,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "verdict": "VERDICT Fantastic 4 ? FAIL(menu time: 35.9% of the scored window in `play` (bar 90%; cutscene 783 s, play 600 s, game_over 219 s, still 40 s)) gameplay=1674.8s fps_ok=0.4261 crash=False hang=False audio_short=0.0 hitches=30/1.115pm worst_ms=4822.5 static_frac=0.0019 play_share=0.3586 fps_excluded=1075.3s"
+ },
+ "model_calls": 107,
+ "calls_by_model": {
+  "claude-sonnet-5": 107
+ },
+ "steps": 22,
+ "seconds": 1909.9,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4156001A-1007/frames/358-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 1,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4156001A-1007/strip.jpg"
+}

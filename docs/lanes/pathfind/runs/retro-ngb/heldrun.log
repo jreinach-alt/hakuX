@@ -1,0 +1,57 @@
+taken: nova by lane.pathfind
+NOT IDLE: nova is held but busy -- do not touch it yet:
+dispatcher pid 151506 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+run: hold.sh wait-idle nova <timeout_s>, and touch the device only on exit 0
+waiting for nova: dispatcher pid 151506 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+idle: nova is held and runs nothing
+held at 21:19:19
+pathfind: Ninja Gaiden Black (5443000D) on nova: /storage/E6C6-D7AA/Games/XBox/Ninja Gaiden Black.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 5443000D first-run, loaded none
+[   5.8s] #  1 publisher_logo    replay  START A                  replay step 0: Green triangular animated logo (likely a studio splash) on white background
+[  15.7s] #  2 publisher_logo    fast    START A                  Legal warnings text screen, not yet the title or menu; the recorded path had START then A 
+[  20.7s] #  3 publisher_logo    replay  START A                  replay step 1: Legal warnings/disclaimer screen for Ninja Gaiden Black, no menu yet
+[  26.0s] #  4 publisher_logo    replay  START                    replay step 2: Ninja Gaiden Black title screen already showing 'PRESS START BUTTON', not y
+[  30.6s] #  5 main_menu         replay  A                        replay step 3: Main menu showing NEW GAME highlighted, LOAD GAME, RANKING, OPTIONS below
+[  35.9s] #  6 cutscene          replay  START                    replay step 4: Black screen with narrative text 'The evil Dark Dragon Blade...' and a swor
+[  43.1s] #  7 cutscene          fast    START                    Intro cinematic after main menu New Game; the recorded path's next step is START on the na
+[  49.5s] #  8 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[  56.9s] #  9 cutscene          fast    A                        Intro narrative cutscene still playing after New Game; START twice came back to the same s
+[  64.6s] # 10 cutscene          fast    A                        Narrative intro cinematic still playing after New Game; prior START presses did not clear 
+[  69.1s] # 11 cutscene          replay  START A                  replay step 7: Letterboxed intro cinematic showing a golden blade/demon sword ornament wit
+[  77.3s] # 12 cutscene          fast    START A                  Narrative intro cinematic after New Game, not gameplay. Recorded path and last steps show 
+[  85.5s] # 13 black             black   wait                     black frame
+[  92.4s] # 14 cutscene          fast    B                        Narrative intro cinematic with subtitles still playing after New Game; prior START/A press
+[ 100.3s] # 15 cutscene          fast    START A                  Intro narrative cutscene still playing after New Game; prior START/A presses did not clear
+[ 108.3s] # 16 cutscene          fast    START A                  Narrative intro cinematic still playing after New Game, subtitles on screen; not gameplay.
+[ 113.4s] # 17 cutscene          replay  START A                  replay step 10: Black screen with subtitle 'which is said to have been used', sword close-
+[ 124.8s] # 18 cutscene          fast    START A                  Narrative intro cutscene after New Game, not gameplay. Earlier START/A presses on the same
+[ 133.4s] # 19 cutscene          fast    START A                  Same narrative intro cinematic after New Game, no HUD or player control; prior START/A pre
+[ 138.4s] # 20 cutscene          replay  START A                  replay step 13: Letterboxed narrative text screen 'The Book of the Fiends' with loading in
+[ 147.6s] # 21 cutscene          fast    START A                  Story text page with Now Loading still in the intro sequence after New Game, not gameplay;
+[ 159.2s] # 22 cutscene          fast    START A                  Story text page of the intro sequence still loading after New Game; not gameplay. Prior ST
+[ 165.3s] # 23 cutscene          replay  START A                  replay step 15: Letterboxed-style narrative text screen about Fiends/Ancients lore with 'N
+[ 173.9s] # 24 cutscene          fast    START A                  Intro narrative text page with Now Loading still in the New Game intro sequence, not gamep
+[ 182.9s] # 25 loading           fast    wait                     Story text page over Now Loading in the New Game intro sequence; prior START/A presses ret
+[ 196.2s] # 26 loading           fast    wait                     Story text page over Now Loading during the New Game intro; repeated START/A presses only 
+[ 204.9s] # 27 loading           fast    wait                     Intro story text page over Now Loading during the New Game intro; prior START/A presses on
+[ 216.7s] # 28 cutscene          fast    X                        Lore text page with a blue X 'Proceed' prompt; START and A previously did not advance it, 
+[ 226.6s] # 29 cutscene          fast    X                        Chapter title card with narrative text, letterboxed-style intro, no HUD. Per the recorded 
+[ 230.8s] # 30 black             black   wait                     black frame
+[ 234.3s] # 31 black             black   wait                     black frame
+[ 241.4s] # 32 gameplay          fast    wait                     Ryu's world is rendered with no menu or subtitle; the last steps were a black frame then t
+[ 260.5s] # 33 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.275, under input 0.282
+[ 265.0s] # 34 gameplay          fast    wait                     Ryu's world rendered with no menu, subtitle or letterbox; the previous probe's scene chang
+[ 284.5s] # 35 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.170, under input 0.146
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 187 s: median 26.0, share>=30 0.244 over 86 samples
+hold-play: fps at 305 s: median 27.0, share>=30 0.237 over 139 samples
+hold-play: HELD 608/600 s of play; 
+held Ninja Gaiden Black for 612s
+VERDICT Ninja Gaiden Black ? FAIL(fps: 24.9% of gameplay at >= 30 fps (bar 90%)) gameplay=610.6s fps_ok=0.2495 crash=False hang=False audio_short=0.000273 hitches=7/0.763pm worst_ms=311.6 static_frac=0.0153 play_share=0.9997 fps_excluded=0.0s
+{"name": "Ninja Gaiden Black", "device": "nova", "result": "gameplay", "minutes": 4.74, "model_calls": 30, "steps": 35, "replayed": 9, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/retro-ngb/frames/034-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256
+pathfind rc=0 at 21:35:24
+released: nova by lane.pathfind
+released rc=0

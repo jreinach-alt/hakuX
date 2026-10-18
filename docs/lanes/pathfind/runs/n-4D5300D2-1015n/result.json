@@ -1,0 +1,83 @@
+{
+ "title_id": "4D5300D2",
+ "name": "Big Bumpin USA",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/4D5300D2-Big_Bumpin_USA.xiso.iso",
+ "result": "gameplay",
+ "tool": "920a61de3c",
+ "started": "2026-10-15 23:26:48 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D5300D2-1015n/frames/050-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D5300D2-1015n/frames/050-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D5300D2-1015n/frames/050-probe-left.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D5300D2-1015n/frames/050-probe-right.jpg"
+ ],
+ "reason": "four probes refused",
+ "claim_live_selfmove": 3,
+ "minutes": 8.59,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D5300D2-1015n/frames/049-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D5300D2-1015n/frames/051-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D5300D2-1015n/frames/052-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D5300D2-1015n/frames/053-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D5300D2-1015n/frames/054-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D5300D2-1015n/frames/055-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D5300D2-1015n/frames/056-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D5300D2-1015n/frames/057-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D5300D2-1015n/frames/058-after.jpg"
+ ],
+ "retracted": 1,
+ "learned": [
+  "hints/learned-pub-4D53.md"
+ ],
+ "hold": {
+  "genre": "drive",
+  "why": "Bumper cars moving through an arena-style course",
+  "gas": "RT",
+  "ok": false,
+  "play_s": 364.2,
+  "need_s": 630.0,
+  "hold_s": 514.0,
+  "model_navs": 25,
+  "frames": 16,
+  "still_windows": 0,
+  "shed": [],
+  "reversals": 0,
+  "reason": "off play 148 s of a 513 s scored window cannot drop to 10% with 889 s of budget left: no amount of further play can pass",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 127,
+    "median": 59.0,
+    "share": 0.992,
+    "at_s": 185.4,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 196,
+    "median": 30.0,
+    "share": 0.985,
+    "at_s": 303.7,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "stuck_abort": false,
+  "verdict": "VERDICT Big Bumpin USA ? FAIL(duration: 514 s of gameplay < 600 s confirmation) gameplay=513.9s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0 play_share=0.7108 fps_excluded=150.4s"
+ },
+ "model_calls": 73,
+ "calls_by_model": {
+  "claude-sonnet-5": 73
+ },
+ "steps": 43,
+ "seconds": 1077.2,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D5300D2-1015n/frames/129-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D5300D2-1015n/strip.jpg"
+}

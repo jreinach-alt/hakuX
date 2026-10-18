@@ -1,0 +1,29 @@
+pathfind: Plus Plumb 2 (544B0004) on nova: /storage/E6C6-D7AA/Games/XBox/544B0004-Plus_Plumb_2.xiso.iso
+titlestate: titles disk: build (the titles disk is not on the device)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 544B0004 any, loaded golden ed7d0165f40b
+[  39.5s] #  1 loading           fast    wait                     Early boot (0.5 min) showing a fade-in or loading screen; the circular gradient suggests c
+[  58.2s] #  2 publisher_logo    fast    A                        MPEG Sordec and ADX are codec/middleware provider logos shown during game startup; these a
+[  71.5s] #  3 publisher_logo    fast    A                        New logo in the intro sequence; several logos in a row is normal progress. Skip with A.
+[  86.1s] #  4 cutscene          fast    A                        Intro cinematic after publisher logos, before title/menu; shows the game world and story b
+[ 104.7s] #  5 cutscene          fast    A                        Intro animation still playing; previous A progressed but did not reach a title or menu. Th
+[ 148.7s] #  6 cutscene          fast    START                    Intro animation showing character artwork in a gallery grid; the black bottom-left section
+[ 164.7s] #  7 save_load_prompt  fast    wait                     Game is creating save data; the message indicates initialization in progress and warns not
+[ 183.4s] #  8 title_screen      fast    START                    Save initialization completed (step 7); now showing game title screen with logo and intro 
+[ 224.5s] #  9 main_menu         fast    A                        Title screen transitioned after START in step 8; menu options are now visible for selectio
+[ 247.8s] # 10 submenu           fast    A                        After main menu selection in step 9, now on a game mode or character selection screen. The
+[ 251.3s] # 11 black             black   wait                     black frame
+[ 265.7s] # 12 cutscene          fast    START                    Dialogue/story scene with character portraits and Japanese text; cutscene before gameplay.
+[ 312.5s] # 13 loading           fast    wait                     READY!! is a round-start banner indicating match initialization, not yet live gameplay per
+[ 327.7s] # 14 gameplay          fast    wait                     Full HUD with score and character visible, active puzzle board, game meter responsive; thi
+[ 357.9s] # 15 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.165, under input 0.041
+hold-play: genre other, need 600 s of play
+hold-play: fps at 189 s: median 59.0, share>=30 0.995 over 187 samples
+hold-play: fps at 303 s: median 59.0, share>=30 0.997 over 296 samples
+hold-play: play disagrees: hold 608.9 s, verdict 590.3 s (verdict trusted)
+hold-play: validity check share 1505 s (hold 609 s of play, verdict 590.3)
+hold-play: not held 609/600 s of play; share short by 1505 s with no budget left
+held Plus Plumb 2 for 825s
+VERDICT Plus Plumb 2 ? FAIL(menu time: 71.7% of the scored window in `play` (bar 90%; play 591 s, cutscene 93 s, menu 52 s, results 25 s)) gameplay=823.8s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=8/0.628pm worst_ms=1773.1 static_frac=0.0 play_share=0.7173 fps_excluded=234.5s
+{"name": "Plus Plumb 2", "device": "nova", "result": "gameplay", "minutes": 5.96, "model_calls": 36, "steps": 15, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544B0004-1013r/frames/014-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

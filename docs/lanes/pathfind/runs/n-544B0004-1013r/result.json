@@ -1,0 +1,81 @@
+{
+ "title_id": "544B0004",
+ "name": "Plus Plumb 2",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/544B0004-Plus_Plumb_2.xiso.iso",
+ "result": "gameplay",
+ "tool": "74dfc2db2c",
+ "started": "2026-10-13 12:12:14 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544B0004-1013r/frames/015-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544B0004-1013r/frames/015-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544B0004-1013r/frames/015-probe-left.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544B0004-1013r/frames/015-probe-right.jpg"
+ ],
+ "minutes": 5.96,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544B0004-1013r/frames/014-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544B0004-1013r/frames/016-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544B0004-1013r/frames/017-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544B0004-1013r/frames/018-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544B0004-1013r/frames/019-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544B0004-1013r/frames/020-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544B0004-1013r/frames/021-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544B0004-1013r/frames/022-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544B0004-1013r/frames/023-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-544B.md"
+ ],
+ "hold": {
+  "genre": "other",
+  "why": "Match-3 puzzle game with colored pieces, spinner wheel, and score counter",
+  "ok": false,
+  "play_s": 608.9,
+  "need_s": 600.0,
+  "hold_s": 823.1,
+  "model_navs": 13,
+  "frames": 22,
+  "still_windows": 0,
+  "shed": [
+   "B"
+  ],
+  "reversals": 0,
+  "reason": "share short by 1505 s with no budget left",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 187,
+    "median": 59.0,
+    "share": 0.995,
+    "at_s": 189.3,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 296,
+    "median": 59.0,
+    "share": 0.997,
+    "at_s": 302.8,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "stuck_abort": false,
+  "verdict": "VERDICT Plus Plumb 2 ? FAIL(menu time: 71.7% of the scored window in `play` (bar 90%; play 591 s, cutscene 93 s, menu 52 s, results 25 s)) gameplay=823.8s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=8/0.628pm worst_ms=1773.1 static_frac=0.0 play_share=0.7173 fps_excluded=234.5s"
+ },
+ "model_calls": 36,
+ "calls_by_model": {
+  "claude-haiku-4-5-20251001": 36
+ },
+ "steps": 15,
+ "seconds": 1235.7,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544B0004-1013r/frames/099-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 1,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544B0004-1013r/strip.jpg"
+}

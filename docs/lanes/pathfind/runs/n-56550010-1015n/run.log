@@ -1,0 +1,91 @@
+pathfind: Outlaw Golf USA (56550010) on nova: /storage/E6C6-D7AA/Games/XBox/56550010-Outlaw_Golf_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 56550010 any, loaded none
+[   9.2s] #  1 loading           fast    wait                     This looks like an early loading/logo animation screen right after boot, no menu text or p
+[  16.6s] #  2 publisher_logo    fast    A                        Another publisher logo in the boot sequence; skip it with A to progress toward the title s
+[  25.3s] #  3 cutscene          fast    START A                  This is a character roster/intro cutscene showing a golfer named C.C., part of the intro s
+[  33.8s] #  4 title_screen      fast    START                    Title screen explicitly prompts PRESS START; pressing START should advance to the main men
+[  48.8s] #  5 submenu           fast    DOWN                     This is a sign-in/profile selection screen defaulting to 'Resume a saved game'; I want to 
+[  76.3s] #  6 save_load_prompt  fast    A                        This is a profile sign-in/save prompt; the green hand icon is highlighted as the current s
+[  98.3s] #  7 submenu           fast    DOWN A                   The hand icon (currently selected) points to 'resume saved game' which requires an existin
+[ 111.4s] #  8 submenu           fast    STICK:down:1 A           The hand icon (resume saved game) appears selected but DOWN+A did nothing last time; the f
+[ 131.7s] #  9 submenu           fast    UP UP A                  DOWN and STICK:down did nothing on this screen; need to try a different direction to move 
+[ 149.3s] # 10 save_load_prompt  fast    RIGHT A                  Vertical inputs (UP/DOWN/STICK:down) produced no change in prior steps, so the three icons
+[ 172.1s] # 11 save_load_prompt  fast    A                        Profile/save sign-in screen; vertical and horizontal nav all failed to change it in recent
+[ 197.6s] # 12 save_load_prompt  fast    STICK:upright:1 A        Vertical nav (UP/DOWN/STICK:down) and A on the hand icon have repeatedly done nothing; RIG
+[ 212.0s] # 13 save_load_prompt  fast    B                        All vertical/horizontal nav and A on hand icon have failed repeatedly; the hand (resume) l
+[ 226.5s] # 14 save_load_prompt  fast    L1 A                     All d-pad/stick directions and A on the hand icon have failed repeatedly per history; this
+[ 267.8s] # 15 save_load_prompt  fast    START                    Profile sign-in/load screen; hand icon appears lit but A has not worked in many prior atte
+[ 284.5s] # 16 save_load_prompt  fast    HOLD:A:2 Y X             Hand icon looks selected/lit (resume game) and A/Accept is labeled at bottom-right, but al
+[ 309.7s] # 17 save_load_prompt  fast    DOWN DOWN A              Sign-in/profile prompt stuck for many steps; hand icon (resume) and single-step nav all fa
+[ 322.8s] # 18 save_load_prompt  fast    RIGHT RIGHT UP A         Sign-in/load screen stuck many steps; all standard nav+A combos tried. The LOAD oval top-r
+[ 387.4s] # 19 save_load_prompt  fast    RIGHT                    Every vertical nav + A combo on the hand icon has failed repeatedly per history; the brigh
+[ 400.7s] # 20 save_load_prompt  fast    RIGHT A                  Hand icon (resume) appears lit but A has failed many times; last RIGHT caused a tiny 0.01 
+[ 414.7s] # 21 save_load_prompt  fast    DOWN A                   Hand icon (resume) has been tried extensively with A/combos without success per history. T
+[ 431.1s] # 22 save_load_prompt  fast    B                        Stuck on this sign-in/resume screen for many steps; all hand-icon and directional+A combos
+[ 470.0s] # 23 save_load_prompt  fast    R1 A                     Stuck sign-in/profile screen; history shows A, DOWN+A, RIGHT+A combos not confirming. Top 
+[ 514.9s] # 24 save_load_prompt  fast    LEFT LEFT A              Stuck sign-in/storage screen; many RIGHT/DOWN/A combos already tried per history with no r
+[ 525.5s] # 25 save_load_prompt  fast    A                        This is a storage/load selection screen with no save data (0 blocks). Accept (A) is the cl
+[ 534.9s] # 26 save_load_prompt  fast    B                        No save data exists (0 blocks); this is a load/memory card screen with nothing to load. Ba
+[ 541.9s] # 27 save_load_prompt  fast    B                        No save data exists (0 blocks); this load screen is a dead end. Back out with B to return 
+[ 549.9s] # 28 save_load_prompt  fast    RIGHT A                  A memory-card load screen with 0 blocks; nothing to load. Previous B presses looped back h
+[ 562.8s] # 29 save_load_prompt  fast    LEFT LEFT A              This load screen is cycling through controller/memory slots (now on Controller 2, still 0 
+[ 575.3s] # 30 save_load_prompt  fast    START                    Memory card load screen with no save data on Controller 2; A/B/LEFT/RIGHT combos already t
+[ 582.2s] # 31 save_load_prompt  fast    B                        This is a dead-end load screen with no save data (0 blocks) that keeps looping; back out f
+[ 597.3s] # 32 save_load_prompt  fast    BACK                     No save data exists on any controller slot; B has been pressed repeatedly without escaping
+[ 610.5s] # 33 save_load_prompt  fast    X                        Dead-end load screen with no save data; B/BACK/START/A combos already tried and all loop b
+[ 620.1s] # 34 save_load_prompt  fast    Y                        Dead-end load screen with no save data; A/B/X/START/BACK/LEFT/RIGHT all looped back here. 
+[ 635.8s] # 35 save_load_prompt  fast    UP UP A                  Dead-end load screen with no save data; A/B/X/Y/START/BACK/LEFT/RIGHT combos all looped ba
+[ 646.2s] # 36 save_load_prompt  fast    LEFT LEFT A              Dead-end load screen with no save data; all direct buttons tried. The left/right arrows su
+[ 665.0s] # 37 save_load_prompt  fast    L1 R1 B                  Dead-end load screen with no save data; A/B/X/Y/START/BACK/UP/LEFT/RIGHT combos already tr
+[ 679.6s] # 38 save_load_prompt  fast    RIGHT RIGHT A            Dead-end load screen on CONTROLLER 2 slot with no storage; LEFT was tried repeatedly witho
+[ 690.1s] # 39 save_load_prompt  fast    B                        Dead-end load screen with no save data on Controller 2 slot; the on-screen label explicitl
+[ 705.0s] # 40 save_load_prompt  fast    B B B                    Dead-end load screen for controller 2 with zero save blocks; every single-button/arrow com
+[ 731.8s] # 41 save_load_prompt  fast    BACK BACK BACK BACK BACK Dead-end load screen with no save data on Controller 2; nearly all single inputs and short
+[ 745.9s] # 42 save_load_prompt  fast    START                    This is a sign-in/load prompt explicitly reading PRESS START at the bottom; prior LEFT/RIG
+[ 752.7s] # 43 title_screen      fast    START                    Classic press-start title screen; previous START input broke through from the save/load de
+[ 767.5s] # 44 save_load_prompt  fast    A                        This is a sign-in/profile selection prompt with an explicit 'Accept A' footer button that 
+[ 792.0s] # 45 save_load_prompt  fast    LEFT A                   LOAD is highlighted but prior steps confirmed there is no save data (dead-end loop); movin
+[ 805.5s] # 46 save_load_prompt  fast    B                        This is a load-game screen for a save that doesn't exist (all blocks available/free); prio
+[ 815.4s] # 47 save_load_prompt  fast    B B                      This is a device-select screen for LOADING a save, but available blocks equal total blocks
+[ 825.1s] # 48 save_load_prompt  fast    B                        This device-select screen confirms no save data exists (available=total blocks). B here ju
+[ 839.8s] # 49 save_load_prompt  fast    B B B                    This is a device-confirm screen for LOADING, but available=total blocks proves there is no
+[ 858.7s] # 50 save_load_prompt  fast    RIGHT RIGHT A            LOAD was already confirmed a dead end (no save data exists, loops through empty device scr
+[ 867.9s] # 51 publisher_logo    fast    A START                  Developer/game logo splash screen appearing after the save/load dead-end loop was resolved
+[ 876.0s] # 52 title_screen      fast    START                    Title screen with PRESS START prompt; press START to proceed to main menu
+[ 884.2s] # 53 title_screen      fast    A                        Title screen with PRESS START; previous START on this exact frame did nothing per history,
+[ 892.1s] # 54 title_screen      fast    START                    Title screen with PRESS START prompt; prior START attempts on this exact frame reportedly 
+[ 900.8s] # 55 title_screen      fast    A                        Same title screen seen repeatedly; prior START/A presses looped back here without change p
+[ 910.1s] # 56 title_screen      fast    A                        Same title screen looping despite repeated START/A combos; try a single isolated A press w
+[ 919.6s] # 57 publisher_logo    fast    A START                  This is a new logo screen (different from the title screen loop described in history), so 
+[ 932.4s] # 58 title_screen      fast    BACK                     Static PRESS START screen; START and A have both been tried repeatedly without progressing
+[ 940.1s] # 59 title_screen      fast    START                    Same title screen looping; BACK did nothing. Try a long isolated START press since prior r
+[ 948.0s] # 60 publisher_logo    fast    A START                  This is a distinct developer/game logo screen (different from the title_screen PRESS START
+[ 965.0s] # 61 controller_prompt fast    START                    This is a profile sign-in/load screen, not the title loop; 'PRESS START' is the main promp
+[ 986.0s] # 62 save_load_prompt  fast    A                        This is a save/load screen with LOAD highlighted and 'Accept A' shown in the footer; press
+[ 996.5s] # 63 save_load_prompt  fast    A                        LOAD option is highlighted on the carousel with 'Accept A' shown; pressing A should load/c
+[1005.4s] # 64 save_load_prompt  fast    A                        This is the hard disk load/save device select screen; pressing A should accept the hard di
+[1013.3s] # 65 save_load_prompt  fast    A                        No save data exists; press A to continue past this notice, which should proceed into the g
+[1021.6s] # 66 save_load_prompt  fast    A                        This is the hard disk device confirmation screen; A has been pressed twice already without
+[1030.1s] # 67 save_load_prompt  fast    A                        No save data notice; press A to continue past it, which should proceed to the game as a ne
+[1038.6s] # 68 save_load_prompt  fast    B                        A has stopped progressing this screen per history (3 presses with no change); try B to bac
+[1046.1s] # 69 save_load_prompt  fast    A                        This is a fresh unchanged dialog (no saved data notice) distinct from prior repeated attem
+[1054.7s] # 70 save_load_prompt  fast    A                        This is a device selection confirmation screen distinct from the prior no-save-data notice
+[1064.4s] # 71 save_load_prompt  fast    START                    This is a storage device selection screen for loading/saving; Accept (A) should confirm th
+[1073.4s] # 72 save_load_prompt  fast    START                    This is the storage device selection for Load; Accept (A) confirms the hard disk selection
+[1081.5s] # 73 save_load_prompt  fast    START                    This is the device load confirmation screen; Accept is labeled A in the footer, so A shoul
+[1089.1s] # 74 save_load_prompt  fast    A                        This is a clean no-save-data notice; A Continue should dismiss it and proceed past the loa
+[1097.3s] # 75 save_load_prompt  fast    START                    No-save-data notice; previous A press history shows this exact dialog was tried but log sa
+[1105.2s] # 76 save_load_prompt  fast    A                        Hard disk storage device selection for Load; footer explicitly shows Accept is A, not STAR
+[1113.2s] # 77 save_load_prompt  fast    A                        This is the hard disk device selection for Load; footer explicitly labels Accept as A. Pri
+[1125.7s] # 78 save_load_prompt  fast    B                        This exact hard-disk device-select screen has looped through A/START presses repeatedly wi
+[1141.9s] # 79 save_load_prompt  fast    B B B                    Repeated A/START presses on this hard disk load-confirm screen have not advanced past it (
+[1154.5s] # 80 save_load_prompt  fast    A                        Sign-in screen offering to resume/load a saved game; footer explicitly labels A as Accept,
+[1165.7s] # 81 save_load_prompt  fast    B                        This is a Load/sign-in prompt for resuming a saved game; repeated A/START presses here hav
+[1175.6s] # 82 save_load_prompt  fast    B                        This is a Load-game sign-in screen that has looped repeatedly under A/START; per hints, Lo
+[1182.0s] # 83 title_screen      fast    START                    Clean title screen reached after escaping the save/load loop; press START to proceed to th
+[1190.0s] # 84 title_screen      fast    A                        Clean title screen reached after escaping the save/load loop; START had no effect last tim
+[1199.5s] # 85 title_screen      fast    START                    Clean title screen with PRESS START prompt; previous A/START attempts on this exact unchan
+{"name": "Outlaw Golf USA", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 85, "steps": 85, "replayed": 0, "reason": "budget 20 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

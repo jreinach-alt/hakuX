@@ -1,0 +1,45 @@
+pathfind: Midway Arcade Treasures 2 USA Europe (4D570020) on nova: /storage/E6C6-D7AA/Games/XBox/4D570020-Midway_Arcade_Treasures_2_USA_Europe.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4D570020 any, loaded none
+[   8.7s] #  1 publisher_logo    sibreplay A                        sibling 4D57001C step 0: Midway Games publisher logo at boot; this title is 4D57001C, same
+[  12.8s] #  2 black             black   wait                     black frame
+[  35.0s] #  3 black             fast    A                        Static copyright/legal text screen on black background; part of intro sequence after publi
+[  47.7s] #  4 title_screen      fast    START                    Title screen with 'PRESS START' prompt; the logo is static and ready for input
+[  61.0s] #  5 loading           fast    wait                     After the title screen's START press, this glowing animation with the target reticle is a 
+[  81.6s] #  6 submenu           fast    A                        Game details and play confirmation menu for the selected arcade title. PLAY is the highlig
+[ 101.8s] #  7 controller_prompt fast    A                        Blue tutorial box with game instructions ('Press SIREN and AIM') overlaid on the game worl
+[ 128.9s] #  8 gameplay          fast    wait                     After dismissing the controller tutorial (step 7), the game world is live with full HUD an
+[ 132.3s] #  9 probe             probe   STICK:up:1.5             control 0.001, under input 0.001
+[ 192.0s] # 10 loading           fast    A                        Game world and HUD are rendered, but the previous probe (STICK:up:1.5) produced no respons
+[ 220.1s] # 11 gameplay          fast    RT:3                     Game world rendered with HUD visible (GAS, CREDIT, REVENUES, DEMERITS, DAY, QUOTA, CONES v
+[ 236.2s] # 12 probe             probe   RT:3 STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 control 0.059, under input 0.002
+[ 283.2s] # 13 game_over         fast    START                    High scores display after gameplay probes failed; previous RT:3 and STICK:up:1.5 inputs pr
+[ 314.3s] # 14 controller_prompt fast    A                        Tutorial instruction overlay explaining the arcade game's control scheme. Similar to dismi
+[ 385.7s] # 15 results           fast    A                        Failed attempt results screen displaying penalty feedback for not meeting the quota object
+[ 423.4s] # 16 results           fast    A                        The penalty message 'Did NOT meet QUOTA' and OOPS dialog confirm this is a failure/results
+[ 460.8s] # 17 results           fast    B                        Game-over / failure result: the player accumulated too many demerits and was fired from th
+[ 500.6s] # 18 game_over         fast    START                    GAME OVER text displayed after failed parking-game round; blue prompt text below indicates
+[ 552.8s] # 19 controller_prompt fast    B                        Instruction/tutorial overlay on arcade game. A was already tried multiple times (step 14 a
+[ 584.3s] # 20 gameplay          fast    wait                     The arcade parking game is now live and ready for input: HUD is active with game stats (MP
+[ 590.0s] # 21 probe             probe   HOLD:A:3                 control 0.001, under input 0.001
+[ 626.0s] # 22 gameplay          fast    RT:2                     The parking game is live and responsive: full HUD is active with game stats, the car is po
+[ 658.3s] # 23 probe             probe   RT:2 HOLD:A:3            control 0.000, under input 0.342
+[ 696.7s] # 32 retracted         probe   wait                     retracted after 30 s: GAME OVER screen is displayed; game session has ended
+[ 710.1s] # 33 game_over         fast    A                        GAME OVER text is displayed; the parking game session ended after the collision demerit. T
+[ 754.0s] # 34 controller_prompt fast    Y                        Tutorial/instruction overlay for arcade game mechanics. A and B both failed on this screen
+[ 810.3s] # 35 gameplay          fast    wait                     The parking game displays a complete HUD with active game statistics, a fully rendered pla
+[ 833.9s] # 36 probe             probe   RT:1.5                   control 0.001, under input 0.137
+[ 871.5s] # 45 retracted         probe   wait                     retracted after 30 s: High scores screen displayed - game over or attract mode menu, not a
+[ 884.3s] # 46 game_over         fast    A                        GAME OVER text is displayed with high scores; the parking arcade game session ended. This 
+[ 923.0s] # 47 controller_prompt fast    Y                        Tutorial/instruction overlay on arcade game; step 34 showed identical state, A and B faile
+[ 953.0s] # 48 controller_prompt fast    B                        Tutorial instruction overlay blocking gameplay. A and Y both failed to dismiss this screen
+[1016.7s] # 49 gameplay          fast    wait                     Full HUD displayed with active game statistics (MPH, GAS bar, CREDIT, REVENUES, DEMERITS, 
+[1032.9s] # 50 probe             probe   RT:1.5                   control 0.001, under input 0.125
+[1079.8s] # 60 retracted         probe   wait                     retracted after 30 s: In-game tutorial/instruction overlay with mission briefing, not acti
+[1093.9s] # 61 controller_prompt fast    X                        On-screen instruction overlay ('PRESS SIREN') is blocking progression. Previous attempts (
+[1137.2s] # 62 controller_prompt fast    R1                       Still the same instruction overlay from step 61. A, Y, B, X have all been tried and return
+[1185.8s] # 63 controller_prompt fast    L1                       On-screen tutorial overlay ('PRESS SIREN') is blocking active gameplay. Face buttons (A, Y
+[1233.2s] # 64 game_over         fast    A                        GAME OVER prompt displayed; on-screen instruction 'C = START GAME' indicates input needed 
+{"name": "Midway Arcade Treasures 2 USA Europe", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 34, "steps": 39, "replayed": 0, "reason": "budget 20 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

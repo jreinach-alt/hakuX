@@ -1,0 +1,41 @@
+pathfind: Legends of Wrestling II USA (4143000F) on nova: /storage/E6C6-D7AA/Games/XBox/4143000F-Legends_of_Wrestling_II_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4143000F any, loaded none
+[   6.7s] #  1 publisher_logo    sibreplay START                    sibling 41430003 step 0: Geometric logo on startup; standard publisher intro before title/
+[  10.0s] #  2 black             black   wait                     black frame
+[  13.4s] #  3 black             black   wait                     black frame
+[  41.3s] #  4 publisher_logo    fast    START                    Acclaim branding intro screen after initial publisher logo; sibling title 41430003 had mul
+[  81.1s] #  5 main_menu         fast    A                        Start Game is highlighted in orange; pressing A accepts this default selection to proceed 
+[ 101.6s] #  6 main_menu         fast    START                    Start Game is highlighted but A produced no screen change; trying START, which works on so
+[ 118.0s] #  7 submenu           fast    A                        This is the exhibition match-type selector after Start Game on the main menu. The default 
+[ 158.2s] #  8 submenu           fast    LEFT A                   Sports team select. Controller in the middle column = CPU controls both sides until we mov
+[ 172.3s] #  9 submenu           fast    A                        Confirmation dialog within match setup; Yes is highlighted; pressing A accepts and advance
+[ 216.9s] # 10 submenu           fast    START A                  Character selection screen before match. Wrestler selected but not confirmed. Path from si
+[ 231.5s] # 11 cutscene          fast    A                        Entrance animation playing; wrestler visible in-engine but match not yet active; no intera
+[ 265.0s] # 12 cutscene          fast    START                    The entrance animation is still playing—one wrestler visible in the tunnel, no opponent in
+[ 295.3s] # 13 pause             fast    START                    The match is paused behind this menu. Resume is highlighted. START will quick resume to ac
+[ 312.7s] # 14 gameplay          fast    wait                     Two wrestlers in the ring in fighting stance with HUD visible (names, crowd), actively pos
+[ 336.6s] # 15 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.481, under input 0.639
+[ 372.2s] # 23 retracted         probe   wait                     retracted after 30 s: Match results screen showing end-of-match stats (winner, loser, elim
+[ 383.2s] # 24 results           fast    A                        End-of-match statistics displayed with winner, loser, styles, rivals, and elimination meth
+[ 397.1s] # 25 main_menu         fast    A                        Main menu with exhibition already highlighted; we're back at the menu after the match ende
+[ 413.6s] # 26 submenu           fast    A                        Match type selection submenu; 'vs' is the highlighted default for fastest path to 1v1 game
+[ 436.5s] # 27 submenu           fast    LEFT A                   Team select screen for the match. Controller icon is in the middle column, meaning no huma
+[ 455.6s] # 28 submenu           fast    A                        Match setup confirmation after team assignment; Yes is lit; A accepts and advances to the 
+[ 486.8s] # 29 submenu           fast    START                    Character/wrestler selection menu before the match; press START to randomize wrestlers fol
+[ 503.4s] # 30 submenu           fast    A                        Match setup confirmation before match start; Yes is highlighted and ready to accept.
+[ 521.2s] # 31 cutscene          fast    START                    Automated wrestler entrance animation sequence after match setup confirmation; the arena i
+[ 540.4s] # 32 cutscene          fast    A                        Automated pre-match entrance sequence still playing; wrestlers displayed on arena screens 
+[ 557.5s] # 33 gameplay          fast    wait                     Both wrestlers positioned in the ring after entrance sequence; HUD visible with names and 
+[ 583.5s] # 34 probe             probe   HOLD:A:1.5 STICK:left:1.2 STICK:right:1.2 control 0.497, under input 0.523
+hold-play: genre attack, need 630 s of play
+hold-play: fps at 188 s: median 59.0, share>=30 1.0 over 189 samples
+hold-play: fps at 302 s: median 59.0, share>=30 1.0 over 303 samples
+hold-play: off play for 12 steps (menu): ladder round 1
+hold-play: off play 215 s of a 513 s scored window cannot drop to 10% with 890 s of budget left: no amount of further play can pass
+hold-play: not held 285/630 s of play; off play 215 s of a 513 s scored window cannot drop to 10% with 890 s of budget left: no amount of further play can pass
+held Legends of Wrestling II USA for 515s
+VERDICT Legends of Wrestling II USA ? FAIL(duration: 514 s of gameplay < 600 s confirmation) gameplay=513.8s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0039 play_share=0.5805 fps_excluded=216.2s
+{"name": "Legends of Wrestling II USA", "device": "nova", "result": "gameplay", "minutes": 9.73, "model_calls": 43, "steps": 27, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4143000F-1014d/frames/033-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "4143000F": "fcdba9a3b836", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "4253

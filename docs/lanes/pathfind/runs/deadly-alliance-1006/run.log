@@ -1,0 +1,52 @@
+pathfind: Mortal Kombat Deadly Alliance (4D57000C) on nova: /storage/E6C6-D7AA/Games/XBox/4D57000C-Mortal_Kombat_Deadly_Alliance.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4D57000C any, loaded none
+[   5.8s] #  1 publisher_logo    replay  A                        replay step 0: sibling 4D570034 step 0: Early boot logo-style splash with no title or menu
+[  10.4s] #  2 publisher_logo    replay  A                        replay step 1: Title logo and copyright notice are a publisher-style splash before the tit
+[  14.7s] #  3 save_load_prompt  replay  START                    replay step 2: Storage status screen with no memory unit; the hint says 'no storage device
+[  19.0s] #  4 publisher_logo    replay  A                        replay step 3: Publisher logo before the title; skip with A per hints, then re-read. Curso
+[  23.6s] #  5 title_screen      replay  START                    replay step 4: Title screen with a 'PRESS START' prompt; the hint for Midway titles and th
+[  28.5s] #  6 main_menu         replay  A                        replay step 5: Previous step pressed START on the title and we landed on the main menu wit
+[  34.9s] #  7 main_menu         replay  A                        replay step 6: This is a select screen, not gameplay. Per the select-screen rule, START is
+[  44.1s] #  8 cutscene          fast    START                    This is the Arcade stage-title card before the round, not a live fight: no HUD health bars
+[  48.2s] #  9 black             black   wait                     black frame
+[  55.5s] # 10 gameplay          fast    wait                     Round 1 is starting: HUD and health bars are up with a ticking timer, the ROUND 1 banner i
+[  81.4s] # 11 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.408, under input 0.435
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 191 s: median 41.0, share>=30 1.0 over 132 samples
+hold-play: fps at 310 s: median 41.0, share>=30 0.995 over 219 samples
+hold-play: validity check share 530 s (hold 611 s of play, verdict 610.3)
+hold-play: verdict short on share by 530 s; holding on (budget 1544 s left)
+hold-play: validity check share 459 s (hold 681 s of play, verdict 681.0)
+hold-play: verdict short on share by 459 s; holding on (budget 1473 s left)
+hold-play: validity check share 397 s (hold 744 s of play, verdict 743.4)
+hold-play: verdict short on share by 397 s; holding on (budget 1410 s left)
+hold-play: validity check share 334 s (hold 806 s of play, verdict 806.6)
+hold-play: verdict short on share by 334 s; holding on (budget 1347 s left)
+hold-play: validity check share 265 s (hold 875 s of play, verdict 875.0)
+hold-play: verdict short on share by 265 s; holding on (budget 1279 s left)
+hold-play: validity check share 194 s (hold 946 s of play, verdict 946.5)
+hold-play: verdict short on share by 194 s; holding on (budget 1207 s left)
+hold-play: validity check share 130 s (hold 1009 s of play, verdict 1010.4)
+hold-play: verdict short on share by 130 s; holding on (budget 1143 s left)
+hold-play: validity check share 58 s (hold 1081 s of play, verdict 1082.4)
+hold-play: verdict short on share by 58 s; holding on (budget 1071 s left)
+hold-play: validity check share 214 s (hold 1128 s of play, verdict 1130.5)
+hold-play: verdict short on share by 214 s; holding on (budget 999 s left)
+hold-play: validity check share 302 s (hold 1178 s of play, verdict 1180.2)
+hold-play: verdict short on share by 302 s; holding on (budget 936 s left)
+hold-play: validity check share 239 s (hold 1241 s of play, verdict 1243.1)
+hold-play: verdict short on share by 239 s; holding on (budget 872 s left)
+hold-play: validity check share 168 s (hold 1312 s of play, verdict 1314.1)
+hold-play: verdict short on share by 168 s; holding on (budget 802 s left)
+hold-play: validity check share 105 s (hold 1375 s of play, verdict 1377.3)
+hold-play: verdict short on share by 105 s; holding on (budget 738 s left)
+hold-play: validity check share 43 s (hold 1435 s of play, verdict 1439.3)
+hold-play: verdict short on share by 43 s; holding on (budget 677 s left)
+hold-play: validity check stop 0 s (hold 1495 s of play, verdict 1499.3)
+hold-play: not held 1495/600 s of play; verdict stops the hold: fps_ok 0.9955, crash False, hang False
+held Mortal Kombat Deadly Alliance for 1666s
+VERDICT Mortal Kombat Deadly Alliance ? FAIL(hitches: a 5475 ms stall after the first 60 s (bar 500 ms)) gameplay=1665.2s fps_ok=0.9955 crash=False hang=False audio_short=0.0 hitches=4/0.15pm worst_ms=5475.0 static_frac=0.0 play_share=0.9011 fps_excluded=165.4s
+{"name": "Mortal Kombat Deadly Alliance", "device": "nova", "result": "gameplay", "minutes": 1.36, "model_calls": 28, "steps": 11, "replayed": 7, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/deadly-alliance-1006/frames/010-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

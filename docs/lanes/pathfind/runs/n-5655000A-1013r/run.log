@@ -1,0 +1,11 @@
+pathfind: Metal Arms Glitch in the System (5655000A) on nova: /storage/E6C6-D7AA/Games/XBox/5655000A-Metal_Arms_Glitch_in_the_System.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 5655000A any, loaded none
+[  14.4s] #  1 publisher_logo    fast    A                        First screen after boot: a publisher/developer logo before the title screen
+[  29.0s] #  2 cutscene          fast    START                    Post-logo, pre-title cinematic intro showing a scenic landscape; should skip to reach titl
+[  40.7s] #  3 cutscene          fast    A                        Introductory cinematic showing the protagonist character (Glitch) in a dramatic pose; part
+[  54.4s] #  4 fatal_error       fast    wait                     Xbox system-level error screen; dashboard error requesting service contact, not recoverabl
+[  68.9s] #  5 fatal_error       fast    wait                     Xbox system-level error screen; not recoverable by controller input. Previous step waited 
+{"name": "Metal Arms Glitch in the System", "device": "nova", "result": "title-error", "minutes": null, "model_calls": 5, "steps": 5, "replayed": 0, "reason": "Xbox system-level error screen; not recoverable by controller input. Previous step waited with no change. This is an unrecoverable fatal error.", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

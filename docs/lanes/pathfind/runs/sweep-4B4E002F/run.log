@@ -1,0 +1,43 @@
+pathfind: World Soccer Winning Eleven 9 (4B4E002F) on nova: /storage/E6C6-D7AA/Games/XBox/4B4E002F-World_Soccer_Winning_Eleven_9.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4B4E002F any, loaded none
+[  12.6s] #  1 publisher_logo    fast    A                        This looks like a publisher or boot logo animation (abstract green shape on white), not a 
+[  21.1s] #  2 publisher_logo    fast    A                        Konami publisher logo, not a title or menu; skip with A, per the logo rule, then re-read.
+[  31.8s] #  3 cutscene          fast    START A                  Konami intro/cinematic footage with letterbox bars and players posed in a celebration-styl
+[  37.7s] #  4 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[  42.5s] #  5 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[  53.3s] #  6 submenu           fast    DOWN A                   A Load Option File error dialog; Cancel backs out of the load and leads toward the game's 
+[  63.0s] #  7 submenu           fast    A                        Option file load error dialog; the last step's DOWN moved highlight to Cancel, which backs
+[  75.6s] #  8 submenu           fast    A                        This is an informational notice from the emulated Option File flow, not gameplay or a titl
+[  85.1s] #  9 main_menu         fast    A                        Exhibition is the highlighted default and the fastest route to a playable match; it is the
+[  98.3s] # 10 submenu           fast    START                    Controller 1 is already assigned under Home (blue highlighted icon). This is a setup scree
+[ 111.1s] # 11 submenu           fast    A                        Controller 1 is already assigned under Home, but the previous START did nothing here. A is
+[ 124.4s] # 12 submenu           fast    A                        Team select screen, not gameplay. Controller 1 is already under HOME, and the rule is to a
+[ 137.4s] # 13 submenu           fast    A                        Team select is not gameplay. Per the team-select rule, accept the default with A on the hi
+[ 150.3s] # 14 submenu           fast    A                        Team select, not gameplay. Per the team-select rule, accept the default with A on the high
+[ 161.9s] # 15 submenu           fast    A                        Team select, not gameplay. Controller 1 was already assigned under HOME in earlier steps, 
+[ 184.5s] # 16 submenu           fast    A                        Uniform select is a setup menu, not play. Accepting the default with A, as on the earlier 
+[ 199.1s] # 17 submenu           fast    RIGHT A                  Setup menu, not play. A did nothing on this unchanged screen, so I'm changing input: RIGHT
+[ 218.5s] # 18 submenu           fast    DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN Setup menu, not play. Match Time is the period length and the rule says to set it to the l
+[ 230.7s] # 19 submenu           fast    RIGHT                    Setup menu, not play. Match Time is highlighted at 10 min, the period length the owner rul
+[ 244.5s] # 20 submenu           fast    RIGHT                    Setup menu, not play. Match Time is highlighted and now reads 15 min., so earlier inputs c
+[ 256.8s] # 21 submenu           fast    R1                       Match Time is now at 20 min. The last two RIGHT presses did nothing, so 20 is likely the l
+[ 273.6s] # 22 submenu           fast    START                    Setup menu, not play. Match Time is at 20 min, which the last two RIGHT presses and R1 did
+[ 285.7s] # 23 submenu           fast    DOWN DOWN A              Setup menu, not play. Match Time is already at 20 min and the last RIGHT and R1 presses ch
+[ 296.7s] # 24 submenu           fast    A                        Match Time is already at 20 min, the longest offered, so the period-length rule is met. Pr
+[ 305.8s] # 25 submenu           fast    A                        Match Time was already set to 20 min (longest) in the Setup menu, so the period rule is me
+[ 317.2s] # 26 submenu           fast    A                        Pre-match Exhibition screen showing both teams as Austria, not yet a live match; no cursor
+[ 329.5s] # 27 cutscene          fast    A                        Pre-match walk-out style camera on the players, with no HUD and no player control shown. N
+[ 340.5s] # 28 cutscene          fast    START                    Pre-match camera view of a player with no HUD and no player control; not gameplay. Previou
+[ 358.7s] # 29 gameplay          fast    A                        HUD is up and the match is live at kickoff; per the kickoff rule, one A press starts the p
+[ 377.2s] # 30 probe             probe   A A STICK:up:1.5         control 0.019, under input 0.163
+hold-play: sports look {'clock': '00:00', 'period': '1st', 'human_controlled': False, 'why': 'Top-left shows "1st 00:00" at kickoff, and no controller icon is visible under either team\'s name bar; the only marker near center is ambiguous, so this is a lo'}
+hold-play: genre team, need 600 s of play
+hold-play: fps at 184 s: median 59.0, share>=30 1.0 over 184 samples
+hold-play: fps at 307 s: median 59.0, share>=30 1.0 over 306 samples
+hold-play: HELD 609/600 s of play; 
+held World Soccer Winning Eleven 9 for 631s
+VERDICT World Soccer Winning Eleven 9 ? PASS None gameplay=629.7s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.1126 play_share=0.9731 fps_excluded=18.0s
+{"name": "World Soccer Winning Eleven 9", "device": "nova", "result": "gameplay", "minutes": 6.29, "model_calls": 39, "steps": 30, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4B4E002F/frames/029-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

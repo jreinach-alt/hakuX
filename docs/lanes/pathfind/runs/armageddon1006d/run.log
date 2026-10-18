@@ -1,0 +1,27 @@
+pathfind: Mortal Kombat: Armageddon (4D570034) on nova: /storage/E6C6-D7AA/Games/XBox/4D570034-Mortal_Kombat_Armageddon.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4D570034 any, loaded none
+[   8.0s] #  1 publisher_logo    replay  A                        replay step 0: replay step 0: replay step 0: replay step 0: Early boot logo-style splash w
+[  12.3s] #  2 publisher_logo    replay  A                        replay step 1: replay step 1: replay step 1: Series logo splash before any title or menu; 
+[  18.6s] #  3 publisher_logo    replay  A                        replay step 2: replay step 2: Middleware (Sofdec) logo and legal text before any title or 
+[  27.0s] #  4 publisher_logo    fast    A                        Midway publisher logo before any title or menu; per hints, skip with A and re-read rather 
+[  34.8s] #  5 publisher_logo    fast    A                        This is the Mortal Kombat logo splash, a new logo before any title or menu. Per the record
+[  38.9s] #  6 save_load_prompt  replay  START                    replay step 5: replay step 5: replay step 3: replay step 4: Storage/profile status screen 
+[  47.0s] #  7 main_menu         fast    A                        Main menu with KOMBAT already highlighted; the recorded path confirms A on KOMBAT is the f
+[  56.6s] #  8 main_menu         fast    A                        Main menu with ARCADE already highlighted at the top; Arcade is the fastest route to a fig
+[  61.4s] #  9 main_menu         replay  A                        replay step 8: replay step 8: replay step 6: replay step 7: Character select screen, not g
+[  65.6s] # 10 black             black   wait                     black frame
+[  76.7s] # 11 gameplay          fast    wait                     HUD with a timer and difficulty meter over a 3D playfield with a character and no menu or 
+[  94.4s] # 12 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.722, under input 0.478
+[  98.9s] # 13 gameplay          fast    wait                     Live round: HUD with a counting timer (84), both fighters in the arena, no banner or menu.
+[ 114.3s] # 14 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.196, under input 0.196
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 183 s: median 59.0, share>=30 1.0 over 174 samples
+hold-play: fps at 301 s: median 57.0, share>=30 1.0 over 286 samples
+hold-play: validity check stop 0 s (hold 601 s of play, verdict 603.3)
+hold-play: not held 601/600 s of play; verdict stops the hold: fps_ok 1.0, crash False, hang False
+held Mortal Kombat: Armageddon for 648s
+VERDICT Mortal Kombat: Armageddon ? PASS None gameplay=646.2s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=1/0.102pm worst_ms=104.6 static_frac=0.0 play_share=0.9344 fps_excluded=44.5s
+{"name": "Mortal Kombat: Armageddon", "device": "nova", "result": "gameplay", "minutes": 1.9, "model_calls": 22, "steps": 14, "replayed": 5, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/armageddon1006d/frames/013-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

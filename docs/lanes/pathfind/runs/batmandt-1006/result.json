@@ -1,0 +1,81 @@
+{
+ "title_id": "4B420001",
+ "name": "Batman Dark Tomorrow",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/4B420001-Batman_Dark_Tomorrow.xiso.iso",
+ "result": "gameplay",
+ "tool": "3624b0a01d",
+ "started": "2026-10-06 21:07:54 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batmandt-1006/frames/161-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batmandt-1006/frames/161-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batmandt-1006/frames/161-probe-c.jpg"
+ ],
+ "minutes": 23.99,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batmandt-1006/frames/160-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batmandt-1006/frames/162-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batmandt-1006/frames/163-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batmandt-1006/frames/164-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batmandt-1006/frames/165-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batmandt-1006/frames/166-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batmandt-1006/frames/167-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batmandt-1006/frames/168-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batmandt-1006/frames/169-after.jpg"
+ ],
+ "retracted": 3,
+ "reason": "four probes refused",
+ "learned": [
+  "hints/learned-pub-4B42.md"
+ ],
+ "hold": {
+  "genre": "attack",
+  "why": "Batman is in an alley fighting thugs in melee, with health and power bars on screen and no vehicle or gun in use.",
+  "ok": false,
+  "play_s": 240.6,
+  "need_s": 600.0,
+  "hold_s": 1354.2,
+  "model_navs": 2,
+  "frames": 40,
+  "still_windows": 33,
+  "shed": [
+   "B"
+  ],
+  "reversals": 6,
+  "reason": "budget 47 min with 241 s of play",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 156,
+    "median": 58.0,
+    "share": 0.994,
+    "at_s": 183.7,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 246,
+    "median": 50.0,
+    "share": 0.996,
+    "at_s": 307.3,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "verdict": "VERDICT Batman Dark Tomorrow ? FAIL(menu time: 17.8% of the scored window in `play` (bar 90%; still 1101 s, play 241 s, menu 14 s, no-timeline 0 s)) gameplay=1355.9s fps_ok=0.9876 crash=False hang=False audio_short=0.0 hitches=3/0.139pm worst_ms=824.8 static_frac=0.0815 play_share=0.1777 fps_excluded=1119.3s"
+ },
+ "model_calls": 169,
+ "calls_by_model": {
+  "claude-sonnet-5": 169
+ },
+ "steps": 139,
+ "seconds": 2839.6,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batmandt-1006/frames/304-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batmandt-1006/strip.jpg"
+}

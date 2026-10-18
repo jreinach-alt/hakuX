@@ -1,0 +1,171 @@
+{
+  "title": "Batman Dark Tomorrow",
+  "title_id": null,
+  "name": null,
+  "device": "",
+  "ref": null,
+  "apk_sha": null,
+  "request_id": "batmandt-1006",
+  "route": null,
+  "surface_scale": null,
+  "adb_failures": null,
+  "thermal": {
+    "measured": false,
+    "samples": 0,
+    "unread": 0,
+    "pauses": [],
+    "in_window": false,
+    "window_covered": null,
+    "gap": null,
+    "first_pause_s": null,
+    "regimen": null,
+    "failed_sustained": null,
+    "still_heating": null
+  },
+  "human_review": "",
+  "booted": true,
+  "reached_gameplay": true,
+  "gameplay_by": "route",
+  "crash": false,
+  "crash_detail": [],
+  "crash_warnings": 0,
+  "gameplay_s": 1355.9,
+  "timeline": {
+    "play_s": 241.0,
+    "scored_s": 1355.9,
+    "play_share": 0.1777,
+    "by_state": {
+      "still": 1101.1,
+      "play": 241.0,
+      "menu": 13.7,
+      "no-timeline": 0.1
+    },
+    "play_spans": 4,
+    "changes": 8,
+    "fps_excluded_s": 1119.3,
+    "fps_excluded_windows": 801
+  },
+  "capture_gaps_s": [],
+  "capture_lost_s": 0,
+  "capture_truncated": false,
+  "capture_truncated_s": null,
+  "hang": false,
+  "hang_gaps_s": [],
+  "fps_windows": 187,
+  "fps_bar": 30.0,
+  "fps_ok_share": 0.9876,
+  "fps_ok_window_share": 0.9947,
+  "fps_window_median": 55.2,
+  "fps_window_min": 20.34,
+  "g_fps_mean_reported_not_judged": 49.87,
+  "target_fps": 30.0,
+  "own_target_share": 0.9876,
+  "confirmation_need_s": 600.0,
+  "below_own_target": false,
+  "power": {
+    "measured": false,
+    "samples": 0,
+    "sign": "battery_w: + discharging, - charging; net_w = battery_w + usb_w",
+    "battery_w": null,
+    "usb_w": null,
+    "usb_from": null,
+    "usb_bound": null,
+    "net_w": null,
+    "sign_suspect": 0,
+    "thermal_status_max": null,
+    "scored_s": 238.1,
+    "flips": 11220,
+    "j_per_frame": null,
+    "j_per_frame_battery": null
+  },
+  "audio_measured": true,
+  "audio_starve_share": 0.0,
+  "audio_empty_calls": 0,
+  "pace": {
+    "lines": 989,
+    "nominal_vblanks": 2,
+    "late_per_100": 0.14,
+    "worst_stall": 824.8,
+    "last": "f=143460 v0=0 v1=38 v2=22 v3=0 v4=0 vb=82 max=31.8 ms=1431.0"
+  },
+  "hitches": {
+    "n": 4,
+    "n_after_warmup": 3,
+    "per_min_after_warmup": 0.139,
+    "worst_ms": 824.8,
+    "n_big_after_warmup": 2,
+    "classification": {
+      "shader": 1,
+      "texture": 0,
+      "both": 0,
+      "unexplained": 3
+    },
+    "worst5": [
+      {
+        "off_s": 135.7,
+        "max_ms": 824.8,
+        "dsm": 7,
+        "dpc_ms": 25.0,
+        "shader_stage_ms": 24.5,
+        "tex_us": 74,
+        "cls": "shader"
+      },
+      {
+        "off_s": 49.2,
+        "max_ms": 677.8,
+        "dsm": 0,
+        "dpc_ms": 0.0,
+        "shader_stage_ms": 0.0,
+        "tex_us": 0,
+        "cls": "unexplained"
+      },
+      {
+        "off_s": 109.2,
+        "max_ms": 666.4,
+        "dsm": 0,
+        "dpc_ms": 0.0,
+        "shader_stage_ms": 0.0,
+        "tex_us": 0,
+        "cls": "unexplained"
+      },
+      {
+        "off_s": 126.7,
+        "max_ms": 101.2,
+        "dsm": 0,
+        "dpc_ms": 0.0,
+        "shader_stage_ms": 0.0,
+        "tex_us": 266,
+        "cls": "unexplained"
+      }
+    ]
+  },
+  "hitch_allowance": null,
+  "static_window": {
+    "measured": true,
+    "frozen_frac": 0.0815,
+    "n": 39,
+    "source": "route-frames"
+  },
+  "position": {
+    "measured": true,
+    "reason": null,
+    "source": "route-frames",
+    "samples": 39,
+    "pairs": 38,
+    "still": 4,
+    "still_frac": 0.1053,
+    "first_last": 0.5246,
+    "bar": 0.025
+  },
+  "pass_kind": "confirmation",
+  "void": null,
+  "pass": false,
+  "failing": "menu time: 17.8% of the scored window in `play` (bar 90%; still 1101 s, play 241 s, menu 14 s, no-timeline 0 s)",
+  "failures": [
+    "menu time: 17.8% of the scored window in `play` (bar 90%; still 1101 s, play 241 s, menu 14 s, no-timeline 0 s)",
+    "hitches: a 825 ms stall after the first 60 s (bar 500 ms)"
+  ],
+  "rating_candidate": null,
+  "contact_sheet": "contact.png",
+  "judged_utc": "2026-10-07T04:55:14Z"
+}

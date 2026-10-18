@@ -1,0 +1,133 @@
+pathfind: Dance Dance Revolution Ultramix USA (4B4E0019) on nova: /storage/E6C6-D7AA/Games/XBox/4B4E0019-Dance_Dance_Revolution_Ultramix_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4B4E0019 any, loaded none
+[   9.2s] #  1 black             fast    wait                     This looks like an early loading/transition screen (possibly an emulator or app logo) with
+[  16.7s] #  2 publisher_logo    fast    A                        Standard publisher logo screen before title; skip it with A per global hints.
+[  26.8s] #  3 loading           fast    A                        This is a safety disclaimer screen shown before the title; dismiss it with A to proceed to
+[  34.0s] #  4 main_menu         fast    A                        GAME MODE is highlighted at top, the default fastest path to play; confirm with A.
+[  41.8s] #  5 submenu           fast    A                        SINGLE is already highlighted as default; confirm with A to proceed toward song select and
+[  49.8s] #  6 submenu           fast    A                        Difficulty select screen; STANDARD appears centered/highlighted as default, confirm with A
+[  58.1s] #  7 cutscene          fast    A                        This is a tutorial/how-to-play demo showing sample play before actual gameplay starts; dis
+[  65.8s] #  8 submenu           fast    A                        Song select screen with a song already highlighted; confirm to proceed to actual dance gam
+[  75.4s] #  9 gameplay          fast    wait                     The dance step arrows, scrolling song gameplay, score, timer, and difficulty HUD confirm a
+[  91.1s] # 10 probe             probe   UP DOWN LEFT STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.373, under input 0.389
+[  95.2s] # 11 results           fast    A START A                This is a post-song results/scoring screen, not gameplay; the probe inputs scored 0 meanin
+[ 105.3s] # 12 submenu           fast    A                        Song select with a track already highlighted; confirming starts the dance gameplay
+[ 114.9s] # 13 gameplay          fast    STICK:up:1.5             Active dance gameplay with arrows scrolling, timer counting, score HUD, and dancer animati
+[ 130.4s] # 14 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.325, under input 0.328
+[ 134.4s] # 15 results           fast    A START A                Post-song scoring screen, not gameplay; need to confirm out of results back to song select
+[ 143.7s] # 16 loading           fast    wait                     Song intro/loading transition screen before dance arrows appear; no gameplay HUD yet, just
+[ 151.1s] # 17 gameplay          fast    STICK:up:1.5             HUD with scrolling arrows, timer counting down, score display, and dancer animation confir
+[ 168.1s] # 18 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:down:1.5 STICK:left:1.2 STICK:right:1.2 control 0.005, under input 0.009
+[ 173.1s] # 19 results           fast    A                        Post-song scoring screen; previous combo A START A looped back here, so try a single A pre
+[ 182.2s] # 20 submenu           fast    A                        Song select screen with a song already highlighted; press A to confirm and start the track
+[ 191.2s] # 21 loading           fast    wait                     READY! banner indicates song is about to start, arrows not yet scrolling into play zone; t
+[ 198.4s] # 22 gameplay          fast    STICK:up:1.5             Full gameplay HUD with scrolling arrows, score, timer counting down, and dancer animation 
+[ 207.9s] # 23 probe             probe   STICK:up:1.5 STICK:up:1.5 control 0.000, under input 0.029
+[ 212.1s] # 24 results           fast    A                        Post-song results screen showing grade E with zero score; need to press A to advance back 
+[ 220.5s] # 25 submenu           fast    A                        Song already highlighted on select screen; press A to confirm and start the track into gam
+[ 228.1s] # 26 loading           fast    wait                     READY banner is a pre-song transition before arrows start scrolling; not yet interactive g
+[ 234.8s] # 27 gameplay          fast    STICK:up:1.5             Full gameplay HUD with scrolling arrows, timer counting down, and animated dancer confirms
+[ 248.7s] # 28 probe             probe   STICK:up:1.5 HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.465, under input 0.441
+claim: 3 live reads with self-moving refused probes: entering the hold
+[ 283.2s] # 37 retracted         probe   wait                     retracted after 30 s: Result/evaluation score screen after a song, not active gameplay
+[ 287.7s] # 38 results           fast    A                        Post-song results screen with grade E; need to press A to advance past this results screen
+[ 296.3s] # 39 submenu           fast    A                        Song select screen is highlighted on Castles In The Sky; need to confirm with A to start t
+[ 303.7s] # 40 loading           fast    wait                     READY banner is a pre-song transition before the step arrows begin; not yet interactive ga
+[ 310.8s] # 41 gameplay          fast    STICK:up:1.5             Active step arrows scrolling with timer counting and score display confirms real gameplay 
+[ 325.5s] # 42 probe             probe   STICK:up:1.5 HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.565, under input 0.431
+[ 330.0s] # 43 results           fast    A                        Post-song results screen already confirmed gameplay occurred; need A to advance past it ba
+[ 350.0s] # 44 submenu           fast    A                        This is the normal DDR loop: after results you return to song select to pick/confirm the n
+[ 359.1s] # 45 loading           fast    wait                     READY! banner is the pre-song transition before step arrows begin; not yet interactive gam
+[ 368.3s] # 46 gameplay          fast    STICK:up:1.5             Active step arrows scrolling with a counting timer and score HUD confirms real gameplay in
+[ 387.0s] # 47 probe             probe   STICK:up:1.5 STICK:left:1.2 RT:3 RT:3 RT:3 control 0.118, under input 0.015
+[ 393.2s] # 48 results           fast    START                    Post-song results/evaluation screen; A,A previously looped back here, so trying START to a
+[ 402.5s] # 49 submenu           fast    A                        Song select screen with a song already highlighted/boxed; need to confirm with the green C
+[ 410.3s] # 50 loading           fast    wait                     READY! banner is a transition animation before step arrows appear; not yet interactive gam
+[ 416.9s] # 51 gameplay          fast    STICK:up:1.5             Step arrows are actively scrolling with a counting timer and score HUD, confirming real ga
+[ 425.7s] # 52 probe             probe   STICK:up:1.5 RT:3        control 0.561, under input 0.000
+[ 428.9s] # 53 results           fast    wait                     Song failed and game is actively saving data; must wait for save to complete before any in
+[ 435.9s] # 54 results           fast    START                    Post-song evaluation screen with grade E and score; need to advance past it to return to s
+[ 451.9s] # 55 submenu           fast    START                    Song already highlighted but two prior A presses looped back here without confirming selec
+[ 460.6s] # 56 submenu           fast    START                    Song select menu with a song already highlighted; need to confirm selection with START to 
+[ 471.1s] # 57 submenu           fast    A                        Song is highlighted; footer explicitly maps the green CONFIRM icon to the A button (Xbox g
+[ 480.9s] # 58 loading           fast    wait                     Song intro/transition screen before the arrow step panels and score HUD appear; this prece
+[ 489.4s] # 59 gameplay          fast    UP                       Active dance gameplay with HUD, scrolling arrow steps, score and timer counting; this is r
+[ 503.1s] # 60 probe             probe   UP LEFT DOWN HOLD:X:3 STICK:left:1.2 STICK:right:1.2 control 0.432, under input 0.521
+claim: 3 live reads with self-moving refused probes: entering the hold
+[ 537.3s] # 69 retracted         probe   wait                     retracted after 30 s: This is a results/evaluation screen after a song, not active gamepla
+[ 541.6s] # 70 results           fast    START START A            This is a post-song results/evaluation screen, not active play; need to advance past it wi
+[ 550.4s] # 71 loading           fast    wait                     This is the song intro/transition screen before the arrow step panels and score HUD appear
+[ 559.0s] # 72 gameplay          fast    UP LEFT DOWN             Full dance HUD with scrolling arrows, score, timer counting down, and a judgment popup con
+[ 570.4s] # 73 probe             probe   UP LEFT DOWN UP LEFT STICK:down:1.5 control 0.041, under input 0.472
+[ 574.7s] # 74 results           fast    START A A                Post-song evaluation screen showing grade E and score breakdown; need to advance past it w
+[ 584.4s] # 75 loading           fast    wait                     READY! banner indicates the song is about to start; this is a transition before the arrow 
+[ 593.5s] # 76 gameplay          fast    UP LEFT DOWN RIGHT       Full dance HUD with scrolling arrows, score counter, timer counting down, and judgment fee
+[ 610.0s] # 77 probe             probe   UP LEFT DOWN RIGHT UP LEFT DOWN HOLD:X:3 STICK:left:1.2 STICK:right:1.2 control 0.153, under input 0.015
+[ 614.4s] # 78 results           fast    START A A                Post-song evaluation screen; need to advance past it with START then A to return to song s
+[ 625.0s] # 79 loading           fast    wait                     Song intro/title card before the arrow panels appear; this is a transition screen, not yet
+[ 633.2s] # 80 gameplay          fast    LEFT UP DOWN RIGHT LEFT DOWN RIGHT UP Dance HUD with scrolling arrows, timer counting down, and judgment feedback (BOO) confirms
+[ 650.9s] # 81 probe             probe   LEFT UP DOWN RIGHT LEFT DOWN RIGHT LT:2 LT+left:1.2 LT+right:1.2 control 0.451, under input 0.253
+[ 656.2s] # 82 results           fast    A A START                Post-song results screen; need to advance to continue to next song select. Previous START/
+[ 667.6s] # 83 submenu           fast    A                        Song select screen with Castles In The Sky highlighted in blue box; confirming with A shou
+[ 673.9s] # 84 loading           fast    wait                     Song title card transition before arrow panels appear; not yet dance gameplay, just wait f
+[ 683.5s] # 85 gameplay          fast    LEFT UP DOWN RIGHT LEFT DOWN RIGHT UP Arrows are already scrolling and being judged (BOO shown), timer counting down - the dance
+[ 704.9s] # 86 probe             probe   LEFT UP DOWN RIGHT LEFT DOWN RIGHT LT:2 LT+left:1.2 LT+right:1.2 control 0.406, under input 0.579
+claim: 3 live reads with self-moving refused probes: entering the hold
+[ 739.2s] # 95 retracted         probe   wait                     retracted after 30 s: Result/score screen after song completion, not active gameplay
+[ 743.3s] # 96 results           fast    A A START                Post-song results/evaluation screen; need to press through to return to song select or nex
+[ 753.4s] # 97 submenu           fast    A                        Song select screen with a song already highlighted; confirming with A should start the nex
+[ 762.2s] # 98 loading           fast    wait                     READY! banner is a pre-song transition before arrows become active and judgeable; not yet 
+[ 768.8s] # 99 gameplay          fast    LEFT UP DOWN RIGHT LEFT DOWN RIGHT UP Arrows are actively scrolling and being judged (BOO), timer counting down - this is live d
+[ 781.3s] #100 probe             probe   LEFT UP DOWN RIGHT LEFT DOWN RIGHT STICK:left:1.5 control 0.000, under input 0.065
+[ 786.5s] #101 results           fast    A                        Results screen stuck here after repeated 'A A START' combos; trying a single A press to ad
+[ 796.1s] #102 submenu           fast    A                        Song select screen; the previous A A START sequence looped back to results, now confirming
+[ 803.8s] #103 loading           fast    wait                     READY! banner means arrows aren't active/judgeable yet; wait for the song to actually star
+[ 810.7s] #104 gameplay          fast    LEFT DOWN UP RIGHT UP DOWN Arrows are actively scrolling on the track and being judged with a visible countdown timer
+[ 829.8s] #105 probe             probe   LEFT DOWN UP RIGHT UP DOWN LEFT STICK:down:1.5 STICK:left:1.2 STICK:right:1.2 control 0.510, under input 0.156
+[ 833.8s] #106 results           fast    A                        This is a post-song results/evaluation screen, not gameplay; need to advance past it with 
+[ 840.7s] #107 submenu           fast    A                        Song select menu with a highlighted track; need to confirm selection with A to start the s
+[ 849.0s] #108 loading           fast    wait                     READY! banner indicates the song is about to start but arrows are not yet active/judgeable
+[ 856.8s] #109 gameplay          fast    LEFT DOWN UP RIGHT       Arrows are actively scrolling and being judged (BOO judgment shown), timer counting, dance
+[ 873.3s] #110 probe             probe   LEFT DOWN UP RIGHT LEFT DOWN UP STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.514, under input 0.146
+[ 877.5s] #111 results           fast    A                        Post-song results/evaluation screen; need to press A to advance back to song select and ch
+[ 884.9s] #112 submenu           fast    A                        Song select menu with Castles In The Sky highlighted; confirm with A to start the song and
+[ 895.9s] #113 loading           fast    wait                     Song title/artist splash before arrows start scrolling; this is the pre-song intro, not ye
+[ 903.7s] #114 gameplay          fast    LEFT DOWN UP LEFT        Arrows actively scrolling and being judged with BOO feedback, timer counting down, dancer 
+[ 923.1s] #115 probe             probe   LEFT DOWN UP LEFT LEFT DOWN UP HOLD:B:3 HOLD:B:3 HOLD:B:3 control 0.026, under input 0.006
+[ 926.9s] #116 results           fast    A                        Post-song evaluation screen; need A to advance back to song select to pick another song an
+[ 935.1s] #117 submenu           fast    A                        Song select menu with Castles In The Sky highlighted; confirm with A to start the song and
+[ 943.2s] #118 loading           fast    wait                     Pre-song ready screen before the arrow track starts scrolling; not yet judgeable gameplay,
+[ 950.1s] #119 gameplay          fast    LEFT DOWN UP RIGHT       Arrows actively scrolling and being judged (BOO), timer counting down, dancer animating - 
+[ 961.6s] #120 probe             probe   LEFT DOWN UP RIGHT HOLD:B:3 control 0.000, under input 0.440
+[ 965.3s] #121 results           fast    A                        Post-song evaluation screen; A on SCORE should advance to song select where I can pick ano
+[ 973.0s] #122 submenu           fast    A                        Song select menu with Castles In The Sky already highlighted (blue box, BEST tag); confirm
+[ 981.1s] #123 loading           fast    wait                     READY! screen before the arrow track starts scrolling; not yet judgeable gameplay, need to
+[ 989.7s] #124 gameplay          fast    LEFT DOWN UP RIGHT       Arrows are actively scrolling and being judged, timer counting down, dancer animating - co
+[ 997.6s] #125 probe             probe   LEFT DOWN UP RIGHT STICK:up:1.5 control 0.000, under input 0.000
+[1001.6s] #126 results           fast    wait                     This is a post-song save/results screen; it's actively saving data, so I should wait rathe
+[1010.1s] #127 results           fast    A                        This is a results/evaluation screen, not gameplay; need to press A to advance past it sinc
+[1020.8s] #128 submenu           fast    A                        Back at song select with Castles In The Sky already highlighted; press A to confirm the so
+[1029.4s] #129 loading           fast    wait                     This is the pre-song READY! transition screen before the arrow track starts; not yet gamep
+[1036.3s] #130 gameplay          fast    LEFT DOWN UP RIGHT       Arrows are actively scrolling down the track toward the judgment markers, timer is countin
+[1050.7s] #131 probe             probe   LEFT DOWN UP RIGHT STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.330, under input 0.644
+claim: 3 live reads with self-moving refused probes: entering the hold
+[1085.2s] #140 retracted         probe   wait                     retracted after 30 s: This is a results/evaluation screen after a song, not active gamepla
+[1090.5s] #141 results           fast    A                        This is a post-song results screen with grade E and score tally; need A to advance to the 
+[1105.6s] #142 submenu           fast    START                    Same song-select screen as before; A twice already looped back here without advancing, so 
+[1113.0s] #143 submenu           fast    A                        Back on song select with Castles In The Sky highlighted; confirm selection with A to proce
+[1121.3s] #144 loading           fast    wait                     READY! banner indicates the song is about to start; arrows haven't appeared yet, this is a
+[1128.9s] #145 gameplay          fast    STICK:up:1               Active song in progress with scrolling step arrows and a HUD (score, timer, life gauge); t
+[1135.8s] #146 probe             probe   STICK:up:1 STICK:down:1  control 0.677, under input 0.000
+[1138.9s] #147 results           fast    wait                     Song failed and game is saving results data; need to wait for save to complete then press 
+[1145.8s] #148 results           fast    A                        Song results/evaluation screen showing final grade and stats; need to confirm to proceed p
+[1153.2s] #149 submenu           fast    A                        Song select with Castles In The Sky highlighted; need to confirm with A to proceed to diff
+[1160.8s] #150 loading           fast    wait                     pre-song loading screen before step arrows appear, this is a brief transition between song
+[1167.9s] #151 gameplay          fast    STICK:up:1               Song is actively playing with scrolling arrows, HUD score/timer/life gauge visible; this i
+[1181.1s] #152 probe             probe   STICK:up:1 STICK:down:1 STICK:left:1.2 STICK:right:1.2 control 0.877, under input 0.422
+[1185.2s] #153 results           fast    A                        Result/evaluation screen after a failed song; need to press A to advance past this results
+[1194.8s] #154 submenu           fast    A                        Song select screen; Castles In The Sky is highlighted/selected, need A to confirm and proc
+[1201.0s] #155 loading           fast    wait                     Pre-song transition screen between song select confirmation and gameplay arrows starting; 
+{"name": "Dance Dance Revolution Ultramix USA", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 118, "steps": 123, "replayed": 0, "reason": "budget 20 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

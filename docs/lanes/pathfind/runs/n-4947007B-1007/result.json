@@ -1,0 +1,80 @@
+{
+ "title_id": "4947007B",
+ "name": "Indigo Prophecy USA",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/4947007B-Indigo_Prophecy_USA.xiso.iso",
+ "result": "gameplay",
+ "tool": "3624b0a01d",
+ "started": "2026-10-07 11:22:35 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4947007B-1007/frames/076-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4947007B-1007/frames/076-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4947007B-1007/frames/076-probe-c.jpg"
+ ],
+ "reason": "four probes refused",
+ "minutes": 11.48,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4947007B-1007/frames/075-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4947007B-1007/frames/077-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4947007B-1007/frames/078-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4947007B-1007/frames/079-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4947007B-1007/frames/080-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4947007B-1007/frames/081-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4947007B-1007/frames/082-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4947007B-1007/frames/083-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4947007B-1007/frames/084-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-4947.md"
+ ],
+ "hold": {
+  "genre": "other",
+  "why": "First-person interactive-dialogue/adventure scene (Indigo Prophecy) exploring a bathroom with another NPC, no combat/driving/shooting present.",
+  "ok": false,
+  "play_s": 1245.6,
+  "need_s": 600.0,
+  "hold_s": 1385.2,
+  "model_navs": 10,
+  "frames": 39,
+  "still_windows": 1,
+  "shed": [
+   "X"
+  ],
+  "reversals": 1,
+  "reason": "verdict stops the hold: fps_ok 0.9947, crash False, hang False",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 167,
+    "median": 57.0,
+    "share": 0.994,
+    "at_s": 186.9,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 275,
+    "median": 59.0,
+    "share": 0.993,
+    "at_s": 306.5,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "verdict": "VERDICT Indigo Prophecy USA ? PASS None gameplay=1386.0s fps_ok=0.9947 crash=False hang=False audio_short=0.0 hitches=1/0.045pm worst_ms=130.4 static_frac=0.0792 play_share=0.9023 fps_excluded=136.0s"
+ },
+ "model_calls": 66,
+ "calls_by_model": {
+  "claude-sonnet-5": 66
+ },
+ "steps": 76,
+ "seconds": 2122.0,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4947007B-1007/frames/255-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 3,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4947007B-1007/strip.jpg"
+}

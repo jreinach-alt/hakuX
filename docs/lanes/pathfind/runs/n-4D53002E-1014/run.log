@@ -1,0 +1,60 @@
+pathfind: Maximum Chase USA (4D53002E) on nova: /storage/E6C6-D7AA/Games/XBox/4D53002E-Maximum_Chase_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4D53002E any, loaded none
+[  13.7s] #  1 publisher_logo    fast    A                        First screen after boot; geometric logo shape typical of publisher/developer intro; need t
+[  32.5s] #  2 intro_video       fast    A                        Title splash screen showing the game name; this is a standard intro/logo sequence after th
+[  44.9s] #  3 save_load_prompt  fast    A                        Game asking to select a save location; three empty slots offered; top slot is highlighted 
+[  56.7s] #  4 save_load_prompt  fast    UP A                     Game is asking to create a new save location. No is highlighted by default, but Yes is nee
+[  69.8s] #  5 main_menu         fast    A                        NEW GAME is highlighted (brightest); it is the fastest path to gameplay per defaults.
+[  81.5s] #  6 loading           fast    wait                     Game is transitioning after NEW GAME selection; black loading screen after menu selection 
+[  99.3s] #  7 cutscene          fast    A                        After the loading screen, an in-engine cinematic is playing. This is not gameplay—no HUD, 
+[ 102.9s] #  8 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 113.8s] #  9 cutscene          fast    A                        Dialogue cutscene with subtitles; in-engine camera but not interactive gameplay. A has bee
+[ 117.4s] # 10 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 130.3s] # 11 black             fast    wait                     Post-cutscene fade to black; transition between the dialogue cutscene and the next phase. 
+[ 142.2s] # 12 cutscene          fast    A                        Dialogue cutscene with subtitles and letterbox bars; in-engine camera but no HUD or player
+[ 155.8s] # 13 cutscene          fast    A                        Letterbox bars indicate a cutscene; the previous step was a dialogue cutscene and A advanc
+[ 175.3s] # 14 cutscene          fast    A                        Letterbox bars with dialogue subtitles at the bottom, in-engine camera showing the game wo
+[ 191.1s] # 15 gameplay          fast    wait                     Full game HUD visible (PLAYER status bar, vehicle name, speed gauge), player in control of
+[ 208.1s] # 16 probe             probe   RT:1.5                   control 0.043, under input 0.411
+[ 245.6s] # 25 retracted         probe   wait                     retracted after 30 s: Post-chase replay results screen ('REPLAY FILM END CHASE'), not acti
+[ 253.8s] # 26 results           fast    A                        Post-chase replay results screen ('REPLAY FILM END CHASE'); not active gameplay, a menu st
+[ 268.3s] # 27 cutscene          fast    A                        Letterbox bars with dialogue subtitles indicate an in-engine narrative cutscene; the playe
+[ 310.7s] # 28 gameplay          fast    wait                     Full game HUD (vehicle name, health bar, speed gauge) visible; player car in game world; n
+[ 333.7s] # 29 probe             probe   RT:1.5 RT+left:1.2 RT+right:1.2 control 0.332, under input 0.376
+[ 370.0s] # 38 retracted         probe   wait                     retracted after 30 s: Replay/film end screen with 'END CHASE' text; not player-controlled 
+[ 381.8s] # 39 results           fast    A                        END CHASE text marks a replay results screen, not active player-controlled gameplay. The p
+[ 442.0s] # 40 cutscene          fast    A                        In-engine dialogue text indicates a narrative sequence overlaid on game world, not active 
+[ 468.6s] # 41 gameplay          fast    wait                     Full HUD visible, player vehicle in game world, no cutscene bars or dialogue overlay, no m
+[ 487.8s] # 42 probe             probe   HOLD:A:3                 control 0.004, under input 0.995
+[ 500.2s] # 43 gameplay          fast    wait                     Full HUD visible (vehicle name, health, player status, speed), player's vehicle in 3D game
+[ 519.2s] # 44 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.187, under input 0.042
+[ 554.8s] # 52 retracted         probe   wait                     retracted after 30 s: CHASE OVER screen is a mission failure/completion state, not active 
+[ 565.5s] # 53 results           fast    START                    Replay/film screen showing mission conclusion; not active gameplay. Previous A presses loo
+[ 579.4s] # 54 cutscene          fast    START                    Dialogue subtitles + letterbox bars = in-engine cutscene or mission briefing dialogue, not
+[ 598.9s] # 55 pause             fast    A                        Pause menu with retirement confirmation dialog; NO button already highlighted; need to sel
+[ 635.9s] # 56 gameplay          fast    wait                     Full HUD (CAMARO health, PLAYER status, speed gauge), player's vehicle in active 3D game w
+[ 655.3s] # 57 probe             probe   STICK:up:2 STICK:left:1.2 STICK:right:1.2 control 0.221, under input 0.076
+[ 691.6s] # 66 retracted         probe   wait                     retracted after 30 s: END CHASE / FILM screen is a post-gameplay cutscene or replay review
+[ 718.4s] # 67 results           fast    A                        Mission/chase has concluded and a results screen with replay options is displayed; not act
+[ 732.2s] # 68 cutscene          fast    START                    Letterbox bars and dialogue subtitle indicate in-engine narrative cutscene, not active gam
+[ 750.2s] # 69 pause             fast    A                        Dialog overlay on paused gameplay asking to confirm retirement; NO is highlighted; pressin
+[ 779.2s] # 70 gameplay          fast    wait                     Full HUD active, player's car in first-person racing view in 3D game world. This is an act
+[ 799.3s] # 71 probe             probe   STICK:up:2 STICK:left:1.2 STICK:right:1.2 control 0.215, under input 0.098
+[ 835.7s] # 80 retracted         probe   wait                     retracted after 30 s: Replay film / end chase screen displaying post-race sequence, not ac
+[ 875.1s] # 81 results           fast    A                        Post-mission results screen displaying replay options after the chase mission concluded; n
+[ 887.6s] # 82 cutscene          fast    START                    Letterbox bars and dialogue subtitle indicate in-engine narrative cutscene, not active gam
+[ 925.7s] # 83 pause             fast    UP A                     This is a pause menu dialog during gameplay. Pressing A on the highlighted NO option twice
+[ 942.6s] # 84 results           fast    A                        End-of-mission menu with options after chase completion; not active gameplay, not a pause 
+[ 999.5s] # 85 pause             fast    B                        Pause menu during gameplay. Previous attempts: A on No looped; UP A moved to Yes, went to 
+[1024.8s] # 86 pause             fast    UP A                     Retry dialog during a paused mission. B failed (step 85). Previous A on No looped (history
+[1071.3s] # 87 cutscene          fast    A                        In-engine narrative dialogue subtitle indicates a cutscene moment during or between gamepl
+[1086.6s] # 88 gameplay          fast    RT:1.5                   HUD is fully active (health bars, speed, vehicle name visible), player-controlled car is r
+[1110.5s] # 89 probe             probe   RT:1.5 HOLD:X:3 STICK:left:1.2 STICK:right:1.2 control 0.410, under input 0.475
+[1146.1s] # 98 retracted         probe   wait                     retracted after 30 s: End Chase menu screen with replay/film options, not active player ch
+[1155.4s] # 99 results           fast    A                        Mission ended; replay menu shown. Selecting 'REPLAY' (highlighted in orange) will restart 
+[1182.1s] #100 cutscene          fast    START                    Italicized dialogue text at bottom is an in-engine narrative moment, not active gameplay; 
+[1268.4s] #101 pause             fast    START                    Retire prompt after mission end; previous A-based attempts (UP A, A, B, UP A) looped witho
+{"name": "Maximum Chase USA", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 52, "steps": 54, "replayed": 0, "reason": "budget 20 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

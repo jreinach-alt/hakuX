@@ -1,0 +1,79 @@
+{
+ "title_id": "4156005D",
+ "name": "Call of Duty 3",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/4156005D-Call_of_Duty_3.xiso.iso",
+ "result": "gameplay",
+ "tool": "3624b0a01d",
+ "started": "2026-10-06 22:24:32 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/cod3-1006b/frames/031-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/cod3-1006b/frames/031-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/cod3-1006b/frames/031-probe-c.jpg"
+ ],
+ "minutes": 3.4,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/cod3-1006b/frames/030-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/cod3-1006b/frames/032-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/cod3-1006b/frames/033-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/cod3-1006b/frames/034-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/cod3-1006b/frames/035-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/cod3-1006b/frames/036-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/cod3-1006b/frames/037-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/cod3-1006b/frames/038-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/cod3-1006b/frames/039-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-4156.md"
+ ],
+ "hold": {
+  "genre": "shooter",
+  "why": "On-foot soldier in a battlefield level with a compass, ammo and grenade counters, and a movement tutorial prompt, so it is a gun game where the player walks and",
+  "ok": false,
+  "play_s": 603.3,
+  "need_s": 600.0,
+  "hold_s": 603.6,
+  "model_navs": 0,
+  "frames": 17,
+  "still_windows": 0,
+  "shed": [],
+  "reversals": 12,
+  "reason": "verdict stops the hold: fps_ok 1.0, crash False, hang False",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 93,
+    "median": 29.0,
+    "share": 0.753,
+    "at_s": 190.2,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 152,
+    "median": 29.0,
+    "share": 0.75,
+    "at_s": 309.7,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "verdict": "VERDICT Call of Duty 3 ? PASS None gameplay=603.4s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0092 play_share=0.9998 fps_excluded=0.0s"
+ },
+ "model_calls": 18,
+ "calls_by_model": {
+  "claude-sonnet-5": 18
+ },
+ "steps": 31,
+ "seconds": 852.5,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/cod3-1006b/frames/088-hold.jpg",
+ "last_state": "probe",
+ "replayed": 13,
+ "sib_replayed": 0,
+ "guide": [
+  "4156005D"
+ ],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/cod3-1006b/strip.jpg"
+}

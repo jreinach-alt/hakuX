@@ -1,0 +1,79 @@
+{
+ "title_id": "58500001",
+ "name": "Gui Yi Taiwan",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/58500001-Gui_Yi_Taiwan.xiso.iso",
+ "result": "gameplay",
+ "tool": "3624b0a01d",
+ "started": "2026-10-07 12:47:57 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-58500001-1007/frames/009-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-58500001-1007/frames/009-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-58500001-1007/frames/009-probe-c.jpg"
+ ],
+ "minutes": 1.59,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-58500001-1007/frames/008-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-58500001-1007/frames/010-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-58500001-1007/frames/011-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-58500001-1007/frames/012-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-58500001-1007/frames/013-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-58500001-1007/frames/014-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-58500001-1007/frames/015-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-58500001-1007/frames/016-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-58500001-1007/frames/017-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-5850.md"
+ ],
+ "hold": {
+  "genre": "attack",
+  "why": "Third-person character wielding a blade with health/magic orbs HUD, exploring on foot in melee combat stance",
+  "ok": false,
+  "play_s": 417.5,
+  "need_s": 600.0,
+  "hold_s": 2267.9,
+  "model_navs": 230,
+  "frames": 65,
+  "still_windows": 4,
+  "shed": [
+   "B"
+  ],
+  "reversals": 0,
+  "reason": "budget 40 min with 418 s of play",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 163,
+    "median": 59.0,
+    "share": 0.982,
+    "at_s": 184.6,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 271,
+    "median": 59.0,
+    "share": 0.989,
+    "at_s": 306.9,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "verdict": "VERDICT Gui Yi Taiwan ? FAIL(menu time: 18.4% of the scored window in `play` (bar 90%; menu 1699 s, play 418 s, still 151 s, no-timeline 0 s)) gameplay=2268.7s fps_ok=0.9429 crash=False hang=False audio_short=0.0 hitches=1/0.027pm worst_ms=278.1 static_frac=0.001 play_share=0.1844 fps_excluded=1849.6s"
+ },
+ "model_calls": 246,
+ "calls_by_model": {
+  "claude-sonnet-5": 246
+ },
+ "steps": 9,
+ "seconds": 2414.8,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-58500001-1007/frames/294-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-58500001-1007/strip.jpg"
+}

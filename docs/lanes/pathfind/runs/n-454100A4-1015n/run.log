@@ -1,0 +1,31 @@
+pathfind: Tiger Woods PGA Tour 07 USA (454100A4) on nova: /storage/E6C6-D7AA/Games/XBox/454100A4-Tiger_Woods_PGA_Tour_07_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 454100A4 any, loaded none
+[   9.6s] #  1 black             fast    wait                     This is not the emulator yet, just a launcher/home screen with an app icon shown - no game
+[  17.9s] #  2 publisher_logo    fast    START A                  This is a publisher logo screen appearing shortly after boot, matching EA convention; skip
+[  24.2s] #  3 black             black   wait                     black frame
+[  33.6s] #  4 title_screen      fast    START                    Title screen with EA Sports branding and game title shown; no press-start text yet but thi
+[  41.9s] #  5 cutscene          fast    START A                  This matches the known EA intro cinematic pattern (ghosted golfer imagery, no HUD) from th
+[  51.5s] #  6 loading           fast    wait                     Loading screen with spinning LOADING indicator and a gameplay tip; no interactive menu pre
+[  61.4s] #  7 cutscene          fast    START A                  Pre-shot establishing shot of the golfer on the course with no gameplay HUD (club, wind, d
+[  73.1s] #  8 submenu           fast    A                        A Caddy Tip popup is overlaying the shot setup; need to dismiss it with A (DONE) to procee
+[  80.3s] #  9 gameplay          fast    STICK:up:1.5             Full shot HUD with club, distance, wind and tee percentage is showing, golfer is addressin
+[  98.4s] # 10 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 control 0.016, under input 0.023
+[ 105.7s] # 11 gameplay          fast    STICK:down:1 STICK:up:1  Full shot HUD with club/distance/wind and golfer at address is live play; prior STICK:up h
+[ 125.4s] # 12 probe             probe   STICK:down:1 STICK:up:1 STICK:down:1 STICK:up:1 STICK:up:1 STICK:up:1 control 0.093, under input 0.088
+[ 130.4s] # 13 cutscene          fast    START A                  This is a close-up establishing/intro shot of the golfer with no shot HUD, differing from 
+[ 140.3s] # 14 gameplay          fast    STICK:up:1.5             Full shot HUD with club, distance, wind and lie is showing and golfer is at address ready 
+[ 150.8s] # 15 probe             probe   STICK:up:1.5 HOLD:A:3    control 0.013, under input 0.021
+[ 155.4s] # 16 gameplay          fast    STICK:down:1 STICK:up:1.5 Full shot HUD (club, distance, lie) with golfer at address is live play; the swing didn't 
+[ 175.2s] # 17 probe             probe   STICK:down:1 STICK:up:1.5 STICK:down:1 HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.279, under input 0.345
+[ 179.6s] # 18 submenu           fast    A                        A tip popup is blocking the swing; DONE is highlighted with A icon, so press A to dismiss 
+[ 187.9s] # 19 gameplay          fast    STICK:up:1.5             Full shot HUD with club, distance, wind and lie showing; golfer is at address ready to swi
+[ 200.0s] # 20 probe             probe   STICK:up:1.5 RT:3        control 0.050, under input 0.182
+hold-play: genre other, need 630 s of play
+hold-play: fps at 180 s: median 19.0, share>=30 0.0 over 60 samples -> STOP (not on course)
+hold-play: not held 179/630 s of play; fps gate at 3:00: median 19 < 22, 0% of 60 samples at >= 28.5
+held Tiger Woods PGA Tour 07 USA for 182s
+VERDICT Tiger Woods PGA Tour 07 USA ? FAIL(duration: 181 s of gameplay < 600 s confirmation) gameplay=181.2s fps_ok=0.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.5708 play_share=0.9986 fps_excluded=0.0s
+{"name": "Tiger Woods PGA Tour 07 USA", "device": "nova", "result": "gameplay", "minutes": 3.33, "model_calls": 20, "steps": 20, "replayed": 0, "reason": "four probes refused", "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454100A4-1015n/frames/019-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

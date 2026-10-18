@@ -1,0 +1,45 @@
+pathfind: NBA Live 2004 (45410038) on nova: /storage/E6C6-D7AA/Games/XBox/45410038-NBA_Live_2004.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 45410038 any, loaded none
+[   5.7s] #  1 publisher_logo    sibreplay A                        sibling 45410050 step 0: Early boot publisher/splash logo (EA-style logo animation). Not s
+[  13.3s] #  2 loading           fast    wait                     Game is loading after the publisher logo; no input is needed, so wait and look again witho
+[  22.6s] #  3 publisher_logo    fast    A                        NBA trademark notice screen is a publisher/legal logo before the title, so skip it with A 
+[  33.5s] #  4 title_screen      fast    START                    Team-logo wall before the title/menus; no prompt visible, so the usual advance on EA title
+[  41.0s] #  5 publisher_logo    fast    A                        This is the EA/NBA Live 2004 splash card before the title; no menu or highlight. Per the E
+[  48.5s] #  6 publisher_logo    fast    START                    This is the EA/NBA Live 2004 splash card. A already did nothing on this screen, so I switc
+[  56.2s] #  7 main_menu         fast    A                        Favorite-team picker on the main setup path; the highlighted item is NBA (the default), so
+[  64.8s] #  8 main_menu         fast    A                        Main menu with PLAY NOW highlighted, the fastest path to play. Pressing A selects it.
+[  74.4s] #  9 submenu           fast    LEFT                     Sports team select with both controllers in the middle column, so no side is assigned and 
+[  84.4s] # 10 submenu           fast    START                    Controller 1 (blue bar) is now in the Nets side column next to the away team, per the ESPN
+[  91.9s] # 11 submenu           fast    A                        Jersey select is a confirm screen with defaults; per the recorded path, A accepts the defa
+[ 105.5s] # 12 submenu           fast    DOWN RIGHT RIGHT RIGHT RIGHT Sports setup rule: set the quarter length to the longest value offered before tip-off. It 
+[ 115.2s] # 13 submenu           fast    RIGHT RIGHT RIGHT RIGHT  Sports setup rule: Quarter Length must be the longest value offered before tip-off. It is 
+[ 124.9s] # 14 submenu           fast    RIGHT                    Quarter Length is the highlighted row, currently at 2 Minutes, which is not the longest op
+[ 135.8s] # 15 submenu           fast    RIGHT RIGHT RIGHT        Sports setup rule: Quarter Length must be the longest value before tip-off. It is highligh
+[ 144.9s] # 16 submenu           fast    RIGHT RIGHT RIGHT        Still in the sports setup. Quarter Length is highlighted at 6 Minutes, not the longest val
+[ 153.9s] # 17 submenu           fast    STICK:right:0.4          Quarter Length is highlighted at 9 Minutes, not yet the longest value. D-pad RIGHT did not
+[ 164.7s] # 18 submenu           fast    RIGHT RIGHT RIGHT        Sports setup rule: Quarter Length must be the longest value offered before tip-off. It is 
+[ 174.2s] # 19 submenu           fast    DOWN UP RIGHT            Sports setup rule needs Quarter Length at the longest value, but it is at 6 Minutes and th
+[ 181.3s] # 20 submenu           fast    RIGHT                    Quarter Length is highlighted at 7 Minutes, not the longest value. Previous RIGHT presses 
+[ 188.7s] # 21 submenu           fast    RIGHT RIGHT              Sports setup rule: Quarter Length must be the longest value before tip-off. It is highligh
+[ 198.9s] # 22 submenu           fast    RIGHT RIGHT              Sports setup rule: Quarter Length must be the longest offered before tip-off. It is highli
+[ 206.3s] # 23 submenu           fast    A                        Quarter Length is already at 12 Minutes, the longest option, so the sports setup rule is m
+[ 216.2s] # 24 submenu           fast    A                        A controls-reference info screen in the setup flow before tip-off, not play. The previous 
+[ 227.3s] # 25 gameplay          fast    wait                     Full HUD with scoreboard and players positioned on the floor, the period length is already
+[ 248.6s] # 26 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.384, under input 0.234
+[ 257.1s] # 27 gameplay          fast    wait                     Full HUD with scoreboard and quarter clock on a live court, no menu or banner. Setup rules
+[ 278.7s] # 28 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.686, under input 0.782
+[ 286.1s] # 29 gameplay          fast    STICK:down:1.5           Live play: HUD and scoreboard up, the 1st-quarter clock is running (11:41 to 11:34 across 
+[ 312.2s] # 30 probe             probe   STICK:down:1.5 STICK:down:1.5 STICK:left:1.2 STICK:right:1.2 control 0.207, under input 0.528
+claim: 3 live reads with self-moving refused probes: entering the hold
+hold-play: sports look {'clock': '11:34', 'period': '1ST', 'human_controlled': True, 'why': 'Scoreboard shows 1ST 11:34 (NJ 0, SA 3); a gold controller icon sits beside the KIDD name tag, marking the human-controlled player.'}
+hold-play: genre team, need 600 s of play
+hold-play: fps at 187 s: median 34.0, share>=30 0.964 over 110 samples
+hold-play: fps at 302 s: median 35.0, share>=30 0.961 over 180 samples
+hold-play: validity check stop 0 s (hold 605 s of play, verdict 603.7)
+hold-play: not held 605/600 s of play; verdict stops the hold: fps_ok 1.0, crash False, hang False
+held NBA Live 2004 for 607s
+VERDICT NBA Live 2004 ? PASS None gameplay=604.3s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0022 play_share=0.9998 fps_excluded=1.6s
+{"name": "NBA Live 2004", "device": "nova", "result": "gameplay", "minutes": 5.2, "model_calls": 38, "steps": 30, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nbalive04-1006/frames/029-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

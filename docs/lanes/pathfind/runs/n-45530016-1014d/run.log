@@ -1,0 +1,55 @@
+pathfind: Backyard Wrestling 2 There Goes the Neighborhood USA (45530016) on nova: /storage/E6C6-D7AA/Games/XBox/45530016-Backyard_Wrestling_2_There_Goes_the_Neighborhood_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 45530016 any, loaded none
+[  12.9s] #  1 publisher_logo    fast    A                        Publisher logo at cold boot; this is the first screen after emulator start
+[  29.8s] #  2 intro_video       fast    A                        Legal/safety warning screen after publisher logo; part of the intro sequence before gamepl
+[  41.9s] #  3 cutscene          fast    START                    Intro cinematic playing after publisher logo and intro video; no interactive elements visi
+[  55.4s] #  4 loading           fast    wait                     Loading screen after intro cutscene; game is preparing the next state with a progress bar 
+[  71.2s] #  5 title_screen      fast    START                    Title screen with explicit 'Press START' prompt visible; wood-themed menu background
+[  89.9s] #  6 main_menu         fast    A                        PLAY GAME is already highlighted on the main menu; A to select it and proceed to gameplay 
+[ 105.7s] #  7 main_menu         fast    A                        PLAY GAME is already highlighted and ready to select; A confirms it to reach gameplay fast
+[ 119.1s] #  8 submenu           fast    A                        Career slot selection screen after main menu; 'New Career' is highlighted and ready to acc
+[ 135.8s] #  9 name_entry        fast    START                    Keyboard-based name input after career slot selection. START should jump to OK/Accept butt
+[ 190.4s] # 10 name_entry        fast    DOWN DOWN DOWN RIGHT RIGHT A START did not work; need to navigate to OK button using D-pad and press A to confirm/accep
+[ 248.4s] # 11 name_entry        fast    DOWN DOWN DOWN RIGHT RIGHT Y Keyboard cursor is on 'i'; need to navigate to OK button at bottom-right and press Y (the 
+[ 300.8s] # 12 name_entry        fast    STICK:down:1.5 STICK:right:1.5 A Previous D-pad navigation (DOWN/RIGHT) had no effect on this screen; some titles respond o
+[ 355.1s] # 13 name_entry        fast    RSTICK:down:1.5 RSTICK:right:1.5 A Stuck on name entry keyboard. Previous attempts used D-pad and left STICK navigation with 
+[ 428.3s] # 14 name_entry        fast    B                        Stuck on the name entry keyboard; previous D-pad/stick navigation and A/Y attempts failed.
+[ 446.0s] # 15 profile_creation  fast    A                        Career slot selection with 'New Career' highlighted, asking for confirmation before procee
+[ 516.5s] # 16 name_entry        fast    START                    Career name entry keyboard. Previous D-pad, stick, A, Y, and B attempts all failed. Per hi
+[ 565.5s] # 17 name_entry        fast    X                        Still on the career name keyboard. The instruction bar explicitly labels X as CANCEL; sinc
+[ 645.2s] # 18 name_entry        fast    A                        Still on the career name keyboard. History shows d-pad, STICK, START, X all failed; A and 
+[ 709.7s] # 19 name_entry        fast    DOWN DOWN DOWN DOWN RIGHT A Still on the career name keyboard. Previous attempts tried A, B, X, Y, START, d-pad left, 
+[ 778.0s] # 20 name_entry        fast    RIGHT A                  Stuck on career name entry keyboard. DEL is highlighted; OK button is one press right. All
+[ 789.6s] # 21 name_entry        fast    A                        Final confirmation after name entry. The green A button is highlighted/indicated as the ac
+[ 814.5s] # 22 name_entry        fast    A                        Final confirmation step after entering the wrestler name. The green A button is clearly in
+[ 849.6s] # 23 name_entry        fast    A                        Final confirmation screen for the new wrestler creation. The green ACCEPT button (A) is cl
+[ 865.7s] # 24 loading           fast    wait                     The game transitioned from name entry to a loading screen. The 'Loading, please wait' mess
+[ 900.2s] # 25 submenu           fast    DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN Wrestler customization menu after name entry completed; NAME is highlighted; DONE is at th
+[ 926.9s] # 26 submenu           fast    A                        Wrestler customization submenu with DONE highlighted; pressing A confirms and exits to pro
+[ 946.1s] # 27 save_load_prompt  fast    A                        Confirmation dialog after wrestler creation/customization; A is the highlighted accept act
+[ 958.0s] # 28 cutscene          fast    START                    Cinematic newscast scene; no player control or HUD; comedic intro sequence from the game.
+[ 999.0s] # 29 submenu           fast    DOWN DOWN DOWN A         Location/level selection menu within Career mode; SHOP is highlighted but BACKYARD is the 
+[1019.0s] # 30 submenu           fast    A                        'Begin Match Without Mission' is highlighted in yellow (selected). A accepts this choice t
+[1033.9s] # 31 loading           fast    wait                     The 'LOADING...' text with a progress bar at the bottom indicates the game is loading afte
+[1056.4s] # 32 cutscene          fast    START                    Letterbox bars visible at top and bottom indicating cinematic format; characters in posed 
+[1071.8s] # 33 pause             fast    A                        Pause menu is open with Resume highlighted; game HUD and scene are visible behind it. STAR
+[1089.3s] # 34 gameplay          fast    wait                     HUD is fully visible with health bars and timer running; two active characters engaged in 
+[1119.6s] # 35 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.672, under input 0.586
+hold-play: genre attack, need 630 s of play
+hold-play: fps at 186 s: median 36.0, share>=30 1.0 over 123 samples
+hold-play: fps at 315 s: median 37.0, share>=30 0.957 over 211 samples
+hold-play: play disagrees: hold 632.5 s, verdict 641.2 s (verdict trusted)
+hold-play: validity check share 514 s (hold 633 s of play, verdict 641.2)
+hold-play: verdict short on share by 514 s; holding on (budget 633 s left)
+hold-play: play disagrees: hold 707.9 s, verdict 717.5 s (verdict trusted)
+hold-play: validity check share 438 s (hold 708 s of play, verdict 717.5)
+hold-play: verdict short on share by 438 s; holding on (budget 557 s left)
+hold-play: play disagrees: hold 734.3 s, verdict 744.2 s (verdict trusted)
+hold-play: validity check share 770 s (hold 734 s of play, verdict 744.2)
+hold-play: not held 734/630 s of play; share short by 770 s with no budget left
+held Backyard Wrestling 2 There Goes the Neighborhood USA for 914s
+VERDICT Backyard Wrestling 2 There Goes the Neighborhood USA ? FAIL(menu time: 81.6% of the scored window in `play` (bar 90%; play 745 s, still 105 s, game_over 49 s, results 15 s)) gameplay=913.1s fps_ok=0.9943 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0003 play_share=0.8156 fps_excluded=169.1s
+{"name": "Backyard Wrestling 2 There Goes the Neighborhood USA", "device": "nova", "result": "gameplay", "minutes": 18.66, "model_calls": 48, "steps": 35, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45530016-1014d/frames/034-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

@@ -1,0 +1,1 @@
+VERDICT Top Spin ? FAIL(hang: 12.7 s without 60 guest flips after the mark) gameplay=120.3s fps_ok=0.8326 crash=False hang=True audio_short=0.0 hitches=0/0.0pm worst_ms=288.5 static_frac=0.0 play_share=0.998 fps_excluded=0.0s
