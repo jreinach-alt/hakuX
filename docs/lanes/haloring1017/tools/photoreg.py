@@ -84,6 +84,10 @@ p = np.zeros(6)
 q = np.zeros(6)
 p[0], p[1] = x0 + sx * (320 - 248), sx * 320
 q[0], q[2] = y0 + sy * (240 - 252), sy * 240
+if "initfrom" in opt:
+    # another photo's fitted warp: a better start where the ring or the planet covers the menu text
+    _r = np.load(opt["initfrom"])
+    p, q = _r["p"].copy(), _r["q"].copy()
 
 mask = np.zeros((H, W), bool)
 for rect in opt.get("rects", "40,100,600,210;215,240,440,392").split(";"):

@@ -18,6 +18,13 @@ waiting on anything. M1, M2 and M2b's clock were committed (948dc20f1c). The int
 already written its `n4` rows and 80 of its `n5` rows to scratch (`hr/m2c/bandfit.tsv`). Attempt 2 read those rows
 rather than running the fit again; they are reported under M2b.
 
+## Attempt 2 did not finish: the turn cap again
+
+Attempt 2 ended at 19:02 PDT on the 301-turn cap, right after committing M7 (0eef3e0548). It was not blocked and was
+not waiting on anything. It spent its turns on photo 5 alone (M5-M7): one photo, at a pose where the hull is lit
+everywhere, which cannot part the two accounts left. Attempt 3 (2026-10-18) starts with the four other console
+photos, looking for the unlit hull, and commits after each measurement.
+
 ## Step 0: what was searched
 
 | where | query | found |
