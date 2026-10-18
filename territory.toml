@@ -3067,3 +3067,15 @@ issues = ["433"]
 standing = false
 files = ["docs/lanes/holdcap1018/**", "docs/testing/jobs/hold.sh", "docs/testing/jobs/selftest.d/99-hold-take.sh"]
 note = "STARTED lane.local 2026-10-18 ~07:50 PDT (Sonnet): an owner-play hold starts a host logcat capture as a systemd unit; who/wait-idle/release report it; a take that cannot record is refused."
+
+[lane.gta3dip1018]
+issues = ["1049", "433"]
+standing = false
+files = ["docs/lanes/gta3dip1018/**"]
+note = "STARTED lane.local 2026-10-18 ~07:55 PDT (Sonnet): analysis only. GTA III parked dip scene with R2 copies at 0 still runs ~46 ms/frame; decompose it from the lane.xbox perflog runs and name the lever."
+
+[lane.fabledip1018]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/fabledip1018/**"]
+note = "STARTED lane.local 2026-10-18 ~07:55 PDT (Sonnet): analysis only. Fable and Blinx 2 gameplay dips carry heavy [drawrec] vertex redo; decompose from the owner captures and name the lever."
