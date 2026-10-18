@@ -8,21 +8,19 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `fabledip1018` | claude-sonnet-5 | 10 min | Fable and Blinx 2: decompose the gameplay dips, find what the frame spends its time on |
-| `gta3dip1018` | claude-sonnet-5 | 10 min |  |
-| `haloring1017` | claude-opus-5-5 | 25 min | haloring1017: Halo CE main-menu ring: the missing surface layer and the static inside surface (#939) |
-| `holdcap1018` | claude-sonnet-5 | 30 min | holdcap1018: an owner-play hold starts a host logcat capture |
-| `pathfind` | claude-opus-5-5 | 25 min | pathfind: a screen-reading agent that drives a title from boot into gameplay |
+| `compat1018b` | claude-sonnet-5 | 2 min |  |
+| `holdcap1018` | claude-sonnet-5 | 45 min | holdcap1018: an owner-play hold starts a host logcat capture |
+| `mkdawhite1018` | claude-opus-5-5 | 2 min | mkdawhite1018: Mortal Kombat: Deadly Alliance arena floors and walls draw flat white (#1058) |
 
 - **Handhelds:** 2 connected.
-  - Nova: held by `owner-play`
+  - Nova: free for the queue
   - Thor: held by `lanelocal-offline`
 - **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
 
-**94 titles are confirmed Playable** (3 today). Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
+**92 titles are confirmed Playable** (3 today). Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
 
 | Confirmed | Title | Result |
 |---|---|---|
@@ -72,8 +70,6 @@ The harness dashboard, with each release's targets and the progress charts, is [
 | 2026-10-12 | Grabbed by the Ghoulies | Playable, 10-minute run, median 29.0 fps |
 | 2026-10-12 | Scooby-Doo! Mystery Mayhem (Europe) | Playable, 10-minute run, median 29.0 fps |
 | 2026-10-12 | Conan (Europe) | Playable, 10-minute run |
-| 2026-10-12 | Grand Theft Auto: Vice City | Playable, 10-minute run |
-| 2026-10-12 | Grand Theft Auto III | Playable, 10-minute run |
 | 2026-10-12 | Mercenaries: Playground of Destruction | Playable, 10-minute run |
 | 2026-10-12 | X-Men: The Official Game (Europe) | Playable, 10-minute run |
 | 2026-10-08 | Max Payne 2: The Fall of Max Payne | Playable, 10-minute run |
@@ -121,19 +117,18 @@ The harness dashboard, with each release's targets and the progress charts, is [
 | 2026-09-29 | KOF: Maximum Impact – Maniax | Playable, 10-minute run on the Nova |
 | 2026-09-26 | Alien Hominid | Playable, 10-minute run on the Thor |
 
-72 of these still await the owner's flicker check.
+70 of these still await the owner's flicker check.
 
 ## Work in progress
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/fabledip1018` | Fable and Blinx 2: decompose the gameplay dips, find what the frame spends its time on | `2546edf404` | 2026-10-18 07:55 |
-| `lane/haloring1017` | haloring1017: Halo CE main-menu ring: the missing surface layer and the static inside surface (#939) | `e46a5c0d1e` | 2026-10-18 07:59 |
 | `lane/holdcap1018` | holdcap1018: an owner-play hold starts a host logcat capture | `6a009e01b6` | 2026-10-18 07:38 |
-| `lane/pathfind` | pathfind: a screen-reading agent that drives a title from boot into gameplay | `abe4efd7f0` | 2026-10-18 06:53 |
+| `lane/mkdawhite1018` | mkdawhite1018: Mortal Kombat: Deadly Alliance arena floors and walls draw flat white (#1058) | `acb12840b7` | 2026-10-18 08:13 |
 
 ## Recently landed on master
 
+- 2026-10-18 pathfind: a screen-reading agent that drives a title from boot into gameplay
 - 2026-10-18 fpstel1018: Forza and Buffy missed the bar -- decompose the frame, name the lever
 - 2026-10-18 compat1018: the compatibility page catches up to the 95-row Playable ledger
 - 2026-10-18 snaptargets1018: the dispatcher snapshot ships titlestate.py but not targets.toml (#433)
@@ -144,6 +139,5 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 The compatibility page adds NBA Live 07 (454100A1) as Playable: 90 -> 91
 - 2026-10-17 compat1017b: the compatibility page catches up from 88 to 90 Playable
 - 2026-10-17 compat1017: catch up the compatibility page to the 88-row Playable ledger
-- 2026-10-17 A title with one measured stall reaches the owner the same day
 
-_Updated 2026-10-18 08:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 08:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
