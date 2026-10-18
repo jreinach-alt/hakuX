@@ -2577,6 +2577,8 @@ void sdl2_gl_refresh(DisplayChangeListener *dcl)
     GLuint tex = 0;
     bool vga_read G_GNUC_UNUSED = false; /* the VGA view was read here */
     bool vga_read_off G_GNUC_UNUSED = false; /* ... with the screen off */
+    /* The screen was off before either image was read (#1045) */
+    bool read_off G_GNUC_UNUSED = nv2a_get_screen_off();
     char boot1045_src = 'n';
 #ifdef __ANDROID__
     if (force_cpu_blit) {
@@ -2789,10 +2791,11 @@ void sdl2_gl_refresh(DisplayChangeListener *dcl)
      * 129c48dd6e). This path never did. While the kernel sets its video mode
      * at boot it holds the screen off with the scan-out at address 0, and the
      * VGA view of its low memory showed as whole-screen static before the
-     * Xbox logo, on every title (#1045). A VGA image read while the screen
-     * was off stays blanked even if the guest turned it on since.
+     * Xbox logo, on every title (#1045). An image read while the screen was
+     * off stays blanked even if the guest turned it on since: the nv2a image
+     * read then is the one rendered before the screen went off.
      */
-    if (nv2a_get_screen_off() || vga_read_off) {
+    if (nv2a_get_screen_off() || vga_read_off || read_off) {
         android_blank_frame();
     } else {
         android_blit_frame(tex, flip_required);
