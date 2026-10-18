@@ -61,7 +61,14 @@ lane; each step below had a capture or a source file to read.
      range, i.e. the one that actually defines this window). Re-ran all four real captures afterward -- same
      total/scored/refused counts in every one (none of them has an isolated single-tick freeze), so no scope
      change to anything already written.
-7. `CAPTURE.md` and the `PR.md` body/ready-state: next.
+7. Wrote `CAPTURE.md` -- narrower than "run three new owner-play sessions": the four real captures already
+   on disk cover `analyze`'s own candidates for all three titles, so the only real gap is the periodic
+   OS-level sampling (`fpsdiag.py capture`'s own half) that c4/c5/c6/c8 need and no logcat tag can carry.
+   Tells whoever is holding the device to run that one extra command alongside the next session that is
+   already happening, using `hold.sh`'s own `owner-play*` auto-capture (already folded on this branch via
+   holdcap1018) for the logcat half.
+8. `PR.md` body rewritten, `State: ready` -- steps 2-4 (tool, validation, selftest) pass; step 5/6
+   (instrumentation gaps answered, CAPTURE.md) done above.
 
 ## 2. What the next lane should not repeat
 
