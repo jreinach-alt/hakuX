@@ -34,7 +34,11 @@ picture and TAIL_PRESENTS presents after it) all hold; else CLEAN when M1, M2 an
 nb_bar is judge_boot's: max(NB_FLOOR, 2 x the largest nb among lit presents in the last quarter of the log's time).
 
 The title's first picture: as desk_ab.py, the first present at a non-zero start that is not the kernel's (the first
-non-zero start with bpp > 0) whose window is lit (lit >= LIT_PICTURE) and not noise (nb < NB_FLOOR).
+non-zero start with bpp > 0) whose window is lit (lit >= LIT_PICTURE) and not noise (nb < NB_FLOOR), **with the screen
+on**. The screen-on condition was added after the second Halo before run (0-1792284283), and before any after run was
+judged. In that run the VGA view of 0x03d04000 drew Halo's loading data, lit with a low centre-half nb, at n355
+while the screen was still off, so the rule without it put the first picture inside the screen-off window the
+picture is meant to end. A screen-off present is never a picture the player sees on silicon.
 
 Descriptive, not part of the verdict: each run of M1 presents (an episode) lists its starts, sources, distinct
 hashes, and the full-frame numbers of the dumped frames inside it: lit, grn (as the probe's), nbh and nbv (mean
@@ -128,7 +132,7 @@ def judge(rd, desktop=False):
     nb_bar = nb_bar_of(rows)
     kstart = next((r["start"] for r in rows if r["bpp"] > 0 and r["start"] != 0), None)
     fp = next((i for i, r in enumerate(rows) if r["start"] not in (0, kstart) and r["lit"] >= jb.LIT_PICTURE
-               and r["nb"] < jb.NB_FLOOR), None)
+               and r["nb"] < jb.NB_FLOOR and not r["sr01"] & 0x20), None)
     tail = len(rows) - 1 - fp if fp is not None else 0
     covered = c1 and fp is not None and tail >= jb.TAIL_PRESENTS
     bh = {}
