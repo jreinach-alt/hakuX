@@ -6,14 +6,12 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Right now
 
-| Lane | Model | Running for | Working on |
-|---|---|---|---|
-| `nearbar1017` | claude-sonnet-5 | 46 min | nearbar1017: three near-bar titles on the 0.5.2 build -- do they clear Playable now |
+No lane session is running.
 
 - **Handhelds:** 2 connected.
-  - Nova: held by `lane.nearbar1017`
+  - Nova: free for the queue
   - Thor: held by `lanelocal-offline`
-- **Device queue:** 3 waiting, 0 running.
+- **Device queue:** 2 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -114,9 +112,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Work in progress
 
-| Branch | Topic | Tip | Last change |
-|---|---|---|---|
-| `lane/nearbar1017` | nearbar1017: three near-bar titles on the 0.5.2 build -- do they clear Playable now | `17f9652e01` | 2026-10-17 18:35 |
+No branch is being worked right now.
 
 ## Recently landed on master
 
@@ -131,4 +127,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 release052: the 0.5.2 release commit (#433)
 - 2026-10-17 defaulton1017: S2T_CVT, REPORT_EARLY and FLDCW_CHAIN on by default, after one default-on screen
 
-_Updated 2026-10-17 19:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-17 19:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
