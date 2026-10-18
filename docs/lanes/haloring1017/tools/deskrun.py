@@ -10,6 +10,15 @@ records and strips are static, so one image serves every frame of the dump.
 
 The environment is the release app's defaults (HAKUX_SURFGPU and the fast paths),
 so a desktop result is about the build players run; ENV=V arguments override.
+
+chain=K (attempt 3) runs K more dumps of FRAMES back to back after the first. One
+dump holds at most 600 frames, about 23 s of the menu's camera with images on the
+desktop, and the console photos 1-3 sit some 40 s after m2a's window. Each dump
+opened deletes every framedump_* file in its directory (`renderer.c`
+fdump_clear_previous), so m8a's first two dumps were lost: once a dump has written
+its end trailer, its files move to OUTDIR/dump/dK and only then is
+OUTDIR/dump/frame_dump.on written. The renderer reads the marker at most once a
+second, so the gap between dumps is a second or two.
 """
 import glob
 import os
@@ -30,6 +39,7 @@ images = "images"
 if rest and rest[0] in ("images", "noimages"):
     images = rest.pop(0)
 extra = dict(a.split("=", 1) for a in rest)
+chain = int(extra.pop("chain", 0))
 
 dump = os.path.join(out, "dump")
 os.makedirs(dump, exist_ok=True)
@@ -57,9 +67,38 @@ t0 = time.time()
 p = subprocess.Popen([qemu, "-config_path", os.path.join(rundir, "xemu.toml"), "-display", "none",
                       "-monitor", f"unix:{sock},server,nowait"],
                      env=env, stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
+marker = os.path.join(dump, "frame_dump.on")
+armed = 0
+
+
+def rearm():
+    """Once the running dump has closed, move its files to dump/dK and write the next chained dump's marker."""
+    global armed
+    if armed >= chain or os.path.exists(marker):
+        return
+    js = glob.glob(os.path.join(dump, "framedump_*.jsonl"))
+    if len(js) != 1:
+        return
+    with open(js[0], "rb") as f:
+        f.seek(max(0, os.path.getsize(js[0]) - 4096))
+        last = f.read().rstrip().rsplit(b"\n", 1)[-1]
+    if b'"t":"end"' not in last:
+        return
+    sub = os.path.join(dump, f"d{armed}")
+    os.makedirs(sub)
+    for fn in glob.glob(os.path.join(dump, "framedump_*")):
+        os.rename(fn, os.path.join(sub, os.path.basename(fn)))
+    with open(marker, "w") as f:
+        f.write(f"{frames},gd,{images},cap2000\n")
+    armed += 1
+    print(f"dump {armed - 1} closed, moved to {sub}; marker {armed} of {chain} at +{time.time() - t0:.1f} s",
+          flush=True)
+
+
 try:
     while time.time() - t0 < ram_at and p.poll() is None:
         time.sleep(0.5)
+        rearm()
     if p.poll() is None:
         s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         s.connect(sock)
@@ -68,7 +107,8 @@ try:
         time.sleep(3)
         print(f"pmemsave at +{time.time() - t0:.1f} s", flush=True)
     while time.time() - t0 < total and p.poll() is None:
-        time.sleep(1)
+        time.sleep(0.5)
+        rearm()
 finally:
     if p.poll() is None:
         p.terminate()
@@ -77,5 +117,5 @@ finally:
         except subprocess.TimeoutExpired:
             p.kill()
             p.wait()
-n = len(glob.glob(os.path.join(dump, "*")))
+n = len(glob.glob(os.path.join(dump, "**", "framedump_*"), recursive=True))
 print(f"DONE exit {p.returncode} in {time.time() - t0:.0f} s, {n} dump files", flush=True)

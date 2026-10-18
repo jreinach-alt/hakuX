@@ -583,6 +583,71 @@ They part on the ring's **unlit side**. There D is dark whatever t1 is, so D x k
 it, as the owner describes ("applied across the entire ring, including the dark portions"). The next measurement is a
 console photo at a pose where the unlit hull shows.
 
+### M8: photos 1-4 posed on run 13's video; no dump on disk reaches their poses (`photoreg.py` affine, `vidpose.py`, `deskrun.py` chain)
+
+**Registration.** Photos 1-4 are warped to frame pixels the way M5 warped photo 5, on the menu's overlays. NCC per
+overlay rectangle:
+- photo 1: 0.827 and 0.870;
+- photo 3: 0.853 and 0.925;
+- photo 2: attempt 2's `reg2`;
+- photo 4: 0.79-0.93. The ring crosses most of photo 4's overlays, so it is fitted affine only (`affine=1`, init
+  457,666,1.62,1.15, levels 4,2,1). It uses seven rectangles on menu-text pieces clear of the ring.
+
+**Pose.** `vidpose.py` takes the luminance NCC of each warped photo against every frame of run 13's Turnip video
+(59.94 fps) over the ring's region:
+
+| photo | the view | run 13 video t | NCC |
+|---|---|---|---|
+| 4 | ring vertical, planet left | 45.479 s | 0.910 |
+| 3 | planet at the bottom, ring upright | 51.718 s | 0.857 |
+| 2 | ring across the top, planet lower right | 54.054 s | 0.902 |
+| 1 | arc at the lower left, upright | 56.307 s | 0.823 |
+| 5 | M5: f506 of run 13's dump | 30.16 s | |
+
+**No dump on disk covers 45-57 s:**
+- run 13's dump covers 13.3-35.3 s;
+- m2a's covers 8.6-20 s;
+- m8a's covers 5.4-38.2 s (its f010 matches 5.989 s at NCC 0.970, its f599 matches 38.222 s at 0.985).
+
+So at photos 1-4, which draw makes each pixel is unknown, and so are its D, X0 and t2.r. Those photos cannot yet be
+judged by number. `unlitjudge.py` is the judge for when they can. On the hull and band core pixels (as `transfer.py`
+picks them) it fits three models to the console, read in fb units through the photo's calibration:
+- R10: c - X0 = g·D + b;
+- R1/R9: c - D - X0 = k·t2.r + b;
+- free: D, X0, t2.r and a constant.
+
+It then bins the pixels by oD0, D and X0, and reports the two sets that part the accounts: D low with t2.r high, and D
+high with t2.r low.
+
+**By eye**, run 13's frame at each pose beside the photo:
+- photos 1 and 2: the console's band (`n4`) is brighter and whiter than hakuX's;
+- photo 2: the strip under the band is dark on both machines;
+- photo 3: the edge-on strip is a brighter grey on the console.
+
+None of these is attributed. Photo 2's dark strip could be the hull's unlit side, which would favour R10. It could
+equally be the inner rim `n6`, whose multiply mask says nothing about either account. No P moves on them.
+
+**The desktop run m8a** (`deskrun.py`, after74, 600 frames with images, `chain=2`):
+- It exited 0, with no crash and no `wsl-crashes` dump.
+- It wrote three dumps of 600 frames at about 20 fps, 30 s each. Each dump opened deletes the previous dump's files
+  (`renderer.c` `fdump_clear_previous`), so only dump 3 survived. `deskrun.py` now moves each closed dump to `dump/dK`
+  before writing the next marker.
+- Dump 3 opened at +136 s and covers run 13's 5.4-38.2 s. m2a's dump opened at +74 s and began at 8.6 s. It is the
+  same camera path, but on the desktop the path's place is not a function of the emulator clock. Aiming a desktop dump
+  at a pose takes either a chain long enough to pass it, or a dump marker written on seeing the pose.
+
+**C: after m8a: 38 GB free** (`df -B1G /mnt/c`), under the 40 GB floor. The run's dump went to `/tmp`, which lives on
+the WSL disk image, and that image grows on C:. **Desktop runs that may crash are paused** until C: is back at 40 GB
+or more, which takes the owner's side (moving files inside WSL does not shrink the image). This holds back A7's
+PSHDBG fix and the leaders' desktop check.
+
+**What gets the poses: a Nova `gd` dump aimed by run 13's clock.** It uses run 13's ref and env with
+`XEMU_FRAME_DUMP=600,gd,noimages,after64,cap2400`. If the Nova keeps run 13's clock, its f0 lands near video 41.3 s and
+its 600 frames (0.0334 s each in run 13) reach about 61.3 s, which covers the four poses with 4-5 s to spare at each
+end. The run's own video
+(35-95 s) is pose-matched to the photos again, and its frames map to the dump by M2b's clock fit. The request is
+under "Waiting" below.
+
 ## Plan
 
 1. ~~(c) off the stock driver~~: done (M2, M2b). R4 holds.

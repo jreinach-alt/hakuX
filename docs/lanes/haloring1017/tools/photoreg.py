@@ -114,6 +114,9 @@ for r in levels:
         ab, *_ = np.linalg.lstsq(A1, t, rcond=None)
         res = ab[0] * i + ab[1] - t
         J = np.concatenate([ab[0] * ix[:, None] * B, ab[0] * iy[:, None] * B], 1)
+        if "affine" in opt:
+            # photo 4: the ring crosses most of the overlays, too few edges left for the quadratic terms
+            J[:, [3, 4, 5, 9, 10, 11]] = 0
         dp, *_ = np.linalg.lstsq(J, -res, rcond=None)
         p += dp[:6]
         q += dp[6:]
