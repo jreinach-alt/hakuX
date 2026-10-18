@@ -1078,7 +1078,9 @@ note = 'RETIRED (lane.local 2026-10-12 21:38 PDT): folded as 01d5dc1a80 on maste
 issues = ["433"]
 standing = false
 files = ["docs/lanes/fpsdiag1018/**", "docs/testing/perf/fpsdiag/**", "docs/testing/jobs/selftest.d/99-fpsdiag*.sh"]
-note = "STARTED lane.local 2026-10-18 15:20 PDT (Sonnet via usage-mode cap; harness/measurement, issue 433). Owner 10-18: ONE lane for the FPS misses on GTA III, Blinx 2 and Fable; review what is known, say what the causes are NOT, list what they COULD be, build a diagnostic tool that tells them apart. Coding only, no gameplay navigation. Takes neither device. New paths only; no emulator sources."
+released = ["docs/lanes/fpsdiag1018/**", "docs/testing/perf/fpsdiag/**", "docs/testing/jobs/selftest.d/99-fpsdiag*.sh"]
+released_at_ready = 1081
+note = "STARTED lane.local 2026-10-18 15:20 PDT (Sonnet via usage-mode cap; harness/measurement, issue 433). Owner 10-18: ONE lane for the FPS misses on GTA III, Blinx 2 and Fable; review what is known, say what the causes are NOT, list what they COULD be, build a diagnostic tool that tells them apart. Coding only, no gameplay navigation. Takes neither device. New paths only; no emulator sources. RELEASED (hostops, jam duty, 2026-10-18 16:5x PDT) at ready -- PR #1081 out of draft, CI green, unit gone; all 3 files released at ready per roles/board.md so the next lane can claim them."
 
 [free]
 # GRANTED (hostops, jam duty, 2026-10-18 08:4x PDT) docs/testing/compat_notes.tsv, docs/compatibility.csv, docs/COMPATIBILITY.md, docs/testing/titles/targets.toml -> [lane.compat1018b] (its board row omitted them though its own commits edit them; foldqueue FAILED 08:36 PDT on compat_page.py/compat_page_selftest.py, a related gap also fixed on that row -- not double-claimed here, moved out of [free] in the same push).
