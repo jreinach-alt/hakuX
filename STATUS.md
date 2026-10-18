@@ -1,14 +1,14 @@
 # hakuX status
 
-_updated 2026-10-17 23:35 PDT_
+_updated 2026-10-18 00:08 PDT_
 
-0.6: Measured 261 / 300 · Playable 90 / 110.
+0.6: Measured 261 / 300 · Playable 91 / 110.
 
 ## How close is 0.6?
 
 Measured **261** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓▓▓░`
 
-Playable **90** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓▓░░`
+Playable **91** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓▓░░`
 
 ![Titles over time](chart.svg)
 
@@ -18,11 +18,11 @@ Playable **90** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓▓░░`
 
 | release | Measured target | projected date | Playable target | projected date |
 |---|---|---|---|---|
-| 0.6 | 300 | 2026-10-20 | 110 | 2026-10-21 |
+| 0.6 | 300 | 2026-10-20 | 110 | 2026-10-20 |
 | 0.7 | 425 | 2026-10-28 | 185 | 2026-11-01 |
 | 0.8 | 575 | 2026-11-07 | 300 | 2026-11-18 |
-| 0.9 | 725 | 2026-11-17 | 480 | 2026-12-16 |
-| 1.0 | 876 | 2026-11-27 | 789 | 2027-02-01 |
+| 0.9 | 725 | 2026-11-17 | 480 | 2026-12-14 |
+| 1.0 | 876 | 2026-11-27 | 789 | 2027-01-29 |
 
 Measured: titles with a frame rate reading taken during gameplay, on either handheld. Playable: titles rated Playable. The charts place each title on the date it first qualified, and the projected dates in the table assume the last 7 days' pace continues.
 
@@ -96,6 +96,7 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | **MVP Baseball 2003** | 🟢 Playable |  |
 | **NBA 2K2** | 🟢 Playable | **57.0**<br>Nova, Oct 5 |
 | **NBA 2K3** | 🟢 Playable | **42.9**<br>Nova, Oct 6 |
+| **NBA Live 07** | 🟢 Playable | **20.0**<br>Nova, Oct 6 |
 | **NBA Live 2004** | 🟢 Playable | **35.5**<br>Nova, Oct 6 |
 | **Need for Speed: Most Wanted** | 🟢 Playable | **25.8**<br>Nova, Oct 5 |
 | **NFL Blitz 2002** | 🟢 Playable | **45.0**<br>Nova, Oct 5 |
@@ -236,7 +237,6 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | **NBA 2K7 USA Europe** | 🔵 Measured, not rated yet | **57.2**<br>Nova, Oct 16 |
 | **NBA Inside Drive 2004 USA** | 🔵 Measured, not rated yet | **31.1**<br>Nova, Oct 16 |
 | **NBA Live 06** | 🔵 Measured, not rated yet | **20.0**<br>Nova, Oct 6 |
-| **NBA Live 07** | 🔵 Measured, not rated yet | **20.0**<br>Nova, Oct 6 |
 | **NBA Live 2005** | 🔵 Measured, not rated yet | **20.0**<br>Nova, Oct 3 |
 | **NFL Blitz 2002 USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 11 |
 | **NHL 2K3** | 🔵 Measured, not rated yet | **35.0**<br>Nova, Oct 5 |
@@ -662,5 +662,5 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 
 </details>
 
-620 titles: 90 Playable, 9 below 30 fps, 14 crash or hang, 149 measured but not rated yet, 358 not tested yet.
+620 titles: 91 Playable, 9 below 30 fps, 14 crash or hang, 148 measured but not rated yet, 358 not tested yet.
 
