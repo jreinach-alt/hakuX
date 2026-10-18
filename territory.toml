@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 310
-updated_utc = '2026-10-18T03:11:54Z'
+wave = 311
+updated_utc = '2026-10-18T18:32:15Z'
 
 [lane.alwaystelemetry]
 issues = ["433"]
@@ -3132,8 +3132,8 @@ note = "STARTED lane.local 2026-10-18 ~11:15 PDT (Sonnet): README Highlights: GT
 [lane.homeroot1018]
 issues = ["433"]
 standing = false
-files = ["docs/lanes/homeroot1018/**"]
-note = "STARTED lane.local 2026-10-18 ~11:20 PDT (Sonnet): the home branch root carries chart.svg, chart2.svg and COPYING.LIB beside the markdown files (owner 10-18: sloppy landing page). Move them under docs on home. Host-tools copies are delivered through docs/lanes/homeroot1018/host-tools/ as statuspage1013 did. Brief: briefs/homeroot1018.md."
+files = ["docs/lanes/homeroot1018/**", "docs/testing/jobs/selftest.d/81-home-root.sh"]
+note = "STARTED lane.local 2026-10-18 ~11:20 PDT (Sonnet): the home branch root carries chart.svg, chart2.svg and COPYING.LIB beside the markdown files (owner 10-18: sloppy landing page). Move them under docs on home. Host-tools copies are delivered through docs/lanes/homeroot1018/host-tools/ as statuspage1013 did. Brief: briefs/homeroot1018.md. CLAIMED 2026-10-18T18:32:15Z: docs/testing/jobs/selftest.d/81-home-root.sh (next free number in the sequence; 69 is reserved but unused by [lane.locations1014], 70-80 and 83-99 are all in use), the new fragment asserting the old root layout (root chart.svg/chart2.svg/COPYING.LIB, STATUS.md's relative chart links) fails against a scratch home tree built by this lane's host-tools copies."
 
 [lane.gta3car1018]
 issues = ["1049", "433"]
