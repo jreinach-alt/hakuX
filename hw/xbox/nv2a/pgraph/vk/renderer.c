@@ -4271,12 +4271,28 @@ static void pgraph_vk_pre_shutdown_wait(NV2AState *d)
     // qemu_event_wait(&d->pgraph.vk_renderer_state->shader_cache_writeback_complete);   
 }
 
+/*
+ * Set when a present finds the guest's screen off (SR01 bit 5). The console
+ * draws black then (#1045), but the display image keeps the last picture
+ * rendered, the kernel's logo, and the fast path below returns the image
+ * rendered at the previous refresh. So the first present after the guest
+ * turned the screen on at its own framebuffer showed the logo for one frame,
+ * on every launch. That one present waits for a render of the current
+ * scan-out instead.
+ */
+static bool display_stale_after_off;
+
 static int pgraph_vk_get_framebuffer_surface(NV2AState *d)
 {
     PGRAPHState *pg = &d->pgraph;
     PGRAPHVkState *r = pg->vk_renderer_state;
 
     qemu_mutex_lock(&d->pfifo.lock);
+
+    bool screen_off = d->vga.sr[VGA_SEQ_CLOCK_MODE] & VGA_SR01_SCREEN_OFF;
+    if (screen_off) {
+        display_stale_after_off = true;
+    }
 
     VGADisplayParams vga_display_params;
     d->vga.get_params(&d->vga, &vga_display_params);
@@ -4295,7 +4311,7 @@ static int pgraph_vk_get_framebuffer_surface(NV2AState *d)
 #if HAVE_EXTERNAL_MEMORY
     if (r->display.use_external_memory) {
         DisplayImage *ready = &r->display.images[r->display.display_idx];
-        if (ready->valid) {
+        if (ready->valid && (screen_off || !display_stale_after_off)) {
             if (ready->fence_submitted) {
                 VK_CHECK(vkWaitForFences(r->device, 1, &ready->fence,
                                          VK_TRUE, UINT64_MAX));
@@ -4309,6 +4325,7 @@ static int pgraph_vk_get_framebuffer_surface(NV2AState *d)
             qemu_mutex_unlock(&d->pfifo.lock);
             return tex;
         }
+        display_stale_after_off = false;
         qemu_event_reset(&d->pgraph.sync_complete);
         qatomic_set(&pg->sync_pending, true);
         pfifo_kick(d);

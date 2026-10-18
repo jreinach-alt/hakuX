@@ -633,7 +633,7 @@ notes = "No #431 target; the default 30 applies. route = gen-lego-star-wars: #43
 name = "Marvel Nemesis: Rise of the Imperfects"
 iso = { nova = "4541038A-Marvel_Nemesis_Rise_of_the_Imperfects.xiso.iso" }
 route = "gen-marvel-nemesis"
-notes = "No #431 target; the default 30 applies. route = gen-marvel-nemesis: #433 step 6c classifier-path benchmark opening (drive generic), fighter play loop (close/attack), not yet device-proven. See pm/owner-holds.tsv marvel-851 (pending, PLAYABLE_ATTEMPT only -- does not block a benchmark fps read)."
+notes = "No #431 target; the default 30 applies. route = gen-marvel-nemesis: #433 step 6c classifier-path benchmark opening (drive generic), fighter play loop (close/attack), not yet device-proven. Hold marvel-851 released: owner ruled 2026-10-17 that a stall with the guest and renderer both idle is loading, not a hitch; Marvel Nemesis is Playable (pm/playable-accepted.tsv 2026-10-17 21:55, run marvel-1006)."
 
 [titles."54540008"]
 name = "Midnight Club II"
