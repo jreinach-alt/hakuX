@@ -53,8 +53,9 @@
 #include "tcg/tcg-ldst.h"
 #include "backend-ldst.h"
 #include "accel/tcg/hakux-tlb68.h"
-#if defined(XBOX) && defined(NV2A_PERF_LOG) && NV2A_PERF_LOG
+#ifdef XBOX
 #include "tb-context.h"
+#include "hw/xbox/nv2a/debug.h"     /* nv2a_perflog_on(), for [tcg787] */
 #endif
 
 
@@ -183,12 +184,17 @@ extern uint64_t hakux_tcg424_cbb;
  *                     the returned ones. A code fetch's refill inside
  *                     tb_gen_code is in both gus and tfus.
  *
- * Every hook here, in translate-all.c and in cpu-exec.c ([tpc787]) is
- * compiled in a perflog build only (HAKUX_TCG787), so a plain build pays
- * nothing and prints no [tcg787] line. pl=1 stays on the line for its readers.
- * vCPU thread only.
+ * The hooks here and in translate-all.c are compiled into every XBOX build
+ * and run only while the perflog run-time switch is on (#433, perflog1016:
+ * debug.h's nv2a_perflog_on(), constant true in a perflog build). Off, each
+ * costs a load and a branch not taken, no clock read, and no [tcg787] line
+ * prints. A line prints only for a window the switch was on at both ends,
+ * because cg, disc and tbf count whatever the switch; a window with an off
+ * gap inside it is not detected (two flips inside one 2 s window). pl=1
+ * stays on the line for its readers. cpu-exec.c's [tpc787] is still a
+ * perflog build's only. vCPU thread only.
  */
-#if defined(XBOX) && defined(NV2A_PERF_LOG) && NV2A_PERF_LOG
+#ifdef XBOX
 #define HAKUX_TCG787 1
 #else
 #define HAKUX_TCG787 0
@@ -374,23 +380,29 @@ static void hakux_tcg787_tick(unsigned window, int64_t dt_ms)
     static uint64_t p_gc, p_gcns, p_cgns, p_cg, p_disc, p_ffns, p_pfns,
                     p_tf, p_tfr, p_tfns;
     static unsigned p_tbf;
+    static bool p_on;
     unsigned tbf = qatomic_read(&tb_ctx.tb_flush_count);
     uint64_t tf = hakux_tcg787_tf - p_tf, tfr = hakux_tcg787_tfr - p_tfr;
+    bool on = nv2a_perflog_on();
 
-    TLB68_LOG("[tcg787] w=%u dt=%" PRId64 " gc=%" PRIu64 " cg=%" PRIu64
-              " gus=%" PRIu64 " cgus=%" PRIu64 " gmax=%" PRIu64
-              " disc=%" PRIu64 " tbf=%u ffus=%" PRIu64 " pfus=%" PRIu64
-              " tf=%" PRIu64 " tfx=%" PRIu64 " tfus=%" PRId64 " pl=%d",
-              window, dt_ms, hakux_tcg787_gc - p_gc,
-              hakux_tb_codegen - p_cg,
-              (hakux_tcg787_gc_ns - p_gcns) / 1000,
-              (hakux_tcg787_cg_ns - p_cgns) / 1000,
-              hakux_tcg787_max_ns / 1000,
-              hakux_tb_discarded - p_disc, tbf - p_tbf,
-              (hakux_tcg787_ff_ns - p_ffns) / 1000,
-              (hakux_tcg787_pf_ns - p_pfns) / 1000,
-              tf, tf - tfr,
-              (int64_t)(hakux_tcg787_tf_ns - p_tfns) / 1000, 1);
+    /* On at both ends of the window; the snapshots move either way. */
+    if (on && p_on) {
+        TLB68_LOG("[tcg787] w=%u dt=%" PRId64 " gc=%" PRIu64 " cg=%" PRIu64
+                  " gus=%" PRIu64 " cgus=%" PRIu64 " gmax=%" PRIu64
+                  " disc=%" PRIu64 " tbf=%u ffus=%" PRIu64 " pfus=%" PRIu64
+                  " tf=%" PRIu64 " tfx=%" PRIu64 " tfus=%" PRId64 " pl=%d",
+                  window, dt_ms, hakux_tcg787_gc - p_gc,
+                  hakux_tb_codegen - p_cg,
+                  (hakux_tcg787_gc_ns - p_gcns) / 1000,
+                  (hakux_tcg787_cg_ns - p_cgns) / 1000,
+                  hakux_tcg787_max_ns / 1000,
+                  hakux_tb_discarded - p_disc, tbf - p_tbf,
+                  (hakux_tcg787_ff_ns - p_ffns) / 1000,
+                  (hakux_tcg787_pf_ns - p_pfns) / 1000,
+                  tf, tf - tfr,
+                  (int64_t)(hakux_tcg787_tf_ns - p_tfns) / 1000, 1);
+    }
+    p_on = on;
     p_gc = hakux_tcg787_gc;
     p_gcns = hakux_tcg787_gc_ns;
     p_cgns = hakux_tcg787_cg_ns;
@@ -829,7 +841,7 @@ static void tlb_flush_by_mmuidx_async_work(CPUState *cpu, run_on_cpu_data data)
     MMUIdxMap all_dirty, work, to_clean;
     int64_t now = get_clock_realtime();
 #if HAKUX_TCG787
-    int64_t t787 = get_clock();
+    int64_t t787 = nv2a_perflog_on() ? get_clock() : 0;
 #endif
 
     assert_cpu_is_self(cpu);
@@ -861,7 +873,9 @@ static void tlb_flush_by_mmuidx_async_work(CPUState *cpu, run_on_cpu_data data)
 #endif
     tcg_flush_jmp_cache(cpu);
 #if HAKUX_TCG787
-    hakux_tcg787_ff_ns += get_clock() - t787;
+    if (unlikely(t787)) {
+        hakux_tcg787_ff_ns += get_clock() - t787;
+    }
 #endif
 
     if (to_clean == ALL_MMUIDX_BITS) {
@@ -1008,7 +1022,7 @@ static void tlb_flush_page_by_mmuidx_async_0(CPUState *cpu,
 {
     int mmu_idx;
 #if HAKUX_TCG787
-    int64_t t787 = get_clock();
+    int64_t t787 = nv2a_perflog_on() ? get_clock() : 0;
 #endif
 
     assert_cpu_is_self(cpu);
@@ -1033,7 +1047,9 @@ static void tlb_flush_page_by_mmuidx_async_0(CPUState *cpu,
     tb_jmp_cache_clear_page(cpu, addr - TARGET_PAGE_SIZE);
     tb_jmp_cache_clear_page(cpu, addr);
 #if HAKUX_TCG787
-    hakux_tcg787_pf_ns += get_clock() - t787;
+    if (unlikely(t787)) {
+        hakux_tcg787_pf_ns += get_clock() - t787;
+    }
 #endif
 }
 
@@ -1953,14 +1969,19 @@ static bool tlb_fill_align_body(CPUState *cpu, vaddr addr,
                                 MMUAccessType type, int mmu_idx, MemOp memop,
                                 int size, bool probe, uintptr_t ra);
 
-/* #787: counted and timed (perflog builds only); see [tcg787] above. */
+/* #787: counted and timed while the perflog switch is on; see [tcg787]. */
 static bool tlb_fill_align(CPUState *cpu, vaddr addr, MMUAccessType type,
                            int mmu_idx, MemOp memop, int size,
                            bool probe, uintptr_t ra)
 {
     bool ok;
-    int64_t t0 = get_clock();
+    int64_t t0;
 
+    if (!nv2a_perflog_on()) {
+        return tlb_fill_align_body(cpu, addr, type, mmu_idx, memop, size,
+                                   probe, ra);
+    }
+    t0 = get_clock();
     hakux_tcg787_tf++;
     /* A guest fault longjmps out of this call and is never booked below. */
     ok = tlb_fill_align_body(cpu, addr, type, mmu_idx, memop, size, probe,
