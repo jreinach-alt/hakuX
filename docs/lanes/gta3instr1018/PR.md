@@ -4,7 +4,7 @@ State: draft
 
 Lane: gta3instr1018            Issue: #1049 #433
 Base: master @ 1b3b3db8f4
-Files: docs/lanes/gta3instr1018/NOTES.md, docs/lanes/gta3instr1018/PR.md, docs/testing/jobs/selftest.d/99-dipwin-counters.sh, hw/xbox/nv2a/pgraph/vk/dipwin.h, hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/surface.c
+Files: docs/lanes/gta3instr1018/FINDINGS.md, docs/lanes/gta3instr1018/NOTES.md, docs/lanes/gta3instr1018/PR.md, docs/lanes/gta3instr1018/dipwin_read.py, docs/testing/jobs/selftest.d/99-dipwin-counters.sh, hw/xbox/nv2a/pgraph/vk/dipwin.h, hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/surface.c
 Prediction: none: no arm (instrumentation compiled into perflog builds only; no pixel claim)
 Selftest: 99-dipwin-counters.sh
 Needs device: yes    Needs NDK: yes
@@ -32,6 +32,28 @@ sum to every add), and checks that draw.c has one window emitter on the flip pat
 read and then zero, close the window on the presenting finish, add a second emitter, or increment a counter
 directly all fail it.
 
-Measurements: see docs/lanes/gta3instr1018/NOTES.md and FINDINGS.md.
+`docs/lanes/gta3instr1018/dipwin_read.py` reads the line out of a logcat: a per-window table, then the ends by
+cause, every timer, the finishes by reason and the non-draw callers, per flip.
+
+Measured on the Nova (PurpleVK, perflog build of this branch at 25915ae59e; FINDINGS.md has the tables):
+
+| GTA III on foot, 172 windows | per flip |
+|---|---|
+| frame | 33.4 ms (30 fps cap) |
+| render passes | 7.64, every end attributed |
+| ends: binding gate with no binding / non-draw / clear / present | 4.02 / 1.99 / 1.01 / 0.53 |
+| `Fen:` | 2.36 ms, of which the stale vertex-RAM span copy 2.19 ms and the fence wait 0.04 ms |
+| stale span copied against bytes uploaded | 30 MB against 129 KB |
+| full-path pipeline bind | 351 calls, 1.60 ms |
+
+On foot, `Fen:` is mostly a memcpy, not a fence wait. Each frame-slot rotation copies one span from the lowest
+to the highest vertex-RAM byte uploaded. Copying by page instead is the lever in FINDINGS.md section 4.
+
+The parked in-car scene was not measured with this line. Its numbers are the older `hakuX-phase` line: GPU
+24.6 ms a frame at 52.4 render passes, against 7.7 on foot. Which end cause grows from 7.6 to 52 is the next
+measurement, and it needs the owner's in-car state loaded under this build.
+
+Fable stopped at its main menu, so there is no gameplay window. Over 122 menu windows the line stays
+monotonic, with every end attributed.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
