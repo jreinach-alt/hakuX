@@ -2,10 +2,15 @@
 
 Mortal Kombat: Deadly Alliance (4D57000C): arena floors and walls draw flat white.
 
-Status (10-18, Step 0): the Already-tried table and searches are below (section 3), and the sighting
-frames have been re-read (section 1). One correction to the brief: **the 10-06 sighting ran on
-Turnip, not on the stock driver** (section 2). That makes an emulator defect the likely cause.
-Step 1, a fresh Nova run with the `GPU:` line, still decides it.
+Status (10-18, after Step 0): **blocked on the harness at Step 1** (section 6). The Nova run
+never started. The dispatcher's disc push hands Windows `adb.exe` a `/mnt/d/...` path, and
+`adb.exe` cannot open one, so every staged-disc push has failed since the fast path landed on
+10-17. The desktop fallback is closed by the 40 GB C: guard (C: has 30 GB). Nothing about the
+white floors has been measured since 10-06.
+
+Step 0 is done: the Already-tried table and searches are in section 3, and the sighting frames
+are re-read in section 1. One correction to the brief: **the 10-06 sighting ran on Turnip, not
+on the stock driver** (section 2). That makes an emulator defect the likely cause.
 
 ## 1. The sighting, re-read
 
@@ -126,3 +131,96 @@ A format gap gives black (section 3), so it is out unless the dump shows otherwi
   else.
 - Step 2: read the dump for the floor draws (chain.py, texids.py). The desktop build on lavapipe
   is the fallback reference renderer.
+
+## 6. Step 1: the Nova run that never started (10-18)
+
+### 6.1 What was queued
+
+Request `1792337550-mkdawhite1018-3995143`:
+
+- Nova, ref da6e8949dc, 420 s.
+- Route `mkda-arcade`: the recorded route in this directory, `mkda-arcade.route`, embedded in the
+  request at queue time. Its header says how it was recorded.
+- `XEMU_FRAME_DUMP=8,images,gd,after170,cap256`, `--pull 'framedump_*'`, frames every 30 s.
+
+The route is blind, built from the nine screens all three pathfind runs saw. It is not a `gen-*`
+route, so it needs no model key.
+
+The dispatcher claimed it at 08:32:41 and wrote an ERROR before the soak:
+
+```
+staging: found /mnt/d/hakux-staging/sweep/4D57000C-Mortal_Kombat_Deadly_Alliance.xiso.iso but the push
+to /storage/E6C6-D7AA/Games/XBox/4D57000C-Mortal_Kombat_Deadly_Alliance.xiso.iso failed (dispatcher.log);
+title not on device
+```
+
+- The Nova held this disc at that exact path on 10-06: deadly-alliance-1006/run.log:1. It went
+  off the device with the 10-08 archive.
+- dispatcher.log:29292 is the claim's push failing. dispatcher.log:29294 is the doctor's
+  `push-iso` failing the same way, 54 s later.
+- The doctor then gave up (doctor.md: "the block is on the device/transport side").
+- That is the same void twice, so this lane has not re-queued (the stop rule).
+
+### 6.2 Why the push fails
+
+It is not the device and it is not this title:
+
+- **Halo hit it first.** haloring1017's request `1792328946-haloring1017-2104088` failed
+  identically at 06:17 (dispatcher.log:29078) on `/mnt/d/hakux-staging/xiso/4D530004-...`.
+- **No staging push has ever succeeded.** dispatcher.log runs from 09-12 to today and has no
+  `stage: pushed` line in it.
+- **The source path is the cause.** `ensure_title_staged` (dispatcher.sh:1211-1252, added
+  6fa12571d1 on 10-17) calls `dev_push "$src" ...` with `src` from a staging root. Every
+  staging root is under `/mnt/d`. `dev_push` (dispatcher.sh:1043-1051, from fa2e37531b) passes
+  the path to `adb push` unchanged.
+- **That breaks the documented rule.** `adb` here is `/usr/local/bin/adb -> /mnt/c/platform-tools/adb.exe`.
+  AGENTS.md:827-828 says: "adb is the Windows `adb.exe`. Give it the Windows path,
+  `adb push "$(wslpath -w "$f")" <device path>`; it cannot stat `/mnt/d/...`."
+- **The earlier copy-in still works because of where its file lives.** `dev_push` was written
+  for `titles.qcow2`, whose source is under `/home`. `adb.exe` resolves a `/home/...` argument
+  against the root of its working directory's share, `\\wsl.localhost\Ubuntu\`, and that
+  resolution works for `/home`.
+- **The repo copy has the same line:** docs/testing/dispatcher.sh:1046.
+
+A Windows process run from this worktree, with no device involved, shows the difference:
+
+| Path handed to a Windows process | Result |
+|---|---|
+| `\\wsl.localhost\Ubuntu\home\justin\hakux-work\dispatch\logs\dispatcher.log` (control) | `True` |
+| `\\wsl.localhost\Ubuntu\mnt\d\hakux-staging\sweep\4D57000C-...xiso.iso` (what `/mnt/d/...` becomes) | `Access is denied` |
+| `D:\hakux-staging\sweep\4D57000C-...xiso.iso` (`wslpath -w`) | `True` |
+
+**The lever:** in `dev_push`, hand `adb` the Windows path when the source is on a Windows drive.
+One way is `adb_call 600 "push $dst" push "$(wslpath -w "$src")" "$dst.new"`. `wslpath -w`
+also turns a `/home` path into the same `\\wsl.localhost\...` form that already works, so
+`titles.qcow2` is unaffected. That is a harness change, outside this lane's files. The
+selftest that passed the fast path (jobs/selftest.d/99-iso-roots.sh) cannot see this, because
+it does not run the real `adb.exe`.
+
+### 6.3 The other routes are closed too
+
+- **Desktop, lavapipe.** deskrun.py:11, 32 refuses under 40 GB free on C:, because a crashing
+  xemu writes a ~7.8 GB dump to C:'s wsl-crashes directory, and `ulimit -c 0` does not stop it.
+  C: has 30 GB free (`df`, 10-18). I have not overridden the guard.
+- **MK: Armageddon as a same-engine stand-in.** It is not on the Nova either: it was archived
+  to `/mnt/d/hakux-staging/nova-archive-1008/` on 10-08. It would need the same push.
+- **The 10-06 logcat as evidence.** deadly-alliance-1006/screen-logcat.txt holds 21,071 lines
+  of telemetry, and none of them mention a dummy texture, an unsupported format, a palette, a
+  border or a cube map. It cannot separate the four hypotheses in section 4.
+
+### 6.4 What unblocks Step 1 (any one)
+
+1. The `dev_push` fix above, deployed to the host dispatcher. Then re-queue
+   `1792337550-mkdawhite1018-3995143` unchanged; its request.json is in the result dir.
+2. The disc pushed to `/storage/E6C6-D7AA/Games/XBox/4D57000C-Mortal_Kombat_Deadly_Alliance.xiso.iso`
+   by whoever may touch the Nova, which this lane may not.
+3. C: back above 40 GB free, for the desktop lavapipe run (Step 2 directly, without a Turnip
+   frame).
+
+The run takes 420 s plus setup. The route reaches a round at about 84 s, and the dump starts
+at 170 s.
+
+## Questions
+
+- Who takes the `dev_push` fix (6.2)? It blocks every title missing from the Nova, not only this
+  one. Halo's 06:17 request was the first to hit it.
