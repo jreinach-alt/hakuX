@@ -8,7 +8,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `fpsdiag1018` | claude-sonnet-5 | 0 min |  |
+| `fpsdiag1018` | claude-sonnet-5 | 15 min | fpsdiag1018: one FPS lane for GTA III, Blinx 2, Fable -- known/not/could-be and a diagnostic tool (#433) |
 
 - **Handhelds:** 1 connected.
   - Nova: free for the queue
@@ -121,7 +121,9 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Work in progress
 
-No branch is being worked right now.
+| Branch | Topic | Tip | Last change |
+|---|---|---|---|
+| `lane/fpsdiag1018` | fpsdiag1018: one FPS lane for GTA III, Blinx 2, Fable -- known/not/could-be and a diagnostic tool (#433) | `8a43220f63` | 2026-10-18 15:17 |
 
 ## Recently landed on master
 
@@ -138,4 +140,4 @@ No branch is being worked right now.
 - 2026-10-18 Fable and Blinx 2: decompose the gameplay dips, find what the frame spends its time on
 - 2026-10-18 pathfind: a screen-reading agent that drives a title from boot into gameplay
 
-_Updated 2026-10-18 15:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 15:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
