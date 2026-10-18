@@ -8,8 +8,8 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `holdcap1018` | claude-sonnet-5 | 2h 15m | holdcap1018: an owner-play hold starts a host logcat capture |
-| `vtxstale1018` | claude-opus-5-5 | 3 min | vk: bring a frame slot's vertex RAM current by page, not by span (#1049) |
+| `holdcap1018` | claude-sonnet-5 | 2h 30m | holdcap1018: an owner-play hold starts a host logcat capture |
+| `vtxstale1018` | claude-opus-5-5 | 18 min | vk: bring a frame slot's vertex RAM current by page, not by span (#1049) |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `lane.local`
@@ -123,7 +123,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
 | `lane/holdcap1018` | holdcap1018: an owner-play hold starts a host logcat capture | `6a009e01b6` | 2026-10-18 07:38 |
-| `lane/vtxstale1018` | vk: bring a frame slot's vertex RAM current by page, not by span (#1049) | `be379c5b7e` | 2026-10-18 09:42 |
+| `lane/vtxstale1018` | vk: bring a frame slot's vertex RAM current by page, not by span (#1049) | `f3bd1ea198` | 2026-10-18 09:54 |
 
 ## Recently landed on master
 
@@ -140,4 +140,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-18 Top Spin: a state:any route that gets past Controller Select
 - 2026-10-18 high-speed driving fps (GTA III + GTA: San Andreas)
 
-_Updated 2026-10-18 09:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 10:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
