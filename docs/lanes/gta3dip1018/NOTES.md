@@ -1,7 +1,7 @@
 # lane.gta3dip1018 -- GTA III: R2 removed every copy and fps did not move. Find what the dip frame spends its time on (#1049, #433)
 
-Status (attempt 1): analysis-only, no device time, no code. FINDINGS.md has the decomposition, the two owner-capture
-stalls, the ranked levers and the one lever to take first.
+Status (attempt 1, done): analysis-only, no device time, no code. FINDINGS.md has the decomposition, the two
+owner-capture stalls, the ranked levers and the one lever to take first. PR ready.
 
 ## 0. Already tried (Step 0)
 
