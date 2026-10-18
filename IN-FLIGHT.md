@@ -8,13 +8,14 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `holdcap1018` | claude-sonnet-5 | 3h 0m | holdcap1018: an owner-play hold starts a host logcat capture |
-| `perflog1016` | claude-opus-5-5 | 17 min | perflog1016: a pause-menu switch for the perflog telemetry tier, and a "Mark this moment" button (#433) |
+| `gta3car1018` | claude-opus-5-5 | 3 min |  |
+| `holdcap1018` | claude-sonnet-5 | 3h 15m | holdcap1018: an owner-play hold starts a host logcat capture |
+| `ralli2audio1018` | claude-opus-5-5 | 3 min |  |
 
 - **Handhelds:** 2 connected.
-  - Nova: held by `lane.local`
+  - Nova: held by `lane.gta3car1018`
   - Thor: held by `lanelocal-offline`
-- **Device queue:** 1 waiting, 0 running.
+- **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -125,10 +126,10 @@ The harness dashboard, with each release's targets and the progress charts, is [
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
 | `lane/holdcap1018` | holdcap1018: an owner-play hold starts a host logcat capture | `6a009e01b6` | 2026-10-18 07:38 |
-| `lane/perflog1016` | perflog1016: a pause-menu switch for the perflog telemetry tier, and a "Mark this moment" button (#433) | `ce91b11b74` | 2026-10-18 10:17 |
 
 ## Recently landed on master
 
+- 2026-10-18 The compatibility page adds RalliSport Challenge and Mortal Kombat: Shaolin Monks to Playable (92 -> 94)
 - 2026-10-18 compat1018b: drop GTA III and Vice City from Playable (#433, #1049)
 - 2026-10-18 pathfind: a screen-reading agent that drives a title from boot into gameplay
 - 2026-10-18 haloring1017: Halo CE main-menu ring: the static inside surface is the stock driver
@@ -140,6 +141,5 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-18 snaptargets1018: the dispatcher snapshot ships titlestate.py but not targets.toml (#433)
 - 2026-10-18 dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what stops a run
 - 2026-10-18 Top Spin: a state:any route that gets past Controller Select
-- 2026-10-18 high-speed driving fps (GTA III + GTA: San Andreas)
 
-_Updated 2026-10-18 10:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 10:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
