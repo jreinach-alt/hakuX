@@ -6,12 +6,10 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Right now
 
-| Lane | Model | Running for | Working on |
-|---|---|---|---|
-| `gta3fps1017b` | claude-opus-5-5 | 1h 11m | gta3fps1017b: GTA III fps -- R2 (bind the forced-alpha surface view) and R3 (share one copy between nodes), bo |
+No lane session is running.
 
 - **Handhelds:** 2 connected.
-  - Nova: free for the queue
+  - Nova: held by `lane.xbox-fps1018`
   - Thor: held by `lanelocal-offline`
 - **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
@@ -118,9 +116,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Work in progress
 
-| Branch | Topic | Tip | Last change |
-|---|---|---|---|
-| `lane/gta3fps1017b` | gta3fps1017b: GTA III fps -- R2 (bind the forced-alpha surface view) and R3 (share one copy between nodes), both off by  | `82ffaadf42` | 2026-10-18 00:26 |
+No branch is being worked right now.
 
 ## Recently landed on master
 
@@ -136,4 +132,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 release052c: the 0.5.2 release page tells the story since v0.3.1, and the driver notice says handheld (#433)
 - 2026-10-17 Halo CE: the ship's rear lights show through the hull after the cut to the front (opening cinematic)
 
-_Updated 2026-10-18 00:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 00:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
