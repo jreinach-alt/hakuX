@@ -222,3 +222,40 @@ is 16.7 ms/flip and 2.0 RP/flip. These are not gameplay numbers and are not used
 [lane.gta3instr1018] blocked: the parked in-car `[dipwin]` window. It needs either a device-holding lane to run
 the perflog APK at 25915ae59e with lane.xbox's in-car protocol, or a dispatcher save-state load (5.2). The Fable
 gameplay window needs a recorded route or the classifier's model.
+
+## 6. Attempt 2 (10-18, resumed with a hostops addendum) -- why it did not continue
+
+The resume brief carried an addendum (hostops, ~10:55 PDT) saying not to resume: lane.gta3car1018 was already
+holding the Nova and running exactly the in-car `[dipwin]` protocol this lane's 5.2/5.4 named as the unblock,
+reading this lane's FINDINGS.md. Checked before doing anything else:
+
+- `origin/lane/gta3car1018` (head `1a68e4853b`) is still a draft (`State: draft` in its PR.md) and not an
+  ancestor of `origin/master` -- the device work the addendum described is live, not finished and folded.
+- It answers this lane's own blocker directly: the in-car parked scene is 151.65 render passes/flip (on foot
+  7.64), 141.43/flip from one site (`copy_surface_to_texture`, texture.c) -- GTA III samples a 128x128 colour
+  render target as a texture ~140 times a flip while it is still the bound colour target, so every sampling
+  draw copies and ends the render pass: a feedback loop, not the vertex-copy or shader-bind cost this lane's
+  step 2 instrumented for. Its NOTES.md section 0 already logs `[dipwin]` (this lane's instrument) as "run in
+  the car; not rebuilt" and credits `vtxstale1018`'s page-granular copy as a second, smaller lever (~2-4 ms),
+  not the cause.
+- It has an opt-in fix built (`HAKUX_S2T_FB=1/2` in texture.c, off by default) and two golden-check requests
+  queued against `RenderTextureLoop` (`1792347481-gta3car1018-2028877`, `1792347484-gta3car1018-2030801`) to
+  confirm the pixel argument before the in-car A/B.
+- `hw/xbox/nv2a/pgraph/vk/draw.c`, `surface.c` and `texture.c` are all live in that lane's working tree (its
+  PR.md Files line) for this exact issue. Editing them here now would be a second writer on the same files for
+  the same cause mid-measurement, not a second lever.
+
+Nothing today's resume turned up should change the hostops call: no new addendum, no fold, no stall on
+gta3car1018 visible from its branch (most recent commit 10:56 PDT area, PR.md ready, golden requests already
+queued -- an active lane, not a stuck one). This attempt made no code or territory changes; it only re-verified
+the reason to stay stopped and extended this table.
+
+**Do not repeat:** re-reading the same in-car blocker and re-deciding to wait is not new work. The next useful
+resume point is stated once, below.
+
+[lane.gta3instr1018] waiting: for lane.gta3car1018's PR (`lane/gta3car1018`) to fold, or for its NOTES.md to
+report its golden-check requests (1792347481-gta3car1018-2028877, 1792347484-gta3car1018-2030801) judged and the
+in-car A/B run. Either resolves the in-car `[dipwin]` measurement this lane was blocked on and tells the next
+resume whether `HAKUX_S2T_FB` closes the dip or whether this lane's own instrument still has unread numbers to
+contribute (e.g. splitting `rotfen` further, or the Fable gameplay window once a route is recorded). Until then,
+this lane should stay stopped rather than duplicate a live writer on `draw.c`/`surface.c`/`texture.c`.
