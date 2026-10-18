@@ -12,7 +12,7 @@ Snapdragon handhelds.
 [What's new](docs/releases/v0.5.2.md) ·
 [Sponsor](https://github.com/sponsors/jreinach-alt)
 
-**[88 Playable games](https://github.com/jreinach-alt/hakuX/blob/home/STATUS.md)** so far, with progress charts — 88 games rated Playable.
+**[90 Playable games](https://github.com/jreinach-alt/hakuX/blob/home/STATUS.md)** so far, with progress charts — 90 games rated Playable.
 
 ## Highlights
 
