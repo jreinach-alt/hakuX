@@ -6,9 +6,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Right now
 
-| Lane | Model | Running for | Working on |
-|---|---|---|---|
-| `snaptargets1018` | claude-sonnet-5 | 2h 33m | snaptargets1018: the dispatcher snapshot ships titlestate.py but not targets.toml (#433) |
+No lane session is running.
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -118,12 +116,11 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Work in progress
 
-| Branch | Topic | Tip | Last change |
-|---|---|---|---|
-| `lane/snaptargets1018` | snaptargets1018: the dispatcher snapshot ships titlestate.py but not targets.toml (#433) | `6aa30dabdc` | 2026-10-18 01:47 |
+No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-18 dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what stops a run
 - 2026-10-18 Top Spin: a state:any route that gets past Controller Select
 - 2026-10-18 high-speed driving fps (GTA III + GTA: San Andreas)
 - 2026-10-18 gta3fps1017: GTA III fps -- the census on foot (neither R2 nor R3), and R1: no #474 drain ahead of a plain colour copy (#1049)
@@ -134,6 +131,5 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 storydoc1017: a project history page, linked from the README's More table
 - 2026-10-17 nearbar1017b: three more near-cap titles on the 0.5.2 build -- two clear, one inconclusive
 - 2026-10-17 bootstatic1017: black while the guest has the screen off, no static or green at title start (#1045)
-- 2026-10-17 nearbar1017: three near-bar titles on the 0.5.2 build -- two clear Playable now
 
-_Updated 2026-10-18 04:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 04:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
