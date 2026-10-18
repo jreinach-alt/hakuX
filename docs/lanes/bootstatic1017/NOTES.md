@@ -296,15 +296,181 @@ green). Self-test: FAILS=0, all seven cases. Fixed before any Nova data exists, 
 
 Nothing else was lost: no Nova request had been queued, and no R1/R2 code had been written.
 
+### Attempt 2, in order
+
+1. Merged master (`7ea8b80e71`, probe only): the **before** ref for every arm below.
+2. R1 + R2 in `ui/xemu.c` (`446e9abbed`): the **after** ref (below).
+3. `tools/queue_nova.sh` queued the Nova before/after: Halo CE (Blam), Top Spin (PAM), GTA III (RenderWare), probe on
+   for 40 s, video. The first, Halo before (1792282757), ran before the others were withdrawn: valid probe, Turnip,
+   **0-byte video** (below). The other five were withdrawn with `tools/withdraw_mine.py` and all six requeued with the
+   video started after the cool-down wake (`nova_ids.tsv`).
+4. Halo before showed the green look (below), and that both probe classifiers are blind to it on the Nova. Then
+   `tools/judge_nova.py` (`5ddb73d821`), before any after data; M3 and the desktop menubar rule (`5cc2ffaf03`)
+   after the first `--desktop` pass and still before any Nova after data.
+5. Desktop before/after on three engines (`tools/deskboot.py --bin`, `tools/desk_judge.py`).
+
+## R1 + R2 (`446e9abbed`, `ui/xemu.c`, +44 -5)
+
+- **R1, Android.** `sdl2_gl_refresh` draws black (`android_blank_frame`: clear the default framebuffer) instead of
+  `android_blit_frame` while `nv2a_get_screen_off()` holds, **or** held when this refresh read the VGA view. This is
+  the check the desktop has had since upstream `129c48dd6e` (`RenderFramebuffer`, `gl-helpers.cc:923`). The second
+  condition closes the race in which the guest turns the screen on between the VGA read and the draw. It applies to
+  every source (`n`, `v`, `c`), as the desktop's does.
+- **R2, both platforms.** In the fallback branch, `graphic_hw_update` runs before the upload on the desktop too, as it
+  already did on Android, so the image drawn is this refresh's. The end-of-refresh update is skipped when the fallback
+  already made one, so there is still one update per refresh.
+
+What the player sees change: black where the guest has the screen off. That is the static before the logo, the
+streaks after it, and the last frames of the logo once the kernel has turned the screen off (Nova n145-152 below).
+The desktop has shown black there since 2023. Nothing changes while the screen is on.
+
+## The green look, found: Nova, Halo CE before (1792282757, `7ea8b80e71`)
+
+Turnip: 3 lines (`GPU: PurpleVK` etc.), stock 0. Probe valid: n from 0, no gaps, 2401 presents. Spans (`src`,
+`start`, `sr01`, from the log):
+
+| presents | t (s) | src | start | SR01 | window |
+|---|---|---|---|---|---|
+| 0-9 | 0.01-0.15 | v | 0 | 00 | black (reset, 8x1) |
+| **10-21** | 0.17-0.35 | v | **0** | **21 off** | **whole-screen static**: kernel low memory, as d2 (dump: lit 0.75, nbh 41, nbv 50) |
+| 22-144 | 0.38-2.40 | n | 0x032a4000 | 01 | black, then the Xbox logo |
+| 145-152 | 2.42-2.53 | n | 0x032a4000 | **21 off** | the logo, still drawn (the nv2a image is not blanked either) |
+| **153-357** | 2.55-5.95 | v | **0x03d04000** | **21 off** | **green horizontal streaks, top and bottom thirds** (dump: lit 0.18, grn 0.09, nbh 0.9, nbv 11.2) |
+| 358- | 5.96- | n | 0x022c4000 / 0x023f0000 | 01 | Halo |
+
+`pv=0` throughout, so PVIDEO is never on (H3 refuted for both looks).
+
+**What the green is.** While Halo loads, the kernel has the screen off and the scan-out at 0x03d04000, which will
+become the title's framebuffer. The VGA view reads it as 640x480x32. The probe's RAM dump there at n153
+(`boot1045_r00153.bin`), drawn as BGRX at pitch 2560, is the streaks frame, band for band: `nova_green.png`
+(`tools/strip.py`). From left to right it shows: n10 (the static), n150 (the logo with the screen off), n153 (the
+streaks), the RAM decode, and the desktop's one-present leak of the same green (h1b n529). So **the green
+is H1+H5 again**: guest RAM shown while the guest has the screen off. It is the same mechanism as the static, at a
+later start, with different bytes. The static is the kernel's low memory before the logo (0.2 s); the green is the
+title's not-yet-drawn framebuffer, holding leftover green logo data, between the logo and the title (3.4 s on the Nova
+for Halo). The owner's "before the Xbox logo" fits the static. The green comes after the logo, which the owner's later
+answer ("whole screen static") did not mention. Question 2 still asks which they see.
+
+The desktop shows the same green **for one present** at the screen-on edge (h1b n529, Halo, the frame one refresh
+old: R2's leak) and never inside screen-off, because it blanks there.
+
+**M1 to the title's first picture: 225 presents** (static 12, 200 ms; logo 8 + streaks 205, 3.5 s). M2 0, M3 0:
+Android leaks nothing at the screen-on edge, since it reads the VGA view before drawing.
+
+## The judges, and what each cannot see
+
+- `judge_boot.py`'s classes (nb/lit/grn) are taken over the **centre half** of the window. Halo's streaks lie in the
+  top and bottom thirds, so the centre half reads black (lit 0.023, grn 0.005). On the Nova the static is drawn into
+  1280x960 by a bilinear 2x upscale, which halves its window `nb` (14.8, under the floor of 20), so it classes
+  "picture" (its texture, tnb 47.8, is noise). **Both looks are invisible to the probe's own classifier on the
+  Nova.**
+- So `judge_nova.py` judges the fix's own variable, with no look classifier. **M1** counts presents with SR01 bit 5
+  set whose window hash is not the all-black hash at that size; silicon shows black for every one. **M2** counts
+  `judge_boot` noise/green with the screen on, to the title's first picture. **M3** applies a whole-frame look (static or
+  streaks, from `nbh`/`nbv`) to every dumped present with the screen on, to the title's first picture, and prints the
+  undumped distinct hashes beside it. The looks are a fit to the three frames of 1792282757, and the docstring says so.
+- Desktop: the window carries xemu's menubar (rows 0-10 of a 240-row dump), so its hash is never all-black. With
+  `--desktop`, a window is also black when its dump has no lit pixel below the top 5%. Added after the first
+  `--desktop` pass, which counted the menubar as M1 in every run.
+- `judge_video.py` now also takes whole-frame looks, and it gives VOID on an empty or undecodable video (it crashed
+  on 1792282757's 0-byte file). Both additions came after that run and before any decodable video. Self-test FAILS=0.
+- `desk_ab.py` (`9225137c76`, centre-half classes) is superseded by `desk_judge.py` for the reason in the first
+  bullet.
+
+## Desktop before/after, three engines (`desk_judge.py`)
+
+lavapipe, SDL offscreen, the goldens HDD. Before = `7ea8b80e71`, after = `446e9abbed`. Every present is `src=v` on
+the desktop (no external memory on lavapipe).
+
+| run | arm | title (engine) | verdict | title's first picture | screen-off presents to it | M1 | M2 | M3 | undumped hashes |
+|---|---|---|---|---|---|---|---|---|---|
+| d4b | before | THPS4 (Neversoft) | FLASH | n920, 19.3 s | 680 | 1 | 1 (n42 static) | 1 | 0 |
+| d3 | after | THPS4 | **CLEAN** | n924, 18.4 s | 667 | 0 | 0 | 0 | 0 |
+| h1b | before | Halo CE (Blam) | FLASH | n637, 12.8 s | 378 | 1 | 0 | 1 (n529 streaks) | 0 |
+| h1a | after | Halo CE | **CLEAN** | n773, 16.2 s | 494 | 0 | 0 | 0 | 0 |
+| b1b | before | Burnout 3 (RenderWare) | FLASH | n404, 20.1 s | 109 | 0 | 1 (n64 static) | 1 | 0 |
+| b1a | after | Burnout 3 | **CLEAN** | n293, 6.7 s | 78 | 0 | 0 | 0 | 0 |
+| d2 | before (old base) | THPS4 | FLASH | n1530, 43.8 s | 1187 | 0 | 1 (n79 static) | 1 | 0 |
+
+The before arm is FLASH in 4 of 4 runs and the after arm CLEAN in 3 of 3. Each before flash is R2's one stale present
+at the screen-on edge: the static in THPS4 and Burnout 3, the green in Halo.
+
+The M1 of 1 in d4b (n178) and h1b (n165) is the logo, not a flash. The window at d4b n178 is the logo's (mean 23,38,7,
+hash equal to n176-177's), and the probe reads SR01=21 there: the guest turned the screen off between the draw's SR01
+read and the probe's. It is one present at the screen-off edge, a race the desktop's upstream check has too. It was
+seen in 2 of 4 before runs and 0 of 3 after runs.
+
+## Nova before/after: queued, not yet run
+
+Six requests, `nova_ids.tsv`, `--video-after 10`:
+- before (`7ea8b80e71`): 1792284283 Halo CE, 1792284284 Top Spin, 1792284285 GTA III;
+- after (`446e9abbed`): 1792284286 Halo CE, 1792284287 Top Spin, 1792284288 GTA III.
+
+Each is judged with `judge_nova.py <result> --sheet ...` (V0 Turnip, C1, coverage, M1/M2/M3) and `judge_video.py
+<result>` (every video frame from the launch). Predicted, from 1792282757 and the code: before is FLASH with M1 > 0 in
+every title (static, plus streaks wherever the title's framebuffer holds old data); after is CLEAN, with M1 = 0 by
+construction of R1 unless a present escapes it.
+
+**Why the first video was empty.** `soak_title.sh` puts the screen out for its cool-down gate (`KEYCODE_SLEEP`, line
+493) and wakes it at line 577. A `screenrecord` started before the sleep gets no frame and writes 0 bytes. On
+1792282757 the gate's sample was at +5.6 s from the video's start and `am start` at +13.9 s, so `--video-after 10`
+lands between them. The probe's data from that run stand; only the video is missing.
+
+`--env` stays in the app's pref until the next request. Both arms carry the same probe env, which only writes files.
+
+## Root cause
+
+Both looks have one cause. **The present path showed QEMU's VGA view of guest RAM while the guest had the VGA screen
+off (SR01 bit 5).**
+- On silicon that window is black.
+- On Android nothing read SR01, so every launch showed:
+  - **the static**: RAM at address 0 while the kernel sets 640x480x32 (0.2 s on the Nova);
+  - the last logo frames;
+  - **the green streaks**: the title's framebuffer before the title draws it (3.4 s for Halo on the Nova).
+- The desktop honoured SR01 but drew a VGA image one refresh old, so one present of either look leaked at the
+  screen-on edge.
+
+It is every title and every build because it is the kernel's boot path and the present path, not anything a title
+does. Both drivers show it because it never reaches the Vulkan driver: the VGA view is uploaded through GL.
+
+## Hypotheses: final P
+
+| # | static | green | evidence |
+|---|---|---|---|
+| H1+H5 | **0.97** | **0.95** | Static: d2 RAM match r 0.976; Nova n10-21 `src=v` start 0 SR01=21. Green: Nova n153-357 `src=v` start 0x03d04000 SR01=21, RAM dump = the frame; desktop h1b n529 is the same green, one refresh late. After the fix: desktop CLEAN 3/3. The remainder waits on the Nova after arm and the video (H4) |
+| H2 | 0.01 | 0.02 | every flash present is `src=v`; the nv2a image shows only the logo |
+| H3 | 0 | 0 | `pv=0` on every present |
+| H4 | 0.02 | 0.03 | until the Nova video shows nothing before n0 |
+| H6 | 0 | 0 | both decode at the logged geometry |
+| H7 | 0 | 0 | — |
+
+## Remedies: final ranking
+
+| # | remedy | P | win | status |
+|---|---|---|---|---|
+| **R1** | Android honours screen-off | 0.95 (both looks: every flash present on the Nova has SR01=21) | both looks, every launch, the shipped app | **built**, `446e9abbed`; Nova after arm queued |
+| **R2** | the desktop reads the VGA view before drawing it | 0.95 (desktop 3/3 CLEAN) | one present per launch, desktop | **built**, `446e9abbed`, measured |
+| R3 | black until the first nv2a frame | 0.5 for the green: n153-357 come after nv2a frames, so the rule would need to be "since the last mode set" | as R1 | not chased: R1 removes it by the guest's own register, as silicon does |
+| R4 | clear a new display image | 0 | — | refuted: no flash present is an nv2a image |
+
+## pgraph suites the change touches
+
+None. The suites' captures are written by the guest to E: (`pgraph` tests save their own framebuffer), and never
+pass through `sdl2_gl_refresh`, the only function R1 and R2 change. No golden can move, so `Prediction: none`.
+The present path is measured instead by the probe, before and after, as above.
+
 ## Waiting / blocked
 
-Nothing outstanding. Next: queue the Nova "before" runs (probe on, video from before the launch, Turnip checked),
-then build R1 and R2.
+Waiting on the six Nova requests 1792284283-1792284288 (dispatch results). They are queued behind gta3drive's
+running request, two foldqueue requests and a dispatch.restore. Each is judged by `tools/judge_nova.py` and
+`tools/judge_video.py`. Then PR.md goes ready.
 
 ## Questions (for lane.xbox / the owner; work continues meanwhile)
 
 1. Does the static or green cover the whole screen, or a band or a box? **Answered** 10-17 ~15:00: whole screen,
    static, almost all games (NFS: Most Wanted, Top Spin).
 2. Is it static on some launches and green on others, or both in one launch? (Green was not mentioned in the answer.)
+   The Nova shows both in one Halo launch: the static before the logo (0.2 s), and green streaks after it, while the
+   title loads (3.4 s).
 3. Which titles do not show it? One name is enough: it is the discriminator. **Answered** 10-17 ~15:05: none found
    (Halo CE, NFS:MW, THPS4, MP2, GTA III all have it).

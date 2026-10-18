@@ -1,37 +1,52 @@
-# bootstatic1017: the brief static or green flash at every title start (#1045)
+# bootstatic1017: black while the guest has the screen off, no static or green at title start (#1045)
 
 State: draft
 
 Lane: bootstatic1017            Issue: #1045
 Base: master @ 9abd80e90c
-Files: docs/lanes/bootstatic1017/PR.md, docs/lanes/bootstatic1017/NOTES.md, docs/lanes/bootstatic1017/step0_search.out, docs/lanes/bootstatic1017/forge_search.out, docs/lanes/bootstatic1017/tools/step0_search.sh, docs/lanes/bootstatic1017/tools/tracker_search.py, docs/lanes/bootstatic1017/tools/forge_search.py, docs/lanes/bootstatic1017/tools/setup_desk.py, docs/lanes/bootstatic1017/tools/judge_boot.py, docs/lanes/bootstatic1017/tools/judge_boot_selftest.py, docs/lanes/bootstatic1017/tools/deskboot.py, docs/lanes/bootstatic1017/tools/sheet.py, docs/lanes/bootstatic1017/tools/rowlit.py, docs/lanes/bootstatic1017/tools/tspan.py, docs/lanes/bootstatic1017/tools/ramsheet.py, docs/lanes/bootstatic1017/d1_flash.png, docs/lanes/bootstatic1017/d2_ram.png, ui/xemu.c
-Prediction: none: analysis-only (so far; registered if a remedy moves pixels)
+Files: docs/lanes/bootstatic1017/NOTES.md, docs/lanes/bootstatic1017/PR.md, docs/lanes/bootstatic1017/d1_flash.png, docs/lanes/bootstatic1017/d2_ram.png, docs/lanes/bootstatic1017/forge_search.out, docs/lanes/bootstatic1017/nova_green.png, docs/lanes/bootstatic1017/nova_ids.tsv, docs/lanes/bootstatic1017/step0_search.out, docs/lanes/bootstatic1017/tools/desk_ab.py, docs/lanes/bootstatic1017/tools/desk_judge.py, docs/lanes/bootstatic1017/tools/deskboot.py, docs/lanes/bootstatic1017/tools/forge_search.py, docs/lanes/bootstatic1017/tools/judge_boot.py, docs/lanes/bootstatic1017/tools/judge_boot_selftest.py, docs/lanes/bootstatic1017/tools/judge_nova.py, docs/lanes/bootstatic1017/tools/judge_video.py, docs/lanes/bootstatic1017/tools/judge_video_selftest.py, docs/lanes/bootstatic1017/tools/logpeek.py, docs/lanes/bootstatic1017/tools/novatitles.py, docs/lanes/bootstatic1017/tools/queue_nova.sh, docs/lanes/bootstatic1017/tools/ramsheet.py, docs/lanes/bootstatic1017/tools/rowlit.py, docs/lanes/bootstatic1017/tools/setup_desk.py, docs/lanes/bootstatic1017/tools/sheet.py, docs/lanes/bootstatic1017/tools/step0_search.sh, docs/lanes/bootstatic1017/tools/strip.py, docs/lanes/bootstatic1017/tools/tracker_search.py, docs/lanes/bootstatic1017/tools/tspan.py, docs/lanes/bootstatic1017/tools/withdraw_mine.py, ui/xemu.c
+Prediction: none: no arm. The change is in the present path only (`sdl2_gl_refresh`), which no pgraph golden passes through (the suites' captures are written by the guest to E:); measured instead by the launch probe, before and after, desktop and Nova
 Needs device: yes    Needs NDK: no
+Selftest: none -- no selftest.d fragment reads ui/xemu.c or docs/lanes/bootstatic1017/ (selftest.d searched for xemu.c, docs/lanes/bootstatic1017, boot1045, BOOTPROBE: no hits). The emulator change is covered by its desktop and Android builds and by the before/after launch-probe runs; the lane's judges have their own self-tests (tools/judge_boot_selftest.py, tools/judge_video_selftest.py).
 
-Deep dive into the brief static or green flash the owner sees at the start of every title, before the Xbox logo.
-`NOTES.md` has the Step 0 Already-tried table and the hypotheses.
+Release note (rendering): the brief whole-screen static before the Xbox logo, and the green streaks between the logo and the game, no longer show when a title starts; the screen stays black there, as on a real Xbox.
 
-The lead so far: until the kernel's first GPU frame is bound at the scan-out address, the UI shows QEMU's VGA view of
-raw guest RAM (`ui/xemu.c:2611`). The existing frame dumper cannot see those frames, because it runs only on a guest
-flip, so a probe at the present comes first.
+## What it was
 
-On the desktop the static reproduces for one present (THPS4, `d1_flash.png`). It appears where the kernel turns the
-VGA screen back on and moves the scan-out to its framebuffer. For about 330 ms before that, the kernel holds the
-screen off, in 640x480x32 at start 0, which is kernel memory. The desktop blanks while the screen is off
-(`ui/xui/gl-helpers.cc:923`, upstream `129c48dd6e`), and lets one stale image through on the change because its VGA
-update runs after the present. The Android present (`android_blit_frame`) has no screen-off check, so on the Nova
-the whole screen-off window should show kernel memory as static. The Nova run with the probe is next.
+Both looks have one cause: **QEMU's VGA view of guest RAM was shown while the guest had the VGA screen off (SR01
+bit 5)**. On a real Xbox that window is black.
+- **Static**: the kernel sets 640x480x32 with the scan-out at address 0 and the screen off. The view is its low
+  memory: 0.2 s on the Nova, every title. On the desktop it matched guest RAM at address 0 with r = 0.976.
+- **Green streaks**: while the title loads, the kernel has the screen off and the scan-out at the title's future
+  framebuffer, which holds leftover green logo data. That is 3.4 s for Halo CE on the Nova. The RAM dump at that
+  address, drawn as BGRX, is the frame (`nova_green.png`).
+- Android's `android_blit_frame` never read SR01. The desktop did (upstream `129c48dd6e`), but it drew a VGA image
+  one refresh old, so one present of either look leaked at the screen-on edge.
 
-Desktop run d2 matched it. Guest RAM at start 0, dumped one present before the edge, correlates with the leaked
-static at r = 0.976 (null 0.148). Without the blank, the texture is static for 28 presents (1.2 s), 27 of them inside
-the guest's screen-off window (`d2_ram.png`).
+## The change (`ui/xemu.c`)
 
-The owner says it is whole-screen static, on every title checked (Halo CE, NFS: Most Wanted, THPS4, Max Payne 2,
-GTA III, Top Spin).
+- **R1 (Android)**: draw black while `nv2a_get_screen_off()` holds, or held when this refresh read the VGA view.
+- **R2 (both)**: read the VGA view before the upload, not after the present; still one update per refresh.
 
-`ui/xemu.c` carries the `[boot1045]` present probe, armed by `HAKUX_BOOTPROBE` and off by default. Its judge is
-`tools/judge_boot.py`, with a synthetic self-test in `tools/judge_boot_selftest.py`.
+Nothing changes while the guest has the screen on.
 
-Release note (none): an opt-in launch probe, off by default.
+## Measured: every present from launch to the title's first picture
+
+`tools/judge_nova.py` (M1: screen-off presents whose window is not black, by hash; M2/M3: noise, static or streaks
+with the screen on) and `tools/desk_judge.py`. Before = `7ea8b80e71`, after = `446e9abbed`.
+
+| platform | title (engine) | before | after |
+|---|---|---|---|
+| desktop | THPS4 (Neversoft) | FLASH (static, 1 present) | CLEAN |
+| desktop | Halo CE (Blam) | FLASH (green, 1 present) | CLEAN |
+| desktop | Burnout 3 (RenderWare) | FLASH (static, 1 present) | CLEAN |
+| Nova, Turnip | Halo CE | FLASH: M1 225 (static 12, logo 8, green 205) | queued |
+| Nova, Turnip | Top Spin (PAM) | queued | queued |
+| Nova, Turnip | GTA III (RenderWare) | queued | queued |
+
+`NOTES.md` has the Already-tried table, the hypotheses with their final P, the instruments' blind spots, and the
+remedies ranked.
+
+`ui/xemu.c` also carries the `[boot1045]` present probe (`HAKUX_BOOTPROBE`, off by default; one `getenv` when unset).
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
