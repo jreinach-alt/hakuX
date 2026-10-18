@@ -1224,3 +1224,17 @@ earliest boot samples, before the hold even starts), not a stuck tutorial screen
 The other 96 of 173 are fails (pass false/absent) and 45 have no verdict.json at all (navigation runs that never
 reached a hold). Neither group scanned further. Remaining untriaged backlog is now 141 directories, not ~280 --
 named in NOTES.md for the next session. No device time spent.
+
+## #433 -- 2026-10-18 (lane.pathfind, attempt 3, below-bar.tsv regenerated via the tool's own seed function)
+
+Before hand-filing the fps-capped fails above into below-bar.tsv, read how it's actually used
+(`docs/testing/titles/pathfind.py:929-993`): `below_bar_refusal()` only refuses a title whose *latest* verdict has
+fps_ok_share < 0.9 with no fix_commit, and `seed_below_bar()` already exists to regenerate the file correctly from
+`runs/*/verdict.json`, preserving every row's existing cause/fix_commit. Ran it against the real tree (backed up
+first, diffed after): 30 -> 150 rows, the 8 pre-existing owner-written `cause` entries intact verbatim, 12 new
+genuine fps-bar refusals added (Turok Evolution, Ty the Tasmanian Tiger: Night of the Quinkan, Medal of Honor:
+Frontline, Burnout 3: Takedown, Oddworld: Stranger's Wrath, Half-Life 2, Panzer Elite Action: Fields of Glory, Star
+Wars: The Clone Wars, Aeon Flux, NBA Inside Drive 2004, Area 51, NBA 2K7), each backed by a confirmation-length hold
+(600-640 s play) whose `failing` field names the fps bar directly, not an early abort/hang/menu-stuck run. A first
+pass that filtered fps_ok_share<0.9 by hand would have wrongly flagged several hung/short/menu-stuck runs as fps
+caps; using the maintained seed function instead of a hand-written filter avoided that. No device time spent.

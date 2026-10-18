@@ -1616,3 +1616,32 @@ none did):
 - Committed only `runs/n-4156001F-1011` (23 MB) this round, on top of the already-committed 13. The 141-directory
   FAIL/no-verdict backlog is unchanged from the prior entry's description: still uncommitted, still untriaged for
   below-bar.tsv evidence, left for the next session.
+
+## below-bar.tsv regeneration (2026-10-18): used seed_below_bar(), not a hand-written guess
+
+Before hand-appending rows for the fps-capped titles found above, read `pathfind.py`'s own below-bar machinery
+(`BELOW_BAR_COLS`/`below_bar_rows`/`below_bar_refusal`/`seed_below_bar`, `docs/testing/titles/pathfind.py:929-993`).
+Two things changed the plan:
+- The file is **not** "titles below the fps bar" -- it is "latest verdict per title, whatever its fps_ok_share",
+  and `below_bar_refusal()` only actually refuses a title whose latest row has `fps_ok_share < 0.9` **and** no
+  `fix_commit`. Rows with 1.0 (Mortal Kombat: Armageddon, Spikeout, etc.) are present but inert by design.
+  My first pass (filtering the 96 fails by `fps_ok_share < 0.9`) would have mixed real fps caps in with runs that
+  failed for unrelated reasons (duration too short, a hang, stuck in a menu) -- e.g. three "0.0000" rows are
+  10-16 runs that hung or never got past ~3-5 min, not titles that run at 0 fps. Hand-filing those as fps-bar
+  refusals would have been wrong and, per the project's standing note about cheap-looking fixes that don't pan out,
+  exactly the kind of shortcut to avoid.
+- `seed_below_bar(runs, path)` already exists, is exercised by `pathfind_selftest.py`, and does this correctly:
+  globs `runs/*/verdict.json` (one level -- does not pick up `nhl-2k3/hold2`-style containers), keeps one row per
+  title by the latest `judged_utc`, and **preserves every existing `cause`/`fix_commit`** for titles already in the
+  file. Ran it directly against the real `below-bar.tsv`/`runs/` (backed up to `/tmp/below-bar.tsv.orig` first,
+  diffed after): grew from 30 to 150 rows, zero rows lost or altered beyond their verdict/fps columns (checked the
+  8 rows that had owner-written `cause` text -- Amped 2, Buffy, Dead or Alive 3, Dino Crisis 3, Mortal Kombat:
+  Shaolin Monks, Ninja Gaiden Black, Spider Man 2 -- all intact verbatim). The 120 new rows include titles already
+  on the Playable ledger (fps_ok 1.0, inert) and 12 genuine new fps-bar refusals with `cause` left blank for someone
+  to fill in later (same convention as the file's pre-existing blank-cause rows): Turok Evolution, Ty the Tasmanian
+  Tiger: Night of the Quinkan, Medal of Honor: Frontline, Burnout 3: Takedown, Oddworld: Stranger's Wrath, Half-Life
+  2, Panzer Elite Action: Fields of Glory, Star Wars: The Clone Wars, Aeon Flux, NBA Inside Drive 2004, Area 51,
+  NBA 2K7 -- each has `failing` text naming "fps: N% of gameplay at >= 30 fps (bar 90%)" on a confirmation-length
+  hold (play_s 600-640 s), not an early abort. These titles are now correctly refused from blind pathfind retries
+  until a fix is committed and `fix_commit` is filled in. This is a one-line `seed_below_bar()` call; it should be
+  re-run (same way) whenever a batch of uncommitted runs piles up again, rather than hand-filed per title.

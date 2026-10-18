@@ -1,30 +1,151 @@
 title	title_id	fps_ok_share	verdict	judged_utc	cause	fix_commit
+007: Nightfire		0.8916	docs/lanes/pathfind/runs/nightfire-1006/verdict.json	2026-10-07T03:01:46Z		
+25 to Life		0.9737	docs/lanes/pathfind/runs/n-45530018-1013r/verdict.json	2026-10-13T17:03:09Z		
+4x4 Evo 2		0.9956	docs/lanes/pathfind/runs/n-54540001-1013r/verdict.json	2026-10-13T18:12:43Z		
+Aeon Flux		0.8460	docs/lanes/pathfind/runs/n-4D4A0014-1013r/verdict.json	2026-10-13T17:20:14Z		
+Alias		1.0000	docs/lanes/pathfind/runs/n-41430016-1014d/verdict.json	2026-10-14T16:34:01Z		
 Amped 2		0.4423	docs/lanes/pathfind/runs/retro-amped2/verdict.json	2026-10-05T04:18:48Z	retro fps 0.44; guest busy in the vCPU (Amped perflog: 31.6 ms/frame); belowbar1005 owns it	
+Area 51		0.7254	docs/lanes/pathfind/runs/n-4D570005-1008/verdict.json	2026-10-09T04:18:19Z		
+Arx Fatalis		1.0000	docs/lanes/pathfind/runs/n-44430002-1007/verdict.json	2026-10-07T17:33:50Z		
+ATV Quad Power Racing 2		1.0000	docs/lanes/pathfind/runs/n-4143000A-1013r/verdict.json	2026-10-13T18:44:29Z		
+Auto Modellista		1.0000	docs/lanes/pathfind/runs/automodellista-1006/verdict.json	2026-10-07T06:23:14Z		
+Backyard Wrestling 2 There Goes the Neighborhood USA		0.9943	docs/lanes/pathfind/runs/n-45530016-1014d/verdict.json	2026-10-14T17:51:32Z		
+Bad Boys Miami Takedown USA		1.0000	docs/lanes/pathfind/runs/n-454D0016-1014/verdict.json	2026-10-14T10:33:26Z		
+Batman Begins		0.9457	docs/lanes/pathfind/runs/batman-2/verdict.json	2026-10-07T03:40:00Z		
+Batman Dark Tomorrow		0.9770	docs/lanes/pathfind/runs/n-4B420001-1007/verdict.json	2026-10-08T01:02:00Z		
+Battlestar Galactica USA		1.0000	docs/lanes/pathfind/runs/n-5655000F-1013/verdict.json	2026-10-13T09:47:34Z		
+Beyond Good Evil		0.9332	docs/lanes/pathfind/runs/bge-1006/verdict.json	2026-10-07T03:39:49Z		
+Big Bumpin USA		1.0000	docs/lanes/pathfind/runs/n-4D5300D2-1015n/verdict.json	2026-10-16T06:44:45Z		
+Big Mutha Truckers USA		0.8910	docs/lanes/pathfind/runs/n-454D0002-1014d/verdict.json	2026-10-14T16:49:43Z		
 Black Stone Magic Steel		1.0000	docs/lanes/pathfind/runs/black-stone-hold3/verdict.json	2026-10-04T05:25:16Z		
+Blade II		1.0000	docs/lanes/pathfind/runs/n-41560005-1007/verdict.json	2026-10-07T16:18:02Z		
+Blazing Angels Squadrons of WWII USA Europe En Fr De Es It		1.0000	docs/lanes/pathfind/runs/n-55530057-1013/verdict.json	2026-10-13T10:55:05Z		
+BloodRayne		0.8788	docs/lanes/pathfind/runs/n-4D4A0001-1014d/verdict.json	2026-10-14T16:13:37Z		
+BloodRayne 2 USA		1.0000	docs/lanes/pathfind/runs/n-4D4A000D-1007/verdict.json	2026-10-08T14:47:31Z		
 Blowout		1.0000	docs/lanes/pathfind/runs/blowout-val2/verdict.json	2026-10-07T01:00:53Z		
+Brian Lara International Cricket 2005 Europe		0.9626	docs/lanes/pathfind/runs/n-434D004E-1014d/verdict.json	2026-10-15T09:29:40Z		
 Buffy the Vampire Slayer		0.5516	docs/lanes/pathfind/runs/retro-buffy/verdict.json	2026-10-05T04:48:49Z	retro fps 0.55; the earlier abort was a channel_valid/save-slot limit (owner 10-04); fps cause not named	
+Burnout 3: Takedown		0.8475	docs/lanes/pathfind/runs/n-4541005B-1014/verdict.json	2026-10-14T07:42:03Z		
+Call of Duty 3		1.0000	docs/lanes/pathfind/runs/cod3-1006b/verdict.json	2026-10-07T05:38:44Z		
+Capcom vs SNK 2 EO		1.0000	docs/lanes/pathfind/runs/n-43430008-1007/verdict.json	2026-10-07T14:45:28Z		
+Cel Damage		0.9815	docs/lanes/pathfind/runs/n-45410011-1007/verdict.json	2026-10-07T15:09:03Z		
+Conan Europe En Fr De Es It		1.0000	docs/lanes/pathfind/runs/n-544D0008-1011/verdict.json	2026-10-12T09:52:59Z		
+Conflict Desert Storm II Back to Baghdad USA		0.9321	docs/lanes/pathfind/runs/n-53430006-1013/verdict.json	2026-10-13T13:35:07Z		
+Conflict Global Terror USA		1.0000	docs/lanes/pathfind/runs/n-5343000C-1013/verdict.json	2026-10-13T12:52:32Z		
+Conflict Vietnam USA		0.7030	docs/lanes/pathfind/runs/n-5343000A-1015n/verdict.json	2026-10-16T06:00:49Z		
+Conspiracy Weapons of Mass Destruction Europe En Fr De Es It		1.0000	docs/lanes/pathfind/runs/n-4F580001-1014/verdict.json	2026-10-14T09:54:31Z		
+Crash Bandicoot: The Wrath of Cortex		1.0000	docs/lanes/pathfind/runs/crashwoc-1007/verdict.json	2026-10-07T14:14:01Z		
+Crazy Taxi 3 High Roller USA		0.7696	docs/lanes/pathfind/runs/n-53450004-1013/verdict.json	2026-10-13T09:13:47Z		
+Dance Dance Revolution Ultramix 3 USA		0.9482	docs/lanes/pathfind/runs/n-4B4E0029-1015n/verdict.json	2026-10-16T12:33:57Z		
+Darkwatch		1.0000	docs/lanes/pathfind/runs/n-43430016-1013r/verdict.json	2026-10-13T18:26:42Z		
+David Beckham Soccer Europe En Fr De Es It		0.9979	docs/lanes/pathfind/runs/n-52410003-1014d/verdict.json	2026-10-15T08:24:34Z		
+Dead or Alive 1 Ultimate		1.0000	docs/lanes/pathfind/runs/doaultimate-1006b/verdict.json	2026-10-07T08:32:17Z		
 Dead or Alive 3		0.4394	docs/lanes/pathfind/runs/retro-doa3/verdict.json	2026-10-05T04:00:04Z	retro fps 0.44 (per-title slowdown, #413); doa3-rev replay diverged at step 0 (NEW ISSUE in OUTBOX)	
+Die Hard Vendetta Europe En Fr Es It			docs/lanes/pathfind/runs/n-56560029-1011/verdict.json	2026-10-12T13:53:45Z		
 Dino Crisis 3		0.3793	docs/lanes/pathfind/runs/dino-crisis-3-hold/verdict.json	2026-10-04T04:44:52Z	hold fps 0.38 (10-03); slowdown not named; telemetry owed, not a retest	
 Disney Pixar Ratatouille		1.0000	docs/lanes/pathfind/runs/sweep-54510109/verdict.json	2026-10-06T08:55:26Z		
+Dragon Ball Z Sagas		0.5715	docs/lanes/pathfind/runs/n-4947007A-1007/verdict.json	2026-10-08T00:11:20Z		
+ESPN International Winter Sports 2002 USA		1.0000	docs/lanes/pathfind/runs/n-4B4E000B-1015n/verdict.json	2026-10-16T10:32:52Z		
+ESPN Major League Baseball USA		1.0000	docs/lanes/pathfind/runs/n-53450028-1015n/verdict.json	2026-10-16T09:26:00Z		
+ESPN MLS ExtraTime 2002 USA		1.0000	docs/lanes/pathfind/runs/n-4B4E0005-1015n/verdict.json	2026-10-16T10:20:02Z		
+Fantastic 4		0.4261	docs/lanes/pathfind/runs/n-4156001A-1007/verdict.json	2026-10-07T18:07:51Z		
 Fight Club		0.9372	docs/lanes/pathfind/runs/fightclub-1006/verdict.json	2026-10-07T00:39:19Z		
+FILA World Tour Tennis Europe		1.0000	docs/lanes/pathfind/runs/n-54510009-1014d/verdict.json	2026-10-15T08:46:34Z		
+Forgotten Realms Demon Stone USA		0.5054	docs/lanes/pathfind/runs/n-49470074-1007/verdict.json	2026-10-08T15:12:53Z		
+Future Tactics The Uprising		1.0000	docs/lanes/pathfind/runs/n-43560007-1007/verdict.json	2026-10-07T15:24:39Z		
+Gene Troopers Europe En Fr De Es It		0.9147	docs/lanes/pathfind/runs/n-544D0011-1014/verdict.json	2026-10-14T12:10:51Z		
+Genma Onimusha		1.0000	docs/lanes/pathfind/runs/n-43430001-1013r/verdict.json	2026-10-13T19:11:06Z		
+Ghost Master The Gravenville Chronicles Europe En Fr De Es It		1.0000	docs/lanes/pathfind/runs/n-454D0004-1013/verdict.json	2026-10-13T12:09:19Z		
+Gui Yi Taiwan		0.9429	docs/lanes/pathfind/runs/n-58500001-1007/verdict.json	2026-10-07T20:28:11Z		
 Guilty Gear XX Reload The Midnight Carnival		1.0000	docs/lanes/pathfind/runs/guiltygear-1006/verdict.json	2026-10-06T23:09:19Z		
+Half Life 2		0.7418	docs/lanes/pathfind/runs/n-45410091-1013r/verdict.json	2026-10-13T17:55:59Z		
+Harry Potter and the Philosopher s Stone		0.9513	docs/lanes/pathfind/runs/n-45410037-1013r/verdict.json	2026-10-13T20:09:11Z		
+Hello Kitty Roller Rescue Europe En Fr De Es It		1.0000	docs/lanes/pathfind/runs/n-58500004-1014/verdict.json	2026-10-14T11:29:36Z		
+Indigo Prophecy USA		0.9947	docs/lanes/pathfind/runs/n-4947007B-1007/verdict.json	2026-10-07T18:57:57Z		
+Jacked Europe En Fr De Es It		1.0000	docs/lanes/pathfind/runs/n-454D001E-1014/verdict.json	2026-10-14T11:03:04Z		
 JSRF - Jet Set Radio Future (USA)		1.0000	docs/lanes/pathfind/runs/retro-jsrf/verdict.json	2026-10-05T03:19:43Z		
+Knights of the Temple II Europe En Fr De Es It		1.0000	docs/lanes/pathfind/runs/n-544D0013-1014/verdict.json	2026-10-14T07:20:49Z		
+Knockout Kings 2002 USA		1.0000	docs/lanes/pathfind/runs/n-4541000A-1015n/verdict.json	2026-10-16T07:37:51Z		
+Kung Fu Chaos USA Asia En Fr De		1.0000	docs/lanes/pathfind/runs/n-4D530031-1014d/verdict.json	2026-10-14T20:06:28Z		
+Largo Winch Empire Under Threat Europe En Fr De Es It		1.0000	docs/lanes/pathfind/runs/n-5553000B-1014/verdict.json	2026-10-14T09:36:49Z		
+Legacy of Kain Defiance USA		0.9681	docs/lanes/pathfind/runs/n-4553000F-1007/verdict.json	2026-10-08T01:26:12Z		
+Legends of Wrestling II USA		1.0000	docs/lanes/pathfind/runs/n-4143000F-1014d/verdict.json	2026-10-14T19:23:08Z		
+Legends of Wrestling USA		1.0000	docs/lanes/pathfind/runs/n-41430003-1014d/verdict.json	2026-10-14T18:50:18Z		
+Lemony Snicket s A Series of Unfortunate Events USA		1.0000	docs/lanes/pathfind/runs/n-4156001F-1011/verdict.json	2026-10-12T12:48:36Z		
+Lord of the Rings The The Fellowship of the Ring USA		1.0000	docs/lanes/pathfind/runs/n-56550004-1007/verdict.json	2026-10-07T23:14:41Z		
+Manhunt USA		1.0000	docs/lanes/pathfind/runs/n-54540019-1007/verdict.json	2026-10-08T14:23:57Z		
 Marvel Nemesis Rise of the Imperfects		0.9888	docs/lanes/pathfind/runs/marvel-1006/verdict.json	2026-10-06T22:50:27Z		
+Mat Hoffman s Pro BMX 2 USA		1.0000	docs/lanes/pathfind/runs/n-4156000B-1014/verdict.json	2026-10-14T08:59:53Z		
+Max Payne 2 The Fall of Max Payne USA		1.0000	docs/lanes/pathfind/runs/n-5454000C-1007/verdict.json	2026-10-08T13:40:39Z		
+Max Payne USA		1.0000	docs/lanes/pathfind/runs/n-54540003-1014d/verdict.json	2026-10-14T16:01:44Z		
+Medal of Honor Frontline USA		0.8558	docs/lanes/pathfind/runs/n-4541001A-1007/verdict.json	2026-10-08T01:39:47Z		
+Mercenaries USA Europe		1.0000	docs/lanes/pathfind/runs/n-4C410015-1011/verdict.json	2026-10-12T08:23:22Z		
+Micro Machines Europe En Fr De Es It		1.0000	docs/lanes/pathfind/runs/n-4947001C-1014d/verdict.json	2026-10-14T20:24:06Z		
 Midnight Club II		0.0000	docs/lanes/pathfind/runs/sweep-54540008/verdict.json	2026-10-06T04:42:12Z	sweep verdict 0.00: no valid gameplay window measured; needs a screen before any hold	
+Mission Impossible Operation Surma USA		0.0000	docs/lanes/pathfind/runs/n-4947001F-1011/verdict.json	2026-10-12T13:22:42Z		
 Mortal Kombat: Armageddon		1.0000	docs/lanes/pathfind/runs/armageddon1006d/verdict.json	2026-10-06T21:08:37Z		
 Mortal Kombat Deadly Alliance		0.9955	docs/lanes/pathfind/runs/deadly-alliance-1006/verdict.json	2026-10-06T21:39:31Z		
 Mortal Kombat Shaolin Monks		0.4912	docs/lanes/pathfind/runs/shaolin-1006/verdict.json	2026-10-06T21:54:16Z	fps 0.49 at the bar on a valid window (10-06 14:55); perflog void; NEW ISSUE in OUTBOX	
+Motor Trend Presents Lotus Challenge USA		1.0000	docs/lanes/pathfind/runs/n-58490005-1015n/verdict.json	2026-10-16T06:59:35Z		
+MTV Music Generator 3 This Is the Remix USA En Es		0.8785	docs/lanes/pathfind/runs/n-434D0029-1007/verdict.json	2026-10-07T21:13:11Z		
+MVP Baseball 2003 USA		1.0000	docs/lanes/pathfind/runs/n-4541002D-1015n/verdict.json	2026-10-16T08:38:55Z		
+NBA 2K7 USA Europe		0.7525	docs/lanes/pathfind/runs/n-545400AE-1015n/verdict.json	2026-10-16T08:22:16Z		
+NBA Inside Drive 2004 USA		0.7048	docs/lanes/pathfind/runs/n-4D53000B-1015n/verdict.json	2026-10-16T08:01:38Z		
+NBA Live 06		0.0000	docs/lanes/pathfind/runs/nbalive06-1006/verdict.json	2026-10-07T06:31:13Z		
+NBA Live 07		0.0110	docs/lanes/pathfind/runs/nbalive07-1006/verdict.json	2026-10-07T06:39:42Z		
+NBA Live 2004		1.0000	docs/lanes/pathfind/runs/nbalive04-1006/verdict.json	2026-10-07T05:11:24Z		
 NBA Live 2005		0.0000	docs/lanes/pathfind/runs/nba-live-2005-hold/verdict.json	2026-10-03T23:47:14Z	about 25 fps after the surface-download fix, below 28.5 (NBA Live family; telemetry owed)	
 Need for Speed Most Wanted		0.1937	docs/lanes/pathfind/runs/sweep-4541007B/verdict.json	2026-10-06T04:28:23Z	sweep verdict 0.19: no gameplay window measured	
+Nickelodeon Avatar The Last Airbender USA		1.0000	docs/lanes/pathfind/runs/n-54510105-1007/verdict.json	2026-10-07T21:27:19Z		
+Nickelodeon SpongeBob SquarePants Battle for Bikini Bottom USA		1.0000	docs/lanes/pathfind/runs/n-5451001A-1007/verdict.json	2026-10-07T21:43:58Z		
 Ninja Gaiden Black		0.2495	docs/lanes/pathfind/runs/retro-ngb/verdict.json	2026-10-05T04:35:03Z	retro fps 0.25; cause not named; telemetry owed	
+Oddworld Stranger s Wrath		0.3793	docs/lanes/pathfind/runs/n-4541006D-1013r/verdict.json	2026-10-13T22:17:05Z		
+Pac Man World 2		1.0000	docs/lanes/pathfind/runs/n-4E4D0006-1013r/verdict.json	2026-10-13T20:45:11Z		
 Panzer Dragoon Orta		0.9962	docs/lanes/pathfind/runs/panzer-dragoon-hold3/verdict.json	2026-10-04T06:33:57Z		
+Panzer Elite Action Fields of Glory Europe		0.8965	docs/lanes/pathfind/runs/n-4A570009-1007/verdict.json	2026-10-07T21:58:04Z		
+Pilot Down Behind Enemy Lines Europe		0.2289	docs/lanes/pathfind/runs/n-4F580002-1007/verdict.json	2026-10-07T19:07:47Z		
+Plus Plumb 2		1.0000	docs/lanes/pathfind/runs/n-544B0004-1013r/verdict.json	2026-10-13T19:32:49Z		
+Prince of Persia The Sands of Time		1.0000	docs/lanes/pathfind/runs/n-5553001D-1013d/verdict.json	2026-10-13T15:55:44Z		
+RalliSport Challenge 2		0.9646	docs/lanes/pathfind/runs/rallisport2-1006/verdict.json	2026-10-07T07:54:09Z		
+Rayman 3 Hoodlum Havoc		1.0000	docs/lanes/pathfind/runs/n-55530002-1013r/verdict.json	2026-10-13T20:25:28Z		
+Rent a Hero No 1 Japan		1.0000	docs/lanes/pathfind/runs/n-5345001D-1007/verdict.json	2026-10-07T22:45:59Z		
+Ricky Ponting International Cricket 2005 Australia		0.9812	docs/lanes/pathfind/runs/n-434D0057-1014d/verdict.json	2026-10-15T10:00:53Z		
 Rogue Trooper		1.0000	docs/lanes/pathfind/runs/sweep-5343000E/verdict.json	2026-10-06T08:40:59Z		
+Rugby League 2 Europe		1.0000	docs/lanes/pathfind/runs/n-48450005-1014d/verdict.json	2026-10-15T11:36:58Z		
+Scooby Doo Mystery Mayhem Europe		1.0000	docs/lanes/pathfind/runs/n-5451000E-1011/verdict.json	2026-10-12T15:28:52Z		
+Scooby Doo Unmasked Europe		0.9943	docs/lanes/pathfind/runs/n-545100F7-1013/verdict.json	2026-10-13T11:25:22Z		
+Shadow of Memories Europe		1.0000	docs/lanes/pathfind/runs/n-4B4E000E-1013/verdict.json	2026-10-13T14:05:01Z		
+Shrek 2		0.9246	docs/lanes/pathfind/runs/n-41560037-1013r/verdict.json	2026-10-13T21:14:24Z		
+Ski Racing 2005 Europe		1.0000	docs/lanes/pathfind/runs/n-4A570005-1015n/verdict.json	2026-10-16T10:49:41Z		
+Slam Tennis Europe		0.9831	docs/lanes/pathfind/runs/n-49470011-1015n/verdict.json	2026-10-16T11:13:02Z		
 Spider Man 2		0.2895	docs/lanes/pathfind/runs/sweep-4156002B/verdict.json	2026-10-06T04:03:26Z	sweep verdict 0.29: no gameplay window measured	
 Spikeout: Battle Street		1.0000	docs/lanes/pathfind/runs/spikeout-hold/verdict.json	2026-10-03T21:38:49Z		
+Stake USA En Fr De Es It		0.9939	docs/lanes/pathfind/runs/n-4D440004-1015n/verdict.json	2026-10-16T11:37:26Z		
+Star Wars Knights of the Old Republic II The Sith Lords Europe		0.6595	docs/lanes/pathfind/runs/n-4C410014-1011/verdict.json	2026-10-12T14:24:16Z		
+Star Wars The Clone Wars USA		0.6078	docs/lanes/pathfind/runs/n-4C410004-1007/verdict.json	2026-10-08T15:28:24Z		
 Tecmo Classic Arcade		1.0000	docs/lanes/pathfind/runs/tecmo-1006/verdict.json	2026-10-07T00:21:00Z		
+Tenchu 3 Kaiki no Shou Japan		1.0000	docs/lanes/pathfind/runs/n-46530005-1011/verdict.json	2026-10-12T15:06:41Z		
 The Incredible Hulk Ultimate Destruction		0.6433	docs/lanes/pathfind/runs/sweep-56550039/verdict.json	2026-10-06T05:12:15Z	sweep verdict 0.64: below bar, cause not named	
 The Lord of the Rings The Return of the King		0.3329	docs/lanes/pathfind/runs/sweep-4541003E/verdict.json	2026-10-06T04:59:24Z	sweep verdict 0.33: no gameplay window measured	
+Tiger Woods PGA Tour 06 USA		0.0000	docs/lanes/pathfind/runs/n-4541007E-1015n/verdict.json	2026-10-16T08:56:45Z		
+Tiger Woods PGA Tour 07 USA		0.0000	docs/lanes/pathfind/runs/n-454100A4-1015n/verdict.json	2026-10-16T09:07:30Z		
+Tiger Woods PGA Tour 2003 USA		0.0000	docs/lanes/pathfind/runs/n-45410021-1015n/verdict.json	2026-10-16T08:47:04Z		
+TimeSplitters 2		1.0000	docs/lanes/pathfind/runs/n-4553000A-1013r/verdict.json	2026-10-13T22:37:15Z		
 ToeJam & Earl III: Mission to Earth		0.7278	docs/lanes/pathfind/runs/toejam-earl-3-hold/verdict.json	2026-10-03T21:13:34Z	hold verdict 0.73 (10-03): cause not named	
+Tom Clancy s Splinter Cell Double Agent USA		0.0334	docs/lanes/pathfind/runs/n-5553005E-1011/verdict.json	2026-10-12T14:40:07Z		
+Tony Hawk s Pro Skater 4		0.9752	docs/lanes/pathfind/runs/n-41560017-1013d/verdict.json	2026-10-13T15:12:43Z		
+Tony Hawk s Underground 2 USA Europe En Fr De		1.0000	docs/lanes/pathfind/runs/n-4156003C-1013/verdict.json	2026-10-13T10:08:28Z		
+Torino 2006 Europe En Fr De Es It		0.6591	docs/lanes/pathfind/runs/n-545400A9-1014d/verdict.json	2026-10-15T10:32:11Z		
 Tork: Prehistoric Punk		1.0000	docs/lanes/pathfind/runs/tork-rerun4/verdict.json	2026-10-05T14:55:08Z		
 Tron 2.0 - Killer App (USA, Europe)		0.9777	docs/lanes/pathfind/runs/retro-tron/verdict.json	2026-10-05T05:09:51Z		
+Turok Evolution		0.8351	docs/lanes/pathfind/runs/n-41430004-1007/verdict.json	2026-10-07T18:22:17Z		
+Ty the Tasmanian Tiger Night of the Quinkan USA Australia		0.7856	docs/lanes/pathfind/runs/n-41560055-1007/verdict.json	2026-10-07T23:02:26Z		
+TY the Tasmanian Tiger USA		1.0000	docs/lanes/pathfind/runs/n-45410029-1014d/verdict.json	2026-10-14T18:37:48Z		
+Ultimate Pro Pinball Europe		1.0000	docs/lanes/pathfind/runs/n-454D001D-1015n/verdict.json	2026-10-16T11:46:20Z		
+Ultimate Spider Man		0.8940	docs/lanes/pathfind/runs/n-41560035-1007/verdict.json	2026-10-07T15:49:23Z		
+World Series Baseball USA		0.0071	docs/lanes/pathfind/runs/n-5345000E-1015n/verdict.json	2026-10-16T11:24:40Z		
+World Snooker Championship 2005 Europe		0.0000	docs/lanes/pathfind/runs/n-53450081-1014d/verdict.json	2026-10-15T11:16:34Z		
 World Soccer Winning Eleven 9		1.0000	docs/lanes/pathfind/runs/sweep-4B4E002F/verdict.json	2026-10-06T09:13:11Z		
+X Men The Official Game Europe		1.0000	docs/lanes/pathfind/runs/n-41560046-1011/verdict.json	2026-10-12T08:00:59Z		
+XIII USA Europe En Fr De Es It		1.0000	docs/lanes/pathfind/runs/n-55530009-1007/verdict.json	2026-10-08T02:19:43Z		
+Yetisports Arctic Adventures Europe		0.9686	docs/lanes/pathfind/runs/n-4A570004-1015n/verdict.json	2026-10-16T10:58:43Z		
