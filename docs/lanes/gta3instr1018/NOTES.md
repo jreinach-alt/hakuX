@@ -1,6 +1,7 @@
 # lane.gta3instr1018 -- what the GTA III dip frame spends its time on (#1049, #433)
 
-Status (10-18, attempt 1): Step 0. Nothing built yet.
+Status (10-18, attempt 1): instrument built (section 4), compiles under the NDK flags with perflog on and off,
+selftest `99-dipwin-counters.sh` 13/13 eight runs in a row. Device runs: section 5.
 
 ## 0. Already tried
 
@@ -78,11 +79,13 @@ rotation, over the whole span.
 | `hw/xbox/nv2a/pgraph/vk/shaders.c`, `hw/xbox/nv2a/debug.h` | lane.perflog1016 | held: not edited here |
 | `hw/xbox/nv2a/pgraph/vk/vertex.c` | lane.fps1015 (folded; row still lists it) | not edited here |
 | `hw/xbox/nv2a/pgraph/vk/texture.c` | lane.gta3fps1017b | not edited here |
+| `hw/xbox/nv2a/pgraph/vk/surface.c` | none (lane.defaulton1017 released it) | free: claimed 10-18 ~10:40 PDT (board 7a3f87c1f5) |
 
-The whole instrument goes in `draw.c` (and one new header), emitted under the existing `hakuX-rpbrk` tag, so
+The instrument goes in `draw.c` (and one new header), emitted under the existing `hakuX-rpbrk` tag, so
 profile.c is not needed. The row `[lane.gta3instr1018]` (lane.local, 09:15 PDT) says the lane claims its pgraph
-files on the board before editing them; this lane adds `draw.c`, the new header and its selftest fragment to its
-own row and nothing else.
+files on the board before editing them; this lane added `draw.c`, the new header and its selftest fragment to its
+own row, then `surface.c` for one perflog-only call at the binding gate (it ends the render pass for three causes
+that the draw.c side cannot tell apart).
 
 ## 3. Plan
 
@@ -97,3 +100,37 @@ own row and nothing else.
    mutant fails), and a structural check that the window has exactly one emitter, on the flip path.
 4. Perflog APK, Nova runs (GTA III parked then RT held from the owner's in-car save; Fable gameplay if on the
    device), FINDINGS.md.
+
+## 4. What was built
+
+`[dipwin]`, one line under `hakuX-rpbrk` per 60 flips, perflog builds only (`#if NV2A_PERF_LOG`; the release
+object has none of it). Field list: the comment above `DW_TIMERS` in `vk/draw.c`.
+
+- **Counters** (`vk/dipwin.h`): `dipwin_add` is a relaxed `__atomic_fetch_add`, `dipwin_take` an
+  `__atomic_exchange_n` against 0. The non-draw callers go in a 24-slot address table whose addresses are claimed
+  by CAS and never cleared; only the counts are windowed. The line prints them as offsets from the library base
+  (`nd=+0x...:n`), for `llvm-addr2line -f -e <unstripped libxemu .so>`.
+- **The window**: `dipwin_flip()`, called only from the `VK_FINISH_REASON_FLIP_STALL` finish. Under perflog,
+  `opt_stats_log_and_reset()` moved into that same branch, so `hakuX-stall RPBreaks:` and the old `rpbrk` line
+  are 60-flip windows now too (still plain increments; `[dipwin]` is the one to cite). The non-perflog path is
+  unchanged.
+- **Break attribution**: `rp=` begins, `brk=` ends; `bfin=` finishes by reason; `bfbd`/`bpd` (draw setup:
+  framebuffer dirty / render-pass change); `bqry` (the three occlusion-query sites); `bclr`/`bclre` (the clears);
+  `bnd` (`pgraph_vk_begin_nondraw_commands`, its 12 callers in surface.c and texture.c by address); `bsnb`/
+  `bsbd`/`bsmd` (surface.c's binding gate: no binding / surface buffer dirty / guest memory dirty).
+  `brk` minus their sum = ends nothing claimed.
+- **Timers**, each `n/ms`: `vsync` (sync_vertex_ram_buffer with ranges), `vcopy` (pgraph_vk_update_vertex_ram_buffer,
+  with `vcopyK=` bytes), `vclr`; `pipe` (the full-path create), `bind` (pgraph_vk_bind_shaders), `key`
+  (init_pipeline_key and the compare), `lru`; `descf`/`descm` (UBO descriptor writes, full / MFP path, `ubo=` the
+  full-path ones that take a new set); `sub`, `fen` (finish_submit / finish_fence), and inside them `rtfen`, `ndw`,
+  `defw`, `rotw`, `rotfen`, `dl`, `drain`, `stale` (with `staleK=`), and `fall` (flush_all_frames); `fin=` all
+  finishes by reason. Timers marked x in the source subtract any finish nested inside them (`dw_fin_cum_ns`), so
+  `fin=` is not counted twice.
+- **Clock**: `nv2a_clock_ns()`, which is `cntvct_el0` on arm64, a register read.
+
+Checks: draw.c and surface.c built with the compile line of an existing NDK perflog tree
+(`wt/gta3fps1017b-apk`, NDK 29, `-O3 -march=armv8.2-a`), sources from this tree, with `NV2A_PERF_LOG=1` and with
+it removed: both clean (the only warnings are in code this lane did not touch). Selftest: section 0's plan item 3,
+as `docs/testing/jobs/selftest.d/99-dipwin-counters.sh`. The plain `+=` mutant mostly over-counts (its stale store
+puts back a value the reader already took: 391 M against 8 M adds), so the check is "windows sum to the adds", not
+"fewer".
