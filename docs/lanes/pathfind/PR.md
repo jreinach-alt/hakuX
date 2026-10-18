@@ -102,3 +102,35 @@ Release note (none): test tooling only.
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
 ## 10-03 evening -- Black Stone and Dino Crisis 3 holds FAIL (#797, #795, #793); Panzer Dragoon Orta hold run 3 PASSED (counted Playable, ledger row 16); evidence runs/panzer-dragoon-hold3
+
+## 10-18 -- offline reconciliation of an unattended chain's uncommitted output (attempt 3); 9 new Playable, 2 caught false
+
+An unattended chain ran through at least 10-16 without anyone committing its output: by 10-18 the worktree held
+~290 uncommitted run directories (~5.2 GB) plus 134 unstaged `pathknow/` hint and path-replay files. This session
+did not run the device; it scanned every `verdict.json` under those run directories for `pass: true`, cross-referenced
+each hit against `pm/playable-accepted.tsv` (16 of the candidates were already banked by an intervening lane.local
+session this lane hadn't seen before), then frame-reviewed the rest against `contact.png`/`hold_strip.jpg` before
+touching the ledger -- no PASS goes on the ledger from the verdict flag alone.
+
+Result: **9 titles banked** to `pm/playable-accepted.tsv` (Mortal Kombat: Deadly Alliance, Mortal Kombat: Shaolin
+Monks, RalliSport Challenge, Cel Damage, Bad Boys: Miami Takedown, Scooby-Doo: Mystery Mayhem, Nickelodeon Avatar:
+The Last Airbender, Micro Machines, Tron 2.0: Killer App). 2 already carried a void marker from a past session
+(Auto Modellista, Beyond Good & Evil) and needed no action. **2 caught false** despite `pass: true` -- found only by
+looking at the frames, not the gate numbers:
+- **Black Stone: Magic & Steel** -- the Tork STICK:up/STICK:down cancel bug (ledger row 22's known mechanism):
+  the character stands turning in place for the whole ~550 s hold; 0 route-frames meant static_window/position were
+  never measured, so nothing caught it automatically.
+- **NHL 2K3** -- ~470 of 605 scored seconds are the post-goal instant-replay/net camera (the in-game VCR control bar
+  is visible in 2 of the 4 route-frames), scored "gameplay" by the per-tick model because crowd/board blur kept the
+  stuck-frame gate from firing.
+
+Both get a `NOT-PLAYABLE.txt` in their run dir and a `false-playable` row in `pm/pathfind-pool.tsv` (a new pool class,
+for a verdict that needs a code fix rather than a route fix). `pm/` is outside this git repo, so the ledger and pool
+edits are disk writes only, no commit. This commit lands `pathknow/`'s hint/path accumulation in full and the 13 run
+directories this session actually reviewed (9 banked + 2 void + 2 caught-false); NOTES.md names the other ~280
+untracked run directories as still-unreviewed backlog for the next session, not touched here.
+
+`Files:` is unchanged (`docs/lanes/pathfind/**` already covers `runs/**`).
+Release note (none): ledger/knowledge-store data and test tooling only, no emulator code changed.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
