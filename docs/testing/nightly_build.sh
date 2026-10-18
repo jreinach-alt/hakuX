@@ -535,7 +535,7 @@ section() {   # <heading> <line...>
     fi
     echo "Installs alongside an official hakuX build and upgrades a previous fork build in place."
     echo "Launching from ES-DE needs the two files in \`docs/es-de/\`."
-    echo "hakuX is tested only with the Turnip Adreno Driver T30 (@Mr_Purple_666); the phone's own driver and other Turnip builds are untested and draw some games wrongly. [Which driver, and how to install it.](https://github.com/jreinach-alt/hakuX/blob/home/docs/gpu-driver.md)"
+    echo "hakuX is tested only with the Turnip Adreno Driver T30 (@Mr_Purple_666); the handheld's own driver and other Turnip builds are untested and draw some games wrongly. [Which driver, and how to install it.](https://github.com/jreinach-alt/hakuX/blob/home/docs/gpu-driver.md)"
     echo
     echo "_Notes updated $(date -u '+%F %H:%M') UTC._"
 } > "$BODY"

@@ -12,7 +12,7 @@ Install it before you judge how a game looks or runs.
 
 ## Other drivers are untested
 
-The phone's own Qualcomm driver and other Turnip builds have not been tested,
+The handheld's own Qualcomm driver and other Turnip builds have not been tested,
 and some games render wrongly on them. The clearest case is the skinned
 characters in Tony Hawk's Pro Skater 4 and Max Payne 2, which freeze in their
 bind pose (arms out, standing still) on the Qualcomm driver and animate
@@ -20,7 +20,7 @@ normally on T30. If a game looks broken, check the driver first.
 
 ## A new install has no driver
 
-hakuX starts on the phone's own driver. A new install, a reinstall, a cleared
+hakuX starts on the handheld's own driver. A new install, a reinstall, a cleared
 app or a second copy of the app (each package keeps its own driver) has no
 custom driver until you give it one. Updating the app in place keeps the
 driver you installed.
@@ -37,7 +37,7 @@ driver you installed.
    T30 (@Mr_Purple_666)**. Start a game to use it.
 
 Custom drivers need an Adreno GPU. On other chips the setting says it is not
-supported and the phone's own driver is used.
+supported and the handheld's own driver is used.
 
 ## Checking it loaded
 
@@ -50,5 +50,5 @@ GPU: PurpleVK-public Adreno (TM) 740 (git-62ac221a33)
 ```
 
 A log that instead names `Qualcomm Technologies Inc. Adreno Vulkan Driver`
-was made on the phone's own driver, and a graphics fault in it may not be a
+was made on the handheld's own driver, and a graphics fault in it may not be a
 hakuX fault. See [reporting bugs](reporting-bugs.md).
