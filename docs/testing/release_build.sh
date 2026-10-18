@@ -28,6 +28,9 @@
 #   - HEAD is exactly v<version>^{commit} (so <version> names a real,
 #     reviewed tag rather than whatever the checkout happens to be on)
 #
+#   - for a plain X.Y.Z, docs/releases/v<version>.md exists and links
+#     docs/gpu-driver.md (every release note names the tested GPU driver)
+#
 # and REFUSES after building unless the APK is signed and its own aapt2 dump agrees
 # that versionName is exactly <version> and bool/debug_tools_default is
 # exactly "false" -- so a defect in the Gradle wiring is caught here, against
@@ -69,6 +72,21 @@ HEAD_SHA=$(git -C "$REPO" rev-parse HEAD)
 if [ "$HEAD_SHA" != "$TAG_SHA" ]; then
     echo "${0##*/}: refusing -- HEAD ($HEAD_SHA) is not $TAG ($TAG_SHA); check out the tag first" >&2
     exit 1
+fi
+
+# Every final release note links the GPU driver page (owner, 2026-10-17): the
+# one driver hakuX is tested with. A -rc or other suffixed build has no note
+# of its own, so only a plain X.Y.Z is held to it.
+if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    NOTE="$REPO/docs/releases/v$VERSION.md"
+    if [ ! -f "$NOTE" ]; then
+        echo "${0##*/}: refusing -- no release note at docs/releases/v$VERSION.md" >&2
+        exit 10
+    fi
+    if ! grep -q 'docs/gpu-driver\.md' "$NOTE"; then
+        echo "${0##*/}: refusing -- docs/releases/v$VERSION.md does not link docs/gpu-driver.md (every release note names the tested GPU driver)" >&2
+        exit 10
+    fi
 fi
 
 echo "${0##*/}: building $VERSION from $TAG ($HEAD_SHA) ..." >&2

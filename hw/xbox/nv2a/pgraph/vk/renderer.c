@@ -1890,8 +1890,24 @@ extern char g_vulkan_driver_info[256];
  *    color_format, texture_length]. With `gd`, a draw the host skipped
  *    writes {"t":"skip","f","n","why","shader","pipeline"}, "n" being the
  *    number the next logged draw takes; a skip takes none.
+ * 10: as 9, plus two things (#1038: Halo's projected shadow samples a
+ *    128x128 target, and the question is which image the projection's stage
+ *    really reads). The `rttmaxNN` token is `rtt` with NN texels (capped at
+ *    512*512) as the "small" bound in place of FDUMP_RTT_MAX_TEXELS, and the
+ *    session header gives it as "rtt_max". "rb" also reads 16-bit colour
+ *    surfaces (vkfmt 4 R5G6B5, 8 A1R5G5B5: 2 bytes a texel). And each stage
+ *    in "tex" gets the view the descriptor names, which is not always the
+ *    binding's: "pv" the pushed view (push_tex_infos, null on the
+ *    descriptor-set path), "tv" the binding's own view, and "bv" what "pv"
+ *    is -- "n" the binding's view, "d" the surface view bound directly
+ *    (tex_surface_direct), "z" the dummy texture's, "x" none of those, "-"
+ *    not on the push path. A stage sampling a small surface whose "pv" is
+ *    neither the binding's nor the surface's view adds "rb" entry "pvi": the
+ *    image of the live texture cache node that owns "pv", when one does.
+ *    The draw gets "ptd" after "tex": 1 when the push infos changed after
+ *    the last push, so this draw sampled through what was pushed before.
  */
-#define FDUMP_SCHEMA          9
+#define FDUMP_SCHEMA          10
 
 /* `img_sync` on a frame record: >= 0 is the fence slot the image waited on
  * before the display surface came back clean, and these two are the cases
@@ -1908,6 +1924,14 @@ static char fdump_dir[512] = "";
 /* Schema 4's once-per-shader records; see fdump_log_shader. */
 #define FDUMP_MAX_SHADERS     2048
 
+/* Schema 6 (`rtt`): render targets of at most this many texels are read
+ * back. GTA San Andreas draws CJ's shadow through 64x64 and 32x32 targets
+ * (docs/lanes/gtasagpu1011/NOTES.md); a 640x480 frame is never read here.
+ * Schema 10's `rttmaxNN` raises it, to at most FDUMP_RTT_MAX_CAP: Halo's
+ * shadow targets are 128x128 (#1038). */
+#define FDUMP_RTT_MAX_TEXELS  (64 * 64)
+#define FDUMP_RTT_MAX_CAP     (512 * 512)
+
 /* Schema 9's "ff" group: the fixed-function values PGRAPHState keeps outside
  * the register file and the constant arrays; see fdump_gd_ff. */
 #define FDUMP_GD_FF_WORDS     (3 + NV2A_MAX_LIGHTS * 3 * 4 + 6 + 6 + 8)
@@ -1922,8 +1946,10 @@ static struct {
      * vertex words. 0 is off. */
     int vtx_max;
     /* Schema 6's `rtt`: read back small colour targets and the textures
-     * drawn from small surfaces; see fdump_log_draw_readbacks. */
+     * drawn from small surfaces; see fdump_log_draw_readbacks. rtt_max is
+     * "small" in texels (schema 10's `rttmaxNN`). */
     bool rtt;
+    uint64_t rtt_max;
     /* Schema 7: the consumer draw whose "pre"/"zpre" pgraph_vk_fdump_pre_draw
      * read (-1: none pending), what it read, and the per-frame and per-dump
      * counts that bound the bytes. */
@@ -2169,6 +2195,8 @@ static void fdump_clear_previous(const char *dir, const char *keep)
  *               target and depth around a draw that samples one; see
  *               FDUMP_SCHEMA. This one FINISHES the command buffer at each
  *               such draw.
+ *   rttmaxNN    schema 10: `rtt`, with "small" meaning at most NN texels
+ *               (capped at 512*512) instead of FDUMP_RTT_MAX_TEXELS.
  *   watchNN     schema 8: log only draws into a small colour target, until NN
  *               (capped at 4096) are logged; no images. See FDUMP_SCHEMA.
  *   gd          schema 9: per draw, the guest state that changed since the
@@ -2177,7 +2205,8 @@ static void fdump_clear_previous(const char *dir, const char *keep)
  */
 static void fdump_parse_spec(const char *spec, int *frames, bool *images,
                              int *cap_mb, bool *also_diag, int *after_s,
-                             int *vtx_max, bool *rtt, int *watch_max, bool *gd)
+                             int *vtx_max, bool *rtt, uint64_t *rtt_max,
+                             int *watch_max, bool *gd)
 {
     char buf[160];
     snprintf(buf, sizeof(buf), "%s", spec ? spec : "");
@@ -2195,6 +2224,12 @@ static void fdump_parse_spec(const char *spec, int *frames, bool *images,
             *rtt = true;
         } else if (!strcmp(tok, "gd")) {
             *gd = true;
+        } else if (!strncmp(tok, "rttmax", 6)) {
+            long v = strtol(tok + 6, NULL, 10);
+            if (v >= 1) {
+                *rtt = true;
+                *rtt_max = (uint64_t)MIN(v, (long)FDUMP_RTT_MAX_CAP);
+            }
         } else if (!strncmp(tok, "after", 5)) {
             long v = strtol(tok + 5, NULL, 10);
             if (v >= 0 && v <= 3600) {
@@ -2237,10 +2272,11 @@ static void fdump_begin(NV2AState *d, const char *armed_by, const char *spec)
     int after_s = 0;
     int vtx_max = 0;
     bool rtt = false;
+    uint64_t rtt_max = FDUMP_RTT_MAX_TEXELS;
     int watch_max = 0;
     bool gd = false;
     fdump_parse_spec(spec, &frames, &images, &cap_mb, &also_diag, &after_s,
-                     &vtx_max, &rtt, &watch_max, &gd);
+                     &vtx_max, &rtt, &rtt_max, &watch_max, &gd);
     if (watch_max) {
         images = false;
     }
@@ -2268,6 +2304,7 @@ static void fdump_begin(NV2AState *d, const char *armed_by, const char *spec)
     fdump.shaders_n = 0;
     fdump.vtx_max = vtx_max;
     fdump.rtt = rtt;
+    fdump.rtt_max = rtt_max;
     fdump.cons_draw = -1;
     fdump.cons_frame = -1;
     fdump.cons_in_frame = 0;
@@ -2327,13 +2364,14 @@ static void fdump_begin(NV2AState *d, const char *armed_by, const char *spec)
         fp,
         "{\"t\":\"session\",\"schema\":%d,\"id\":%u,\"armed_by\":\"%s\","
         "\"spec\":\"%s\",\"frames\":%d,\"images\":%s,\"cap_mb\":%d,"
-        "\"after_s\":%d,\"vtx\":%d,\"rtt\":%s,\"watch\":%d,\"gd\":%s,"
+        "\"after_s\":%d,\"vtx\":%d,\"rtt\":%s,\"rtt_max\":%" PRIu64 ","
+        "\"watch\":%d,\"gd\":%s,"
         "\"wall\":%lld,\"uptime_ms\":%lld,\"draw_merge\":%s,"
         "\"draw_reorder\":%s,\"surface_scale\":%d,\"submit_frames\":%d,"
         "\"per_draw_finish\":%s,\"also_diag\":%s,\"driver\":\"%s\"}\n",
         FDUMP_SCHEMA, fdump.session, armed_by, spec ? spec : "", frames,
         images ? "true" : "false", cap_mb, after_s, vtx_max,
-        rtt ? "true" : "false", watch_max, gd ? "true" : "false",
+        rtt ? "true" : "false", rtt_max, watch_max, gd ? "true" : "false",
         (long long)time(NULL),
         (long long)(qemu_clock_get_ns(QEMU_CLOCK_REALTIME) / 1000000),
         xemu_get_draw_merge() ? "true" : "false",
@@ -2376,10 +2414,11 @@ static void fdump_arm(NV2AState *d, const char *armed_by, const char *spec,
     int after_s = 0;
     int vtx_max = 0;
     bool rtt = false;
+    uint64_t rtt_max = FDUMP_RTT_MAX_TEXELS;
     int watch_max = 0;
     bool gd = false;
     fdump_parse_spec(spec, &frames, &images, &cap_mb, &also_diag, &after_s,
-                     &vtx_max, &rtt, &watch_max, &gd);
+                     &vtx_max, &rtt, &rtt_max, &watch_max, &gd);
 
     if (after_s <= 0) {
         fdump_begin(d, armed_by, spec);
@@ -2942,11 +2981,6 @@ void pgraph_vk_fdump_vertex_upload(PGRAPHVkState *r, hwaddr offset,
     }
 }
 
-/* Schema 6 (`rtt`): render targets of at most this many texels are read
- * back. GTA San Andreas draws CJ's shadow through 64x64 and 32x32 targets
- * (docs/lanes/gtasagpu1011/NOTES.md); a 640x480 frame is never read here. */
-#define FDUMP_RTT_MAX_TEXELS  (64 * 64)
-
 /* Schema 8: the largest non-surface texture read back for a small-target
  * draw (1 MB at 4 bytes a texel). */
 #define FDUMP_TEX_MAX_TEXELS  (512 * 512)
@@ -3007,6 +3041,12 @@ static bool fdump_read_image(NV2AState *d, PGRAPHState *pg, VkImage image,
     case VK_FORMAT_R8G8B8A8_UNORM:
         barrier_aspect = copy_aspect = VK_IMAGE_ASPECT_COLOR_BIT;
         texel = 4;
+        break;
+    case VK_FORMAT_R5G6B5_UNORM_PACK16:
+    case VK_FORMAT_A1R5G5B5_UNORM_PACK16:
+        /* Schema 10: 16-bit colour surfaces (Halo's shadow targets). */
+        barrier_aspect = copy_aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+        texel = 2;
         break;
     case VK_FORMAT_D24_UNORM_S8_UINT:
     case VK_FORMAT_D32_SFLOAT_S8_UINT:
@@ -3083,7 +3123,7 @@ static bool fdump_read_image(NV2AState *d, PGRAPHState *pg, VkImage image,
 static bool fdump_rtt_small(const SurfaceBinding *s)
 {
     return s && s->color &&
-           (uint64_t)s->width * s->height <= FDUMP_RTT_MAX_TEXELS;
+           (uint64_t)s->width * s->height <= fdump.rtt_max;
 }
 
 /* Schema 7: the draw renders into a colour target that is not small and
@@ -3175,7 +3215,7 @@ static bool fdump_log_draw_readbacks(NV2AState *d, PGRAPHState *pg)
         VkImageLayout layout;
         uint32_t w, h;
         VkFormat fmt;
-    } rb[2 * NV2A_MAX_TEXTURES + 2];
+    } rb[3 * NV2A_MAX_TEXTURES + 2];
     int nrb = 0;
     /* Schema 7: this is the consumer draw pgraph_vk_fdump_pre_draw read. */
     int npre = fdump.cons_draw == fdump.draw_index - 1 ? fdump.cons_nrb : 0;
@@ -3209,6 +3249,34 @@ static bool fdump_log_draw_readbacks(NV2AState *d, PGRAPHState *pg)
         }
         if (!fdump_rtt_small(ts)) {
             continue;
+        }
+        /* Schema 10: the descriptor names a view that is neither the
+         * binding's nor the surface's ("bv":"x"). Read the texture image it
+         * belongs to, if a live cache node owns it. */
+        VkImageView pv = r->push_tex_infos[i].imageView;
+        if (r->push_descriptors_supported && pv != VK_NULL_HANDLE &&
+            (!tb || pv != tb->image_view) &&
+            !(r->tex_surface_direct[i] &&
+              pv == r->tex_surface_direct_views[i])) {
+            TextureBinding *o;
+            QTAILQ_FOREACH(o, &r->texture_active_list, active_entry) {
+                if (o->image_view == pv) {
+                    break;
+                }
+            }
+            if (o && o->image != VK_NULL_HANDLE &&
+                (uint64_t)o->image_config.width * o->image_config.height <=
+                    FDUMP_TEX_MAX_TEXELS) {
+                rb[nrb].k = "pvi";
+                rb[nrb].s = i;
+                rb[nrb].addr = ts->vram_addr;
+                rb[nrb].image = o->image;
+                rb[nrb].layout = o->current_layout;
+                rb[nrb].w = o->image_config.width;
+                rb[nrb].h = o->image_config.height;
+                rb[nrb].fmt = o->image_config.format;
+                nrb++;
+            }
         }
         if (tb && !r->tex_surface_direct[i]) {
             rb[nrb].k = "tex";
@@ -3609,6 +3677,35 @@ static void fdump_log_draw(NV2AState *d, PGRAPHState *pg, const char *type,
         }
         fdump.bytes_written += n;
 
+        /* Schema 10: the view the descriptor names, which is not always the
+         * binding's (see FDUMP_SCHEMA). */
+        {
+            VkImageView pv = r->push_tex_infos[i].imageView;
+            VkImageView tv = tb ? tb->image_view : VK_NULL_HANDLE;
+            const char *bv = "-";
+            char pvs[32] = "null";
+            if (r->push_descriptors_supported) {
+                if (r->tex_surface_direct[i] &&
+                    pv == r->tex_surface_direct_views[i]) {
+                    bv = "d";
+                } else if (tb && pv == tv) {
+                    bv = "n";
+                } else if (pv == r->dummy_texture.image_view) {
+                    bv = "z";
+                } else {
+                    bv = "x";
+                }
+                snprintf(pvs, sizeof(pvs), "\"%p\"", (void *)(uintptr_t)pv);
+            }
+            n = fprintf(fdump.fp, ",\"bv\":\"%s\",\"pv\":%s,\"tv\":\"%p\"",
+                        bv, pvs, (void *)(uintptr_t)tv);
+            if (n < 0) {
+                fdump_close("write error");
+                return;
+            }
+            fdump.bytes_written += n;
+        }
+
         if (fdump.gd && tb && pgraph_is_texture_enabled(pg, i)) {
             n = fdump_put_tex_gd(d, tb);
             if (n < 0) {
@@ -3652,7 +3749,9 @@ static void fdump_log_draw(NV2AState *d, PGRAPHState *pg, const char *type,
         fdump.bytes_written += n;
     }
 
-    n = fprintf(fdump.fp, "]");
+    /* Schema 10: "ptd" 1 is push infos changed since the last push, so the
+     * draw just recorded did not sample through "pv". */
+    n = fprintf(fdump.fp, "],\"ptd\":%d", (int)r->push_tex_dirty);
     if (n < 0) {
         fdump_close("write error");
         return;
