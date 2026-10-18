@@ -69,41 +69,68 @@ playable	454100A1	NBA Live 07	?	none	nova	50.8	0.986	762	2026-10-17	Owner play s
 existing `notes` field was the `#433` step 6c classifier-path benchmark
 description ending "not yet device-proven" — stale, since the title is now
 Playable on an owner play session. Did **not** carry a BELOW_BAR / 19.99 fps
-/ "unconfirmed" sentence (that wording lives in the registry and the old
-run's own verdict.json, not in `targets.toml`), so the brief's literal
-trigger condition wasn't present verbatim, but the field's substance (device
-not proven) was exactly as stale as that condition describes. Updated the
-sentence to record what's now true: Playable per an owner play session on
-2026-10-17 (~51 fps median, 98.6% at or above the bar), the 2026-10-06
-pathfind run (median 19.99 fps) predating the current build. Left the rest
-of the `notes` field (the route/benchmark description) untouched — still
-accurate, since `gen-nba-live-07` is still the route used.
+/ "unconfirmed" sentence verbatim (that wording lives in the registry and
+the old run's own `verdict.json`, not in `targets.toml`), so the brief's
+literal trigger condition wasn't present word-for-word, but the field's
+substance (device not proven) was exactly as stale as that condition
+describes. Updated the sentence to record what's now true: Playable per an
+owner play session on 2026-10-17 (762 s of play, window median ~51 fps,
+98.6% at or above the bar), superseding the 2026-10-06 pathfind run (median
+19.99 fps). Dropped "not yet device-proven" since it no longer is. Left the
+rest of the `notes` field (the route/benchmark description) untouched —
+still accurate, since `gen-nba-live-07` is still the route used.
 
 ## Step 5: other stale references
 
-`grep -rln "NBA Live 07\|454100A1" docs/` (excluding `docs/releases/`, off
-limits) turns up:
+`grep -rln "NBA Live 07\|454100A1" docs/ --include="*.md" --include="*.toml"
+--include="*.tsv" --include="*.csv"`, excluding `docs/releases/` (off
+limits), turns up this lane's own four edited files plus:
 
 - `README.md:29` — "Faster. NBA Live 07 went from 23 to 47 fps..." — a
   HISTORY-style performance note, not a compatibility-status claim; no
   Playable/failing wording to correct, and README.md is explicitly out of
   this lane's `Files:` besides.
-- `docs/testing/titles/targets.toml` — handled above.
-- `docs/testing/titles/pathknow/` and route/prediction files under
-  `docs/testing/` referencing `gen-nba-live-07` — technical route
-  definitions (drive/shoot benchmark path), not compatibility-status prose.
-- `docs/HISTORY.md` if present — not found referencing this title_id beyond
-  the README line already covered; confirmed by the same grep.
+- `docs/HISTORY.md:212,417` — the same historical fps-improvement entries
+  (23→47 fps on 10-10), not a status claim either; left alone.
+- `docs/testing/titles/pathknow/hints/learned-pub-4541.md:12` — a learned
+  menu-navigation route ("gameplay in 4.4 min via publisher_logo A →
+  ..."), a technical route hint, not a compatibility-status claim; left
+  alone.
+- Every other hit (`docs/lanes/surfgpu1009/`, `docs/lanes/fpsbelow1012/`,
+  `docs/lanes/surfdl1008/`, `docs/lanes/compatpage1012/`,
+  `docs/lanes/surfgpudefault1009/`, `docs/lanes/defaulton1017/`,
+  `docs/lanes/pathfind/`, `docs/lanes/compatrefresh1013/`,
+  `docs/lanes/fps1015/`, `docs/lanes/pathclass/`) is another lane's own
+  folded `NOTES.md`/`PR.md`/registry snapshot — frozen history of other
+  lanes' sessions, not in this lane's `Files:`, and not edited even where a
+  figure in them (e.g. the 10-06 run) is now superseded, since those are
+  dated records of what was true when that lane ran, the same reasoning
+  the brief applies to `docs/releases/`.
 
 Nothing else found claiming NBA Live 07 as failing/below-bar/unconfirmed
-anywhere in scope. `docs/releases/` untouched per the brief.
+anywhere in scope.
 
 ## Verification
 
-- `python3 docs/testing/compat_page.py --ledger /home/justin/hakux-work/pm/playable-accepted.tsv --registry /home/justin/hakux-work/pm/title-registry.tsv --notes docs/testing/compat_notes.tsv --check`: before the edit, refused naming NBA Live 07 as missing; after the edit, up to date.
+- `python3 docs/testing/compat_page.py --ledger /home/justin/hakux-work/pm/playable-accepted.tsv --registry /home/justin/hakux-work/pm/title-registry.tsv --notes docs/testing/compat_notes.tsv --check`: before the edit, refused naming NBA Live 07 as missing; after the edit, **up to date**.
 - `python3 docs/testing/compat_page_selftest.py`: 19 tests, OK.
-- `python3 docs/testing/title_registry.py check --pages`: result recorded below (registry is generated/shared, outside this lane's `Files:`).
-- `bash docs/testing/preflight.sh`: result recorded below.
+- `python3 docs/testing/title_registry.py check --pages`: exit 3 --
+  `README.md`: numberless Playable line, OK. `COMPATIBILITY.md` header and
+  table rows: 91, matches. `Wall`: 91, matches. `status page`: **90**, a
+  mismatch -- but `status/index.html` lives at
+  `/home/justin/hakux-work/status/index.html` (`DEFAULT_ROOT`, line 70 of
+  `title_registry.py`), entirely outside this repo and outside this lane's
+  `Files:`; it is a separately-generated artifact that hasn't been rebuilt
+  since this lane's edit landed. Also flagged `STALE registry sources
+  changed since it was built` -- `pm/title-registry.tsv`'s own
+  `sources_digest` predates this session's edit to `compat_notes.tsv`
+  (same digest-staleness shape compat1017b hit). Neither is a defect in
+  this lane's files; both close on the next rebuild of those external
+  artifacts. Not filed to the board as a new issue since it's the same
+  precedented gap, not a new one -- noted here and in `PR.md` so it isn't
+  mistaken for a regression.
+- `bash docs/testing/preflight.sh`: **passed** -- `territory ok`,
+  `coverage ok` (no board request needed this time, unlike compat1017b).
 
 ## Selftest
 
