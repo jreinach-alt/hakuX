@@ -40,6 +40,21 @@ RED_OVERRIDES = {
                  "post-team-select loading screen; the fps-only cause tag is stale"),
 }
 
+# BELOW_BAR rows held by the owner's own finding rather than by the scored
+# window's failing_all tag (#433/#1049): the title's last scored run passed
+# every gate (reviewed on-foot play), but the owner separately found fps
+# drops into the teens in a scene -- driving -- that run never sampled, and
+# took it off Playable until a fix and a driving-specific verdict clear it.
+# Keyed by title_id; value is the reason, recorded here (not just in PR.md)
+# so a registry rebuild cannot silently re-flag it.
+BELOW_BAR_OVERRIDES = {
+    "5454000E": ("Grand Theft Auto III", "hold gta3-driving-below-bar: owner 2026-10-18 found "
+                 "fps drops into the teens while driving, a scene the scored on-foot "
+                 "confirmation run never sampled"),
+    "5454000F": ("Grand Theft Auto: Vice City", "hold gtavc-driving-below-bar: same RenderWare "
+                 "path as GTA III, same owner finding"),
+}
+
 
 def read_tsv(path, skip_comments=False):
     with open(path, newline="") as f:
@@ -72,8 +87,10 @@ def below_bar_qualifies(row):
     """A BELOW_BAR row belongs on the public page only when the sole
     failing gate is fps -- any other tag (menu_time, duration,
     reached_gameplay: unconfirmed, audio, hitch, static, ...) means
-    gameplay was not cleanly confirmed, per the brief's left-off list."""
-    return row.get("failing_all", "") == "fps"
+    gameplay was not cleanly confirmed, per the brief's left-off list.
+    A BELOW_BAR_OVERRIDES title_id also qualifies: a human-reviewed owner
+    finding, not the scored window's own tag."""
+    return row.get("failing_all", "") == "fps" or row.get("title_id") in BELOW_BAR_OVERRIDES
 
 
 def crash_hang_left_off_reason(row):
