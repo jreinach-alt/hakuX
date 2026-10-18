@@ -6513,7 +6513,7 @@ disposition = "defect"
 status = "open"
 dispatch_state = "available"
 blocked_on = ""
-status_note = "Filed 2026-10-17 from the owner's play on the Nova (0.5.2-rc1 release app, Turnip T30, mode 3): dips into the teens while driving; on foot the title is Playable. Owned by lane.gta3drive1017 (dispatched by lane.xbox on the owner's request)."
+status_note = "Filed 2026-10-17 from the owner's play on the Nova (0.5.2-rc1 release app, Turnip T30, mode 3): dips into the teens while driving; on foot the title is Playable. Owned by lane.gta3drive1017 (dispatched by lane.xbox on the owner's request). 2026-10-17 23:20 PDT (owner): GTA: San Andreas shows the same driving dips (45% of 480 s at 28.5 fps or better, median 28.6; not Playable), so this is now the one high-speed-driving fps issue for GTA III and GTA SA, owned by lane.gta3fps1017b (R1/R2/R3)."
 
 [issue.1045]
 title = "A brief flash of static or green distortion shows every time a game starts"
