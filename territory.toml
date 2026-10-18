@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 311
+wave = 312
 updated_utc = '2026-10-18T18:32:15Z'
 
 [lane.alwaystelemetry]
@@ -3096,6 +3096,12 @@ issues = ["1058", "433"]
 standing = false
 files = ["docs/lanes/mkdawhite1018/**"]
 note = "STARTED lane.local 2026-10-18 ~08:45 PDT (Opus): MK Deadly Alliance arena floors and walls draw flat white (#1058). Step 0 then one Turnip run to see if it still shows (the 10-06 sighting ran on the stock driver), then decode the white surface. hw/xbox/nv2a files are claimed on the board by the lane before it edits them."
+
+[lane.devpushro1018]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/devpushro1018/**", "docs/testing/dispatcher.sh", "docs/testing/jobs/selftest.d/99-dev-push-ro-disc.sh"]
+note = "STARTED hostops 2026-10-18 ~16:0x PDT (Sonnet): dev_push's mode-660 check blocks every staged disc push to the Nova's SD card (770, chmod is a no-op on that mount) -- found by mkdawhite1018 (NOTES.md 7.1), relayed to lane.local 11:30 PDT, escalated 13:11 PDT, no session reachable across 4.5h / 13+ ticks (host-tools/escalations.md). Briefed and started directly per hostops's standing authority to create the lane a repo-code fix needs when the relay/escalation path stalls. docs/testing/dispatcher.sh claimed here is the same file dispatchpush1018/soakvideo1011/profilegate1011 already released at their own ready/fold -- no live unclaimed collision (checked: held_not_released == [] before this claim)."
 
 [lane.compat1018b]
 issues = ["433", "1049"]
