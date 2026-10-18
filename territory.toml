@@ -3080,3 +3080,15 @@ issues = ["433"]
 standing = false
 files = ["docs/lanes/fabledip1018/**"]
 note = "STARTED lane.local 2026-10-18 ~07:55 PDT (Sonnet): analysis only. Fable and Blinx 2 gameplay dips carry heavy [drawrec] vertex redo; decompose from the owner captures and name the lever."
+
+[lane.mkdawhite1018]
+issues = ["1058", "433"]
+standing = false
+files = ["docs/lanes/mkdawhite1018/**"]
+note = "STARTED lane.local 2026-10-18 ~08:45 PDT (Opus): MK Deadly Alliance arena floors and walls draw flat white (#1058). Step 0 then one Turnip run to see if it still shows (the 10-06 sighting ran on the stock driver), then decode the white surface. hw/xbox/nv2a files are claimed on the board by the lane before it edits them."
+
+[lane.compat1018b]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/compat1018b/**", "docs/testing/compat_notes.tsv", "docs/compatibility.csv", "docs/COMPATIBILITY.md", "README.md", "docs/testing/titles/targets.toml"]
+note = "STARTED lane.local 2026-10-18 ~08:45 PDT (Sonnet): take GTA III and Vice City off the public compatibility page and docs (95 -> 93 Playable); owner 10-18, fps while driving (#1049)."
