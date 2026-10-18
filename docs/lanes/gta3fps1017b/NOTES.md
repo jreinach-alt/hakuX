@@ -6,6 +6,10 @@ Status (10-18, attempt 4): the brief's work is done. R2 and R3 are written (8e42
 dip windows, and section 6 the perflog APK. What is left is the owner's driving session on each title (6.2). No
 driving fps is claimed here.
 
+`preflight.sh` passes every step except `territory`, which is not a CI gate. Its three double claims in
+`origin/board` are all snaptargets1018 against another lane (pathclass, selftestclean1011, dispatchdoctor1017), on
+files this lane does not touch. PR.md is `State: ready`.
+
 **Why attempt 3 did not finish.** It hit the 300-turn cap (`terminal_reason: max_turns`, session
 20261018T061841Z). By then it had committed R2 and R3 in `texture.c` (8e42fa1058, 510 lines) and merged master
 twice. It had not yet built them, run the suites, or written the pixel arguments and the three-title dip table.

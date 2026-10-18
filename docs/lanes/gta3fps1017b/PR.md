@@ -1,6 +1,6 @@
 # high-speed driving fps (GTA III + GTA: San Andreas)
 
-State: draft
+State: ready
 
 Lane: gta3fps1017b            Issue: #1049 #433
 Base: master @ 4a504d9aaa
@@ -42,6 +42,15 @@ different-format view needs `MUTABLE_FORMAT` on surface images, which is a `surf
 
 No driving fps is claimed: lavapipe fps does not measure this, and the driving numbers are
 the owner's sessions.
+
+`preflight.sh`: every step passes except `territory`, which is not a CI gate (preflight.sh:239).
+`origin/board`'s `territory.toml` has three files claimed twice, all between other lanes:
+
+- `selftest.d/97-dispatch-snapshot-drive.sh`: snaptargets1018 and pathclass
+- `selftest.sh`: snaptargets1018 and selftestclean1011
+- `dispatcher.sh`: snaptargets1018 and dispatchdoctor1017
+
+None of them is this lane's file. Only the board can clear it.
 
 ## The perflog APK (built, not installed)
 
