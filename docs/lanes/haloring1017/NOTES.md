@@ -6,8 +6,15 @@ Brief: `/home/justin/hakux-work/briefs/haloring1017.md`.
 The owner's goal is the ring the way the console draws it. Every surface turns with the ring, and the bright mottled
 grey layer covers the whole ring, the unlit side included.
 
-[lane.haloring1017] working: M1 done (the guest turns the inside band at the hull's rate). M2 on the desktop: the band
-turns on screen (slope 0.88 +- 0.02). M2 on Turnip (run 13's video): the clock is found (three anchors), and the fit is running.
+[lane.haloring1017] working: (c) is answered. The inside band turns on screen off the stock driver: slope 0.88 on the
+desktop, 1.02 on Turnip (run 13, PurpleVK confirmed from its log). The lane narrows to (a).
+
+## Attempt 1 did not finish: the turn cap
+
+Attempt 1 ended at 15:57 PDT on the 301-turn cap, partway through M2b's last fit. It was not blocked and was not
+waiting on anything. M1, M2 and M2b's clock were committed (948dc20f1c). The interrupted fit (`run13map.sh`) had
+already written its `n4` rows and 80 of its `n5` rows to scratch (`hr/m2c/bandfit.tsv`). Attempt 2 read those rows
+rather than running the fit again; they are reported under M2b.
 
 ## Step 0: what was searched
 
@@ -64,8 +71,8 @@ turns on screen (slope 0.88 +- 0.02). M2 on Turnip (run 13's video): the clock i
 | | symptom | known where | account |
 |---|---|---|---|
 | (a) | bright mottled grey layer missing over the whole ring | desktop lavapipe; Nova run 13 | open |
-| (c) | the inside surface does not rotate | Nova release app 0.5.1-rc1 on the **stock** driver only | open: first measurement |
-| (a)+(c) | one cause or two | | open |
+| (c) | the inside surface does not rotate | Nova release app 0.5.1-rc1 on the **stock** driver only | **the stock driver (R4)**: the band turns in the guest (M1), on the desktop (M2, slope 0.88) and on Turnip (M2b, slope 1.02). See "The account of (c)" |
+| (a)+(c) | one cause or two | | two. (c) is the driver; (a) reproduces on lavapipe and Turnip, so it is the emulator's |
 | (b) | bursts | fixed (A12) | only as far as a mechanism touches c13.w |
 
 ## Hypotheses
@@ -78,12 +85,12 @@ console's brightness.
 |---|---|---|---|---|---|---|---|
 | R1 | the reflection term is wrong: R lands on the wrong face, or v1 scales it to near zero | (a) | 0.35 | A8, A10, A15 | the console look returns with the cube term forced to a bright face and v1 replaced | forcing it gives a coloured sheen, not grey crater mottling | `swr.py`-style software render of `n5` from the dg dump, and a desktop PSHDBG mode once A7's crash is fixed |
 | R1b | ...the global cube mirror | (a) | in R1 | A10 | the mirrored R lands on face 0 or 4 (bright) over most of the hull at photo 5's pose | mirrored R still on dark faces | `vpemu.py` R per vertex, face histogram per mirror |
-| R2 | another draw (`n4`, `n6`, `n0`) ignores its own scroll | (c) | 0.3 if (c) reproduces | new: searched x1 NOTES and git, nothing (A6 left them undone) | across consecutive frames, a per-frame change in the draw's guest state that its generated shader does not use | every per-frame change is used, and the output moves | `gdread.py diff` over consecutive frames, per draw |
+| R2 | another draw (`n4`, `n6`, `n0`) ignores its own scroll | (c) | 0.3 if (c) reproduces -> 0.02 (M2, M2b: `n4` follows its scroll; `n6` has none by design) | new: searched x1 NOTES and git, nothing (A6 left them undone) | across consecutive frames, a per-frame change in the draw's guest state that its generated shader does not use | every per-frame change is used, and the output moves | `gdread.py diff` over consecutive frames, per draw |
 | R2b | the guest computes `n4`'s scroll wrongly (a CPU defect, like (b)) | (c) | 0.1 -> 0.02 (M1: missed; the rates agree to three figures, on Turnip, run 13) | new: A12 measured c13.w on `n5` only | `n4`'s w rate (0.0000977/frame, ~8x below `n5`'s 0.00078) times its c13.x gives a different angular rate from `n5`'s | rates agree, so the guest means the band to turn at the hull's speed | `gdread.py draw` for c13 on `n4`/`n5` in two frames |
 | R3 | v0.a non-zero on hardware: the final combiner lerps toward c0_8 (white) | (a), and a common wash of `n4`+`n5` | 0.2 | A14 | a software render with v0.a = k matches photo 5's brightness and keeps faint panel lines; the terrain band whitens by the same k | the panel lines vanish before the brightness is reached, or the band's whitening differs | software render against the pose-matched pair |
-| R4 | the static inside surface was the stock driver | (c) | 0.25 | new: searched tracker #1038/#1039 (stock-driver defects that week), nothing on #939 | (c) absent in run 13's Turnip video and on the desktop | (c) present off the stock driver | run 13's video; a desktop clip; per-draw scroll in a `gd` dump |
+| R4 | the static inside surface was the stock driver | (c) | 0.25 -> **0.9** (M2, M2b: hit) | new: searched tracker #1038/#1039 (stock-driver defects that week), nothing on #939 | (c) absent in run 13's Turnip video and on the desktop | (c) present off the stock driver | run 13's video; a desktop clip; per-draw scroll in a `gd` dump |
 | R5 | other combiner or final-combiner semantics, or the fast paths, for (a) | (a) | 0.1 | A3 (for (b) only), A20 | a fast-paths-off clip (A3's video) shows the layer, or a combiner op proves wrong against the hardware docs | | A3's video; reading `psh.c` against nv2a docs |
-| R7 | `n5` follows `n4` in the same shader with only c13 changed; the second draw's constants never reach the GPU | (c) | 0.05 | new (M1). Code read: `vsh.c:1213` copies all of c[] every draw; `shaders.c:2108-2138` marks the upload by dirty flag or by layout hash, so a c13 change is caught either way | on screen, one of `n4`/`n5` scrolls at the other's rate or not at all | each scrolls at its own c13.w rate | M2 (`bandfit.py`) |
+| R7 | `n5` follows `n4` in the same shader with only c13 changed; the second draw's constants never reach the GPU | (c) | 0.05 -> 0 off the stock driver (M2, M2b: each scrolls at its own rate) | new (M1). Code read: `vsh.c:1213` copies all of c[] every draw; `shaders.c:2108-2138` marks the upload by dirty flag or by layout hash, so a c13 change is caught either way | on screen, one of `n4`/`n5` scrolls at the other's rate or not at all | each scrolls at its own c13.w rate | M2 (`bandfit.py`) |
 | R6 | unwritten VP outputs take the attribute registers' current values on hardware (Cxbx-R PR #2109); hakuX sets them to (0,0,0,1). The hull never writes oT0/oT1/oT2.zw (the PROJECT2D q), oT3.w, oB0, oB1 | (a), perhaps (c) | 0.1 | new: searched hakuX git and `vsh.c`, nothing; Cxbx-R PR #2109 | inline attribute values for v9-v12 (or the slots each output maps to) give q != 1, and a render with that q matches the console | q = 1 under that model | the `gd` dump's inline attribute values; a software render |
 
 ## Measurements
@@ -188,15 +195,72 @@ with no scroll scan (pad5=0.0) at each frame's own c13.w. Only the true frame ha
 The line through them is t = 13.2513 + 0.0334128 f, which is 29.93 dump frames per video second. The residuals are
 0.006, -0.011 and 0.006 s, all under a third of a game frame.
 
+**The driver.** Run 13's logcat (`dispatch/results/1-1792184446-x1port1012-1339105/logcat.txt`) has these lines:
+- line 3: `Loading custom Vulkan driver: vulkan.purple.so`;
+- line 111: `Driver: PurpleVK public driver (PurpleVK 26.3.0-devel (git-62ac221a33))`;
+- line 144: `[gpl569] ext=1 lib=1 fast=1 interp=1 requested=3 mode=3`.
+
+So run 13 ran on Turnip, not the stock driver. The app is `com.jreinach.hakux.debug` at ref 5d4b689ed9, with
+`HAKUX_FIST_ROUND=1`.
+
+**The fit** (`run13map.sh`): every fifth dump frame, on the anchored clock, gave a video frame (`vidmap.py`, 120
+frames). `bandfit.py` then fitted `n4` and `n5` on those frames, and `bandsum.py` summarised the result.
+
+| draw | frames | c13.w span | slope d*/c13.w | rms about "turns" | rms about "static" | median r at c13.w / at the first frame's |
+|---|---|---|---|---|---|---|
+| `n5` hull (control) | 80, f0-f395 | 0.282-0.590 (316 texels, lod 0) | **1.003 +- 0.000** | 0.38 texels | 92.6 texels | 0.206 / -0.011 |
+| `n4` inside band | 44, f0-f55 and f430-f595 | 0.0318-0.0899 (14.9 texels, lod 3) | **1.020 +- 0.001** | 0.12 texels | 5.51 texels | 0.227 / 0.077 |
+| `n4`, f0-f55 only | 11 | 1.25 texels | 1.024 +- 0.043 | | | |
+| `n4`, f430-f595 only | 33 | 4.0 texels | 1.026 +- 0.007 | | | |
+
+The band is out of view between f60 and f425 (0 px). The session ended before the `n5` rows for f400-f595 were
+written; the 80 rows already written are enough for a control.
+
+**On Turnip the inside band turns.** Its on-screen texture follows the guest's scroll at slope 1.02, inside each
+window as well as across the gap between them. The fit is cleaner than on the desktop (0.88): the band here is
+3-13k px wide against the desktop's 3-8 px strip, which supports M2's reading that the desktop's 12% shortfall came
+from the fit.
+
+### The account of (c)
+
+(c) does not reproduce off the stock driver:
+- in the guest's state, the band's scroll is the hull's angular rate to three figures (M1);
+- on the desktop (lavapipe, 0.5.2-rc1 code, the release app's environment), the band follows its scroll at slope 0.88
+  +- 0.02 (M2);
+- on the Nova with Turnip (run 13), it follows at slope 1.02 +- 0.001 (M2b).
+
+So R4 holds: the owner's sighting of 10-16 was on the release app before it had a custom driver (#1043), which is the
+stock Qualcomm driver. The same week, #1038 and #1039 turned out to be stock-driver defects. Per the owner's rule of
+10-17, the stock driver is not used or tested, so the stock-driver mechanism is not looked for.
+
+Two differences between the sighting and these runs remain untested:
+- the build type: the release package against run 13's `.debug` package. The desktop run used the 0.5.2-rc1 code
+  with the release environment, but not an Android release build;
+- the pose: the owner watched a longer stretch of the menu than any of these windows.
+
+A Turnip run of the release package, when the Nova frees, closes the first. It is queued with the (a) measurement,
+not on its own.
+
+A second effect makes (c) easy to see even when the band turns. One turn takes about 34 minutes. From the menu camera
+the band in view is the far side of the ring, about 38 units away, and it slides about 0.75 texels a second at lod 3.
+The near hull turns at the same angular rate, but its surface is less than half a unit from the camera, so it visibly
+streams. On a screen, the far band can read as still beside the near hull. That reading would hold on the console
+too, though, so it does not explain a difference between the two.
+
+**What (c) does to (a)'s hypotheses.** The ring's geometry never moves (M1: every vertex reads bone 0). So the cube
+reflection R, which depends only on the eye and the normal, is fixed to the screen on every renderer, the console
+included. The owner says every surface turns on the console, and that includes the bright layer. If the console's
+layer is the reflection term (R1), its turning must come from its t2.r mask, which does scroll with c13. The cube part
+then has to be close to uniform over the ring: one bright face, or a mirror that lands on one. A layer that turns
+rules out a reading of (a) in which the cube's own detail makes the layer.
+
 ## Plan
 
-1. (c) off the stock driver:
-   - check run 13's driver from its log;
-   - in run 13's video, track the inside band against the hull across the menu;
-   - in a desktop `gd` dump (dg1 is on disk), compare per-draw c13 over consecutive frames for `n4`, `n6` and `n0`.
-2. Take apart `n4`, `n6` and `n0`, the way A6 took apart `n5`.
-3. (a): the software render of `n5` with R3's k, R1's forced face and mirror, and R6's q. Then fix A7's crash and
-   check the leaders on the desktop.
+1. ~~(c) off the stock driver~~: done (M2, M2b). R4 holds.
+2. (a): which draw is the console's layer on, and what term makes it. Take apart `n6` (it runs over the hull's pixels
+   too) and `n0` far enough to say whether either can lighten the hull.
+3. (a): the software render of `n5` with R3's k, R1's forced face and mirror, and R6's q, judged by region against
+   the pose-matched console photos. Then fix A7's crash and check the leaders on the desktop.
 
 Before every desktop run that may crash, `df -B1G /mnt/c` must show at least 40 GB free. After every run, delete only
 this run's own dumps in `wsl-crashes/`, by exact name, and log each crash here.
