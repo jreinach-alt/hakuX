@@ -8,7 +8,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `gta3fps1017b` | claude-opus-5-5 | 26 min | gta3fps1017b: GTA III fps -- R2 (bind the forced-alpha surface view) and R3 (share one copy between nodes), bo |
+| `gta3fps1017b` | claude-opus-5-5 | 41 min | gta3fps1017b: GTA III fps -- R2 (bind the forced-alpha surface view) and R3 (share one copy between nodes), bo |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `owner.gta3play-1017`
@@ -18,10 +18,11 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Playable titles
 
-**90 titles are confirmed Playable** (3 today). Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
+**91 titles are confirmed Playable** (0 today). Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
 
 | Confirmed | Title | Result |
 |---|---|---|
+| 2026-10-17 | NBA Live 07 | Playable, 10-minute run |
 | 2026-10-17 | Pac-Man World 2 | Playable, 10-minute run |
 | 2026-10-17 | Dead or Alive 3 | Playable, 10-minute run |
 | 2026-10-17 | Marvel Nemesis: Rise of the Imperfects | Playable, 10-minute run on the Nova |
@@ -123,6 +124,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Recently landed on master
 
+- 2026-10-17 The compatibility page adds NBA Live 07 (454100A1) as Playable: 90 -> 91
 - 2026-10-17 compat1017b: the compatibility page catches up from 88 to 90 Playable
 - 2026-10-17 compat1017: catch up the compatibility page to the 88-row Playable ledger
 - 2026-10-17 A title with one measured stall reaches the owner the same day
@@ -134,6 +136,5 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 Halo CE: the ship's rear lights show through the hull after the cut to the front (opening cinematic)
 - 2026-10-17 haloshadow1017: Halo CE's dark squares under soldiers' feet: the stock Adreno driver, not the code (#1038)
 - 2026-10-17 release052b: versionCode 10, the driver link, and two known-issue lines for 0.5.2 (#433)
-- 2026-10-17 drivernotice1017: every release note names the one tested GPU driver (#433)
 
-_Updated 2026-10-17 23:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 00:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
