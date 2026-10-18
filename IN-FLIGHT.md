@@ -8,14 +8,13 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `dispatchpush1018` | claude-sonnet-5 | 30 min | dispatcher: fix the staged-disc push's /mnt/d path so adb.exe can open it |
-| `gta3instr1018` | claude-opus-5-5 | 30 min | GTA III dip frame: race-free render-pass-break counters and timed vertex-copy, shader-bind and fence-wait cost |
-| `holdcap1018` | claude-sonnet-5 | 1h 45m | holdcap1018: an owner-play hold starts a host logcat capture |
+| `gta3instr1018` | claude-opus-5-5 | 45 min | GTA III dip frame: race-free render-pass-break counters and timed vertex-copy, shader-bind and fence-wait cost |
+| `holdcap1018` | claude-sonnet-5 | 2h 0m | holdcap1018: an owner-play hold starts a host logcat capture |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-offline`
-- **Device queue:** 0 waiting, 0 running.
+- **Device queue:** 1 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -123,8 +122,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/dispatchpush1018` | dispatcher: fix the staged-disc push's /mnt/d path so adb.exe can open it | `30c47f858c` | 2026-10-18 08:48 |
-| `lane/gta3instr1018` | GTA III dip frame: race-free render-pass-break counters and timed vertex-copy, shader-bind and fence-wait costs | `619d0a2986` | 2026-10-18 08:54 |
+| `lane/gta3instr1018` | GTA III dip frame: race-free render-pass-break counters and timed vertex-copy, shader-bind and fence-wait costs | `25915ae59e` | 2026-10-18 09:17 |
 | `lane/holdcap1018` | holdcap1018: an owner-play hold starts a host logcat capture | `6a009e01b6` | 2026-10-18 07:38 |
 
 ## Recently landed on master
@@ -142,4 +140,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-18 Top Spin: a state:any route that gets past Controller Select
 - 2026-10-18 high-speed driving fps (GTA III + GTA: San Andreas)
 
-_Updated 2026-10-18 09:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 09:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
