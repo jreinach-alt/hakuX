@@ -99,6 +99,7 @@ this build. Coming from the official hakuX?
 | [Release notes](docs/releases/README.md) | What changed in each version |
 | [Known issues](KNOWN_ISSUES.md) | What to expect before you report a bug |
 | [Roadmap](ROADMAP.md) | What is coming next |
+| [How we got here](docs/HISTORY.md) | The story of hakuX CE so far |
 | [ES-DE setup](docs/es-de/README.md) | Launching games from ES-DE |
 | [Moving from the official build](android/MIGRATING.md) | Bringing your saves across |
 | [Reporting a bug](docs/reporting-bugs.md) | What to include |
