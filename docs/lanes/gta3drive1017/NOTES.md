@@ -1,10 +1,15 @@
 # lane.gta3drive1017 -- GTA III drops into the teens while driving (#433)
 
-Status (attempt 3, 10-17 17:20 PDT): the wait is located (section 6). R1 is built (c6ca5296fd, section 7). Its
+Status (attempt 3, 10-17 17:25 PDT): the wait is located (section 6). R1 is built (c6ca5296fd, section 7). Its
 arms are registered (section 8).
 - Step 1, the pixel suites, is judged (8.1): the same code ran in both arms, and every mover is run-to-run variance.
 - Drive pair 1 is VOID (8.2): the help-box gate never matched, so neither run entered the car. The gate is now the
-  scene beside the Kuruma, and the pair is requeued.
+  scene beside the Kuruma.
+- Its second try is VOID too (8.3). The new gate worked and Claude got in, but the mission restarted ~30 s into the
+  drive and he stayed on foot. The route now has a warm-up drive, with dense frames, ahead of the mark. B goes alone
+  first.
+- R2/R3's census (the copy refusal reasons, dups per flip) is in texture.c, perflog only, for a later run if R1
+  falls short.
 
 **Why attempt 2 did not finish.** It ended at ~16:55 while drive pair 1 was on the Nova (B 16:40-16:50, A
 16:50-17:00), so there was nothing to judge yet. Its last act was to check out a new local branch,
@@ -278,8 +283,9 @@ the copies' recording. That cost is real and is R2/R3's (section 7), but it is s
 
 - **The fist-hud gate matched too early.** In both pilots `waitfor fist-hud` matched at 0 s on the game's own intro
   drive: Chinatown, clock 05:23, $0, HUD up (`154632-fist-hud.png`).
-  - That sequence runs *before* the "Give Me Liberty" cutscene (`154716-drive.png`). The cutscene sets the mission
-    clock to ~04:10, which is why it looked like a restart.
+  - ~~That sequence runs *before* the "Give Me Liberty" cutscene (`154716-drive.png`).~~ **Corrected in attempt 3:**
+    the frames show the cutscene first, at `introskip`; the pilots' A-train then ended in a car. The order of the
+    two states is not settled by these two runs, and the route no longer depends on it (8.2).
   - The single Y press landed on the intro, and `mark gameplay` with it.
   - Claude reached the Kuruma only later: pilot 2 shows "Enter or exit a vehicle: Y" at 15:48:30 and 15:49:07, then
     drives Chinatown at 15:49:44-15:50:21 with the money rising. Pilot 1 drove from the alley to Eddie's,
@@ -287,7 +293,8 @@ the copies' recording. That cost is real and is R2/R3's (section 7), but it is s
   - The weapon icon is up on every in-game screen, so it cannot say "on foot next to the car".
 - **The host's adb dropped presses.** Both pilots logged `UtilAcceptVsock accept4 failed 110` (13 in pilot 1, one in
   pilot 2). A press-until with a retry covers that for the entry.
-- **The new gate is the tutorial box.** `routes/refs/gta-3-drive/enter-help.png` is cut from `154830-drive.png` at
+- **The new gate is the tutorial box** (it failed in drive pair 1, 8.2; replaced by the at-kuruma gate).
+  `routes/refs/gta-3-drive/enter-help.png` is cut from `154830-drive.png` at
   104,84,380,88. `tools/route_gate.py` scores that region on every frame of both pilots and of the Playable run
   32437, by waitfor_match.py's own `region_score`:
   - 0.00 and 4.45 on the two frames with the box;
@@ -426,6 +433,46 @@ printed `[s2tdrain] on`. drive_judge.py: both VOID, with 0 scored windows, becau
 **Requeued:** the same pair, B then A, same build, env and prediction. This is a route fix for a void with a known
 cause, not a blind rerun. The pilot verdict (`pilots/lane.gta3drive1017.ok`) is written only once B's frames show the
 car moving.
+
+### 8.3 Drive pair 1, second try: the gate works, then the mission restarts under the throttle
+
+B `1-1792282254-lane.gta3drive1017-1563459` ran. A `1-1792282262-lane.gta3drive1017-1564112` was withdrawn before it
+ran (`queue/withdrawn/`, with a `.why`): it carried the same route, so it would have voided the same way.
+
+- **The machine legs pass.** Turnip (`vulkan.purple.so`), `[s2tdrain] first skip` once, no error lines.
+  drive_judge.py: 229 windows, 457 ft1 lines after the mark, share_t 0.995, fps50 30.0, p_fence 0.0 ms, gpu50
+  8.1 ms.
+- **The gate worked.**
+  - `waitfor at-kuruma` matched at 0 s (0.878).
+  - `press-until Y` changed after one press (23.755).
+  - 6 s later the frames show the Kuruma with its name and the "Accelerate: Right Trigger" box (171406, 171412;
+    clock 05:18-05:25).
+  - 8-Ball was already in the passenger seat in the `onfoot` frame (05:12), before the Y.
+- **The mission restarted within ~30 s of the throttle.**
+  - The first drive shot (17:14:46) shows Claude on foot beside the Kuruma, with the objective arrow over it, at clock
+    04:18. That is the mission's start clock (6.3: ~04:10); 34 s earlier it read 05:25.
+  - All eleven later shots, to 17:21:24, show him on foot: under the bridge, by the burning wreck on the bridge, and
+    beside the car with 8-Ball sitting in it (08:08).
+  - The clock runs on normally across those shots, so the mission restarted once. After that, the loop's throttle and
+    steering only walked him about.
+- **The run is VOID as a drive.** The 0.995 share and 30 fps belong to an on-foot window, which fits the owner's guess
+  that on foot clears the bar. V (hand) fails, so this is not a verdict on R1.
+- **The cause is not seen.** No frame covers 17:14:13-17:14:46, and video was off. The candidates:
+  - the car leaving the road into the water beside the bridge ramp (drowning fails the mission, and it restarts at
+    once);
+  - 8-Ball killed in a crash;
+  - something in the mission script.
+
+  It is not "8-Ball left behind": he was in the car before the Y.
+- **The fix is route only: a warm-up.**
+  - Five laps of the same driving (~65 s, a frame every 2-3 s) go between the entry and `mark gameplay`.
+  - Their frames show whatever ends the drive, and they are outside the scored window.
+  - A car still moving at the mark starts the scored window moving.
+  - `route.sh --check` passes.
+- **Next: B alone first.**
+  - If its warm-up frames show the car moving at the mark, A is queued behind it at once.
+  - If they show the restart again, the route changes to avoid its cause before any A runs.
+  - The pilot verdict waits for drive shots minutes apart with the car moving.
 
 ## Questions
 

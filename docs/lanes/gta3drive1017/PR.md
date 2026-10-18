@@ -3,7 +3,7 @@
 State: draft
 
 Lane: gta3drive1017            Issue: #433
-Base: master @ afde9a4677
+Base: master @ 07b7b6d996
 Files: hw/xbox/nv2a/pgraph/vk/texture.c, docs/lanes/gta3drive1017/PR.md, docs/lanes/gta3drive1017/NOTES.md, docs/lanes/gta3drive1017/owner_play.tsv, docs/lanes/gta3drive1017/pilot343857_waits.tsv, docs/lanes/gta3drive1017/pilot343857_waits.bands, docs/lanes/gta3drive1017/pilot346093_waits.tsv, docs/lanes/gta3drive1017/pilot346093_waits.bands, docs/lanes/gta3drive1017/tools/owner_play.py, docs/lanes/gta3drive1017/tools/drive_split.py, docs/lanes/gta3drive1017/tools/ft_waits.py, docs/lanes/gta3drive1017/tools/route_gate.py, docs/lanes/gta3drive1017/tools/drive_judge.py, docs/lanes/gta3drive1017/tools/pixel_noise.py, docs/lanes/gta3drive1017/tools/capture_history.py, docs/lanes/gta3drive1017/routes/gta-3-drive.route, docs/lanes/gta3drive1017/routes/refs/gta-3-drive/enter-help.png, docs/lanes/gta3drive1017/routes/refs/gta-3-drive/fist-hud.png, docs/lanes/gta3drive1017/routes/refs/gta-3-drive/at-kuruma.png, docs/testing/predictions/gta3drive1017-drive.json, docs/testing/predictions/gta3drive1017-pixels.json
 Prediction: docs/testing/predictions/gta3drive1017-drive.json @ 678376d73ae12a502e32b2079d10ac680cd01658309ee58d817c08adc077104f, docs/testing/predictions/gta3drive1017-pixels.json @ 01b0fd3bb866e23cf7692e74d6f355715f8806ec6e9abe5109b519460bc1bda6
 Needs device: yes    Needs NDK: yes
@@ -34,12 +34,19 @@ Unchanged: zeta copies, HAKUX_S2T_CVT's converting copy, and upload copies keep 
 restores the old drain, which is the A arm. A run prints `[s2tdrain] first skip` once, the first time a copy skips a
 drain it would have had.
 
+texture.c also carries a census of the copies, in an NV2A_PERF_LOG build only, so a default build's object code is
+unchanged. It counts each copy that could have been a direct bind by the first reason the bind was refused (zeta with
+stencil, pad alpha, format, component map). It also counts the copies of a surface already copied at the same
+draw_time within a flip, which is the share one copy per surface would save. It decides between the next two remedies
+if this change falls short of the bar (NOTES.md 7).
+
 **Arms** (queued by the lane; one build, env A/B):
 
 - gta3drive1017-pixels.json: drain474's seven surface-as-texture pgraph suites.
 - gta3drive1017-drive.json:
-  - two runs per arm on the driving route (`routes/gta-3-drive.route`, gated on the scene beside the Kuruma. The
-    help-box gate voided the first pair: NOTES.md 8.2);
+  - two runs per arm on the driving route (`routes/gta-3-drive.route`, gated on the scene beside the Kuruma, with a
+    warm-up drive ahead of the scored window. The help-box gate voided the first pair, and a mission restart under
+    the throttle voided its second try: NOTES.md 8.2, 8.3);
   - then one per arm on the on-foot gta-3 route.
 - The bar: B's driving at >= 28.5 fps for >= 90% of the moving window, with on foot not regressed.
 
