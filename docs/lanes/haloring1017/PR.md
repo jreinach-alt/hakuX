@@ -4,7 +4,7 @@ State: draft
 
 Lane: haloring1017            Issue: #939
 Base: master @ 9abd80e90c
-Files: docs/lanes/haloring1017/PR.md, docs/lanes/haloring1017/NOTES.md, docs/lanes/haloring1017/tools/constmove.py, docs/lanes/haloring1017/tools/otwrites.py, docs/lanes/haloring1017/tools/ringuv.py, docs/lanes/haloring1017/tools/deskrun.py, docs/lanes/haloring1017/tools/bandfit.py, docs/lanes/haloring1017/tools/bandsum.py, docs/lanes/haloring1017/tools/vidmap.py, docs/lanes/haloring1017/tools/clockfit.py, docs/lanes/haloring1017/tools/c13series.py, docs/lanes/haloring1017/tools/hullsw.py, docs/lanes/haloring1017/tools/swcheck.py, docs/lanes/haloring1017/tools/combwords.py, docs/lanes/haloring1017/tools/photoreg.py, docs/lanes/haloring1017/tools/posefit.py, docs/lanes/haloring1017/tools/photojudge.py, docs/lanes/haloring1017/tools/photocal.py, docs/lanes/haloring1017/tools/termfit.py, docs/lanes/haloring1017/tools/floorfit.py, docs/lanes/haloring1017/tools/levelcmp.py, docs/lanes/haloring1017/tools/edgecmp.py, docs/lanes/haloring1017/tools/vidratio.py, docs/lanes/haloring1017/tools/run13anchors.sh, docs/lanes/haloring1017/tools/run13map.sh
+Files: docs/lanes/haloring1017/PR.md, docs/lanes/haloring1017/NOTES.md, docs/lanes/haloring1017/tools/constmove.py, docs/lanes/haloring1017/tools/otwrites.py, docs/lanes/haloring1017/tools/ringuv.py, docs/lanes/haloring1017/tools/deskrun.py, docs/lanes/haloring1017/tools/bandfit.py, docs/lanes/haloring1017/tools/bandsum.py, docs/lanes/haloring1017/tools/vidmap.py, docs/lanes/haloring1017/tools/clockfit.py, docs/lanes/haloring1017/tools/c13series.py, docs/lanes/haloring1017/tools/hullsw.py, docs/lanes/haloring1017/tools/swcheck.py, docs/lanes/haloring1017/tools/combwords.py, docs/lanes/haloring1017/tools/photoreg.py, docs/lanes/haloring1017/tools/posefit.py, docs/lanes/haloring1017/tools/photojudge.py, docs/lanes/haloring1017/tools/photocal.py, docs/lanes/haloring1017/tools/termfit.py, docs/lanes/haloring1017/tools/floorfit.py, docs/lanes/haloring1017/tools/levelcmp.py, docs/lanes/haloring1017/tools/edgecmp.py, docs/lanes/haloring1017/tools/vidratio.py, docs/lanes/haloring1017/tools/run13anchors.sh, docs/lanes/haloring1017/tools/run13map.sh, docs/lanes/haloring1017/tools/transfer.py, docs/lanes/haloring1017/tools/excessmap.py, docs/lanes/haloring1017/tools/regvalid.py, docs/lanes/haloring1017/tools/chromafit.py, docs/lanes/haloring1017/tools/reflfit.py, docs/lanes/haloring1017/tools/detailfit.py, docs/lanes/haloring1017/tools/texregs.py, docs/lanes/haloring1017/tools/t1scale.py, docs/lanes/haloring1017/tools/excessreg.py, docs/lanes/haloring1017/tools/normcheck.py, docs/lanes/haloring1017/tools/termpanel.py
 Prediction: none: analysis-only (so far)
 Needs device: no    Needs NDK: no
 
@@ -19,5 +19,10 @@ Step 0 is committed: the Already-tried table and the hypothesis table are in `do
 So (c) is the stock driver (R4), which the owner's rule of 10-17 puts out of scope. The lane is now on (a), the
 missing bright grey layer: a numeric judge that registers the console photos to the framebuffer and asks which
 combiner term the console's layer is made of.
+
+On photo 5 the console's hull is about 1.4x hakuX's (about 1.23x in green and blue), and the band about 1.0x. The
+combiner decode, texture registers, DXT1 decode, normals, constants and the cube's LOD are each checked and ruled
+out (M7). Two accounts remain. In one, the console's diffuse counts for more. In the other, a t2.r-shaped
+reflection covers the whole hull. They part on the ring's unlit side.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

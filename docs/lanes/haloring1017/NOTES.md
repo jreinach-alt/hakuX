@@ -94,8 +94,9 @@ console's brightness.
 | R5 | other combiner or final-combiner semantics, or the fast paths, for (a) | (a) | 0.1 | A3 (for (b) only), A20 | a fast-paths-off clip (A3's video) shows the layer, or a combiner op proves wrong against the hardware docs | | A3's video; reading `psh.c` against nv2a docs |
 | R7 | `n5` follows `n4` in the same shader with only c13 changed; the second draw's constants never reach the GPU | (c) | 0.05 -> 0 off the stock driver (M2, M2b: each scrolls at its own rate) | new (M1). Code read: `vsh.c:1213` copies all of c[] every draw; `shaders.c:2108-2138` marks the upload by dirty flag or by layout hash, so a c13 change is caught either way | on screen, one of `n4`/`n5` scrolls at the other's rate or not at all | each scrolls at its own c13.w rate | M2 (`bandfit.py`) |
 | R6 | unwritten VP outputs take the attribute registers' current values on hardware (Cxbx-R PR #2109); hakuX sets them to (0,0,0,1). The hull never writes oT0/oT1/oT2.zw (the PROJECT2D q), oT3.w, oB0, oB1 | (a), perhaps (c) | 0.1 -> 0.03 (M5: t0 and t2.r land on the console at the dump's own scale and phase, which a q != 1 would move) | new: searched hakuX git and `vsh.c`, nothing; Cxbx-R PR #2109 | inline attribute values for v9-v12 (or the slots each output maps to) give q != 1, and a render with that q matches the console | q = 1 under that model | the `gd` dump's inline attribute values; a software render |
-| R8 | the cube's LOD: on hardware the hull's reflection samples a coarse mip of the 64x64 cube (near each face's mean) where hakuX samples a fine one, so the reflection is t2.r times a near-constant over the whole hull, not only where a bright face is hit | (a), and (b)'s flicker source | 0.3 (new, M6) | new: M6's t2.r-without-cube fit | the reflection with the cube at a coarse LOD fits the console's rank and level better than at hakuX's LOD | no LOD bias raises the fit over D + c·t2.r's | `termfit.py` with an LOD bias on t3 |
-| R9 | the fresnel oD1 differs on hardware (its inputs: v5/v6's formats, or an unwritten register), so oD1.rgb·oD1.a is near-constant | (a) | 0.15 (new, M6) | new | a near-constant oD1 with the cube at hakuX's or a coarse LOD fits the console | the fresnel-shaped term fits as well as a flat one | `termfit.py`; the VP's oD1 inputs read from the dump |
+| R8 | the cube's LOD: on hardware the hull's reflection samples a coarse mip of the 64x64 cube (near each face's mean) where hakuX samples a fine one, so the reflection is t2.r times a near-constant over the whole hull, not only where a bright face is hit | (a), and (b)'s flicker source | 0.3 (new, M6) -> 0.01 (M7: each face's mean is the same at every mip, and the screen LOD is 0) | new: M6's t2.r-without-cube fit | the reflection with the cube at a coarse LOD fits the console's rank and level better than at hakuX's LOD | no LOD bias raises the fit over D + c·t2.r's | `termfit.py` with an LOD bias on t3 |
+| R9 | the fresnel oD1 differs on hardware (its inputs: v5/v6's formats, or an unwritten register), so oD1.rgb·oD1.a is near-constant | (a) | 0.15 (new, M6) -> 0.2 (M7: on the pixels where t2.r and D disagree, the excess follows t2.r) | new | a near-constant oD1 with the cube at hakuX's or a coarse LOD fits the console | the fresnel-shaped term fits as well as a flat one | `termfit.py`; the VP's oD1 inputs read from the dump |
+| R10 | the hull's diffuse counts for ~1.4x more on hardware (the detail map t1 at a higher level, or the s6 sum t0·t1 + t0·t1 scaled differently) | (a) | 0.3 (new, M7: D x 1.5 + X0 is the best joint fit; the hull's gain is flat over hakuX's mid-range) | M7 `texregs.py`: no LOD bias or clamp; t1's mips cap the lift at x1.39 | the unlit hull stays dark on the console, and a desktop render with D x k matches photo 5 | the console lights the unlit hull | a console photo of the unlit side; `hullsw.py` with D x k |
 
 ## Measurements
 
@@ -439,6 +440,141 @@ the "sprite" (t2.r, the reflection's mask) "applied across the entire ring, incl
 hakuX's own combiner, the term that carries t2.r is the reflection, cube(R)·oD1.rgb·t2.r·oD1.a. So the console's
 reflection is t2.r times something near-constant and non-zero: the cube's lookup or the fresnel differs, not the
 mask. M7 tests the cube's LOD (a coarse mip is the face's mean everywhere) and the fresnel's inputs.
+
+### M7: the level gap, the photo's smear, and what the hull's state rules out (f507; `transfer.py`, `excessmap.py`, `regvalid.py`, `chromafit.py`, `reflfit.py`, `detailfit.py`, `texregs.py`, `t1scale.py`, `excessreg.py`, `normcheck.py`, `termpanel.py`)
+
+**A better curve.** `cal5v1806.npz` is `photocal.py` taken on the space background of hakuX's own Turnip video frame
+at the photo's pose (v01806, f504.3), so it has data across the hull's whole range (fb 0.08-0.33), where the overlay
+curve (M5, M6) had none. Photo L -> fb: 0.07 -> 0, 0.21 -> 0.14, 0.37 -> 0.25, 0.55 -> 0.33, 0.68 -> 0.44-0.55
+(flat: the camera clips there), 0.96 -> 0.91-0.97.
+
+**The photo's smear (`regvalid.py`).** `photoreg.py` clamps its sample position to the photo. Photo 5 ends near frame
+x 587, so every frame pixel right of it took the photo's edge column, smeared. That was **13.9% of the hull** (14,625
+of 105,517 px) and none of the band, in every M5-M6 hull statistic. `overlay_min_v.png` masks it; M7's numbers use it.
+M6's rank table moves by a few hundredths (hakuX as drawn 0.600 -> 0.707 all; D + c·X0 best c 0.22 -> 0.37) and none of
+its orderings change.
+
+**The gap, per draw (`transfer.py`, masked).** Console against hakuX's render, in fb units, binned by hakuX's value:
+
+| draw | core px | console mean | hakuX render | hakuX video | fit console = g x hakuX + b | r per pixel |
+|---|---|---|---|---|---|---|
+| hull `n5` | 51,515 | 0.205 | 0.147 | 0.147 | g 1.40, b +0.010 | 0.730 |
+| band `n4` | 4,890 | 0.578 | 0.532 | 0.511 | g 0.83, b +0.176 (ratio 1.44 at hakuX 0.2 falling to 1.01 at 0.84) | 0.671 |
+
+The hull's ratio is about flat from hakuX 0.10 to 0.21 (1.42-1.75) and drops in the darkest bin (0.78 at hakuX 0.07)
+and the brightest (1.28). So on the hull the console is a **gain, ~1.4x**, not an addition: an added layer would lift
+the darkest bin most. The band is near 1.0 except in its dark parts. `excessmap.py` (`excess507v.png`): the hull's
+excess grows down the frame (rows 0-150 +0.028, 150-250 +0.053, 250-350 +0.114) and with each of D and t2.r by quartile
+(D: +0.007, +0.056, +0.095, +0.075; t2.r: +0.006, +0.055, +0.077, +0.094). Where either is lowest, the console
+matches hakuX.
+
+**Colour (`chromafit.py`).** Read back per channel through `cal5v1806`'s R/G/B curves, the console's hull is (0.289,
+0.185, 0.183) against hakuX's (0.136, 0.153, 0.146). By channel the hull ratio is R 2.13, G 1.21, B 1.25 and the band's
+R 1.25, G 0.98, B 0.98. The red curve is flat in the darks (photo R 0.075-0.163 for fb 0-0.2, because the space
+background has almost no red), so the red reading is the curve, not the console. In G and B, which are well
+determined, **the hull is ~1.23x hakuX and the band ~0.98x**.
+
+**Re-fits on the masked overlay.**
+
+| `reflfit.py`: D + c·(a part of X0), c scanned | best c | rank r: all / upper / lower / band | level at c = 1, hull / band |
+|---|---|---|---|
+| full X0 (cube, oD1.rgb, oD1.a) | 0.37 | 0.748 / 0.822 / 0.359 / 0.423 | 0.147 / 0.532 |
+| cube only | 0.20 | 0.745 | |
+| t2.r only (no cube, no fresnel) | 0.30 | 0.746 (lower 0.459) | |
+
+Console: hull 0.219, band 0.554 in fb units. `detailfit.py` asks whether the detail map is the gap. hakuX's t1 on
+screen has a mean of 0.310, and its LOD (lod1) runs p10/50/90 -0.04 / 1.31 / 3.66:
+
+| t1 variant | rank r: all / upper / lower | level of D + X0 |
+|---|---|---|
+| as hakuX samples it | 0.707 / 0.774 / 0.348 | 0.147 |
+| t1 = mip 5 everywhere (mean 0.423) | 0.636 | 0.188 |
+| t1 = 0.5 (neutral) | 0.652 | 0.216 |
+| t1's detail kept, scaled x 0.5/0.255 | 0.745 / 0.816 / 0.360 | 0.258 |
+
+A neutral detail map gives the console's level (0.216 against 0.219) but loses rank. Keeping the detail and lifting
+its mean gives both rank and too much level. **Two accounts now fit about equally**: the console's detail map counts
+for more (D x ~1.4), and an extra t2.r-shaped reflection. `excessreg.py` puts them against each other on the hull core
+(blur 3, L):
+
+| model, no constant | coefficients | R² |
+|---|---|---|
+| D + X0 | 1.542, 0.923 | **0.561** |
+| Dn (t1 = 0.5) + t2.r | | 0.548 |
+| D + t2.r | 0.696, 0.418 | 0.539 |
+| D + t2.r·oD1.rgb | | 0.524 |
+| Dn + X0 | 1.033, 0.542 | 0.504 |
+| Dn | 1.139 | 0.463 |
+| D | 1.792 | 0.423 |
+
+With a constant, D + X0 gives 1.69, 0.925, -0.019 (R² 0.564). D and t2.r correlate at 0.786 on this hull, so a joint
+fit separates them only weakly. On the few pixels where they disagree:
+
+| pixels | n | console | hakuX | ratio |
+|---|---|---|---|---|
+| t2.r high, D low | 269 | 0.314 | 0.218 | 1.44 |
+| t2.r low, D high | 370 | 0.162 | 0.183 | 0.89 |
+| both high | 11,065 | | | 1.44 (+0.096) |
+| both low | 14,287 | | | 1.11 (+0.010) |
+
+The excess follows t2.r, not D, but on 639 pixels. The best whole-hull model keeps hakuX's reflection as is (0.92) and
+scales the diffuse by ~1.5.
+
+**What the hull's state rules out.**
+- **The combiner decode.** The eight stages and the final combiner, decoded by hand from the dump's words (CTL
+  0x00011008: unique c0/c1 per stage), give hull = 2·t0·t1·(oD0 + t2.g) + cube(R)·oD1.rgb·t2.r·oD1.a with
+  FC0 = 0xffffffff and no clamp or complement flags. That is `hullsw.py`'s `combine()` and `psh.c`'s output. In
+  detail: s0 r0.rgb = t2.g, r1.rgb = t2.r, r0.a = t2.b (0); s2 r0.rgb = 1, r1.a = t2.r·oD1.a; s4 t3 = t3·v1, v0 = v0·r0;
+  s6 t0 = t0·t1 + t0·t1 (a sum, no output scale); s7 r0 = t0·v0 + t3·r1.a. Final (SPECFOG 0x340f010d / 0x0c111800):
+  (1 - v0.a)·r0 + v0.a·FC0 + r1, with r1.rgb = 0 from s5.
+- **The texture registers (`texregs.py`).** Every stage of both draws: TEXCTL0 0x4003ffc0 (LOD clamp min 0, max
+  15.996), TEXFILTER 0x02062000 (bias 0, trilinear min, linear mag, no signed channels), wrap on stages 0-2, clamp on
+  the cube. `n5`: s0 1024x512 DXT1, 9 mips; s1 128x128 DXT1, 6 mips; s2 1024x512 DXT1; s3 64x64 DXT1 cube, 5 mips.
+  `n4`: s0 2048x128; s1 4x4 X8R8G8B8, a constant 0.502 grey; s2 2048x128, whose g is 1.0 everywhere (the band is fully
+  self-lit). **No bias or clamp moves the detail map's mip.**
+- **The textures' contents.** The detail map t1's mip means are 0.255, 0.289, 0.323, 0.357, 0.391 and 0.423 (a Halo
+  detail map fading toward 0.5; even its coarsest mip gives only x1.39 over mip 0). t0's are (0.189, 0.219, 0.161) at
+  every mip; t2 r 0.30, g 0.19, b 0. No DXT1 3-colour (punch-through) block in hull t1, hull t0 or band t0; in t2,
+  0.7% of blocks, with no texel on index 3. **The DXT1 decode is not it.**
+- **The normals (`normcheck.py`).** Each vertex's decoded normal agrees with the mesh's own face normals: |dot|
+  0.99-1.0 on 100% of vertices, under hakuX's decode only (the sign follows the winding). The hull's normals turn 22°
+  (median) per edge and R 24° p50 / 71° p90, which is the geometry. Per vertex |R| is p50 27 on both draws; per pixel
+  it is 20.75 on the band and 0.85 on the hull, because the visible hull is about 1 unit from the eye. A cube lookup
+  ignores |R|.
+- **The eye and constants.** c0-c7 and the bone matrix c60-c62 are identical on `n4` and `n5`. c4 = (0.826, 1.559, 0, 2)
+  is the projection's eye (c0·eye + w = 0, and the same for c1 and c3). Depth w p50 10.7 on both.
+- **R8, the cube's LOD.** The cube's faces have the same mean at every mip (face 0: 0.651 at mips 0-4; face 1 0.050,
+  face 2 0.073, face 3 0.130, face 4 0.238, face 5 0.143). A coarse mip changes nothing on average, and the screen LOD is
+  0 anyway. Pixel shares by face: hull +x 0.21, -y 0.30, -z 0.49; band +x 0.39, -x 0.04, +z 0.57. **R8 is refuted.**
+- **R6, the unwritten outputs.** The dump's current inline attribute values at `n5` are v9 (0, 0.498, 1, 0), v10
+  (1, 0, 0, 1), v11 (3.1, 479.9, 0, 1) and v12 (3.1, 480.1, 0, 1): leftovers of a 2D draw. If the unwritten zw of
+  oT0-oT3 took v9-v12's, as in Cxbx-R's order, then oT1-oT3's q would be 1, hakuX's value already. oT0's would be 0,
+  which would wreck t0, and M5 matched t0 at the dump's own scale and phase. R6 stays at 0.03.
+- **t1 at another scale (`t1scale.py`).** The hull's VP sets oT1 = oT0·c12.xy with c12.xy = (10, 10). Re-rendered with
+  c12.xy = 1, 2, 5 and 10 (t1's LOD p50 -2.48, -1.48, -0.15 and 0.85). The console's structure was then correlated by
+  band-pass (box r1 - r2) with each term, upper / lower hull:
+
+  | band | hakuX final | t0 | t2.r | t1, any scale |
+  |---|---|---|---|---|
+  | 8-24 px | 0.876 / 0.783 | 0.816 / 0.760 | 0.746 / 0.727 | -0.2 to +0.13 |
+  | 3-10 px | 0.34 / 0.39 | | | |
+  | 1-4 px | nothing correlates | | | |
+
+  **The console's mid-scale structure is hakuX's own final, led by t0.** The detail map's own pattern is not visible
+  in the photo at any scale, so its level, not its pattern, is the open question.
+
+**Caveat on the pair images.** The hakuX halves of `pair5`, `hullzoom5` and `ringzoom1` were captured on 10-16. They
+are likely the stock driver and are not judged here: only run 13's Turnip video and the `hullsw.py` render are.
+
+**Where (a) stands.** Two accounts fit photo 5 about equally, because at its pose the hull is lit everywhere
+(oD0 ~0.85, M3):
+- **R10**: the console's diffuse is ~1.4-1.5x hakuX's, through the detail map counting for more. No register explains
+  that, and the textures' mips cap it at x1.39.
+- **R1/R9**: an extra reflection-like term, t2.r times something near-constant, not gated by the cube's bright faces.
+
+They part on the ring's **unlit side**. There D is dark whatever t1 is, so D x k stays dark. An added t2.r term lights
+it, as the owner describes ("applied across the entire ring, including the dark portions"). The next measurement is a
+console photo at a pose where the unlit hull shows.
 
 ## Plan
 

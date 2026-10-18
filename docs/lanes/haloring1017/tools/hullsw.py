@@ -381,9 +381,10 @@ def ppm_rgb(path):
     return np.frombuffer(parts[3][:w * h * 3], dtype=np.uint8).reshape(h, w, 3).astype(np.float64) / 255
 
 
-def render(dump, ram, frame, v4z=0.0, loaded=None, state=None):
+def render(dump, ram, frame, v4z=0.0, loaded=None, state=None, cpatch=None):
     """Everything per pixel for one frame. Returns a dict of full-screen arrays.
-    A dict passed as state gets each layer's constants and decoded textures, by layer id."""
+    A dict passed as state gets each layer's constants and decoded textures, by layer id.
+    cpatch {(layer, reg, comp): value} overrides a VP constant on one draw (M7: t1's scale)."""
     session, draws, frames, skips, shaders = loaded or g.load(dump)
     for d in draws:
         for k in ("f", "n", "count"):
@@ -405,6 +406,9 @@ def render(dump, ram, frame, v4z=0.0, loaded=None, state=None):
             if r[reg] != word:
                 raise SystemExit(f"f{frame} {name}: {reg:#x} is {r[reg]:#010x}, not {word:#010x}")
         C =np.array([g.f32(w) for w in s["c"]], dtype=np.float64).reshape(192, 4)
+        for (pl, reg, comp), val in (cpatch or {}).items():
+            if pl == L:
+                C[reg, comp] = val
         addr, nv, strip = GEOM[name]
         rec = np.frombuffer(ram[addr:addr + nv * 32], dtype=REC)
         idx = list(struct.unpack_from(f"<{strip[1]}H", ram, strip[0])) if strip else list(range(nv))
