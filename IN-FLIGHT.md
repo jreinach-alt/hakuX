@@ -8,9 +8,9 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `compat1018b` | claude-sonnet-5 | 2 min |  |
-| `holdcap1018` | claude-sonnet-5 | 45 min | holdcap1018: an owner-play hold starts a host logcat capture |
-| `mkdawhite1018` | claude-opus-5-5 | 2 min | mkdawhite1018: Mortal Kombat: Deadly Alliance arena floors and walls draw flat white (#1058) |
+| `compat1018b` | claude-sonnet-5 | 16 min |  |
+| `holdcap1018` | claude-sonnet-5 | 1h 0m | holdcap1018: an owner-play hold starts a host logcat capture |
+| `mkdawhite1018` | claude-opus-5-5 | 16 min | mkdawhite1018: Mortal Kombat: Deadly Alliance arena floors and walls draw flat white (#1058) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -124,10 +124,14 @@ The harness dashboard, with each release's targets and the progress charts, is [
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
 | `lane/holdcap1018` | holdcap1018: an owner-play hold starts a host logcat capture | `6a009e01b6` | 2026-10-18 07:38 |
-| `lane/mkdawhite1018` | mkdawhite1018: Mortal Kombat: Deadly Alliance arena floors and walls draw flat white (#1058) | `acb12840b7` | 2026-10-18 08:13 |
+| `lane/mkdawhite1018` | mkdawhite1018: Mortal Kombat: Deadly Alliance arena floors and walls draw flat white (#1058) | `cb77081690` | 2026-10-18 08:28 |
 
 ## Recently landed on master
 
+- 2026-10-18 pathfind: a screen-reading agent that drives a title from boot into gameplay
+- 2026-10-18 haloring1017: Halo CE main-menu ring: the static inside surface is the stock driver
+- 2026-10-18 GTA III: where the 46 ms parked frame goes once every copy is removed
+- 2026-10-18 Fable and Blinx 2: decompose the gameplay dips, find what the frame spends its time on
 - 2026-10-18 pathfind: a screen-reading agent that drives a title from boot into gameplay
 - 2026-10-18 fpstel1018: Forza and Buffy missed the bar -- decompose the frame, name the lever
 - 2026-10-18 compat1018: the compatibility page catches up to the 95-row Playable ledger
@@ -135,9 +139,5 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-18 dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what stops a run
 - 2026-10-18 Top Spin: a state:any route that gets past Controller Select
 - 2026-10-18 high-speed driving fps (GTA III + GTA: San Andreas)
-- 2026-10-18 gta3fps1017: GTA III fps -- the census on foot (neither R2 nor R3), and R1: no #474 drain ahead of a plain colour copy (#1049)
-- 2026-10-17 The compatibility page adds NBA Live 07 (454100A1) as Playable: 90 -> 91
-- 2026-10-17 compat1017b: the compatibility page catches up from 88 to 90 Playable
-- 2026-10-17 compat1017: catch up the compatibility page to the 88-row Playable ledger
 
-_Updated 2026-10-18 08:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 08:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
