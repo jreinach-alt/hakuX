@@ -7,7 +7,7 @@ Base: master @ 427164f2e050e12e6ddaa804646a8ff0c4f7efc7
 Files: README.md, docs/COMPATIBILITY.md, docs/compatibility.csv, docs/lanes/compat1017/NOTES.md, docs/testing/compat_notes.tsv, docs/testing/titles/targets.toml
 Prediction: none: analysis-only, docs-only lane, no device time
 Needs device: no    Needs NDK: no
-Selftest: docs/testing/compat_page_selftest.py (all 19 fragments; it is the compat page's only selftest, no need to name individual fragments)
+Selftest: none -- the change is data (a notes string in targets.toml, compat_notes.tsv, the page and CSV); no selftest.d fragment reads them. Covered instead by docs/testing/compat_page_selftest.py (19 tests, OK) and title_registry.py check --pages (Playable 88 on every page)
 
 ## What this does
 
