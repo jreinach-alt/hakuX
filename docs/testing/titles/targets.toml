@@ -705,7 +705,7 @@ notes = "No #431 target; the default 30 applies. route = gen-lotr-rotk: #433 ste
 name = "Top Spin"
 iso = { nova = "4D530035-Top_Spin.xiso.iso" }
 route = "gen-top-spin"
-notes = "No #431 target; the default 30 applies. route = gen-top-spin: #433 step 6c classifier-path benchmark opening (drive generic), tennis play loop (move/swing), not yet device-proven."
+notes = "No #431 target; the default 30 applies. route = gen-top-spin: #433 step 6c classifier-path benchmark opening (drive generic) through Court, then fps786-topspin.route's steps 14-25 (lane.topspinroute1018, 10-18: Controller Select needs axis HATX, which the generic classifier's A-only policy cannot do), tennis play loop (move/swing), not yet device-proven."
 
 [titles."58490004"]
 name = "Black Stone: Magic & Steel"
