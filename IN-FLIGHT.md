@@ -8,7 +8,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `fpstel1018` | claude-sonnet-5 | 15 min | fpstel1018: Forza and Buffy missed the bar -- decompose the frame, name the lever |
+| `holdcap1018` | claude-sonnet-5 | 0 min |  |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `owner-play`
@@ -122,12 +122,11 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Work in progress
 
-| Branch | Topic | Tip | Last change |
-|---|---|---|---|
-| `lane/fpstel1018` | fpstel1018: Forza and Buffy missed the bar -- decompose the frame, name the lever | `b98c2d5bff` | 2026-10-18 07:14 |
+No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-18 fpstel1018: Forza and Buffy missed the bar -- decompose the frame, name the lever
 - 2026-10-18 compat1018: the compatibility page catches up to the 95-row Playable ledger
 - 2026-10-18 snaptargets1018: the dispatcher snapshot ships titlestate.py but not targets.toml (#433)
 - 2026-10-18 dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what stops a run
@@ -138,6 +137,5 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 compat1017b: the compatibility page catches up from 88 to 90 Playable
 - 2026-10-17 compat1017: catch up the compatibility page to the 88-row Playable ledger
 - 2026-10-17 A title with one measured stall reaches the owner the same day
-- 2026-10-17 storydoc1017: a project history page, linked from the README's More table
 
-_Updated 2026-10-18 07:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 07:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
