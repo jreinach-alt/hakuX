@@ -3008,3 +3008,9 @@ issues = []
 standing = false
 files = ["docs/lanes/stallraise1017/**", "docs/testing/title_registry.py", "docs/testing/title_registry_selftest.py", "pm/stall-raised.tsv", "host-tools/hourly_report.sh", "docs/testing/jobs/selftest.d/99-stall-raise.sh"]
 note = "STARTED lane.local 2026-10-17 ~22:50 PDT on lane.xbox's request (owner 10-17: a title with one measured hitch is raised to the owner the same day, not buried in a hold or report): registry flags single-stall candidates, pm/stall-raised.tsv records the raise, the hourly report gets a STALL ASKS section, a check fails a candidate unraised for 2 h. No bar change. Harness fix, brief not issue. Brief: briefs/stallraise1017.md. GRANTED docs/testing/jobs/selftest.d/99-stall-raise.sh by hostops 22:29 PDT (22:22 PDT fold refusal: the brief's step 4 selftest-fragment mutant check needs this file, the brief's Files list omitted it, the lane never filed a board request for it, file was unclaimed in territory.toml)."
+
+[lane.gta3fps1017b]
+issues = ["1049"]
+standing = false
+files = ["docs/lanes/gta3fps1017b/**", "docs/testing/predictions/gta3fps1017b-*", "hw/xbox/nv2a/pgraph/vk/texture.c"]
+note = "STARTED lane.local 2026-10-17 ~23:05 PDT on the owner's word (R2 and R3 were promised and not written): R2/R3 default-off switches on top of lane.gta3fps1017's unfolded R1. texture.c is shared with lane.gta3fps1017 until it folds; this lane folds after it and rebases."
