@@ -6,9 +6,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Right now
 
-| Lane | Model | Running for | Working on |
-|---|---|---|---|
-| `gta3car1018` | claude-sonnet-5 | 5 min | gta3car1018: GTA III in the car -- the render passes are a feedback-loop copy per draw (#1049) |
+No lane session is running.
 
 - **Handhelds:** 1 connected.
   - Nova: free for the queue
@@ -121,9 +119,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Work in progress
 
-| Branch | Topic | Tip | Last change |
-|---|---|---|---|
-| `lane/gta3car1018` | gta3car1018: GTA III in the car -- the render passes are a feedback-loop copy per draw (#1049) | `1a68e4853b` | 2026-10-18 11:18 |
+No branch is being worked right now.
 
 ## Recently landed on master
 
@@ -140,4 +136,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-18 Fable and Blinx 2: decompose the gameplay dips, find what the frame spends its time on
 - 2026-10-18 pathfind: a screen-reading agent that drives a title from boot into gameplay
 
-_Updated 2026-10-18 13:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 13:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
