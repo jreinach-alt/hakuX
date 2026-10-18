@@ -10,10 +10,14 @@ Needs device: no    Needs NDK: no
 
 Step 0 is committed: the Already-tried table and the hypothesis table are in `docs/lanes/haloring1017/NOTES.md`.
 
-The first measurement asks whether the static inside surface (c) reproduces off the stock Qualcomm driver:
+(c), the static inside surface, does not reproduce off the stock Qualcomm driver:
 - in the guest's own state (M1), the band turns at the hull's angular rate;
 - on screen on the desktop (lavapipe, M2), the band's texture follows its scroll at slope 0.88 +- 0.02 (static is 0;
   the hull control gives 1.01);
-- on Turnip (run 13's video, M2b), the video clock is fitted and the per-surface fit is in progress.
+- on Turnip (run 13's video, PurpleVK from its log, M2b), it follows at slope 1.020 +- 0.001 (the hull: 1.003).
+
+So (c) is the stock driver (R4), which the owner's rule of 10-17 puts out of scope. The lane is now on (a), the
+missing bright grey layer: a numeric judge that registers the console photos to the framebuffer and asks which
+combiner term the console's layer is made of.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
