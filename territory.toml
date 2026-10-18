@@ -3092,3 +3092,15 @@ issues = ["433"]
 standing = false
 files = ["docs/lanes/compat1018b/**", "docs/testing/compat_notes.tsv", "docs/compatibility.csv", "docs/COMPATIBILITY.md", "README.md", "docs/testing/titles/targets.toml"]
 note = "STARTED lane.local 2026-10-18 ~08:45 PDT (Sonnet): take GTA III and Vice City off the public compatibility page and docs (95 -> 93 Playable); owner 10-18, fps while driving (#1049)."
+
+[lane.dispatchpush1018]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/dispatchpush1018/**", "docs/testing/dispatcher.sh", "docs/testing/jobs/selftest.d/98-dev-push-windows-path.sh"]
+note = "STARTED lane.local 2026-10-18 ~09:15 PDT (Sonnet): the dispatcher staged-disc push gives adb.exe a /mnt/d path it cannot open; no off-device title can be staged (found by mkdawhite1018)."
+
+[lane.gta3instr1018]
+issues = ["1049", "433"]
+standing = false
+files = ["docs/lanes/gta3instr1018/**"]
+note = "STARTED lane.local 2026-10-18 ~09:15 PDT (Opus): time the dip frame -- single-thread render-pass-break counters, timed vertex copy and shader bind, one Nova run on GTA III and Fable. hw/xbox/nv2a/pgraph files are claimed on the board by the lane before it edits them."
