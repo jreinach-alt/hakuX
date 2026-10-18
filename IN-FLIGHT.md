@@ -8,12 +8,11 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `homeroot1018` | claude-sonnet-5 | 17 min |  |
-| `ralli2audio1018` | claude-opus-5-5 | 0 min | ralli2audio1018: RalliSport Challenge 2 audio dropouts: producer timing, and the audio threads at audio priori |
+| `homeroot1018` | claude-sonnet-5 | 32 min |  |
 
-- **Handhelds:** 2 connected.
-  - Nova: held by `lane.local`
-  - Thor: held by `lanelocal-offline`
+- **Handhelds:** 1 connected.
+  - Nova: free for the queue
+  - Thor: held by `lane.local`
 - **Device queue:** 1 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
@@ -122,12 +121,11 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Work in progress
 
-| Branch | Topic | Tip | Last change |
-|---|---|---|---|
-| `lane/ralli2audio1018` | ralli2audio1018: RalliSport Challenge 2 audio dropouts: producer timing, and the audio threads at audio priority | `cbf6a72ed0` | 2026-10-18 11:32 |
+No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-18 holdcap1018: an owner-play hold starts a host logcat capture
 - 2026-10-18 README Highlights: drop GTA III/VC from the Playable list, name TimeSplitters 2, Mortal Kombat: Shaolin Monks and Burnout Revenge, and add two fix bullets
 - 2026-10-18 perflog1016: a pause-menu switch for the perflog telemetry tier, and a "Mark this moment" button (#433)
 - 2026-10-18 dispatcher: fix the staged-disc push's /mnt/d path so adb.exe can open it
@@ -139,6 +137,5 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-18 Fable and Blinx 2: decompose the gameplay dips, find what the frame spends its time on
 - 2026-10-18 pathfind: a screen-reading agent that drives a title from boot into gameplay
 - 2026-10-18 fpstel1018: Forza and Buffy missed the bar -- decompose the frame, name the lever
-- 2026-10-18 compat1018: the compatibility page catches up to the 95-row Playable ledger
 
-_Updated 2026-10-18 11:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 12:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
