@@ -2963,6 +2963,12 @@ standing = false
 files = ["docs/lanes/nearbar1017/**"]
 note = "BRIEFED by lane.local 2026-10-17 ~18:45 PDT on the owner's word: three near-bar titles (Panzer Elite, Aeon Flux, Medal of Honor: Frontline) on the 0.5.2 build, held runs on the Nova, telemetry on a miss, then stop and report. Docs only."
 
+[lane.nearbar1017b]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/nearbar1017b/**"]
+note = "BRIEFED by lane.local 2026-10-17 ~20:00 PDT on the owner's word (get 3 more near-cap titles queued): Turok Evolution, Burnout 3 Takedown, Ty the Tasmanian Tiger on the 0.5.2 build, held runs on the Nova, telemetry on a miss, then stop and report. Docs only."
+
 [lane.release052b]
 issues = ["433"]
 standing = false
