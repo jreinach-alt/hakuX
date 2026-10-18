@@ -1,14 +1,14 @@
 # hakuX status
 
-_updated 2026-10-18 07:59 PDT_
+_updated 2026-10-18 08:31 PDT_
 
-0.6: Measured 263 / 300 · Playable 94 / 110.
+0.6: Measured 263 / 300 · Playable 92 / 110.
 
 ## How close is 0.6?
 
 Measured **263** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓▓▓░`
 
-Playable **94** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓▓▓░`
+Playable **92** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓▓░░`
 
 ![Titles over time](chart.svg)
 
@@ -20,9 +20,9 @@ Playable **94** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓▓▓░`
 |---|---|---|---|---|
 | 0.6 | 300 | 2026-10-20 | 110 | 2026-10-20 |
 | 0.7 | 425 | 2026-10-29 | 185 | 2026-10-31 |
-| 0.8 | 575 | 2026-11-07 | 300 | 2026-11-16 |
-| 0.9 | 725 | 2026-11-17 | 480 | 2026-12-11 |
-| 1.0 | 876 | 2026-11-27 | 789 | 2027-01-23 |
+| 0.8 | 575 | 2026-11-07 | 300 | 2026-11-17 |
+| 0.9 | 725 | 2026-11-17 | 480 | 2026-12-13 |
+| 1.0 | 876 | 2026-11-27 | 789 | 2027-01-27 |
 
 Measured: titles with a frame rate reading taken during gameplay, on either handheld. Playable: titles rated Playable. The charts place each title on the date it first qualified, and the projected dates in the table assume the last 7 days' pace continues.
 
@@ -69,8 +69,6 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | **Future Tactics: The Uprising** | 🟢 Playable | **59.9**<br>Nova, Oct 7 |
 | **Genma Onimusha** | 🟢 Playable | **59.9**<br>Nova, Oct 13 |
 | **Grabbed by the Ghoulies** | 🟢 Playable | **30.0**<br>Nova, Oct 17 |
-| **Grand Theft Auto III** | 🟢 Playable | **30.0**<br>Nova, Oct 16 |
-| **Grand Theft Auto: Vice City** | 🟢 Playable | **30.0**<br>Nova, Oct 16 |
 | **Guilty Gear XX #Reload** | 🟢 Playable | **59.9**<br>Nova, Oct 6 |
 | **Gunvalkyrie** | 🟢 Playable | **59.9**<br>Nova, Oct 3 |
 | **Halo: Combat Evolved** | 🟢 Playable | **30.0**<br>Nova, Oct 3 |
@@ -207,7 +205,9 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | **Gene Troopers Europe En Fr De Es It** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 14 |
 | **Ghost Master The Gravenville Chronicles Europe En Fr De Es It** | 🔵 Measured, not rated yet | **57.6**<br>Nova, Oct 13 |
 | **GoldenEye: Rogue Agent** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Sep 27 |
+| **Grand Theft Auto III** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 16 |
 | **Grand Theft Auto: San Andreas** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 12 |
+| **Grand Theft Auto: Vice City** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 16 |
 | **Gui Yi Taiwan** | 🔵 Measured, not rated yet | **57.7**<br>Nova, Oct 7 |
 | **Half Life 2** | 🔵 Measured, not rated yet | **29.8**<br>Nova, Oct 13 |
 | **Halo 2** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 3 |
@@ -662,5 +662,5 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 
 </details>
 
-620 titles: 94 Playable, 8 below 30 fps, 15 crash or hang, 147 measured but not rated yet, 356 not tested yet.
+620 titles: 92 Playable, 8 below 30 fps, 15 crash or hang, 149 measured but not rated yet, 356 not tested yet.
 
