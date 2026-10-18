@@ -4,7 +4,7 @@ _Last updated 2026-10-18, for version 0.5.0._
 
 This lists Xbox titles tried on this project's test devices, split into three groups: titles that clear the **Playable** bar, titles that run but fall short of 30 fps, and titles that do not yet play. It is not a full compatibility list: plenty of other titles have simply not been tried yet. See [`KNOWN_ISSUES.md`](../KNOWN_ISSUES.md) and the [issue tracker](https://github.com/jreinach-alt/hakuX/issues) for what is tracked about titles not on this page.
 
-95 Playable · 18 run below 30 fps · 11 not playable
+94 Playable · 20 run below 30 fps · 11 not playable
 
 ## What "Playable" means
 
@@ -81,8 +81,6 @@ with another Turnip build, may differ.
 | Future Tactics: The Uprising | USA | Nova | 59.9 | 100% | 2026-10-07 |  |
 | Genma Onimusha | ? | Nova |  | 99% | 2026-10-13 |  |
 | Grabbed by the Ghoulies | USA | Nova | 30.0 | 98% | 2026-10-12 |  |
-| Grand Theft Auto III | ? | Nova | 30.0 | 100% | 2026-10-12 |  |
-| Grand Theft Auto: Vice City | ? | Nova | 30.0 | 99% | 2026-10-12 |  |
 | Guilty Gear XX #Reload | USA | Nova | 59.9 | 100% | 2026-10-13 |  |
 | Gunvalkyrie | ? | Nova | 59.9 | 99% | 2026-10-03 |  |
 | Halo: Combat Evolved | ? | Nova | 30.0 | 99% | 2026-10-03 |  |
@@ -107,7 +105,7 @@ with another Turnip build, may differ.
 | MLB SlugFest 2003 | USA | Nova | 59.9 | 100% | 2026-10-05 |  |
 | MLB SlugFest 2004 | USA | Nova | 44.4 | 100% | 2026-10-05 |  |
 | Mortal Kombat: Armageddon | ? | Nova | 59.2 | 100% | 2026-10-06 |  |
-| Mortal Kombat: Shaolin Monks | ? | Nova | 39.9 | 100% | 2026-10-06 |  |
+| Mortal Kombat: Shaolin Monks | ? | Nova | 59.9 | 99% | 2026-10-18 |  |
 | MTV Celebrity Deathmatch | ? | Nova | 57.2 | 99% | 2026-10-04 |  |
 | MVP Baseball 2003 | USA | Nova | 59.9 | 100% | 2026-10-16 |  |
 | NBA 2K2 | USA | Nova | 57.0 | 100% | 2026-10-05 |  |
@@ -118,6 +116,7 @@ with another Turnip build, may differ.
 | NFL Blitz 2002 | USA | Nova | 45.0 | 100% | 2026-10-05 |  |
 | Pac-Man World 2 | ? | Nova | 59.9 | 100% | 2026-10-13 |  |
 | Panzer Dragoon Orta | Europe | Nova | 54.1 | 100% | 2026-10-03 |  |
+| RalliSport Challenge | ? | Nova | 59.6 | 92% | 2026-10-18 | Car flicker (#804) fixed. |
 | Ratatouille | USA | Nova | 52.8 | 100% | 2026-10-06 |  |
 | Rayman 3 Hoodlum Havoc | ? | Nova | 59.9 | 100% | 2026-10-13 |  |
 | Ricky Ponting International Cricket 2005 | Australia | Nova | 59.9 | 98% | 2026-10-15 |  |
@@ -151,6 +150,8 @@ with another Turnip build, may differ.
 | Area 51 | USA | Nova | 30.0 | 73% | 2026-10-09 |  |
 | Buffy the Vampire Slayer | ? | Nova | 29.7 | 74% | 2026-10-18 |  |
 | Burnout 3: Takedown | ? | Nova | 30.8 | 85% | 2026-10-14 |  |
+| Grand Theft Auto III | ? | Nova |  |  | 2026-10-12 | Plays, but drops into the teens while driving in the city (below the 30 fps bar); tracked as #1049. |
+| Grand Theft Auto: Vice City | ? | Nova |  |  | 2026-10-12 | Plays, but drops into the teens while driving in the city (below the 30 fps bar); tracked as #1049. |
 | Half-Life 2 | ? | Nova | 29.8 | 74% | 2026-10-13 |  |
 | Medal of Honor: Frontline | USA | Nova | 59.9 | 86% | 2026-10-08 |  |
 | NBA 2K7 | ? | Nova | 57.2 | 75% | 2026-10-16 |  |

@@ -34,7 +34,9 @@ X=/storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box
 map() { printf '%s' "${1//$X/$HS_DEV/fs}"; }
 case "$1" in
     # A real push leaves 0644, which the app cannot open read-write (lane.hddcrash).
-    push) cp "$2" "$(map "$3")" && chmod 644 "$(map "$3")" ;;
+    # dev_push hands adb a wslpath -w'd source (#433); wslpath -u round-trips
+    # it back to the real path the fake device copies from.
+    push) cp "$(wslpath -u "$2")" "$(map "$3")" && chmod 644 "$(map "$3")" ;;
     pull) cp "$(map "$2")" "$3" ;;
     shell) shift; c="$*"
         case "$c" in
