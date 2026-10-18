@@ -2989,7 +2989,9 @@ note = "README.md, docs/COMPATIBILITY.md and docs/testing/compat_page.py RELEASE
 issues = ["1049"]
 standing = false
 files = ["docs/lanes/gta3fps1017/**", "docs/testing/predictions/gta3fps1017-*", "hw/xbox/nv2a/pgraph/vk/texture.c"]
-note = "STARTED lane.local 2026-10-17 ~21:50 PDT on the owner's word (GTA III fps, R2/R3 without waiting on R1): successor to the stopped lane.gta3drive1017. GRANTED vk/texture.c from [lane.fps1015] (folded, ancestor of master, no running session; its row still lists the file) -- x1port1012 had already released it. Base: lane/gta3drive1017 (R1 drain skip + the refusal census, never run). No scripted driving: two voids for one cause = stop and report. Brief: briefs/gta3fps1017.md."
+released = ["docs/lanes/gta3fps1017/**", "docs/testing/predictions/gta3fps1017-*", "hw/xbox/nv2a/pgraph/vk/texture.c"]
+released_at_ready = 1053
+note = "STARTED lane.local 2026-10-17 ~21:50 PDT on the owner's word (GTA III fps, R2/R3 without waiting on R1): successor to the stopped lane.gta3drive1017. GRANTED vk/texture.c from [lane.fps1015] (folded, ancestor of master, no running session; its row still lists the file) -- x1port1012 had already released it. Base: lane/gta3drive1017 (R1 drain skip + the refusal census, never run). No scripted driving: two voids for one cause = stop and report. Brief: briefs/gta3fps1017.md. RELEASED at ready (hostops, jam duty, 2026-10-17 23:11 PDT): PR #1053 is out of draft, CI green, unit gone (fold-gate device run self-queued 22:52 PDT, waiting on the owner's nova hold, not stuck). texture.c was ALSO claimed unreleased by [lane.gta3fps1017b] (its own row's note: \"texture.c is shared with lane.gta3fps1017 until it folds; this lane folds after it and rebases\") -- that double-claim was failing check_territory.py outright (\"claimed by both gta3fps1017 and gta3fps1017b\"), which blocks every board push, not just this row's. Releasing it here (the standard release-at-ready exception) is the fix: gta3fps1017b's existing claim now stands as the one-more-lane-may-claim-it case instead of an unreleased double-claim."
 
 [lane.compat1017]
 issues = ["433"]
