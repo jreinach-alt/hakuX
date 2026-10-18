@@ -1906,8 +1906,15 @@ extern char g_vulkan_driver_info[256];
  *    image of the live texture cache node that owns "pv", when one does.
  *    The draw gets "ptd" after "tex": 1 when the push infos changed after
  *    the last push, so this draw sampled through what was pushed before.
+ * 11: as 10, plus the visibility tests (#1039). Each draw record adds "zq",
+ *    the serial of the occlusion query it was counted in (-1: none open),
+ *    and "zp", the guest's SET_ZPASS_PIXEL_COUNT_ENABLE. Each GET_REPORT and
+ *    CLEAR_REPORT_VALUE writes {"t":"rep","f","n","rs","qs","clr","off","zq"}:
+ *    "n" the number the next draw takes, "rs" the report's serial, "qs" the
+ *    last query begun before it. HAKUX_ZREP (vk/reports.c) writes each
+ *    query's and each report's count against the same serials.
  */
-#define FDUMP_SCHEMA          10
+#define FDUMP_SCHEMA          11
 
 /* `img_sync` on a frame record: >= 0 is the fence slot the image waited on
  * before the display surface came back clean, and these two are the cases
@@ -2028,6 +2035,14 @@ void nv2a_dbg_set_framedump_dir(const char *dir)
 bool nv2a_dbg_framedump_active(void)
 {
     return fdump.fp != NULL;
+}
+
+/* #1039: HAKUX_ZREP (reports.c) writes nothing until a dump has been armed. */
+static bool fdump_armed_ever;
+
+bool pgraph_vk_fdump_armed_once(void)
+{
+    return qatomic_read(&fdump_armed_ever);
 }
 
 /* NULL means "there is nowhere to write a dump a human can retrieve", which is
@@ -2341,6 +2356,7 @@ static void fdump_begin(NV2AState *d, const char *armed_by, const char *spec)
     fdump.buf = g_malloc(FDUMP_BUF_BYTES);
     setvbuf(fp, fdump.buf, _IOFBF, FDUMP_BUF_BYTES);
     fdump.fp = fp;
+    qatomic_set(&fdump_armed_ever, true);
 
     /* The header is the run's own provenance. draw_merge and draw_reorder are
      * in it because a dump taken with them off cannot speak about merging, and
@@ -3567,6 +3583,31 @@ void pgraph_vk_fdump_log_skip(NV2AState *d, const char *why)
     fdump.bytes_written += n;
 }
 
+/* Schema 11: a GET_REPORT or CLEAR_REPORT_VALUE, from reports.c with a dump
+ * armed. */
+void pgraph_vk_fdump_log_report(NV2AState *d, const QueryReport *report)
+{
+    PGRAPHVkState *r = d->pgraph.vk_renderer_state;
+
+    if (!fdump.fp || fdump.watch_max) {
+        return;
+    }
+    int n = fprintf(fdump.fp,
+                    "{\"t\":\"rep\",\"f\":%d,\"n\":%d,\"rs\":%u,\"qs\":%u,"
+                    "\"clr\":%d,\"off\":\"0x%x\",\"zq\":%" PRId64 "}\n",
+                    fdump.frame_index, fdump.draw_index, report->rs,
+                    report->qs, (int)report->clear,
+                    report->clear ? 0u :
+                    (unsigned)GET_MASK(report->parameter,
+                                       NV097_GET_REPORT_OFFSET),
+                    r->query_in_flight ? (int64_t)r->query_serial : -1);
+    if (n < 0) {
+        fdump_close("write error");
+        return;
+    }
+    fdump.bytes_written += n;
+}
+
 /* Per draw. One buffered fprintf and, without `rtt`, no Vulkan call and no
  * allocation. */
 static void fdump_log_draw(NV2AState *d, PGRAPHState *pg, const char *type,
@@ -3605,14 +3646,17 @@ static void fdump_log_draw(NV2AState *d, PGRAPHState *pg, const char *type,
          * queue counts say whether this draw was sitting in a merge window. */
         "\"cb\":%d,\"cb_draws\":%d,\"submits\":%u,\"vkframe\":%d,"
         "\"in_rp\":%d,\"dq\":%d,\"dq_active\":%d,\"rw\":%d,\"rw_active\":%d,"
-        "\"prim\":%d,\"shader\":\"%016" PRIx64 "\",\"pipeline\":\"%p\",",
+        "\"prim\":%d,\"shader\":\"%016" PRIx64 "\",\"pipeline\":\"%p\","
+        "\"zq\":%" PRId64 ",\"zp\":%d,",
         fdump.frame_index, idx, type, count,
         (int)r->in_command_buffer, r->draws_in_cb,
         qatomic_read(&r->submit_count), r->current_frame,
         (int)r->in_render_pass, r->draw_queue.count,
         (int)r->draw_queue.active, r->reorder_window.count,
         (int)r->reorder_window.active, pg->primitive_mode, shader_hash,
-        (void *)r->pipeline_binding);
+        (void *)r->pipeline_binding,
+        r->query_in_flight ? (int64_t)r->query_serial : -1,
+        (int)pg->zpass_pixel_count_enable);
     if (n < 0) {
         fdump_close("write error");
         return;
@@ -4227,12 +4271,28 @@ static void pgraph_vk_pre_shutdown_wait(NV2AState *d)
     // qemu_event_wait(&d->pgraph.vk_renderer_state->shader_cache_writeback_complete);   
 }
 
+/*
+ * Set when a present finds the guest's screen off (SR01 bit 5). The console
+ * draws black then (#1045), but the display image keeps the last picture
+ * rendered, the kernel's logo, and the fast path below returns the image
+ * rendered at the previous refresh. So the first present after the guest
+ * turned the screen on at its own framebuffer showed the logo for one frame,
+ * on every launch. That one present waits for a render of the current
+ * scan-out instead.
+ */
+static bool display_stale_after_off;
+
 static int pgraph_vk_get_framebuffer_surface(NV2AState *d)
 {
     PGRAPHState *pg = &d->pgraph;
     PGRAPHVkState *r = pg->vk_renderer_state;
 
     qemu_mutex_lock(&d->pfifo.lock);
+
+    bool screen_off = d->vga.sr[VGA_SEQ_CLOCK_MODE] & VGA_SR01_SCREEN_OFF;
+    if (screen_off) {
+        display_stale_after_off = true;
+    }
 
     VGADisplayParams vga_display_params;
     d->vga.get_params(&d->vga, &vga_display_params);
@@ -4251,7 +4311,7 @@ static int pgraph_vk_get_framebuffer_surface(NV2AState *d)
 #if HAVE_EXTERNAL_MEMORY
     if (r->display.use_external_memory) {
         DisplayImage *ready = &r->display.images[r->display.display_idx];
-        if (ready->valid) {
+        if (ready->valid && (screen_off || !display_stale_after_off)) {
             if (ready->fence_submitted) {
                 VK_CHECK(vkWaitForFences(r->device, 1, &ready->fence,
                                          VK_TRUE, UINT64_MAX));
@@ -4265,6 +4325,7 @@ static int pgraph_vk_get_framebuffer_surface(NV2AState *d)
             qemu_mutex_unlock(&d->pfifo.lock);
             return tex;
         }
+        display_stale_after_off = false;
         qemu_event_reset(&d->pgraph.sync_complete);
         qatomic_set(&pg->sync_pending, true);
         pfifo_kick(d);

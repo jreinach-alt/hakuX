@@ -47,7 +47,7 @@ Snapdragon handhelds.
   Gen 2 (Adreno 740) on Android 13, using the **Turnip Adreno Driver T30
   (@Mr_Purple_666)** GPU driver, installed under Settings → Graphics → GPU
   Driver. On a slower chip, expect fewer games at full speed. This is the
-  only driver hakuX is tested with: the phone's own driver and other Turnip
+  only driver hakuX is tested with: the handheld's own driver and other Turnip
   builds are untested and draw some games wrongly. See
   [GPU driver](docs/gpu-driver.md) for what to install and how.
 
@@ -99,6 +99,7 @@ this build. Coming from the official hakuX?
 | [Release notes](docs/releases/README.md) | What changed in each version |
 | [Known issues](KNOWN_ISSUES.md) | What to expect before you report a bug |
 | [Roadmap](ROADMAP.md) | What is coming next |
+| [How we got here](docs/HISTORY.md) | The story of hakuX CE so far |
 | [ES-DE setup](docs/es-de/README.md) | Launching games from ES-DE |
 | [Moving from the official build](android/MIGRATING.md) | Bringing your saves across |
 | [Reporting a bug](docs/reporting-bugs.md) | What to include |

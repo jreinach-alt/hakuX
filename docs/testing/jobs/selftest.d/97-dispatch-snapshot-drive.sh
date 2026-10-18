@@ -36,6 +36,19 @@
 #             reason that was purely a snapshot omission (lane.pathclass
 #             restart, Addendum 1 6b). Fails if either drops out of the list
 #             (the two mutants).
+#   targets   titlestate.py's `admit` (profile_gate_check's only subcommand)
+#             opens titles/targets.toml, titles/routes/<name>.route and
+#             titles/profile-transition.toml beside itself. None were shipped,
+#             so any --find-route claim on a title with no golden crashed
+#             outright on targets.toml (snaptargets1018, #433: a first-run or
+#             find-route title never short-circuits admit() before targets()
+#             the way a title with a golden does). The other two fail closed
+#             and silent instead -- both opens are try/excepted -- which
+#             drops the "already has a proven route" R3 check and the
+#             transition grandfather with nothing in the log to say why.
+#             Fails (this leg's admit call) without targets.toml in the
+#             snapshot (the mutant); the presence checks fail without
+#             routes/ or profile-transition.toml.
 
 echo "== dispatch snapshot: a dispatched run can play a drive route"
 SD="$T/snapdrive"; rm -rf "$SD"; mkdir -p "$SD"
@@ -103,7 +116,11 @@ s = open(src).read()
 anchor = key + '="'
 start = s.index(anchor) + len(anchor)
 end = s.index('"', start)
-block = s[start:end]
+# A line-continued list has a literal backslash+newline in the file (bash
+# splices it away at parse time; this script reads the file's own bytes, so
+# it must splice too, or a word right after a continuation -- titles/targets.toml,
+# snaptargets1018 -- never matches " "+word).
+block = s[start:end].replace("\\\n", " ")
 assert (" " + word) in block or block.startswith(word + " "), \
     "mutant word %r not found in %s block" % (word, key)
 new = block.replace(" " + word, "", 1) if (" " + word) in block else block.replace(word + " ", "", 1)
@@ -131,6 +148,48 @@ if [ -f "$SD/no-head.sh" ]; then
     else
         ok "  mutant 'drop head.npz from SNAPSHOT_GLOBS' leaves it out (red, as it must be)"
     fi
+else
+    bad "  mutant anchor for SNAPSHOT_GLOBS no longer matches dispatcher.sh"
+fi
+
+# targets: titlestate.py's admit() opens titles/targets.toml, titles/routes/<name>.route
+# and titles/profile-transition.toml beside itself (snaptargets1018, #433). targets.toml
+# ships now (SNAPSHOT_GLOBS); check the other two landed too.
+check "the snapshot's titles/ holds targets.toml (SNAPSHOT_GLOBS)" test -f "$BIN/titles/targets.toml"
+check "the snapshot's titles/ holds profile-transition.toml (SNAPSHOT_GLOBS)" \
+    test -f "$BIN/titles/profile-transition.toml"
+check "the snapshot's titles/routes/ holds at least one *.route file (SNAPSHOT_GLOBS)" \
+    bash -c 'ls "$1"/titles/routes/*.route >/dev/null 2>&1' _ "$BIN"
+
+# admit, exactly as profile_gate_check (dispatcher.sh) runs it, for a title with no
+# targets.toml entry and no known path: FFFFFFFF is not an 8-hex id any real title uses.
+# On master (targets.toml not shipped) this is the brief's own traceback,
+# admit -> known_path -> proven_route -> title_routes -> targets() -> FileNotFoundError;
+# with the fix it must come back admit=true, clause=find-route.
+sd_admit() {   # <bin dir> <dispatch dir> -> titlestate.py admit's stdout+stderr
+    MAKE_XBOX_HDD="$REPO/tools/make_xbox_hdd.py" TITLESTATE_DIR="$2/titlestate" DISPATCH_DIR="$2" \
+        python3 "$1/titles/titlestate.py" admit --title-id FFFFFFFF --route-text-file /dev/null \
+        --find-route "selftest: snaptargets1018, titlestate.py admit from the snapshot" 2>&1
+}
+out=$(sd_admit "$BIN" "$SD/d")
+check "titlestate.py admit (snapshot, --find-route, no golden) returns admit=true, not a traceback" \
+    python3 -c 'import json,sys; d=json.loads(sys.argv[1]); assert d.get("admit") is True and d.get("clause") == "find-route", d' "$out"
+
+# The mutant: drop titles/targets.toml from SNAPSHOT_GLOBS. Must crash the admit call
+# above the same way master does -- the stop rule the brief sets for this fragment.
+# sd_env_at sources a standalone file whose HERE is its own directory; dispatcher.sh's
+# first two lines source HERE/devices.sh and call device_env, so without a copy beside
+# the mutant that source dies before snapshot_scripts is even defined (checked by hand:
+# with no devices.sh, "$SD/dnt/bin" never appears at all, not just without targets.toml).
+cp "$TESTING/devices.sh" "$SD/devices.sh"
+mutant_drop "SNAPSHOT_GLOBS" "titles/targets.toml" "$SD/no-targets.sh"
+if [ -f "$SD/no-targets.sh" ]; then
+    sd_env_at "$SD/no-targets.sh" "$SD/dnt" "$TESTING" snapshot_scripts
+    mout=$(sd_admit "$SD/dnt/bin" "$SD/dnt")
+    case "$mout" in
+        *FileNotFoundError*targets.toml*) ok "  mutant 'drop titles/targets.toml from SNAPSHOT_GLOBS' crashes admit (red, as it must be)" ;;
+        *) bad "  mutant 'drop titles/targets.toml from SNAPSHOT_GLOBS' did not crash admit -- the leg above checks nothing: $mout" ;;
+    esac
 else
     bad "  mutant anchor for SNAPSHOT_GLOBS no longer matches dispatcher.sh"
 fi

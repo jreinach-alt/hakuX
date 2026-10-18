@@ -50,6 +50,10 @@ low = "sonnet"
 normal = "sonnet"
 low = "sonnet"
 
+[kinds.dispatchdoctor]  # dispatch_doctor.sh: diagnosing a recoverable launch failure
+normal = "sonnet"
+low = "sonnet"
+
 # Usage-mode thresholds (jobs/usage/mode.sh): moved out of limits.env here,
 # the table's single point. No limits.env override remains for these --
 # that was the point.

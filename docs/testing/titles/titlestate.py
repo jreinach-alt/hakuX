@@ -24,6 +24,11 @@ which route variant a title run should use.
     titlestate.py first-run-saved --title-id T --save SAVE_ID --run ID [--route NAME]
     titlestate.py compose --device D [--title-id T] [--state S] [--save SAVE_ID]
     titlestate.py resolve-route --route NAME [--title-id T | --iso NAME] [--device D]
+    titlestate.py suggest-route --title-id T       dispatchdoctor1017 1b: a route to auto-attach
+    titlestate.py route-refs --route-path PATH [--cap BYTES]
+    titlestate.py backup-candidates --title-id T [--json]   dispatchdoctor1017 1c: store + hdd-reset
+    titlestate.py restore-backup --title-id T --by WHO (--save SAVE_ID | --import-dir DIR) [--route NAME]
+    titlestate.py store-dir --title-id T --save SAVE_ID      dispatchdoctor1017 1c: path, for `saves.py verify`
     titlestate.py tid-for-iso NAME
 
   THE PROFILE GATE (lane.profilegate1011; see "THE PROFILE GATE" below):
@@ -182,6 +187,7 @@ apply.
 """
 
 import argparse
+import base64
 import datetime
 import fcntl
 import glob
@@ -915,6 +921,70 @@ def import_save(src):
     return tid, sid
 
 
+def backup_candidates(title_id):
+    """dispatchdoctor1017 Section 1c: every place this host holds something
+    for TITLE_ID that could become its golden but is not it yet -- a save
+    already imported into the store (never promoted, or demoted to history
+    by a later `promote`), and an HDD-GUARD reset's saves/<TID> tree under
+    dispatch/hdd-reset/*/saves (dispatcher.sh's hdd_img_guard writes these).
+    Host-side only: the device's own hdd.img.bak-auto needs adb, which this
+    file never calls -- dispatcher.sh pulls that one itself and hands the
+    result to import_save/restore_backup the same way a staging-archive
+    find does. [{"kind": "store", "save": ..., "has_save_dir": bool} |
+    {"kind": "hdd-reset", "path": ...}], store entries first (cheapest:
+    already verified, no copy needed), then hdd-reset, lexical order (the
+    reset stamp sorts oldest-first)."""
+    dt = disk_tid(title_id)
+    gsave = (golden(title_id) or {}).get("save")
+    out = []
+    for sid in store_saves(dt):
+        if sid == gsave:
+            continue
+        out.append({"kind": "store", "save": sid, "has_save_dir": bool(save_dirs(dt, sid))})
+    for d in sorted(glob.glob(os.path.join(dispatch_dir(), "hdd-reset", "*", "saves", dt))):
+        if os.path.isfile(os.path.join(d, "save.json")):
+            out.append({"kind": "hdd-reset", "path": d})
+    return out
+
+
+def restore_backup(title_id, by, save=None, import_dir=None, route=None):
+    """dispatchdoctor1017 Section 1c: the gate between a found backup
+    candidate and promoting it -- the title's FIRST golden only, never a
+    replace (that stays `promote`'s job, lane.local's call). Never raises:
+    like resolve_route/admit, every outcome is a dict, {"refuse": ...} on
+    anything that stops it, so a bash caller can log the reason without a
+    traceback. SAVE must already be in the store with a save directory;
+    IMPORT_DIR is imported first via import_save (the only way a directory
+    that is not already in the store becomes one)."""
+    if golden(title_id):
+        return {"title_id": title_id,
+                "refuse": f"{title_id} already has a golden; restore-backup is for restoring a "
+                          f"lost one, not replacing it (use `promote`)"}
+    dt = disk_tid(title_id)
+    if import_dir:
+        try:
+            itid, isave = import_save(import_dir)
+        except SystemExit as e:
+            return {"title_id": title_id, "refuse": str(e)}
+        if itid != dt:
+            return {"title_id": title_id,
+                    "refuse": f"{import_dir} is a save for {itid}, not {title_id}"}
+        save = isave
+    if not save:
+        return {"title_id": title_id, "refuse": "restore-backup needs --save or --import-dir"}
+    if save not in store_saves(dt):
+        return {"title_id": title_id, "refuse": f"{title_id}: {save} is not in the store"}
+    if not save_dirs(dt, save):
+        return {"title_id": title_id,
+                "refuse": f"{title_id}: {save} is title data only, no save directory; a restored "
+                          f"profile needs one. {SETTINGS_ONLY_FIX}"}
+    try:
+        g = set_golden(title_id, save, by=by, how="restore", route=route, replace=False)
+    except SystemExit as e:
+        return {"title_id": title_id, "refuse": str(e)}
+    return {"title_id": title_id, "save": save, "golden": g}
+
+
 def compose(device, title_id=None, state="any", save=None):
     """What a title run's disk carries: every title's golden that DEVICE has
     not rejected, except TITLE_ID's when STATE is `first-run`. SAVE, when
@@ -1258,6 +1328,73 @@ def known_path(title_id, broad=False):
     if broad and pathknow_success(title_id):
         return {"known": True, "route_name": None, "result_id": None, "source": "pathknow"}
     return {"known": False, "route_name": None, "result_id": None, "source": None}
+
+
+def suggest_route(title_id):
+    """dispatchdoctor1017 Section 1b: the best candidate route for a soak
+    that named none, for request.sh (queue time) and dispatcher.sh (claim
+    time, a request written before this existed) to attach exactly as a
+    user-chosen --route would be resolved -- never a blind guess.
+
+    known_path's own R3 test (broad=False: a QUEUED run is blocked only by a
+    route PROVEN to reach gameplay, never a bare pathknow success) first --
+    that is the strongest signal this host has. Short of that, targets.toml's
+    configured route for the title, same field route_path()/single_route()
+    already fall back to: recorded, not yet proven, but never invented here.
+
+    Returns (route_name, source) with source "proven" or "target", or
+    (None, note) when nothing is known and nothing is configured -- NOTE
+    names a pathknow success when one exists (closest thing on record, but
+    Addendum 2 is explicit that a pathknow success alone does not prove a
+    route, so it is never returned as a name to attach)."""
+    k = known_path(title_id, broad=False)
+    if k["known"] and k["route_name"]:
+        return k["route_name"], "proven"
+    name = targets().get(title_id, {}).get("route")
+    if name:
+        return name, "target"
+    if pathknow_success(title_id):
+        return None, "a pathknow session reached gameplay once, but no route is proven yet"
+    return None, "no recorded or proven route"
+
+
+def route_refs(route_path_, cap=2_000_000):
+    """The reference crops ROUTE_PATH_ names (`waitfor`/`press-until`),
+    base64'd and capped -- the one place this logic lives, request.sh's own
+    queue-time embedding (Addendum 3, #433) and dispatcher.sh's claim-time
+    auto-attach (ensure_route_attached, dispatchdoctor1017 Section 1b) both
+    call it, so an auto-attached route's crops travel exactly like a
+    user-chosen one's. {"refs": {"<name>.png": "<b64>", ...}} or
+    {"refuse": "..."}; never raises on a missing/short crop file -- the
+    caller already ran route.sh --check, which is what actually proves every
+    named crop exists."""
+    base = os.path.basename(route_path_)
+    base = base[:-len(".route")] if base.endswith(".route") else base
+    refdir = os.path.join(os.path.dirname(route_path_), "refs", base)
+    names, seen = [], set()
+    with open(route_path_) as f:
+        for line in f:
+            w = line.split("#", 1)[0].split()
+            if not w:
+                continue
+            if w[0] == "waitfor" and len(w) > 1:
+                name = w[1]
+            elif w[0] == "press-until" and len(w) > 2:
+                name = w[2]
+            else:
+                continue
+            if name not in seen:
+                seen.add(name); names.append(name)
+    refs, total = {}, 0
+    for name in names:
+        with open(os.path.join(refdir, name + ".png"), "rb") as f:
+            data = f.read()
+        total += len(data)
+        if total > cap:
+            return {"refuse": "route '%s': reference crops total %d bytes,"
+                               " over the %d-byte cap" % (route_path_, total, cap)}
+        refs[name + ".png"] = base64.b64encode(data).decode("ascii")
+    return {"refs": refs}
 
 
 def _path_broken_bad(result_id, title_id, route_name):
@@ -1957,6 +2094,16 @@ def main(argv=None):
     s.add_argument("--save")
     s = sub.add_parser("resolve-route"); s.add_argument("--route", required=True)
     s.add_argument("--title-id"); s.add_argument("--iso"); s.add_argument("--device")
+    s = sub.add_parser("suggest-route"); s.add_argument("--title-id", required=True)
+    s = sub.add_parser("route-refs"); s.add_argument("--route-path", required=True)
+    s.add_argument("--cap", type=int, default=2_000_000)
+    s = sub.add_parser("backup-candidates"); s.add_argument("--title-id", required=True)
+    s.add_argument("--json", action="store_true")
+    s = sub.add_parser("restore-backup"); s.add_argument("--title-id", required=True)
+    s.add_argument("--by", required=True); s.add_argument("--save"); s.add_argument("--import-dir")
+    s.add_argument("--route")
+    s = sub.add_parser("store-dir"); s.add_argument("--title-id", required=True)
+    s.add_argument("--save", required=True)
     s = sub.add_parser("tid-for-iso"); s.add_argument("name")
     s = sub.add_parser("iso-for-tid"); s.add_argument("--title-id", required=True)
     s.add_argument("--device")
@@ -2063,6 +2210,27 @@ def main(argv=None):
         r = resolve_route(a.route, tid, a.device)
         print(json.dumps(r, sort_keys=True))
         return 3 if r["refuse"] else 0
+    elif a.cmd == "suggest-route":
+        name, note = suggest_route(tid_norm(a.title_id))
+        print(json.dumps({"name": name, "source" if name else "note": note}, sort_keys=True))
+        return 0 if name else 1
+    elif a.cmd == "route-refs":
+        r = route_refs(a.route_path, a.cap)
+        print(json.dumps(r, sort_keys=True))
+        return 3 if r.get("refuse") else 0
+    elif a.cmd == "backup-candidates":
+        cands = backup_candidates(tid_norm(a.title_id))
+        if a.json:
+            print(json.dumps(cands, sort_keys=True))
+        else:
+            for c in cands:
+                print(c)
+    elif a.cmd == "restore-backup":
+        r = restore_backup(tid_norm(a.title_id), a.by, a.save, a.import_dir, a.route)
+        print(json.dumps(r, sort_keys=True))
+        return 3 if r.get("refuse") else 0
+    elif a.cmd == "store-dir":
+        print(store_dir(tid_norm(a.title_id), a.save))
     elif a.cmd == "tid-for-iso":
         print(tid_for_iso(a.name) or "")
     elif a.cmd == "iso-for-tid":

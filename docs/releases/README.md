@@ -3,7 +3,7 @@
 _Last updated 2026-10-17, for version 0.5.2._
 
 > **GPU driver.** hakuX is tested only with the Turnip Adreno Driver T30
-> (@Mr_Purple_666). The phone's own driver and other Turnip builds are
+> (@Mr_Purple_666). The handheld's own driver and other Turnip builds are
 > untested and draw some games wrongly.
 > [Which driver, and how to install it.](../gpu-driver.md)
 
