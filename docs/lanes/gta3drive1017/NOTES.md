@@ -1,15 +1,17 @@
 # lane.gta3drive1017 -- GTA III drops into the teens while driving (#433)
 
-Status (attempt 3, 10-17 17:40 PDT): the wait is located (section 6). R1 is built (c6ca5296fd, section 7). Its
+Status (attempt 3, 10-17 17:55 PDT): the wait is located (section 6). R1 is built (c6ca5296fd, section 7). Its
 arms are registered (section 8).
 - Step 1, the pixel suites, is judged (8.1): the same code ran in both arms, and every mover is run-to-run variance.
 - Drive pair 1 is VOID (8.2): the help-box gate never matched, so neither run entered the car. The gate is now the
   scene beside the Kuruma.
 - Its second try is VOID too (8.3). The new gate worked and Claude got in, but the mission restarted ~30 s into the
   drive and he stayed on foot. The route now has a warm-up drive, with dense frames, ahead of the mark.
-- The third try is VOID (8.4), but its warm-up frames show the cause. On the first full-lock steering pulse at full
-  throttle, the Kuruma rode the ramp's barrier onto its roof, and the mission failed ("You flipped your wheels!").
-  The route now drives at about two-thirds throttle and a third of lock. B goes alone first again.
+- The third and fourth tries are VOID (8.4, 8.5). Their warm-up frames show the cause: on the first steering pulse,
+  full lock or a third of it, the Kuruma hits a lamp post on the narrow bridge ramp's wall and lands on its roof. The
+  mission fails ("You flipped your wheels!") and restarts with Claude on foot.
+- The route now never steers going forward (it turns only while reversing). It presses Y at speed each cycle, which
+  GTA III ignores in a moving car and which gets Claude back in after a restart. B goes alone first again.
 - R2/R3's census (the copy refusal reasons, dups per flip) is in texture.c, perflog only, for a later run if R1
   falls short.
 
@@ -507,6 +509,41 @@ skip` once.
 - **Next: B alone again**, the same request.
   - If its warm-up frames show the car moving at the mark, A is queued behind it at once.
   - The pilot verdict still waits for drive shots, minutes apart, that show the car moving.
+
+### 8.5 Fourth try: gentle steering flips it on the same lamp post
+
+B `1-1792283746-lane.gta3drive1017-2035473` ran alone, 17:37-17:47 (RT 22000, LX +-12000 for 0.8 s). It is VOID as
+a drive for the same reason as 8.4.
+
+| route time | frame | clock | what |
+|---|---|---|---|
+| 17:40:25 | 174024 incar | -- | in the Kuruma; RT 22000 from here |
+| 17:40:28 | 174027 | 05:35 | straight up the ramp |
+| 17:40:30.8 | 174030 | 05:38 | still straight, centre-right, lamp posts on both walls; LX -12000 for 0.8 s now |
+| 17:40:34.3 | 174033 | 05:42 | on its roof on a felled lamp post |
+| 17:40:36 | 174035 | 05:44 | "MISSION FAILED!", "You flipped your wheels!", Claude beside the wreck |
+| 17:40:40-44 | 174039-174044 | -- | the wreck burning, then the "Give Me Liberty" cutscene |
+| 17:40:48-17:41:37 | 174048-174137 | 04:10-04:58 | on foot beside a new Kuruma to the mark ("Enter or exit a vehicle: Y" at 174050) |
+
+- **The cause is the lamp posts, not the amount of lock.** The ramp is about four lanes between two walls, with lamp
+  posts standing on the walls. A third of lock at speed carries the car across it into a post within ~2 s. A felled
+  post under the car flips it, in both 8.4 and here. Pilot 2 (346093) got down the ramp once with full lock. Of the
+  four tries with steering on the ramp, three flipped.
+- **Every restart has the same end state.** Claude stands on foot beside a new Kuruma, with 8-Ball in it (8.3, 8.4,
+  here; pilot 2's 154907 at 04:10 too).
+- **The route's new shape** (`routes/gta-3-drive.route` header):
+  - No steering going forward. Each cycle: RT 18000 for 6 s, brake straight 2 s, then reverse 1.5 s with the wheel
+    turned (two cycles right, one left).
+  - `press Y` at the end of each throttle stretch. GTA III lets the player leave a car only at low speed or at a stop
+    (Grand Theft Wiki, "Bail Out": exits at speed came with Vice City). So at speed the press does nothing. After a
+    restart it walks Claude back into the Kuruma, which no earlier route could do. Against a wall the car is slow, so
+    Y gets out, and the next cycle's Y gets back in.
+  - A `drive` frame every cycle (~11 s) in the scored window, so a restart or a wreck there shows, and goes to
+    drive_judge.py's `--exclude`. The warm-up keeps three frames a cycle, including one right after each Y, which
+    tests the "ignored at speed" premise directly.
+  - `route.sh --check` passes.
+- **Next: B alone again, the same request.** Its warm-up frames settle two things: the car survives the ramp, and
+  the Y at speed leaves Claude in the car. A follows at once if they do.
 
 ## Questions
 

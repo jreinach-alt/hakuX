@@ -39,30 +39,43 @@
 # passenger seat by then: 1-1792282254-...-1563459's onfoot frame (clock
 # 05:12) shows him in it before the Y press.
 #
-# Warm-up, before `mark gameplay`: the same driving as the scored loop's laps for
-# ~65 s (five laps, no back-up) with a frame every ~2-3 s. In 1563459 the gate and the entry worked
-# (matched at 0 s, in after one Y), but the mission restarted within ~30 s of
-# the throttle (clock 05:25 in the car at 17:14:12, 04:18 on foot beside the
-# Kuruma at 17:14:46), and Claude stayed on foot for the rest of the run. No
-# frame covered those 30 s. These do, and they are outside the scored window,
-# so their screencaps cost the measurement nothing. `mark gameplay` comes
-# after them, so the scored window starts in a car that has been moving.
+# Warm-up, before `mark gameplay`: the scored loop's cycle six times (~70 s),
+# with three frames a cycle (mid-throttle, after the Y, after the reverse).
+# In 1563459 the gate and the entry worked (matched at 0 s, in after one Y),
+# but the mission restarted within ~30 s of the throttle (clock 05:25 in the
+# car at 17:14:12, 04:18 on foot beside the Kuruma at 17:14:46), and no frame
+# covered those 30 s. These frames do, and they are outside the scored
+# window, so their screencaps cost the measurement nothing. `mark gameplay`
+# comes after them, so the scored window starts in a car that has been
+# moving.
 #
 # Driving: RT accelerates (pad.sh: the triggers are not swapped; 0..32767),
-# LT brakes and reverses, LX steers (-32767..32767; both Nova and Thor cache
-# the same ranges). Equal left and right pulses hold the heading on average.
-# Every third lap brakes straight, then backs up with the wheel turned, so a
-# wall or a lamp post cannot hold the car. Never Y after the entry (it would
-# exit), never START or BACK.
+# LT brakes and reverses, LX steers (-32767..32767; the Nova and the Thor
+# cache the same ranges). Never START or BACK.
 #
-# Gentle on purpose. 1-1792283158-...-1853100 drove full throttle with 0.6 s
-# full-lock pulses: up the ramp, then on the first left pulse the Kuruma rode
-# the right-hand barrier onto its roof (172943-warm.png, clock 05:51), and
-# the mission failed, "You flipped your wheels!" (172945). The mission
-# restarts with Claude on foot beside the car, and a route has no
-# conditionals to get him back in. So: RT 22000 (about two thirds), LX
-# +-12000 (about a third of lock) for 0.8 s, and the back-up brakes with the
-# wheel straight for 1 s before it turns (full lock in reverse is slow).
+# Why this shape: three tries flipped the Kuruma on the bridge ramp, and a
+# flip fails the mission ("You flipped your wheels!") and restarts it with
+# Claude on foot beside the car (NOTES.md 8.3-8.5).
+# - 1-1792283158-...-1853100: full throttle, 0.6 s full-lock pulses. On the
+#   first left pulse the car hit a lamp post on the ramp's wall and landed on
+#   its roof (172943-warm.png, clock 05:51).
+# - 1-1792283746-...-2035473: RT 22000 and a third of lock for 0.8 s. The same
+#   lamp post, the same flip, ~5 s into the throttle (174033-warm.png, 05:42).
+#   The ramp is narrow and its lamp posts stand on the walls, so any steering
+#   at speed there reaches one within 2 s.
+# So:
+# - No steering going forward. The car runs straight, and turns only while
+#   reversing, slowly. Each cycle: RT 18000 for 6 s, brake straight for 2 s,
+#   then reverse 1.5 s with the wheel turned. Two turns one way, one the
+#   other, so the heading walks rather than oscillates.
+# - A Y at the end of each throttle stretch. GTA III, unlike Vice City, lets
+#   the player leave a car only at low speed or at a stop (Grand Theft Wiki,
+#   "Bail Out"), so at speed the press does nothing. After a restart it walks
+#   Claude back into the Kuruma (8-Ball waits in it, 8.3), which the old loop
+#   could not do. A car stuck against a wall is slow, so there Y gets out,
+#   and the next cycle's Y gets back in.
+# - A frame every cycle (~11 s), so a restart or a wreck in the scored window
+#   shows in the frames and goes to drive_judge.py's --exclude.
 #
 wait 55
 repeat 4 {
@@ -80,45 +93,83 @@ shot onfoot
 press-until Y at-kuruma 3 5 830,440,450,220 10
 wait 6
 shot incar
-repeat 5 {
-    axis RT 22000
-    wait 2
+repeat 2 {
+    axis RT 18000
+    wait 3
     shot warm
+    wait 3
+    press Y 300
+    shot warmy
+    axis RT min
+    axis LT max
     wait 2
-    shot warm
-    axis LX -12000
-    wait 0.8
-    axis LX mid
+    axis LX max
     wait 1.5
-    shot warm
-    wait 1.5
-    shot warm
-    axis LX 12000
-    wait 0.8
+    axis LT min
     axis LX mid
-    wait 2
+    shot warmr
+    axis RT 18000
+    wait 3
     shot warm
+    wait 3
+    press Y 300
+    shot warmy
+    axis RT min
+    axis LT max
+    wait 2
+    axis LX max
+    wait 1.5
+    axis LT min
+    axis LX mid
+    shot warmr
+    axis RT 18000
+    wait 3
+    shot warm
+    wait 3
+    press Y 300
+    shot warmy
+    axis RT min
+    axis LT max
+    wait 2
+    axis LX min
+    wait 1.5
+    axis LT min
+    axis LX mid
+    shot warmr
 }
 mark gameplay
 repeat forever {
-    repeat 3 {
-        axis RT 22000
-        wait 4
-        axis LX -12000
-        wait 0.8
-        axis LX mid
-        wait 3
-        axis LX 12000
-        wait 0.8
-        axis LX mid
-        wait 2
-    }
+    axis RT 18000
+    wait 6
+    press Y 300
     shot drive
     axis RT min
     axis LT max
-    wait 1
-    axis LX max
     wait 2
+    axis LX max
+    wait 1.5
+    axis LT min
+    axis LX mid
+    axis RT 18000
+    wait 6
+    press Y 300
+    shot drive
+    axis RT min
+    axis LT max
+    wait 2
+    axis LX max
+    wait 1.5
+    axis LT min
+    axis LX mid
+    axis RT 18000
+    wait 6
+    press Y 300
+    shot drive
+    axis RT min
+    axis LT max
+    wait 2
+    axis LX min
+    wait 1.5
     axis LT min
     axis LX mid
 }
