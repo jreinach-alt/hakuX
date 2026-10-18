@@ -1,0 +1,35 @@
+pathfind: Scooby Doo Mystery Mayhem Europe (5451000E) on nova: /storage/E6C6-D7AA/Games/XBox/5451000E-Scooby_Doo_Mystery_Mayhem_Europe.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 5451000E any, loaded none
+[  12.3s] #  1 black             fast    wait                     No emulator content or game visuals are visible yet, just what appears to be an Android sy
+[  17.9s] #  2 black             black   wait                     black frame
+[  24.7s] #  3 publisher_logo    fast    START A                  legal disclaimer screen before title; skip with START then A per convention
+[  32.4s] #  4 publisher_logo    fast    START A                  another publisher logo before title; skip with START then A per convention
+[  42.5s] #  5 publisher_logo    fast    START A                  This is another animated logo/intro sequence before the title screen; skip it with START t
+[  51.4s] #  6 title_screen      fast    START                    Title screen explicitly prompts to press Start to begin
+[  59.6s] #  7 main_menu         fast    A                        Start a New Game is already highlighted (flower icon next to it); confirm with A to begin 
+[  67.6s] #  8 loading           fast    wait                     System is checking hard disk before proceeding; must wait for this to complete before any 
+[  77.7s] #  9 loading           fast    A                        Episode/chapter title card shown after loading before gameplay starts; not yet interactive
+[  87.7s] # 10 cutscene          fast    START                    Chapter intro cinematic showing the Mystery Machine driving, no HUD or player control visi
+[  92.4s] # 11 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[  97.1s] # 12 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 105.3s] # 13 gameplay          fast    STICK:up:1.5             Full HUD visible and the game is explicitly instructing use of the left thumbstick to move
+[ 116.3s] # 14 probe             probe   STICK:up:1.5 STICK:up:1.5 control 0.001, under input 0.017
+[ 122.1s] # 15 gameplay          fast    STICK:up:1.5             HUD is present and the previous STICK:up probe showed slight scene change, confirming play
+[ 133.0s] # 16 probe             probe   STICK:up:1.5 STICK:up:1.5 control 0.001, under input 0.033
+[ 137.5s] # 17 gameplay          fast    STICK:up:1.5             Full HUD with character portrait and compass visible, player characters in 3D environment;
+[ 156.5s] # 18 probe             probe   STICK:up:1.5 HOLD:A:3 HOLD:A:3 HOLD:A:3 control 0.004, under input 0.001
+[ 173.0s] # 19 gameplay          fast    UP UP UP                 Full HUD with player characters in 3D environment; repeated STICK:up gave negligible movem
+[ 182.2s] # 20 probe             probe   UP UP UP UP HOLD:A:3     control 0.003, under input 0.001
+[ 190.6s] # 21 gameplay          fast    LEFT LEFT STICK:up:1.5   Full 3D HUD gameplay; previous straight-up/UP presses didn't register movement, so trying 
+[ 203.2s] # 22 probe             probe   LEFT LEFT STICK:up:1.5 STICK:left:1.5 control 0.004, under input 0.436
+hold-play: genre other, need 600 s of play
+hold-play: fps at 189 s: median 29.0, share>=30 0.571 over 91 samples
+hold-play: fps at 306 s: median 28.0, share>=30 0.473 over 148 samples
+hold-play: validity check stop 0 s (hold 609 s of play, verdict 610.3)
+hold-play: not held 609/600 s of play; verdict stops the hold: fps_ok 1.0, crash False, hang False
+held Scooby Doo Mystery Mayhem Europe for 612s
+VERDICT Scooby Doo Mystery Mayhem Europe ? PASS None gameplay=611.0s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0244 play_share=0.9996 fps_excluded=0.0s
+{"name": "Scooby Doo Mystery Mayhem Europe", "device": "nova", "result": "gameplay", "minutes": 3.39, "model_calls": 25, "steps": 22, "replayed": 0, "reason": "four probes refused", "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5451000E-1011/frames/021-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

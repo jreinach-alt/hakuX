@@ -1,0 +1,36 @@
+pathfind: Tom Clancy s Splinter Cell Double Agent USA (5553005E) on nova: /storage/E6C6-D7AA/Games/XBox/5553005E-Tom_Clancy_s_Splinter_Cell_Double_Agent_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 5553005E any, loaded none
+[  12.0s] #  1 loading           fast    wait                     No game content visible yet, just an app icon/loading graphic on what appears to be an And
+[  21.4s] #  2 publisher_logo    fast    START A                  Ubisoft publisher logo is displaying; standard skip sequence is START then A
+[  31.5s] #  3 intro_video       fast    START A                  This looks like a stylized logo or intro effect (possibly Ubisoft or Sony flame logo) stil
+[  40.5s] #  4 loading           fast    wait                     Loading bar is visibly progressing; no input needed, just wait for it to finish
+[  49.6s] #  5 title_screen      fast    START                    Title screen prompts for START to begin
+[  59.3s] #  6 loading           fast    wait                     Loading bar visible at bottom of screen and logo overlay suggests this is still a loading/
+[  70.4s] #  7 loading           fast    wait                     A visible progress bar at the bottom indicates the game is still loading assets; no player
+[  83.3s] #  8 loading           fast    wait                     A loading progress bar is still visible at the bottom of the screen; no HUD or controls in
+[  94.8s] #  9 loading           fast    wait                     Loading bar still visible at bottom indicating assets are still loading; no HUD or player 
+[ 104.0s] # 10 loading           fast    wait                     Overexposed transition screen, likely a loading/fade transition into the game; no clear me
+[ 112.6s] # 11 gameplay          fast    STICK:up:1.5             HUD with ammo counter and radar wheel visible, player character model on screen in a game-
+[ 121.0s] # 12 probe             probe   STICK:up:1.5 STICK:up:1.5 control 0.485, under input 0.452
+[ 133.8s] # 13 cutscene          fast    START A                  Letterbox bars and logo text overlay indicate this is still an intro cinematic sequence, n
+[ 142.6s] # 14 main_menu         fast    A                        Game mode selection menu with Solo highlighted; select it to start single player with defa
+[ 151.8s] # 15 profile_creation  fast    A                        Name already filled in as SAMFISHER and the dial cursor is on Accept; pressing A confirms 
+[ 163.1s] # 16 main_menu         fast    A                        New Game appears lit/brightest in the list; selecting it starts a fresh single-player game
+[ 171.5s] # 17 submenu           fast    A                        Difficulty selection with Normal already highlighted as default; confirm with A to proceed
+[ 180.3s] # 18 loading           fast    wait                     This is a mission loading/briefing screen with LOADING... shown; no player control yet, ju
+[ 192.8s] # 19 loading           fast    A                        This is a controls tutorial/reference screen shown before gameplay begins; pressing A as i
+[ 200.6s] # 20 cutscene          fast    A                        This is a mission intro title card/cutscene establishing location and date, not gameplay y
+[ 208.9s] # 21 loading           fast    wait                     Game is autosaving after the intro cutscene; no player control available, must wait for it
+[ 218.0s] # 22 cutscene          fast    START                    This is a scripted cinematic (letterbox bars, 'Skip' prompt visible, no HUD) showing chara
+[ 230.9s] # 23 gameplay          fast    STICK:up:1.5             Full HUD with ammo counter and equipment wheel visible, character in control stance, no le
+[ 242.7s] # 24 probe             probe   STICK:up:1.5 STICK:up:1.5 control 0.106, under input 0.274
+hold-play: genre shooter, need 600 s of play
+hold-play: fps at 180 s: median 22.0, share>=30 0.0 over 70 samples
+hold-play: fps at 308 s: median 23.0, share>=30 0.041 over 121 samples -> STOP (not on course)
+hold-play: not held 306/600 s of play; fps gate at 5:08: median 23 < 27, 4% of 121 samples at >= 28.5
+held Tom Clancy s Splinter Cell Double Agent USA for 310s
+VERDICT Tom Clancy s Splinter Cell Double Agent USA ? FAIL(duration: 309 s of gameplay < 600 s confirmation) gameplay=308.8s fps_ok=0.0334 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0419 play_share=0.999 fps_excluded=0.0s
+{"name": "Tom Clancy s Splinter Cell Double Agent USA", "device": "nova", "result": "gameplay", "minutes": 4.05, "model_calls": 28, "steps": 24, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5553005E-1011/frames/023-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

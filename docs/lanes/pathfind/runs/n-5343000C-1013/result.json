@@ -1,0 +1,78 @@
+{
+ "title_id": "5343000C",
+ "name": "Conflict Global Terror USA",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/5343000C-Conflict_Global_Terror_USA.xiso.iso",
+ "result": "gameplay",
+ "tool": "74dfc2db2c",
+ "started": "2026-10-13 05:11:51 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5343000C-1013/frames/013-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5343000C-1013/frames/013-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5343000C-1013/frames/013-probe-c.jpg"
+ ],
+ "minutes": 5.73,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5343000C-1013/frames/012-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5343000C-1013/frames/014-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5343000C-1013/frames/015-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5343000C-1013/frames/016-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5343000C-1013/frames/017-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5343000C-1013/frames/018-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5343000C-1013/frames/019-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5343000C-1013/frames/020-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5343000C-1013/frames/021-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-5343.md"
+ ],
+ "hold": {
+  "genre": "shooter",
+  "why": "Third-person tactical military shooter with objective markers and squad squad mechanics in an indoor level",
+  "ok": false,
+  "play_s": 182.0,
+  "need_s": 600.0,
+  "hold_s": 2041.5,
+  "model_navs": 80,
+  "frames": 57,
+  "still_windows": 0,
+  "shed": [],
+  "reversals": 6,
+  "reason": "budget 40 min with 182 s of play",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 95,
+    "median": 29.0,
+    "share": 1.0,
+    "at_s": 190.8,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 151,
+    "median": 29.0,
+    "share": 0.987,
+    "at_s": 302.6,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "stuck_abort": false,
+  "verdict": "VERDICT Conflict Global Terror USA ? FAIL(menu time: 8.8% of the scored window in `play` (bar 90%; game_over 1714 s, play 181 s, results 94 s, menu 44 s)) gameplay=2042.1s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=1/0.03pm worst_ms=247.6 static_frac=0.0003 play_share=0.0885 fps_excluded=1862.5s"
+ },
+ "model_calls": 96,
+ "calls_by_model": {
+  "claude-haiku-4-5-20251001": 96
+ },
+ "steps": 13,
+ "seconds": 2440.6,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5343000C-1013/frames/316-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5343000C-1013/strip.jpg"
+}

@@ -1,0 +1,24 @@
+{
+ "title_id": "54530002",
+ "name": "Barbarian Europe En Fr De Es It",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/54530002-Barbarian_Europe_En_Fr_De_Es_It.xiso.iso",
+ "result": "gave-up",
+ "tool": "35c0856bf1",
+ "started": "2026-10-14 02:55:06 PDT",
+ "reason": "budget 20 min",
+ "last_state": "submenu",
+ "model_calls": 39,
+ "calls_by_model": {
+  "claude-haiku-4-5-20251001": 39
+ },
+ "steps": 39,
+ "seconds": 1223.6,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-54530002-1014/frames/039-submenu.jpg",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-54530002-1014/strip.jpg"
+}

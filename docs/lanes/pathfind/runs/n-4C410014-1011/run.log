@@ -1,0 +1,52 @@
+pathfind: Star Wars Knights of the Old Republic II The Sith Lords Europe (4C410014) on nova: /storage/E6C6-D7AA/Games/XBox/4C410014-Star_Wars_Knights_of_the_Old_Republic_II_The_Sith_Lords_Europe.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4C410014 any, loaded none
+[   7.8s] #  1 publisher_logo    sibreplay START                    sibling 4C410017 step 0: Green geometric star logo on white background - publisher/develop
+[  16.0s] #  2 publisher_logo    fast    START                    A new publisher logo after the green star; skip with START per hints
+[  22.4s] #  3 publisher_logo    fast    START                    Another publisher logo after the green star logo; skip with START per hints.
+[  26.7s] #  4 publisher_logo    repeat  START                    repeat START: it advanced the publisher_logo
+[  34.0s] #  5 main_menu         fast    A                        Main menu with New Game highlighted at top; confirm it to start a fresh game with default 
+[  44.4s] #  6 submenu           fast    A                        Character class selection with default first option highlighted; accept default with A to 
+[  52.8s] #  7 submenu           fast    A                        Quick Character is highlighted by default, which accepts default stat allocation fastest; 
+[  63.1s] #  8 submenu           fast    A                        Default Quick Character stats are shown; press A to accept and proceed through the remaini
+[  69.9s] #  9 submenu           fast    A                        Character creation portrait selection; accept the default portrait to proceed through char
+[  81.0s] # 10 submenu           fast    A                        Character stats generated and ready to accept; press A to confirm and proceed to naming or
+[  87.9s] # 11 name_entry        fast    A                        Default name is already generated and DONE button is highlighted; pressing A selects it to
+[  99.2s] # 12 submenu           fast    A                        PLAY (option 3) appears highlighted with a lighter box background; pressing A should accep
+[ 108.8s] # 13 loading           fast    wait                     Loading screen after character creation and PLAY confirmation; just wait for it to finish.
+[ 118.4s] # 14 cutscene          fast    START A                  This is the opening Star Wars logo animation after character creation loading completed; n
+[ 128.0s] # 15 cutscene          fast    START A                  Starfield animation, likely the opening Star Wars logo/text sequence still in progress; co
+[ 136.4s] # 16 cutscene          fast    START A                  Opening crawl text, not yet gameplay; continue skipping with START then A
+[ 147.0s] # 17 cutscene          fast    START                    This is the opening crawl text; START A hasn't changed it in prior tries at this screen, s
+[ 151.4s] # 18 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 155.9s] # 19 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 160.4s] # 20 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 168.8s] # 21 cutscene          fast    START                    Opening crawl text still scrolling, not yet gameplay; previous START presses advanced it i
+[ 174.5s] # 22 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 179.0s] # 23 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 183.5s] # 24 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 198.5s] # 25 cutscene          fast    A A                      This is the opening star-field crawl; START has been pressed 4+ times already with diminis
+[ 203.8s] # 26 cutscene          repeat  A A                      repeat A: it advanced the cutscene
+[ 211.6s] # 27 cutscene          repeat  A A                      repeat A: it advanced the cutscene
+[ 216.7s] # 28 black             black   wait                     black frame
+[ 223.8s] # 29 cutscene          fast    START A                  letterbox bars present, aerial flyover shot with no player HUD; still part of opening cine
+[ 233.1s] # 30 cutscene          fast    START A                  Opening narrative cinematic with subtitle text, no HUD or player control visible; continui
+[ 238.6s] # 31 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 248.4s] # 32 cutscene          fast    START A                  Narrative subtitle text with no player HUD or controllable character visible; this is stil
+[ 264.3s] # 33 cutscene          fast    A                        Narration text box still present with letterbox bars, no HUD; repeated START A hasn't adva
+[ 275.5s] # 34 gameplay          fast    STICK:up:1.5             HUD elements (radial menu, character portrait, control tip) are visible over a 3D playable
+[ 288.3s] # 35 probe             probe   STICK:up:1.5 STICK:up:1.5 control 0.025, under input 0.249
+[ 297.0s] # 36 gameplay          fast    STICK:up:1.5             HUD elements (radial Use menu, portraits, Galaxy Map label) over a 3D playable environment
+[ 308.3s] # 37 probe             probe   STICK:up:1.5 STICK:left:1.5 control 0.034, under input 0.443
+hold-play: genre other, need 600 s of play
+hold-play: fps at 187 s: median 29.0, share>=30 0.936 over 94 samples
+hold-play: 3 still looks: walk reversed (back) at 276 s
+hold-play: fps at 302 s: median 29.0, share>=30 0.793 over 140 samples
+hold-play: stuck (scene unchanged for 4 consecutive samples (genre other)): unstick X at 601 s
+hold-play: validity check stop 0 s (hold 603 s of play, verdict 606.2)
+hold-play: not held 603/600 s of play; verdict stops the hold: fps_ok 0.6583, crash False, hang False
+held Star Wars Knights of the Old Republic II The Sith Lords Europe for 717s
+VERDICT Star Wars Knights of the Old Republic II The Sith Lords Europe ? FAIL(menu time: 84.7% of the scored window in `play` (bar 90%; play 606 s, still 81 s, menu 17 s, other 11 s)) gameplay=715.9s fps_ok=0.6595 crash=False hang=False audio_short=0.0 hitches=1/0.091pm worst_ms=113.0 static_frac=0.0012 play_share=0.8473 fps_excluded=112.8s
+{"name": "Star Wars Knights of the Old Republic II The Sith Lords Europe", "device": "nova", "result": "gameplay", "minutes": 5.14, "model_calls": 44, "steps": 37, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4C410014-1011/frames/036-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

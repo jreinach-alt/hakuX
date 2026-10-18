@@ -1,0 +1,106 @@
+pathfind: Batman Begins (45410389) on nova: /storage/E6C6-D7AA/Games/XBox/45410389-Batman_Begins.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 45410389 any, loaded none
+[   9.0s] #  1 publisher_logo    fast    A                        Early boot splash with a logo still animating in; not a title or menu yet. Per hints, skip
+[  17.7s] #  2 loading           fast    wait                     Game is loading after the logos; no input needed, the progress bar is still filling. Wait 
+[  26.7s] #  3 publisher_logo    fast    A                        Publisher logo still animating; per hints, skip with A first, then re-read. No title or me
+[  33.9s] #  4 publisher_logo    fast    A                        Publisher logo still on screen; per hints, skip with A, then re-read. No title or menu yet
+[  41.5s] #  5 publisher_logo    fast    A                        Batman Begins logo splash still on screen, not a title or menu yet; per hints, skip logos 
+[  49.9s] #  6 publisher_logo    fast    A                        Still an intro/logo screen with no title or menu yet; per hints, skip with A, then re-read
+[  57.8s] #  7 publisher_logo    fast    A                        This is still an intro/logo splash with no title prompt or menu yet. Per hints, skip with 
+[  62.4s] #  8 publisher_logo    repeat  A                        repeat A: it advanced the publisher_logo
+[  66.9s] #  9 publisher_logo    repeat  A                        repeat A: it advanced the publisher_logo
+[  71.4s] # 10 publisher_logo    repeat  A                        repeat A: it advanced the publisher_logo
+[  80.0s] # 11 title_screen      fast    START                    Title screen with a 'PRESS START' prompt; per hints, START advances the title. Previous A 
+[  87.8s] # 12 main_menu         fast    A                        Main menu with NEW GAME highlighted at the top; per hints, New Game is the fastest route t
+[  97.3s] # 13 submenu           fast    A                        Difficulty submenu after New Game. Accepting the highlighted default (EASY) with A is the 
+[ 107.3s] # 14 submenu           fast    DOWN A                   Save-slot picker after New Game. Continue Without Saving reaches play and leaves the disk 
+[ 119.2s] # 15 loading           fast    wait                     A save is being written after the difficulty and save-slot choices; the game is busy and n
+[ 124.8s] # 16 black             black   wait                     black frame
+[ 128.3s] # 17 black             black   wait                     black frame
+[ 131.8s] # 18 black             black   wait                     black frame
+[ 135.3s] # 19 black             black   wait                     black frame
+[ 143.2s] # 20 cutscene          fast    START A                  Live cinematic with letterbox bars and no HUD, so not gameplay. Per the cutscene rule, try
+[ 153.8s] # 21 cutscene          fast    START                    Live cinematic with letterbox bars and no HUD, not gameplay. Previous START then A did not
+[ 165.0s] # 22 gameplay          fast    wait                     Full-frame player-view scene with the gold location card as a mission-start banner, not le
+[ 181.0s] # 23 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.595, under input 0.603
+[ 185.7s] # 24 cutscene          fast    START A                  A close-up character shot with no HUD is a cinematic, not player control. Prior probe was 
+[ 198.7s] # 25 gameplay          fast    wait                     Full HUD with enemy target plate and a playable character standing in the world, not lette
+[ 216.0s] # 26 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 control 0.008, under input 0.007
+[ 223.5s] # 27 gameplay          fast    X                        Player-controlled Batman with HUD and a live combat tutorial; the prompt asks for X (punch
+[ 236.8s] # 28 probe             probe   X STICK:right:1.5        control 0.004, under input 0.008
+[ 244.2s] # 29 gameplay          fast    Y                        Player-controlled Batman in the world with HUD and a live combat tutorial. The prompt asks
+[ 262.1s] # 30 probe             probe   Y HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.530, under input 0.446
+[ 266.7s] # 31 gameplay          fast    wait                     Full HUD with enemy plate and the player-controlled Batman in the world, fighting a thug; 
+[ 284.2s] # 32 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.621, under input 0.699
+[ 288.8s] # 33 gameplay          fast    B                        Live combat with full HUD and player-controlled Batman in the world; a finisher prompt ask
+[ 307.8s] # 34 probe             probe   B STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.371, under input 0.378
+[ 313.1s] # 35 continue          fast    A                        Mission failed screen after the combat run; CONTINUE LAST CHECKPOINT is the top, default h
+[ 319.3s] # 36 black             black   wait                     black frame
+[ 322.7s] # 37 black             black   wait                     black frame
+[ 329.9s] # 38 cutscene          fast    START                    Dark cinematic-looking scene with no HUD or menu, following the mission-failed continue fl
+[ 335.2s] # 39 black             black   wait                     black frame
+[ 354.1s] # 40 gameplay          fast    wait                     Live third-person combat in the game world with the Batman Begins bat emblem in the corner
+[ 369.1s] # 41 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.348, under input 0.463
+[ 374.0s] # 42 gameplay          fast    wait                     Live third-person combat with the HUD up (enemy health bar, Batman emblem), no menu or let
+[ 389.2s] # 43 probe             probe   RT:3 RT:3 RT:3           control 0.007, under input 0.007
+[ 395.1s] # 44 gameplay          fast    X                        Live third-person combat with HUD and the player's Batman in the world; a prompt asks for 
+[ 412.9s] # 45 probe             probe   X X RT:3 RT:3 RT:3       control 0.011, under input 0.001
+[ 417.8s] # 46 gameplay          fast    Y                        Live combat with HUD and a button prompt over the player's Batman in the world; the prompt
+[ 439.1s] # 47 probe             probe   Y Y HOLD:X:3 STICK:left:1.2 STICK:right:1.2 control 0.424, under input 0.561
+[ 445.5s] # 48 gameplay          fast    wait                     Live combat with the HUD up, the player's Batman in the world, and no menu, letterbox or s
+[ 449.6s] # 49 probe             probe   HOLD:X:3                 control 0.881, under input 0.314
+[ 453.8s] # 50 game_over         fast    DOWN A                   Mission failed screen, not gameplay. Continue Last Checkpoint is dimmed (unavailable), so 
+[ 465.2s] # 51 submenu           fast    A                        A load-checkpoint list with a saved slot B in Gotham City, The Narrows. Selecting it resum
+[ 475.0s] # 52 submenu           fast    A                        A load-confirmation dialog from the checkpoint list. The previous step selected a saved ch
+[ 485.3s] # 53 game_over         fast    DOWN A                   Mission failed screen, not gameplay. Prior history says Continue Last Checkpoint was dimme
+[ 495.9s] # 54 submenu           fast    A                        Load checkpoint list with the only saved slot (B, Gotham City) already highlighted. Select
+[ 506.6s] # 55 submenu           fast    A                        Load-confirmation dialog. The highlight is on Yes, the brighter item, so A confirms the ch
+[ 518.4s] # 56 game_over         fast    DOWN DOWN A              Load Checkpoint has looped back here several times. Restart Level is the other option that
+[ 531.4s] # 57 submenu           fast    A                        A restart-confirmation dialog, not the game-over screen; YES is the lit item, so A confirm
+[ 543.9s] # 58 game_over         fast    UP UP A                  Restart Level and Load Checkpoint both looped back here. CONTINUE LAST CHECKPOINT is not d
+[ 550.5s] # 59 black             black   wait                     black frame
+[ 554.0s] # 60 black             black   wait                     black frame
+[ 563.4s] # 61 cutscene          fast    START                    Dim scene with no HUD or menu, following the previous black frames after a load. It looks 
+[ 568.7s] # 62 black             black   wait                     black frame
+[ 575.8s] # 63 gameplay          fast    wait                     Real playfield with a third-person character in the game world and no menu, pause, or cuts
+[ 593.8s] # 64 probe             probe   LT:2 LT+left:1.2 LT+right:1.2 control 0.686, under input 0.598
+[ 598.1s] # 65 cutscene          fast    START                    Close-up cinematic framing of a character with no HUD or controls, following the previous 
+[ 608.5s] # 66 gameplay          fast    wait                     Playfield with the player's Batman character, HUD and enemy health bar, no menu or cutscen
+[ 624.4s] # 67 probe             probe   LT:2 LT:2 LT:2           control 0.006, under input 0.005
+[ 629.5s] # 68 gameplay          fast    X                        Real playfield with the player's Batman, HUD and enemy health bar, and an in-game tutorial
+[ 643.4s] # 69 probe             probe   X HOLD:B:3               control 0.003, under input 0.007
+[ 650.2s] # 70 gameplay          fast    Y                        Live combat with HUD and a player-controlled Batman; the in-game tutorial asks for Y, so p
+[ 671.4s] # 71 probe             probe   Y HOLD:B:3 STICK:left:1.2 STICK:right:1.2 control 0.366, under input 0.646
+[ 678.0s] # 72 gameplay          fast    wait                     Player-controlled Batman in a live combat playfield with HUD and enemy health bar, no menu
+[ 681.8s] # 73 probe             probe   STICK:left:1.5           control 0.394, under input 0.120
+[ 686.2s] # 74 game_over         fast    DOWN DOWN A              A mission-failed menu after a lost run; not gameplay. Restart Level is the fastest route b
+[ 698.0s] # 75 submenu           fast    LEFT A                   A restart confirmation after a game over. YES restarts the level, which is the fastest rou
+[ 704.9s] # 76 black             black   wait                     black frame
+[ 712.9s] # 77 cutscene          fast    START                    Letterbox bars and no HUD mean a cutscene, not gameplay. The earlier stick probe on black 
+[ 717.2s] # 78 black             black   wait                     black frame
+[ 728.6s] # 79 gameplay          fast    wait                     A location title card over a live, letterbox-free scene with the Batman logo and no menu i
+[ 744.1s] # 80 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.612, under input 0.761
+[ 748.6s] # 81 cutscene          fast    START                    A close-up character shot with a Batman Begins logo and no HUD or controllable character i
+[ 759.6s] # 82 gameplay          fast    wait                     A live third-person scene with the HUD up (enemy name plate, health and counter) and no me
+[ 768.7s] # 83 probe             probe   STICK:up:1.5             control 0.001, under input 0.006
+[ 775.4s] # 84 gameplay          fast    X                        Live third-person playfield with HUD, not a menu or cutscene. The 'Press X now' prompt is 
+[ 787.0s] # 85 probe             probe   X STICK:up:1.5           control 0.005, under input 0.010
+[ 792.3s] # 86 gameplay          fast    Y                        Live third-person combat with HUD and a Y quick-time prompt; the prompt is a tutorial/acti
+[ 812.0s] # 87 probe             probe   Y Y STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.261, under input 0.697
+[ 818.4s] # 88 gameplay          fast    wait                     Live third-person combat with HUD and no menu, cutscene or subtitles. The Final Attack pro
+[ 835.1s] # 89 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.513, under input 0.670
+[ 838.4s] # 90 game_over         fast    A                        Mission Failed menu, not gameplay. Default top item CONTINUE LAST CHECKPOINT resumes the m
+[ 843.6s] # 91 black             black   wait                     black frame
+[ 847.1s] # 92 black             black   wait                     black frame
+[ 850.6s] # 93 black             black   wait                     black frame
+[ 854.1s] # 94 black             black   wait                     black frame
+[ 862.6s] # 95 cutscene          fast    START                    Letterbox bars and a scripted tableau with no player control: this is a cutscene, not game
+[ 866.8s] # 96 black             black   wait                     black frame
+[ 874.7s] # 97 cutscene          fast    START                    A location title card over a scripted-looking tableau; the previous steps showed letterbox
+[ 884.6s] # 98 cutscene          fast    A                        A scripted close-up of an NPC with no HUD and no player control, so this is a cutscene, no
+[ 894.3s] # 99 cutscene          fast    START                    Scripted close-up of an NPC with no HUD and no player control, so this is a cutscene, not 
+[ 902.8s] #100 cutscene          fast    START                    A scripted close-up of Batman with no HUD and no visible player control, the same kind of 
+{"name": "Batman Begins", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 75, "steps": 100, "replayed": 0, "reason": "budget 15 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

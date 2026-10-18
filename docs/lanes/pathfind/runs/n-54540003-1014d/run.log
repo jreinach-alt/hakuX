@@ -1,0 +1,28 @@
+pathfind: Max Payne USA (54540003) on nova: /storage/E6C6-D7AA/Games/XBox/54540003-Max_Payne_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 54540003 any, loaded none
+[  22.3s] #  1 loading           fast    wait                     Early boot sequence (0.1 min), gradient fade-in indicates content rendering/transitioning;
+[  26.8s] #  2 black             black   wait                     black frame
+[  39.0s] #  3 cutscene          fast    START A                  Intro narrative/cinematic showing game world with subtitle letterbox bars; this is Max Pay
+[  53.7s] #  4 loading           fast    wait                     Game is actively loading assets after the cutscene; 'Loading' text and progress bar visibl
+[  59.5s] #  5 loading           static  wait                     load still on screen (barely changed)
+[  64.4s] #  6 loading           static  wait                     load still on screen (barely changed)
+[  69.3s] #  7 loading           static  wait                     load still on screen (barely changed)
+[  75.6s] #  8 loading           static  wait                     load still on screen (barely changed)
+[  89.4s] #  9 cutscene          fast    START A                  This is Max Payne's narrative intro cinematic showing the protagonist in the game world wi
+[ 106.3s] # 10 loading           fast    A                        Explicit 'Loading' text with progress bar; game is loading assets after the intro cutscene
+[ 125.3s] # 11 gameplay          fast    wait                     Player-controlled character is in the game world with HUD visible (weapon, health icons, t
+[ 143.2s] # 12 probe             probe   STICK:up:1.5             control 0.030, under input 0.271
+hold-play: genre shooter, need 630 s of play
+hold-play: fps at 188 s: median 47.0, share>=30 0.979 over 146 samples
+hold-play: fps at 302 s: median 46.0, share>=30 0.979 over 233 samples
+hold-play: stuck (scene unchanged for 4 consecutive samples (genre shooter)): prompt look at 556 s
+hold-play: stuck (scene unchanged for 4 consecutive samples (genre shooter)): unstick STICK:left:2 RT:1 at 556 s
+hold-play: play disagrees: hold 634.8 s, verdict 627.0 s (verdict trusted)
+hold-play: validity check share 744 s (hold 635 s of play, verdict 627.0)
+hold-play: not held 635/630 s of play; share short by 744 s with no budget left
+held Max Payne USA for 782s
+VERDICT Max Payne USA ? FAIL(menu time: 80.5% of the scored window in `play` (bar 90%; play 628 s, loading 127 s, pause 25 s, no-timeline 0 s)) gameplay=780.1s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=1/0.083pm worst_ms=404.5 static_frac=0.0003 play_share=0.8048 fps_excluded=153.9s
+{"name": "Max Payne USA", "device": "nova", "result": "gameplay", "minutes": 2.39, "model_calls": 25, "steps": 12, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-54540003-1014d/frames/011-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

@@ -1,0 +1,53 @@
+pathfind: ESPN MLS ExtraTime 2002 USA (4B4E0005) on nova: /storage/E6C6-D7AA/Games/XBox/4B4E0005-ESPN_MLS_ExtraTime_2002_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4B4E0005 any, loaded none
+[  30.8s] #  1 loading           fast    wait                     No game content visible yet, just a generic loading spinner shape on white background; wai
+[  39.2s] #  2 publisher_logo    fast    START A                  Publisher logo screen, skip it to progress toward title/menu
+[  47.2s] #  3 publisher_logo    fast    START A                  Standard publisher logo screen before title; skip it to progress.
+[  56.2s] #  4 title_screen      fast    START                    Title screen prompts for START to proceed
+[  64.3s] #  5 main_menu         fast    A                        MATCH is already highlighted, the fastest path to a single exhibition-style match with def
+[  73.9s] #  6 submenu           fast    A                        Controller 1 icon is highlighted with a blue selection box indicating it's selected for th
+[  80.6s] #  7 submenu           fast    A                        Team select screen with Wizards highlighted by default; confirm with A to accept default t
+[  88.2s] #  8 submenu           fast    A                        Team select screen with defaults already chosen (Wizards vs Fire); confirm with A to proce
+[ 133.0s] #  9 submenu           fast    START                    A has been pressed twice here already with no real progress (teams unchanged, screen nearl
+[ 139.4s] # 10 submenu           fast    A                        Stadium select with defaults already highlighted; confirm with A to proceed toward kickoff
+[ 149.1s] # 11 submenu           fast    DOWN RIGHT RIGHT RIGHT RIGHT Owner rule: set game length to longest before kickoff. Need to move down to GAME LENGTH ro
+[ 159.7s] # 12 submenu           fast    RIGHT RIGHT RIGHT RIGHT RIGHT Owner rule: set game length to longest before kickoff. GAME LENGTH row is highlighted at 5
+[ 169.7s] # 13 submenu           fast    RIGHT RIGHT RIGHT        Owner rule: push GAME LENGTH to its max before kickoff; it's now 10 MIN, try more RIGHT pr
+[ 178.8s] # 14 submenu           fast    RIGHT RIGHT RIGHT RIGHT RIGHT RIGHT Owner rule: push GAME LENGTH to max before kickoff; currently at 5 MIN, press RIGHT repeat
+[ 194.9s] # 15 submenu           fast    RIGHT RIGHT              Owner rule: push GAME LENGTH to its max before kickoff; it still reads 5 MIN despite prior
+[ 205.0s] # 16 submenu           fast    RIGHT                    GAME LENGTH still reads 5 MIN despite many prior RIGHT presses; try a single RIGHT to see 
+[ 211.7s] # 17 submenu           fast    RIGHT RIGHT RIGHT        Owner rule: push GAME LENGTH to its max before kickoff; it rose from 5 to 10 MIN, so more 
+[ 231.5s] # 18 submenu           fast    RIGHT RIGHT              GAME LENGTH is cycling (5->10->back to 5) with multiple RIGHT presses per action, suggesti
+[ 241.3s] # 19 submenu           fast    RIGHT                    GAME LENGTH is highlighted at 5 MIN; prior multi-press RIGHT bursts caused it to oscillate
+[ 248.3s] # 20 submenu           fast    RIGHT                    GAME LENGTH rose from 5 to 10 MIN; sending a single RIGHT press to avoid the wrap-around s
+[ 261.7s] # 21 submenu           fast    RIGHT                    GAME LENGTH is highlighted at 5 MIN; prior bursts of multiple RIGHT presses overshot and w
+[ 270.5s] # 22 submenu           fast    DOWN DOWN DOWN DOWN DOWN DOWN GAME LENGTH is now at 10 MIN which appears to be the max before it wraps back to 5 (seen o
+[ 282.0s] # 23 submenu           fast    B                        GAME LENGTH is already at 10 MIN, the max per prior observation; no other settings need ch
+[ 289.8s] # 24 submenu           fast    A                        Stadium select screen with default options already highlighted; press A to confirm and pro
+[ 298.3s] # 25 submenu           fast    A                        GAME LENGTH already maxed at 10 MIN per prior findings; all other defaults are fine for fa
+[ 305.0s] # 26 submenu           fast    A                        CONFIRM is highlighted; pressing A should proceed past team edit toward the match
+[ 312.9s] # 27 submenu           fast    A                        CONFIRM is highlighted; pressing A should proceed past team edit toward kickoff/match star
+[ 322.0s] # 28 submenu           fast    A                        Matchup confirmation screen before kickoff; OK is the default confirm action to proceed to
+[ 329.8s] # 29 submenu           fast    A                        Pre-kickoff matchup confirmation screen; pressing A should advance toward kickoff
+[ 338.9s] # 30 gameplay          fast    A STICK:up:1.5           Kickoff formation with full HUD and clock at :00, ball at center ready to be played; this 
+[ 352.4s] # 31 probe             probe   A STICK:up:1.5 STICK:up:1.5 control 0.036, under input 0.162
+[ 357.4s] # 32 gameplay          fast    STICK:up:1.5             Full HUD with live match clock counting down (1:04), player names on-field, ball in play -
+[ 375.4s] # 33 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 control 0.008, under input 0.008
+[ 380.7s] # 34 gameplay          fast    STICK:up:1.5             Live match HUD with running clock (1:15) and a goal kick restart; player Meola is position
+[ 394.0s] # 35 probe             probe   STICK:up:1.5 A HOLD:A:3  control 0.015, under input 0.058
+hold-play: sports look {'clock': '1:15', 'period': '1ST', 'human_controlled': True, 'why': 'Player 1 (Meola) is highlighted/controlled with goal kick prompt, indicating human control of KC'}
+hold-play: genre team, need 630 s of play
+hold-play: fps at 187 s: median 59.0, share>=30 1.0 over 187 samples
+hold-play: stuck (scene unchanged for 4 consecutive samples (genre team)): prompt look at 263 s
+hold-play: stuck (scene unchanged for 4 consecutive samples (genre team)): unstick X at 263 s
+hold-play: stuck (scene unchanged for 5 consecutive samples (genre team)): unstick B at 298 s
+hold-play: fps at 306 s: median 59.0, share>=30 1.0 over 307 samples
+hold-play: play disagrees: hold 633.5 s, verdict 641.9 s (verdict trusted)
+hold-play: validity check stop 0 s (hold 634 s of play, verdict 641.9)
+hold-play: not held 634/630 s of play; verdict stops the hold: fps_ok 1.0, crash False, hang False
+held ESPN MLS ExtraTime 2002 USA for 709s
+VERDICT ESPN MLS ExtraTime 2002 USA ? PASS None gameplay=708.3s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0001 play_share=0.907 fps_excluded=66.1s
+{"name": "ESPN MLS ExtraTime 2002 USA", "device": "nova", "result": "gameplay", "minutes": 6.57, "model_calls": 50, "steps": 35, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4B4E0005-1015n/frames/034-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

@@ -1,0 +1,76 @@
+{
+ "title_id": "454100A4",
+ "name": "Tiger Woods PGA Tour 07 USA",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/454100A4-Tiger_Woods_PGA_Tour_07_USA.xiso.iso",
+ "result": "gameplay",
+ "tool": "920a61de3c",
+ "started": "2026-10-16 02:00:27 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454100A4-1015n/frames/020-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454100A4-1015n/frames/020-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454100A4-1015n/frames/020-probe-c.jpg"
+ ],
+ "reason": "four probes refused",
+ "minutes": 3.33,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454100A4-1015n/frames/019-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454100A4-1015n/frames/021-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454100A4-1015n/frames/022-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454100A4-1015n/frames/023-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454100A4-1015n/frames/024-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454100A4-1015n/frames/025-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454100A4-1015n/frames/026-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454100A4-1015n/frames/027-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454100A4-1015n/frames/028-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454100A4-1015n/frames/029-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-4541.md",
+  "hints/learned-series-tiger-woods.md"
+ ],
+ "hold": {
+  "genre": "other",
+  "why": "Golf swing/shot setup, not covered by the listed categories",
+  "ok": false,
+  "play_s": 179.0,
+  "need_s": 630.0,
+  "hold_s": 180.1,
+  "model_navs": 0,
+  "frames": 5,
+  "still_windows": 0,
+  "shed": [],
+  "reversals": 0,
+  "reason": "fps gate at 3:00: median 19 < 22, 0% of 60 samples at >= 28.5",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 60,
+    "median": 19.0,
+    "share": 0.0,
+    "at_s": 180.1,
+    "floor": 22.0,
+    "stop": true
+   }
+  ],
+  "stuck_abort": false,
+  "verdict": "VERDICT Tiger Woods PGA Tour 07 USA ? FAIL(duration: 181 s of gameplay < 600 s confirmation) gameplay=181.2s fps_ok=0.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.5708 play_share=0.9986 fps_excluded=0.0s"
+ },
+ "model_calls": 20,
+ "calls_by_model": {
+  "claude-sonnet-5": 20
+ },
+ "steps": 20,
+ "seconds": 423.9,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454100A4-1015n/frames/045-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [
+  "45410021",
+  "4541003A"
+ ],
+ "cheap": 1,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-454100A4-1015n/strip.jpg"
+}

@@ -1,0 +1,76 @@
+pathfind: Tecmo Classic Arcade (5443000E) on nova: /storage/E6C6-D7AA/Games/XBox/5443000E-Tecmo_Classic_Arcade.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 5443000E any, loaded none
+[  12.2s] #  1 publisher_logo    fast    A                        Boot splash or logo animation on a blank white background, no title or menu yet. Per hints
+[  21.4s] #  2 publisher_logo    fast    A                        Tecmo legal/federal warning screen, not a title or menu yet. Hint says A passed DOAX's fed
+[  34.2s] #  3 publisher_logo    fast    A                        Tecmo company logo, not a title or menu yet. Per hints, skip with A; the previous A press 
+[  45.1s] #  4 main_menu         fast    A                        Arcade game-select menu; the highlighted tile is Tecmo Cup, the default. A on GAME START l
+[  57.0s] #  5 publisher_logo    fast    A                        This is the Tecmo Cup title/logo card still animating in, not a menu or gameplay yet; per 
+[  76.9s] #  6 unknown           fast    A                        A tournament/bracket results or standings list (all 0:0), not a title, menu I can navigate
+[  90.0s] #  7 game_over         fast    A                        The match has ended: the 'GAME OVER' banner is up and the clock reads 00:00, so this is no
+[ 101.4s] #  8 results           fast    A                        Match has ended (GAME OVER with clock at 00:00), so this is not live play. Per the prior h
+[ 114.4s] #  9 results           fast    START                    Match has ended (GAME OVER, clock 00:00), not live play. A and A already returned to this 
+[ 127.5s] # 10 game_over         fast    B                        Clock is at 00:00 and the GAME OVER banner is up, so the match has ended and this is not l
+[ 139.4s] # 11 game_over         fast    LEFT A                   The match has ended (clock 00:00, GAME OVER banner), so this is not live play. A, A, START
+[ 151.5s] # 12 title_screen      fast    START                    Title/attract logo screen with no 'Press Start' prompt visible; START is the usual title i
+[ 163.5s] # 13 results           fast    A                        Results/tournament standings list with no player-controlled play; not live. Per the histor
+[ 176.3s] # 14 game_over         fast    X                        The clock is at 00:00 and GAME OVER is shown, so the match has ended and this is not live 
+[ 189.8s] # 15 title_screen      fast    START                    Arcade attract screen asking for the one player button with a credit already in, so START 
+[ 204.6s] # 16 submenu           fast    A                        Team-introduction/select screen for Tecmo Cup; the default is already set (you are RED). P
+[ 217.7s] # 17 gameplay          fast    wait                     Live match: HUD, scoreboard and clock are running with players on the pitch, so it is not 
+[ 238.4s] # 18 probe             probe   STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.371, under input 0.234
+[ 247.6s] # 19 gameplay          fast    wait                     Live match: HUD, running clock and players on the pitch, no menu open. The earlier probe w
+[ 267.1s] # 20 probe             probe   STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.192, under input 0.307
+[ 284.1s] # 21 gameplay          fast    wait                     Live match with HUD, running clock and players on the pitch; the GOAL banner is a brief ce
+[ 299.0s] # 22 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 control 0.077, under input 0.081
+[ 306.3s] # 23 period_break      fast    START A                  Clock reads 00:00 with the 'TIME UP' banner, so the period has ended; this is an end-of-pe
+[ 317.4s] # 24 title_screen      fast    START                    Tehkan Cup title/copyright screen, a title-type prompt with no visible 'Press Start' text 
+[ 328.8s] # 25 period_break      fast    START A                  A 'WINNER' results card between games of a football title (Tehkan World Cup style), not li
+[ 341.0s] # 26 game_over         fast    START A                  The clock has run out and 'GAME OVER' is shown, so this is not live play. Advance the end-
+[ 354.1s] # 27 game_over         fast    B                        The match clock has run out and GAME OVER is showing, so this is not live play. START A wa
+[ 369.6s] # 28 game_over         fast    A                        The match clock has run out and GAME OVER is showing, so this is not live play. START+A an
+[ 380.3s] # 29 game_over         fast    BACK                     The match clock is at 00:00 and GAME OVER is displayed, so this is not live play. Previous
+[ 393.4s] # 30 game_over         fast    X                        The match clock is at 00:00 and GAME OVER is showing, so this is not live play. The same i
+[ 406.9s] # 31 title_screen      fast    START                    Attract/information screen with a 'PUSH ONE PLAYER BUTTON' prompt and CREDIT 1 showing, no
+[ 428.7s] # 32 gameplay          fast    wait                     Live match with HUD and clock up, but the 'KICK OFF' banner is a round-start banner, so no
+[ 446.1s] # 33 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.375, under input 0.015
+[ 455.1s] # 34 gameplay          fast    wait                     Live soccer play with HUD (score, clock, radar) and players on the pitch; the match clock 
+[ 480.4s] # 35 probe             probe   STICK:up:1.5 STICK:left:1.2 HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.159, under input 0.124
+[ 500.2s] # 36 unknown           fast    wait                     A big GOAL banner over the pitch is a scoring interlude, not live play, so I should not pr
+[ 509.5s] # 37 gameplay          fast    wait                     HUD (score, clock, radar) and players on the pitch with no menu or banner; the match clock
+[ 522.7s] # 38 probe             probe   HOLD:A:3                 control 0.038, under input 0.077
+[ 538.0s] # 39 unknown           fast    wait                     The frame is mostly black with only a wireframe shape at the bottom edge; it could be a tr
+[ 548.3s] # 40 publisher_logo    fast    START                    This is the Tehkan publisher/title card, not gameplay or a menu. The history shows a live 
+[ 566.2s] # 41 pause             fast    wait                     A GOAL banner with 'GAME OVER' text is a scoring interlude / match-end screen, not live pl
+[ 575.9s] # 42 results           fast    wait                     A tournament/league results or game-list table with no player-controlled play visible; not
+[ 586.4s] # 43 pause             fast    wait                     The 'GAME OVER' banner over the pitch with the clock at 0:00 is a match-end interlude, not
+[ 597.8s] # 44 pause             fast    wait                     Match-end 'GAME OVER' interlude with the clock at 0:00, not live play; the match has ended
+[ 607.5s] # 45 pause             fast    START A                  Clock at 0:00 with GAME OVER banner is a match-end interlude, not live play; it needs a co
+[ 619.9s] # 46 pause             fast    START A                  Clock reads 0:00 with a GAME OVER banner: a match-end interlude, not live play, and no pla
+[ 634.5s] # 47 game_over         fast    A                        Match-end GAME OVER banner with the clock at 0:00 and no menu. START+A already returned he
+[ 646.4s] # 48 game_over         fast    B                        The match has ended and START+A and A have already returned here, so I'm changing the inpu
+[ 660.5s] # 49 game_over         fast    X START                  Match-end banner with the clock at 0:00. START+A, A and B have all returned here, so I'm t
+[ 682.4s] # 50 gameplay          fast    A                        Live kick-off setup in a match with a HUD, scoreboard and clock running; the 'KICK OFF' ba
+[ 710.0s] # 51 probe             probe   A A RT:3 RT:3 RT:3       control 0.013, under input 0.009; 2 of 3 idle/input rounds won
+[ 725.5s] # 52 unknown           fast    wait                     A GOAL! celebration banner is up over a live HUD with the clock running at 0:52, so this i
+[ 737.2s] # 53 gameplay          fast    wait                     Live match with HUD, scoreboard and a running clock, and no menu or banner over the field.
+[ 753.8s] # 54 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.350, under input 0.015
+[ 760.3s] # 55 gameplay          fast    A STICK:left:1.5         Live match with HUD, pitch and running clock, no menu or banner over the field; the previo
+[ 775.8s] # 56 probe             probe   A STICK:left:1.5 STICK:left:1.5 control 0.095, under input 0.343
+[ 780.2s] # 57 game_over         fast    START                    The match has ended (TIME 00:00, GAME OVER banner), so it is not gameplay. Previous inputs
+[ 787.5s] # 58 title_screen      fast    START                    Tecmo Cup copyright/title splash with no menu yet; the prompt says START or A on title scr
+[ 796.2s] # 59 results           fast    START                    This is a results/standings table (3RD/2ND GAME WINNER 0:0 list), not live play. Previous 
+[ 804.0s] # 60 results           fast    START                    The match has ended (TIME 00:00, GAME OVER banner), so this is not live play. The previous
+[ 813.7s] # 61 game_over         fast    B                        The match has ended, so this is not gameplay. START and A have already cycled this screen,
+[ 823.9s] # 62 game_over         fast    DOWN A                   Match has ended and START, A and B have already cycled this screen. Trying a different inp
+[ 836.0s] # 63 game_over         fast    UP A                     The match has ended, so this is not gameplay. START, A, B and DOWN+A have already cycled t
+[ 848.1s] # 64 game_over         fast    X RIGHT A                The match has ended (TIME 00:00, GAME OVER), so this is not gameplay. START, A, B, DOWN+A 
+[ 860.8s] # 65 title_screen      fast    START                    Attract/info screen with CREDIT 1 and a 'PUSH ONE PLAYER BUTTON' prompt, so START is the o
+[ 868.5s] # 66 pause             fast    A                        This is the team line-up/intro card before a Tecmo Cup match, not live play. The one-press
+[ 876.6s] # 67 gameplay          fast    wait                     Live match with HUD and a counting clock, players moving on the pitch, so this is real pla
+[ 888.7s] # 68 probe             probe   RT:3                     control 0.014, under input 0.100
+[ 895.8s] # 69 cutscene          fast    START                    A GOAL banner over the pitch is a scoring interlude, not confirmed player control. The las
+[ 900.4s] # 70 cutscene          repeat  START                    repeat START: it advanced the cutscene
+{"name": "Tecmo Classic Arcade", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 76, "steps": 70, "replayed": 0, "reason": "budget 15 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

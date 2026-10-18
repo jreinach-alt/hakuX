@@ -1,0 +1,80 @@
+{
+ "title_id": "5553000B",
+ "name": "Largo Winch Empire Under Threat Europe En Fr De Es It",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/5553000B-Largo_Winch_Empire_Under_Threat_Europe_En_Fr_De_Es_It.xiso.iso",
+ "result": "gameplay",
+ "tool": "35c0856bf1",
+ "started": "2026-10-14 02:25:09 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5553000B-1014/frames/014-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5553000B-1014/frames/014-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5553000B-1014/frames/014-probe-c.jpg"
+ ],
+ "minutes": 3.4,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5553000B-1014/frames/013-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5553000B-1014/frames/015-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5553000B-1014/frames/016-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5553000B-1014/frames/017-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5553000B-1014/frames/018-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5553000B-1014/frames/019-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5553000B-1014/frames/020-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5553000B-1014/frames/021-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5553000B-1014/frames/022-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-5553.md"
+ ],
+ "hold": {
+  "genre": "attack",
+  "why": "Character-focused tactical action-adventure with combat mechanics.",
+  "ok": false,
+  "play_s": 239.5,
+  "need_s": 630.0,
+  "hold_s": 410.8,
+  "model_navs": 7,
+  "frames": 10,
+  "still_windows": 1,
+  "shed": [
+   "B"
+  ],
+  "reversals": 0,
+  "reason": "off play 161 s of a 410 s scored window cannot drop to 10% with 992 s of budget left: no amount of further play can pass",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 157,
+    "median": 59.0,
+    "share": 1.0,
+    "at_s": 186.7,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 292,
+    "median": 59.0,
+    "share": 1.0,
+    "at_s": 323.0,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "stuck_abort": false,
+  "verdict": "VERDICT Largo Winch Empire Under Threat Europe En Fr De Es It ? FAIL(duration: 410 s of gameplay < 600 s confirmation) gameplay=410.5s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0 play_share=0.6058 fps_excluded=162.9s"
+ },
+ "model_calls": 23,
+ "calls_by_model": {
+  "claude-haiku-4-5-20251001": 23
+ },
+ "steps": 14,
+ "seconds": 700.2,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5553000B-1014/frames/052-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 1,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5553000B-1014/strip.jpg"
+}

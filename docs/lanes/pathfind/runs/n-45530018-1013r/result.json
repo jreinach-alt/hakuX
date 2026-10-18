@@ -1,0 +1,78 @@
+{
+ "title_id": "45530018",
+ "name": "25 to Life",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/45530018-25_to_Life.xiso.iso",
+ "result": "gameplay",
+ "tool": "74dfc2db2c",
+ "started": "2026-10-13 09:46:45 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45530018-1013r/frames/016-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45530018-1013r/frames/016-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45530018-1013r/frames/016-probe-c.jpg"
+ ],
+ "minutes": 5.41,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45530018-1013r/frames/015-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45530018-1013r/frames/017-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45530018-1013r/frames/018-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45530018-1013r/frames/019-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45530018-1013r/frames/020-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45530018-1013r/frames/021-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45530018-1013r/frames/022-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45530018-1013r/frames/023-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45530018-1013r/frames/024-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-4553.md"
+ ],
+ "hold": {
+  "genre": "shooter",
+  "why": "Third-person shooter; character on foot with firearms and grenades, tutorial instructing weapon trigger use",
+  "ok": false,
+  "play_s": 607.7,
+  "need_s": 600.0,
+  "hold_s": 609.1,
+  "model_navs": 0,
+  "frames": 15,
+  "still_windows": 0,
+  "shed": [],
+  "reversals": 10,
+  "reason": "verdict stops the hold: fps_ok 0.9737, crash False, hang False",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 163,
+    "median": 59.0,
+    "share": 0.969,
+    "at_s": 188.8,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 293,
+    "median": 59.0,
+    "share": 0.983,
+    "at_s": 325.9,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "stuck_abort": false,
+  "verdict": "VERDICT 25 to Life ? PASS None gameplay=609.4s fps_ok=0.9737 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.1429 play_share=0.9996 fps_excluded=2.1s"
+ },
+ "model_calls": 24,
+ "calls_by_model": {
+  "claude-haiku-4-5-20251001": 24
+ },
+ "steps": 16,
+ "seconds": 985.3,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45530018-1013r/frames/063-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-45530018-1013r/strip.jpg"
+}

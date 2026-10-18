@@ -1,0 +1,63 @@
+taken: nova by lane.pathfind
+NOT IDLE: nova is held but busy -- do not touch it yet:
+dispatcher pid 518495 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+running: 1-1791212834-lane.belowbar1005-2132085 on nova
+run: hold.sh wait-idle nova <timeout_s>, and touch the device only on exit 0
+waiting for nova: dispatcher pid 518495 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+running: 1-1791212834-lane.belowbar1005-2132085 on nova
+idle: nova is held and runs nothing
+held at 09:15:16
+pathfind: Guilty Gear XX Reload The Midnight Carnival (53410002) on nova: /storage/E6C6-D7AA/Games/XBox/53410002-Guilty_Gear_XX_Reload_The_Midnight_Carnival.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 53410002 any, loaded golden 6f0d8fc26eb7
+[   6.2s] #  1 publisher_logo    replay  A                        replay step 0: replay step 0: replay step 0: replay step 0: Early boot (0.1 min) showing a
+[  10.4s] #  2 black             black   wait                     black frame
+[  14.3s] #  3 publisher_logo    replay  A                        replay step 2: Publisher logo still up; per hints one A press to skip, then re-read. Previ
+[  21.9s] #  4 publisher_logo    fast    A                        Intro/logo animation still playing, not a title or menu yet; per hints one A press to skip
+[  29.8s] #  5 publisher_logo    fast    A                        Arc System Works publisher logo is still up, not a title or menu. Per hints, one A press t
+[  34.6s] #  6 title_screen      replay  START                    replay step 6: replay step 5: Title screen with a PRESS START prompt; the recorded path an
+[  39.4s] #  7 main_menu         replay  A                        replay step 7: replay step 6: Main menu with ARCADE highlighted in the center; Arcade is t
+[  44.1s] #  8 submenu           replay  A                        replay step 8: replay step 7: Character select is a menu, not gameplay. The recorded path 
+[  48.7s] #  9 title_screen      replay  START                    replay step 9: replay step 8: Title with a PRESS START prompt; the recorded path and hints
+[  56.5s] # 10 submenu           fast    A                        This is a character select screen, not a title or live gameplay. Per hints, START is not u
+[  66.4s] # 11 gameplay          fast    wait                     Live round with HUD and counting timer, no banner or PLEASE WAIT. The PRESS START is a 2P 
+[  84.7s] # 12 probe             probe   STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.170, under input 0.809
+[  91.5s] # 13 gameplay          fast    wait                     Live round with HUD and a counting timer, no round banner or PLEASE WAIT. The PRESS START 
+[ 112.6s] # 14 probe             probe   STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.771, under input 0.192
+[ 122.3s] # 15 gameplay          fast    wait                     A live round with HUD and a counting timer. The PRESS START is a P2 join prompt, so START 
+[ 148.1s] # 16 probe             probe   LEFT LEFT STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.237, under input 0.763
+[ 158.7s] # 17 gameplay          fast    wait                     Live round with HUD and a counting timer, no banner. The PRESS START is a P2 join prompt, 
+[ 182.5s] # 18 probe             probe   RIGHT HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.641, under input 0.709
+[ 215.8s] # 26 retracted         probe   wait                     retracted after 30 s: This is the character-select screen (Sol-Badguy portrait with name p
+[ 221.1s] # 27 continue          fast    START                    A CONTINUE countdown after a lost round. The guide says one START, then A if it stays, and
+[ 228.9s] # 28 submenu           fast    A                        Character select is a menu, not gameplay. Per the guidance, START is not used on select sc
+[ 238.0s] # 29 submenu           fast    A                        This is a character select menu, not gameplay. The 'PRESS START' sits over an empty P2 slo
+[ 248.0s] # 30 gameplay          fast    wait                     A live round with HUD and a counting timer and no banner. The PRESS START is a P2 join pro
+[ 268.4s] # 31 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.704, under input 0.728
+[ 275.0s] # 32 gameplay          fast    wait                     Live round with HUD and a counting timer, no round banner. The PRESS START is a P2 join pr
+[ 293.5s] # 33 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.190, under input 0.192
+[ 298.3s] # 34 gameplay          fast    wait                     A round-start banner is up, so the round is not yet live; per the guidance, wait 2 s and l
+[ 319.1s] # 35 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.716, under input 0.051
+[ 326.4s] # 36 gameplay          fast    wait                     Live round with HUD and a counting timer, no round-start banner. The PRESS START is the P2
+[ 338.7s] # 37 probe             probe   STICK:up:2               control 0.072, under input 0.542
+[ 345.2s] # 38 gameplay          fast    wait                     A live round with the HUD and a counting timer, no round-start banner, and no menu. The PR
+[ 359.8s] # 39 probe             probe   RT:3 RT+left:1.2 RT+right:1.2 control 0.719, under input 0.943
+[ 363.4s] # 40 continue          fast    START                    A CONTINUE countdown after a lost round. Per guidance, one START then A if it stays; do no
+[ 372.0s] # 41 submenu           fast    A                        This is a character select screen, not gameplay or a title. Per the guidance, START is not
+[ 382.2s] # 42 submenu           fast    A                        Looks like a character select or pre-match screen, not a live round: no timer or fight HUD
+[ 392.7s] # 43 gameplay          fast    wait                     Live round with HUD and a counting timer, no banner or menu. The PRESS START over the empt
+[ 411.9s] # 44 probe             probe   RT:3 RT+left:1.2 RT+right:1.2 control 0.701, under input 0.614
+[ 419.2s] # 45 gameplay          fast    wait                     A live round: HUD and a counting timer (76), no round-start banner or pause menu. The PRES
+[ 443.7s] # 46 probe             probe   HOLD:X:3 STICK:left:1.2 STICK:right:1.2 control 0.186, under input 0.671
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 187 s: median 59.0, share>=30 1.0 over 188 samples
+hold-play: fps at 306 s: median 59.0, share>=30 1.0 over 306 samples
+hold-play: HELD 608/600 s of play; 
+held Guilty Gear XX Reload The Midnight Carnival for 775s
+VERDICT Guilty Gear XX Reload The Midnight Carnival ? FAIL(menu time: 78.3% of the scored window in `play` (bar 90%; play 606 s, menu 111 s, black 15 s, continue 12 s)) gameplay=774.2s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0 play_share=0.783 fps_excluded=168.2s
+{"name": "Guilty Gear XX Reload The Midnight Carnival", "device": "nova", "result": "gameplay", "minutes": 7.39, "model_calls": 66, "steps": 39, "replayed": 6, "reason": "four probes refused", "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/gg-rerun7/frames/045-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256
+pathfind rc=0 at 09:36:21
+released: nova by lane.pathfind
+released rc=0

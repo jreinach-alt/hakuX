@@ -1,0 +1,57 @@
+taken: nova by lane.pathfind
+idle: nova is held and runs nothing
+held at 14:57:54
+pathfind: MLB SlugFest 2004 (None) on nova: /storage/E6C6-D7AA/Games/XBox/MLB_SlugFest_2004.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: - any, loaded all goldens (title not identified)
+[   9.4s] #  1 loading           fast    wait                     Blank white screen with a spinning or rendering green logo-like shape, no prompt to press 
+[  18.1s] #  2 publisher_logo    fast    A                        Publisher logo before the title; not skippable by a prompt yet. Per the hints, skip with A
+[  26.6s] #  3 cutscene          fast    START                    Pre-game broadcast-style intro shot of the batter in the game world with no HUD or control
+[  35.2s] #  4 title_screen      fast    START                    Title art with no visible prompt yet; the previous step's cutscene has ended, so pressing 
+[  46.4s] #  5 submenu           fast    A                        A Midway disk-check notice with a prompt to press A to continue; no player records prompt 
+[  56.5s] #  6 submenu           fast    LEFT A                   Team select with no human-controlled team; both sides are CPU. Per the sports rule, put co
+[  66.2s] #  7 submenu           fast    LEFT A                   Team select with no human-controlled team. Per the sports rule, put controller 1 under a t
+[  77.8s] #  8 submenu           fast    A                        Team select, not yet started. Prior LEFT+A tries left the screen unchanged, and no control
+[  87.4s] #  9 submenu           fast    A                        A pre-game matchup card after team select, not gameplay and no HUD or controls yet. Nothin
+[  95.9s] # 10 submenu           fast    A                        Pre-game loading tip screen for Home Run Derby with a prompt to press A to play ball; the 
+[ 109.2s] # 11 gameplay          fast    wait                     The HUD and playfield are up with the player's batting side live (BATTER label, TURBO mete
+[ 128.4s] # 12 probe             probe   STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.310, under input 0.633
+[ 137.3s] # 13 gameplay          fast    wait                     Live at-bat HUD with the human-controlled batter in the box and a pitch speed readout; thi
+[ 152.7s] # 14 probe             probe   HOLD:A:1.5 HOLD:A:1.5 HOLD:A:1.5 control 0.127, under input 0.135
+[ 161.5s] # 15 gameplay          fast    wait                     Live at-bat HUD with the human-controlled batter in the box and a count; the STRIKE OUT ba
+[ 180.2s] # 16 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.356, under input 0.381
+[ 185.7s] # 17 gameplay          fast    wait                     Live at-bat with the human-controlled batter in the box and HUD up, so this is the playfie
+[ 200.7s] # 18 probe             probe   STICK:right:1.5 STICK:left:1.2 control 0.048, under input 0.087
+[ 208.7s] # 19 gameplay          fast    wait                     Human-controlled batter is in the box with the full at-bat HUD, and the earlier steps alre
+[ 224.1s] # 20 probe             probe   STICK:right:1.5 STICK:right:1.5 STICK:right:1.5 control 0.119, under input 0.119
+[ 231.6s] # 21 gameplay          fast    wait                     Human-controlled batter is in the box with the full at-bat HUD and player 1 assigned, and 
+[ 248.3s] # 22 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.405, under input 0.353
+[ 255.8s] # 23 gameplay          fast    wait                     Human-controlled batter is in the box with the full at-bat HUD and PLAYER 1 assigned. Pitc
+[ 273.7s] # 24 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.168, under input 0.055
+[ 281.4s] # 25 gameplay          fast    wait                     Human-controlled batter is set up with the full at-bat HUD and PLAYER 1 assigned; the pitc
+[ 296.6s] # 26 probe             probe   STICK:up:2 STICK:left:1.2 STICK:right:1.2 control 0.356, under input 0.375
+[ 304.0s] # 27 gameplay          fast    wait                     Full at-bat HUD with the human batter in the box and the scoreboard counting; the pitch is
+[ 322.3s] # 28 probe             probe   STICK:left:1.2 RT:3 RT:3 RT:3 control 0.019, under input 0.020
+[ 331.6s] # 29 gameplay          fast    wait                     Full at-bat HUD with PLAYER 1 assigned and a human-controlled batter in the box; the pitch
+[ 346.8s] # 30 probe             probe   RT:3 RT:3 RT:3           control 0.020, under input 0.021
+[ 354.9s] # 31 gameplay          fast    wait                     Live at-bat with the full HUD and a human-controlled batter in the box, but the pitch is s
+[ 369.4s] # 32 probe             probe   HOLD:X:3 HOLD:X:3 HOLD:X:3 control 0.024, under input 0.036
+[ 377.9s] # 33 gameplay          fast    wait                     Live at-bat with the full HUD, a human-assigned batter in the box, and the scoreboard coun
+[ 392.4s] # 34 probe             probe   HOLD:X:3 HOLD:X:3 HOLD:X:3 control 0.022, under input 0.012
+[ 399.5s] # 35 gameplay          fast    wait                     Full at-bat HUD with PLAYER 1 assigned and a human-controlled batter in the box, so this i
+[ 412.8s] # 36 probe             probe   LT:2                     control 0.024, under input 0.580
+[ 422.8s] # 37 gameplay          fast    wait                     Full at-bat HUD with a human-assigned batter in the box and the pitcher on the mound. The 
+[ 433.8s] # 38 probe             probe   LT:2                     control 0.014, under input 0.365
+hold-play: sports look {'clock': 'none', 'period': '1ST', 'human_controlled': True, 'why': 'Baseball has no game clock; the top bar shows 1ST inning, and the PLAYER 1 batting command menu (Contact/Power/Bunt/Steal) is up for the human batter.'}
+hold-play: genre team, need 600 s of play
+hold-play: fps at 185 s: median 51.0, share>=30 1.0 over 159 samples
+hold-play: fps at 315 s: median 47.0, share>=30 1.0 over 254 samples
+hold-play: HELD 603/600 s of play; 
+held MLB SlugFest 2004 for 605s
+VERDICT MLB SlugFest 2004 ? PASS None gameplay=603.9s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0304 play_share=0.9997 fps_excluded=0.0s
+{"name": "MLB SlugFest 2004", "device": "nova", "result": "gameplay", "minutes": 7.23, "model_calls": 41, "steps": 38, "replayed": 0, "reason": "four probes refused", "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/mlb-slugfest-2004/hold/frames/037-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256
+pathfind rc=0 at 15:16:03
+released: nova by lane.pathfind
+released rc=0

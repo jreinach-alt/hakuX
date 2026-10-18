@@ -1,0 +1,33 @@
+pathfind: Disney Pixar Ratatouille (54510109) on nova: /storage/E6C6-D7AA/Games/XBox/54510109-Disney_Pixar_Ratatouille.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 54510109 any, loaded none
+[  10.9s] #  1 publisher_logo    fast    START                    Early boot, likely a studio or engine splash animating in; nothing to select yet. Waiting 
+[  23.9s] #  2 publisher_logo    fast    A                        Publisher logo, not a title or menu yet. Per hints, skip with A first; one press, then re-
+[  37.4s] #  3 unknown           fast    wait                     Ambiguous render: no title, menu, or HUD, and it is not clearly a logo or cutscene. Previo
+[  45.4s] #  4 publisher_logo    fast    A                        Publisher/studio logo, not a title or menu yet. Per hints, one press of A, then re-read. P
+[  53.6s] #  5 loading           fast    wait                     A loading screen with the game's own splash and a 'Loading...' label; nothing to select an
+[  63.3s] #  6 title_screen      fast    START                    Title with 'Please press START to begin'; per hints, START is the title prompt. No menu cu
+[  72.8s] #  7 name_entry        fast    A START                  Profile name entry with an empty name. Hints say an empty name is refused, so type a lette
+[  81.7s] #  8 name_entry        fast    START                    Profile name entry with a default letter already typed; per hints, START jumps to Accept/O
+[  89.2s] #  9 name_entry        fast    START                    Profile name entry with a default letter 'A' already filled in and the cursor on the lette
+[ 100.2s] # 10 name_entry        fast    DOWN DOWN DOWN DOWN DOWN A START already tried three times here without leaving the screen. The cursor is on the lett
+[ 114.1s] # 11 name_entry        fast    DOWN A                   A name is already entered ('As'), so the profile is valid. START and A on the letter grid 
+[ 125.3s] # 12 submenu           fast    A                        Save slot picker with empty slots; choosing an empty slot starts a fresh save and should l
+[ 137.1s] # 13 submenu           fast    A                        Profile was created successfully; the only option is Continue, highlighted in gold. A conf
+[ 148.3s] # 14 main_menu         fast    A                        Title's main menu; Play Game is highlighted in orange, the fastest route to play. A select
+[ 158.3s] # 15 cutscene          fast    START                    Letterboxed cinematic framing with no HUD or controllable character; this is a cutscene, n
+[ 162.8s] # 16 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 167.3s] # 17 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 171.8s] # 18 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 176.5s] # 19 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 190.5s] # 20 gameplay          fast    A                        Info box is a tutorial prompt over the live playfield with Remy in the world; the on-scree
+[ 205.6s] # 21 probe             probe   A STICK:up:1.5           control 0.029, under input 0.600
+hold-play: genre other, need 600 s of play
+hold-play: fps at 185 s: median 51.0, share>=30 1.0 over 155 samples
+hold-play: fps at 306 s: median 51.0, share>=30 1.0 over 261 samples
+hold-play: HELD 604/600 s of play; 
+held Disney Pixar Ratatouille for 605s
+VERDICT Disney Pixar Ratatouille ? PASS None gameplay=605.3s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0021 play_share=0.9998 fps_excluded=1.4s
+{"name": "Disney Pixar Ratatouille", "device": "nova", "result": "gameplay", "minutes": 3.43, "model_calls": 26, "steps": 21, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-54510109/frames/020-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

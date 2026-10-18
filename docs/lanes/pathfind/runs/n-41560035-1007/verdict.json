@@ -1,0 +1,181 @@
+{
+  "title": "Ultimate Spider Man",
+  "title_id": null,
+  "name": null,
+  "device": "",
+  "ref": null,
+  "apk_sha": null,
+  "request_id": "n-41560035-1007",
+  "route": null,
+  "surface_scale": null,
+  "adb_failures": null,
+  "thermal": {
+    "measured": false,
+    "samples": 0,
+    "unread": 0,
+    "pauses": [],
+    "in_window": false,
+    "window_covered": null,
+    "gap": null,
+    "first_pause_s": null,
+    "regimen": null,
+    "failed_sustained": null,
+    "still_heating": null
+  },
+  "human_review": "",
+  "booted": true,
+  "reached_gameplay": true,
+  "gameplay_by": "route",
+  "crash": false,
+  "crash_detail": [],
+  "crash_warnings": 0,
+  "gameplay_s": 1193.0,
+  "timeline": {
+    "play_s": 609.7,
+    "scored_s": 1193.0,
+    "play_share": 0.5111,
+    "by_state": {
+      "play": 609.7,
+      "still": 576.8,
+      "menu": 6.2,
+      "no-timeline": 0.2
+    },
+    "play_spans": 8,
+    "changes": 15,
+    "fps_excluded_s": 583.3,
+    "fps_excluded_windows": 283
+  },
+  "capture_gaps_s": [],
+  "capture_lost_s": 0,
+  "capture_truncated": false,
+  "capture_truncated_s": null,
+  "hang": false,
+  "hang_gaps_s": [],
+  "fps_windows": 290,
+  "fps_bar": 30.0,
+  "fps_ok_share": 0.894,
+  "fps_ok_window_share": 0.9207,
+  "fps_window_median": 29.37,
+  "fps_window_min": 11.58,
+  "g_fps_mean_reported_not_judged": 29.05,
+  "target_fps": 30.0,
+  "own_target_share": 0.894,
+  "confirmation_need_s": 600.0,
+  "below_own_target": false,
+  "power": {
+    "measured": false,
+    "samples": 0,
+    "sign": "battery_w: + discharging, - charging; net_w = battery_w + usb_w",
+    "battery_w": null,
+    "usb_w": null,
+    "usb_from": null,
+    "usb_bound": null,
+    "net_w": null,
+    "sign_suspect": 0,
+    "thermal_status_max": null,
+    "scored_s": 611.3,
+    "flips": 17400,
+    "j_per_frame": null,
+    "j_per_frame_battery": null
+  },
+  "audio_measured": true,
+  "audio_starve_share": 0.0,
+  "audio_empty_calls": 0,
+  "pace": {
+    "lines": 574,
+    "nominal_vblanks": 2,
+    "late_per_100": 7.14,
+    "worst_stall": 1124.9,
+    "last": "f=40380 v0=0 v1=1 v2=56 v3=3 v4=0 vb=122 max=37.4 ms=2035.8"
+  },
+  "hitches": {
+    "n": 8,
+    "n_after_warmup": 8,
+    "per_min_after_warmup": 0.424,
+    "worst_ms": 1124.9,
+    "n_big_after_warmup": 7,
+    "classification": {
+      "shader": 0,
+      "texture": 0,
+      "both": 0,
+      "unexplained": 8
+    },
+    "worst5": [
+      {
+        "off_s": 469.6,
+        "max_ms": 1124.9,
+        "dsm": 0,
+        "dpc_ms": 0.0,
+        "shader_stage_ms": 0.0,
+        "tex_us": 1994,
+        "cls": "unexplained"
+      },
+      {
+        "off_s": 1129.2,
+        "max_ms": 1110.7,
+        "dsm": 0,
+        "dpc_ms": 0.0,
+        "shader_stage_ms": 0.0,
+        "tex_us": 1113,
+        "cls": "unexplained"
+      },
+      {
+        "off_s": 77.8,
+        "max_ms": 1108.2,
+        "dsm": 0,
+        "dpc_ms": 0.0,
+        "shader_stage_ms": 0.0,
+        "tex_us": 1797,
+        "cls": "unexplained"
+      },
+      {
+        "off_s": 251.3,
+        "max_ms": 1099.2,
+        "dsm": 0,
+        "dpc_ms": 0.0,
+        "shader_stage_ms": 0.0,
+        "tex_us": 1663,
+        "cls": "unexplained"
+      },
+      {
+        "off_s": 858.3,
+        "max_ms": 1067.9,
+        "dsm": 0,
+        "dpc_ms": 0.0,
+        "shader_stage_ms": 0.0,
+        "tex_us": 1146,
+        "cls": "unexplained"
+      }
+    ]
+  },
+  "hitch_allowance": null,
+  "static_window": {
+    "measured": true,
+    "frozen_frac": 0.0006,
+    "n": 31,
+    "source": "route-frames"
+  },
+  "position": {
+    "measured": true,
+    "reason": null,
+    "source": "route-frames",
+    "samples": 31,
+    "pairs": 30,
+    "still": 0,
+    "still_frac": 0.0,
+    "first_last": 0.4713,
+    "bar": 0.025
+  },
+  "pass_kind": "confirmation",
+  "void": null,
+  "pass": false,
+  "failing": "menu time: 51.1% of the scored window in `play` (bar 90%; play 610 s, still 577 s, menu 6 s, no-timeline 0 s)",
+  "failures": [
+    "menu time: 51.1% of the scored window in `play` (bar 90%; play 610 s, still 577 s, menu 6 s, no-timeline 0 s)",
+    "fps: 89.4% of gameplay at >= 30 fps (bar 90%)",
+    "hitches: a 1125 ms stall after the first 60 s (bar 500 ms)"
+  ],
+  "rating_candidate": null,
+  "contact_sheet": "contact.png",
+  "judged_utc": "2026-10-07T15:49:23Z"
+}

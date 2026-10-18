@@ -1,0 +1,105 @@
+pathfind: Black Stone Magic Steel (58490004) on nova: /storage/E6C6-D7AA/Games/XBox/58490004-Black_Stone_Magic_Steel.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 58490004 any, loaded golden 86c8f6eada06
+[  12.3s] #  1 unknown           fast    wait                     Looks like a 3D model viewer or an intro/logo transition rather than a menu or gameplay; n
+[  16.6s] #  2 title_screen      replay  START                    replay step 2: Black Stone Magic & Steel title screen with 'Start Game' and 'Option' menu 
+[  24.9s] #  3 title_screen      fast    START                    Title screen with Start Game highlighted as the brightest item; START selects it, as in th
+[  29.8s] #  4 controller_prompt replay  START                    replay step 3: New/Load menu with 'PRESS START' prompt and controller slot icons (1P-4P), 
+[  37.7s] #  5 controller_prompt fast    START                    Same as the recorded path: the 2P/1P panel asks for START to join the controller. Cursor/h
+[  47.9s] #  6 name_entry        fast    START                    Default name is fine. The cursor is on the letter grid, not OK. START jumps to Accept on s
+[  58.4s] #  7 name_entry        fast    wait                     START did nothing last time, so the cursor is on the letter grid at A. The default name is
+[  66.4s] #  8 name_entry        fast    wait                     START did nothing, and the cursor sits on letter A in the grid. Moving the stick diagonall
+[  75.6s] #  9 name_entry        fast    wait                     Default name is acceptable, but the cursor is on letter A in the grid, not on OK. START di
+[  87.6s] # 10 name_entry        fast    DOWN DOWN DOWN DOWN DOWN DOWN RIGHT RIGHT Default name A_ is acceptable; cursor is on letter A in the grid, not OK. START did nothin
+[ 100.5s] # 11 name_entry        fast    A                        The yellow-filled Ok button is the highlighted item and the default name A_ is acceptable,
+[ 108.1s] # 12 loading           fast    wait                     Loading screen with a progress bar that is still filling; the spinner is not frozen, so wa
+[ 118.6s] # 13 gameplay          fast    wait                     Player HUD is up and a playable character stands in the 3D world with no menu, letterbox o
+[ 124.2s] # 14 probe             probe   STICK:up:1.5             control 0.002, under input 0.015
+[ 129.1s] # 15 gameplay          fast    wait                     Player HUD is up and a playable character stands in the 3D world with no menu, letterbox o
+[ 134.6s] # 16 probe             probe   STICK:up:2               control 0.002, under input 0.003
+[ 139.6s] # 17 gameplay          fast    UP                       Player HUD is up and the player's character stands in the 3D world with no menu, letterbox
+[ 147.4s] # 18 probe             probe   UP STICK:up:1.5          control 0.002, under input 0.002
+[ 152.0s] # 19 gameplay          fast    wait                     Player character and HUD are up in the 3D world with no menu, letterbox or subtitle; previ
+[ 157.6s] # 20 probe             probe   STICK:up:2               control 0.002, under input 0.002
+[ 162.2s] # 21 gameplay          fast    STICK:left:1.5           Player HUD is up and the player's character stands in the 3D world with no menu, letterbox
+[ 171.5s] # 22 probe             probe   STICK:left:1.5 STICK:left:1.5 control 0.001, under input 0.002
+[ 176.2s] # 23 gameplay          fast    STICK:down:1.5           Player character and full HUD are visible in the 3D world with no menu, letterbox or subti
+[ 185.2s] # 24 probe             probe   STICK:down:1.5 STICK:down:1.5 control 0.003, under input 0.004
+[ 192.9s] # 25 gameplay          fast    wait                     Player character and HUD are up in the 3D world with no menu. The stick probes registered 
+[ 200.8s] # 26 probe             probe   UP STICK:up:1.5          control 0.003, under input 0.005
+[ 208.4s] # 27 gameplay          fast    wait                     Player character and full HUD are in the 3D world with no menu, letterbox or subtitles. St
+[ 216.8s] # 28 probe             probe   LEFT LEFT STICK:left:1.5 control 0.002, under input 0.005
+[ 221.3s] # 29 gameplay          fast    UP STICK:up:1.5          Player character and full HUD are visible in the 3D world with no menu. Previous stick pro
+[ 231.8s] # 30 probe             probe   UP STICK:up:1.5 UP STICK:up:1.5 control 0.002, under input 0.003
+[ 241.4s] # 31 gameplay          fast    UP RIGHT UP RIGHT        HUD and player character are in the world with no menu. Stick probes have not moved the vi
+[ 253.4s] # 32 probe             probe   UP RIGHT UP RIGHT UP UP RIGHT STICK:right:1.5 control 0.002, under input 0.004
+[ 260.5s] # 33 gameplay          fast    wait                     Full game HUD with the player character in the 3D world and no menu, letterbox or subtitle
+[ 266.0s] # 34 probe             probe   STICK:down:1.5           control 0.001, under input 0.003
+[ 270.7s] # 35 gameplay          fast    STICK:left:1.5           Full HUD and player character in the 3D world, no menu, letterbox or subtitles. Earlier st
+[ 279.9s] # 36 probe             probe   STICK:left:1.5 STICK:left:1.5 control 0.003, under input 0.002
+[ 288.1s] # 37 gameplay          fast    wait                     Full HUD with the player character in the 3D world and no menu. Earlier stick probes did n
+[ 293.7s] # 38 probe             probe   STICK:up:1.5             control 0.002, under input 0.005
+[ 301.9s] # 39 gameplay          fast    wait                     Full game HUD and the player character is in the 3D world. Earlier left, up and down stick
+[ 311.1s] # 40 probe             probe   LEFT LEFT LEFT STICK:left:1.5 control 0.001, under input 0.005
+[ 315.6s] # 41 gameplay          fast    A                        HUD is up and the player character is in the 3D world, but the last several stick probes d
+[ 324.1s] # 42 probe             probe   A A STICK:up:1.5         control 0.002, under input 0.004
+[ 332.1s] # 43 gameplay          fast    RIGHT                    The HUD is up and the character is in the 3D world, but the last several left-stick probes
+[ 341.9s] # 44 probe             probe   RIGHT UP UP UP STICK:up:1.5 control 0.003, under input 0.001
+[ 349.1s] # 45 gameplay          fast    LEFT LEFT                Full HUD and the player character is in the 3D world. Stick probes in the last steps never
+[ 359.3s] # 46 probe             probe   LEFT LEFT UP UP UP STICK:up:1.5 control 0.003, under input 0.002
+[ 367.0s] # 47 gameplay          fast    wait                     Full HUD and the player character is in the 3D world. Earlier probes went UP and LEFT with
+[ 372.6s] # 48 probe             probe   STICK:down:1.5           control 0.002, under input 0.003
+[ 380.1s] # 49 gameplay          fast    A                        The HUD is up and the character is in the world, but stick probes have not moved him. I'll
+[ 388.8s] # 50 probe             probe   A A STICK:up:1.5         control 0.005, under input 0.004
+[ 397.8s] # 51 gameplay          fast    RIGHT RIGHT              Full HUD and the player character is in the 3D world, no menu or letterbox. Stick probes h
+[ 406.4s] # 52 probe             probe   RIGHT RIGHT STICK:right:1.5 control 0.002, under input 0.004
+[ 414.0s] # 53 gameplay          fast    wait                     Full HUD and a player-style character in the 3D world, no menu or letterbox. Earlier stick
+[ 419.8s] # 54 probe             probe   STICK:upleft:2           control 0.002, under input 0.003
+[ 427.7s] # 55 gameplay          fast    wait                     Full HUD and the player character is in the 3D world, so this is gameplay. Earlier UP-stic
+[ 433.4s] # 56 probe             probe   STICK:down:1.5           control 0.002, under input 0.005
+[ 438.2s] # 57 gameplay          fast    UP UP                    Full HUD (health bar, KILL/Gold/KEY) and the player character is in the 3D world with no m
+[ 447.8s] # 58 probe             probe   UP UP UP UP STICK:up:1.5 control 0.001, under input 0.003
+[ 452.8s] # 59 gameplay          fast    STICK:right:1.5          Full HUD and the player character is in the 3D world with no menu, letterbox or subtitles.
+[ 461.8s] # 60 probe             probe   STICK:right:1.5 STICK:right:1.5 control 0.002, under input 0.002
+[ 466.7s] # 61 gameplay          fast    wait                     Full HUD with the player character in the 3D world, no menu, letterbox or subtitles. Previ
+[ 472.6s] # 62 probe             probe   STICK:upleft:1.5         control 0.001, under input 0.005
+[ 477.2s] # 63 gameplay          fast    DOWN                     Full HUD and the player character is in the 3D world with no menu, letterbox or subtitles.
+[ 485.0s] # 64 probe             probe   DOWN STICK:down:1.5      control 0.001, under input 0.006
+[ 492.5s] # 65 gameplay          fast    wait                     Full HUD with the player character in the 3D world and no menu. Earlier stick probes did n
+[ 498.2s] # 66 probe             probe   STICK:left:1.5           control 0.004, under input 0.004
+[ 505.7s] # 67 gameplay          fast    wait                     Full HUD and the player character is in the 3D world with no menu. Earlier stick probes di
+[ 513.2s] # 68 probe             probe   RIGHT STICK:right:1.5    control 0.001, under input 0.005
+[ 518.4s] # 69 gameplay          fast    STICK:up:1.5             Full HUD over a 3D playfield with the player character visible, but prior stick probes did
+[ 527.5s] # 70 probe             probe   STICK:up:1.5 STICK:up:1.5 control 0.002, under input 0.002
+[ 532.2s] # 71 gameplay          fast    wait                     Full HUD and the player character is in the 3D world with no menu. Previous stick probes r
+[ 539.8s] # 72 probe             probe   UP STICK:up:1.5          control 0.002, under input 0.002
+[ 544.6s] # 73 gameplay          fast    wait                     Full HUD over a 3D playfield with the player character visible. Earlier stick probes did n
+[ 552.3s] # 74 probe             probe   UP STICK:up:1.5          control 0.002, under input 0.002
+[ 566.2s] # 75 gameplay          fast    wait                     Full HUD over a 3D playfield with the player character in the world, no menu, no letterbox
+[ 572.1s] # 76 probe             probe   STICK:right:1.5          control 0.000, under input 0.004
+[ 577.7s] # 77 gameplay          fast    STICK:up:1.5             Full HUD with the player character in the 3D world and no menu, letterbox or subtitles. Pr
+[ 587.1s] # 78 probe             probe   STICK:up:1.5 STICK:up:1.5 control 0.000, under input 0.002
+[ 593.9s] # 79 gameplay          fast    A STICK:left:1.5         HUD is up and the character is in the 3D world, but STICK:up did not move it twice. Trying
+[ 603.8s] # 80 probe             probe   A STICK:left:1.5 STICK:left:1.5 control 0.002, under input 0.001
+[ 612.1s] # 81 gameplay          fast    wait                     Full HUD over a 3D playfield with the player character visible. Stick up, left and right w
+[ 619.9s] # 82 probe             probe   DOWN STICK:down:1.5      control 0.003, under input 0.007
+[ 627.9s] # 83 gameplay          fast    UP STICK:upright:1.5     Full HUD over a 3D playfield with the player character visible, but the stick did not move
+[ 638.5s] # 84 probe             probe   UP STICK:upright:1.5 RIGHT STICK:right:1.5 control 0.002, under input 0.003
+[ 646.3s] # 85 gameplay          fast    A                        Full HUD over a 3D playfield with the player character visible. Stick input has not moved 
+[ 654.7s] # 86 probe             probe   A LEFT STICK:left:1.5    control 0.002, under input 0.005
+[ 669.9s] # 87 unknown           fast    UP STICK:up:1.5          Full HUD and a player-like character are up, but the left stick has not moved the characte
+[ 688.2s] # 88 unknown           fast    UP                       The HUD is up, but the left stick has not moved the character in any direction, including 
+[ 697.7s] # 89 gameplay          fast    DOWN                     Full HUD over a 3D playfield with the player character visible. UP via D-pad and the stick
+[ 705.4s] # 90 probe             probe   DOWN STICK:down:1.5      control 0.002, under input 0.003
+[ 719.6s] # 91 unknown           fast    RIGHT STICK:right:1.5    HUD and a player-like character are up, but UP and DOWN on both the D-pad and the stick ha
+[ 738.5s] # 92 gameplay          fast    A                        Full HUD over a 3D playfield, but the left stick and D-pad UP/DOWN have not moved the char
+[ 746.2s] # 93 probe             probe   A RT:1.5                 control 0.000, under input 0.000
+[ 760.3s] # 94 unknown           fast    X STICK:up:1.5           HUD is up, but the stick, D-pad, A and RT have all failed to move the character over sever
+[ 777.5s] # 95 unknown           fast    LEFT STICK:left:1.5      HUD and a player-like character are up, but UP, DOWN, A, RT and the stick have all failed 
+[ 788.9s] # 96 gameplay          fast    wait                     Full HUD over a 3D playfield with the player character in the world. Earlier stick and D-p
+[ 799.2s] # 97 probe             probe   STICK:left:1.5           control 0.005, under input 0.321
+hold-play: genre other, need 600 s of play
+hold-play: not held 65/600 s of play; budget 15 min with 65 s of play
+{"name": "Black Stone Magic Steel", "device": "nova", "result": "gameplay", "minutes": 13.32, "model_calls": 66, "steps": 97, "replayed": 2, "reason": "four probes refused", "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/black-stone-hold/frames/096-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

@@ -1,0 +1,61 @@
+taken: nova by lane.pathfind
+NOT IDLE: nova is held but busy -- do not touch it yet:
+dispatcher pid 518495 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+run: hold.sh wait-idle nova <timeout_s>, and touch the device only on exit 0
+waiting for nova: dispatcher pid 518495 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+idle: nova is held and runs nothing
+=== 4D570029 start 20:06:01
+=== 4D570029 rc=0 end 20:21:04
+released: nova by lane.pathfind
+taken: nova by lane.pathfind
+idle: nova is held and runs nothing
+=== 4D570034 start 20:21:04
+=== 4D570034 rc=0 end 20:34:29
+released: nova by lane.pathfind
+taken: nova by lane.pathfind
+idle: nova is held and runs nothing
+=== 4D57000C start 20:34:29
+=== 4D57000C rc=0 end 20:50:38
+released: nova by lane.pathfind
+taken: nova by lane.pathfind
+idle: nova is held and runs nothing
+=== 4156002B start 20:50:38
+=== 4156002B rc=0 end 21:03:29
+released: nova by lane.pathfind
+taken: nova by lane.pathfind
+idle: nova is held and runs nothing
+=== 45410389 start 21:03:29
+=== 45410389 rc=1 end 21:18:40
+released: nova by lane.pathfind
+taken: nova by lane.pathfind
+idle: nova is held and runs nothing
+=== 4541007B start 21:18:40
+=== 4541007B rc=0 end 21:28:26
+released: nova by lane.pathfind
+taken: nova by lane.pathfind
+idle: nova is held and runs nothing
+=== 54540008 start 21:28:26
+=== 54540008 rc=0 end 21:42:16
+released: nova by lane.pathfind
+taken: nova by lane.pathfind
+idle: nova is held and runs nothing
+=== 4541003E start 21:42:16
+=== 4541003E rc=0 end 21:59:26
+released: nova by lane.pathfind
+taken: nova by lane.pathfind
+idle: nova is held and runs nothing
+=== 56550039 start 21:59:26
+=== 56550039 rc=0 end 22:12:18
+released: nova by lane.pathfind
+taken: nova by lane.pathfind
+idle: nova is held and runs nothing
+=== 5655002F start 22:12:18
+=== 5655002F rc=1 end 22:27:43
+released: nova by lane.pathfind
+taken: nova by lane.pathfind
+idle: nova is held and runs nothing
+=== 4541038A start 22:27:43
+=== 4541038A rc=0 end 22:45:43
+released: nova by lane.pathfind
+DEADLINE: not starting 5343000E at 22:45
+SWEEP LOOP DONE 22:45:43

@@ -1,0 +1,263 @@
+pathfind: ESPN NHL Hockey USA (53450026) on nova: /storage/E6C6-D7AA/Games/XBox/53450026-ESPN_NHL_Hockey_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 53450026 any, loaded none
+[  10.1s] #  1 loading           fast    wait                     This looks like an early loading/splash screen before the emulated game has started render
+[  16.8s] #  2 black             black   wait                     black frame
+[  24.1s] #  3 intro_video       fast    START A                  This is a stylized tiled transition intro animation typical of Sega Sports titles before m
+[  33.5s] #  4 publisher_logo    fast    START A                  Standard developer logo splash before title/menu; skip with START then A
+[  42.5s] #  5 publisher_logo    fast    START A                  Another developer logo screen before title/menu; skip with START then A per convention
+[  55.2s] #  6 intro_video       fast    START A                  Stylized abstract transition animation typical of Sega Sports title intros, no menu or HUD
+[  65.5s] #  7 cutscene          fast    START A                  This is a sports presentation segment (SportsCenter-style anchor desk), typical ESPN pre-g
+[  77.3s] #  8 cutscene          fast    START A                  This is a player-intro presentation shot (dramatic lighting, no HUD/score/clock), not live
+[  89.7s] #  9 cutscene          fast    START A                  No HUD/score/clock present, just a dramatic player shot with vignette framing - still pre-
+[  99.1s] # 10 cutscene          fast    START A                  This is a championship celebration presentation shot, no HUD/score/clock, still pre-game o
+[ 105.4s] # 11 black             black   wait                     black frame
+[ 112.1s] # 12 loading           fast    wait                     Screen explicitly says 'Loading' - no input needed, just wait for it to progress
+[ 118.2s] # 13 loading           static  wait                     load still on screen (barely changed)
+[ 123.1s] # 14 loading           static  wait                     load still on screen (barely changed)
+[ 128.0s] # 15 loading           static  wait                     load still on screen (barely changed)
+[ 133.0s] # 16 loading           static  wait                     load still on screen (barely changed)
+[ 137.9s] # 17 loading           static  wait                     load still on screen (barely changed)
+[ 147.0s] # 18 title_screen      fast    START A                  This is the title/logo screen after loading finished; no press-start text visible yet but 
+[ 156.5s] # 19 loading           fast    wait                     Screen explicitly says 'Loading' - this is not an interactive title screen despite resembl
+[ 162.4s] # 20 loading           static  wait                     load still on screen (barely changed)
+[ 167.3s] # 21 loading           static  wait                     load still on screen (barely changed)
+[ 172.3s] # 22 loading           static  wait                     load still on screen (barely changed)
+[ 177.2s] # 23 loading           static  wait                     load still on screen (barely changed)
+[ 183.3s] # 24 loading           static  wait                     load still on screen (barely changed)
+[ 193.1s] # 25 title_screen      fast    A                        This is a static title/logo screen; previous combined 'START A' did nothing, so try A alon
+[ 202.3s] # 26 loading           fast    wait                     Screen now reads 'Loading' rather than a static title; this is an actual loading state, no
+[ 208.2s] # 27 loading           static  wait                     load still on screen (barely changed)
+[ 214.3s] # 28 loading           static  wait                     load still on screen (barely changed)
+[ 219.2s] # 29 loading           static  wait                     load still on screen (barely changed)
+[ 224.2s] # 30 loading           static  wait                     load still on screen (barely changed)
+[ 229.2s] # 31 loading           static  wait                     load still on screen (barely changed)
+[ 238.0s] # 32 title_screen      fast    START                    This is a title/splash screen (not the loading screen from history - screen has changed), 
+[ 247.7s] # 33 loading           fast    wait                     This is actually a loading screen (text says 'Loading'), not the title screen previously a
+[ 253.7s] # 34 loading           static  wait                     load still on screen (barely changed)
+[ 258.6s] # 35 loading           static  wait                     load still on screen (barely changed)
+[ 263.6s] # 36 loading           static  wait                     load still on screen (barely changed)
+[ 268.4s] # 37 loading           static  wait                     load still on screen (barely changed)
+[ 273.4s] # 38 loading           static  wait                     load still on screen (barely changed)
+[ 283.4s] # 39 title_screen      fast    BACK                     This is a title/logo splash screen (ESPN NHL Hockey branding), not the 'Loading' text seen
+[ 291.5s] # 40 loading           fast    wait                     Screen explicitly says 'Loading' - this is a loading screen, not an interactive title scre
+[ 297.5s] # 41 loading           static  wait                     load still on screen (barely changed)
+[ 302.5s] # 42 loading           static  wait                     load still on screen (barely changed)
+[ 307.5s] # 43 loading           static  wait                     load still on screen (barely changed)
+[ 313.5s] # 44 loading           static  wait                     load still on screen (barely changed)
+[ 318.5s] # 45 loading           static  wait                     load still on screen (barely changed)
+[ 328.9s] # 46 title_screen      fast    START                    Loading screen has resolved into the title/logo screen; this is a new screen (not the stal
+[ 338.0s] # 47 title_screen      fast    X                        Static title card; START/A/BACK already tried with no change per history, so try a differe
+[ 350.1s] # 48 title_screen      fast    wait                     Static branded title card; START, A, BACK, X already tried with no change, so try waiting 
+[ 359.5s] # 49 loading           fast    wait                     The word 'Loading' is explicitly visible on screen now, so despite prior history this is a
+[ 365.5s] # 50 loading           static  wait                     load still on screen (barely changed)
+[ 370.4s] # 51 loading           static  wait                     load still on screen (barely changed)
+[ 375.4s] # 52 loading           static  wait                     load still on screen (barely changed)
+[ 381.3s] # 53 loading           static  wait                     load still on screen (barely changed)
+[ 386.3s] # 54 loading           static  wait                     load still on screen (barely changed)
+[ 394.4s] # 55 loading           fast    wait                     A genuine loading screen with 'Loading' text explicitly shown; prior button presses had no
+[ 401.3s] # 56 loading           static  wait                     load still on screen (barely changed)
+[ 406.4s] # 57 loading           static  wait                     load still on screen (barely changed)
+[ 411.4s] # 58 loading           static  wait                     load still on screen (barely changed)
+[ 417.4s] # 59 loading           static  wait                     load still on screen (barely changed)
+[ 422.3s] # 60 loading           static  wait                     load still on screen (barely changed)
+[ 430.3s] # 61 loading           fast    wait                     Genuine loading screen; prior inputs (X, START, BACK, A) had no effect, this is just a loa
+[ 439.3s] # 62 loading           static  wait                     load still on screen (barely changed)
+[ 444.3s] # 63 loading           static  wait                     load still on screen (barely changed)
+[ 450.2s] # 64 loading           static  wait                     load still on screen (barely changed)
+[ 455.2s] # 65 loading           static  wait                     load still on screen (barely changed)
+[ 460.2s] # 66 loading           static  wait                     load still on screen (barely changed)
+[ 468.9s] # 67 title_screen      fast    START                    This is a new screen (title splash with logos), different from the stuck loading screen; t
+[ 478.0s] # 68 loading           fast    wait                     Screen now shows explicit 'Loading' text under the logo, different from the earlier stuck 
+[ 486.0s] # 69 loading           static  wait                     load still on screen (barely changed)
+[ 491.0s] # 70 loading           static  wait                     load still on screen (barely changed)
+[ 496.0s] # 71 loading           static  wait                     load still on screen (barely changed)
+[ 501.1s] # 72 loading           static  wait                     load still on screen (barely changed)
+[ 506.1s] # 73 loading           static  wait                     load still on screen (barely changed)
+[ 516.9s] # 74 publisher_logo    fast    B                        Static branded splash screen; previous START/A/BACK/X presses did nothing so try B or just
+[ 526.9s] # 75 loading           fast    wait                     Screen explicitly says 'Loading'; this is a genuine load screen, not a stuck publisher log
+[ 533.8s] # 76 loading           static  wait                     load still on screen (barely changed)
+[ 538.8s] # 77 loading           static  wait                     load still on screen (barely changed)
+[ 543.8s] # 78 loading           static  wait                     load still on screen (barely changed)
+[ 549.7s] # 79 loading           static  wait                     load still on screen (barely changed)
+[ 554.7s] # 80 loading           static  wait                     load still on screen (barely changed)
+[ 563.0s] # 81 loading           fast    wait                     Genuine loading screen still displayed; none of the prior inputs changed it, so just wait 
+[ 569.9s] # 82 loading           static  wait                     load still on screen (barely changed)
+[ 574.9s] # 83 loading           static  wait                     load still on screen (barely changed)
+[ 581.0s] # 84 loading           static  wait                     load still on screen (barely changed)
+[ 585.9s] # 85 loading           static  wait                     load still on screen (barely changed)
+[ 590.9s] # 86 loading           static  wait                     load still on screen (barely changed)
+[ 598.7s] # 87 loading           fast    wait                     Genuine loading screen; inputs don't affect loading, just wait longer for it to finish
+[ 607.7s] # 88 loading           static  wait                     load still on screen (barely changed)
+[ 613.7s] # 89 loading           static  wait                     load still on screen (barely changed)
+[ 618.7s] # 90 loading           static  wait                     load still on screen (barely changed)
+[ 623.6s] # 91 loading           static  wait                     load still on screen (barely changed)
+[ 628.5s] # 92 loading           static  wait                     load still on screen (barely changed)
+[ 640.9s] # 93 publisher_logo    fast    wait                     Static logo splash; prior START/A/B/X/BACK presses had no effect, so waiting longer in cas
+[ 652.0s] # 94 loading           fast    wait                     This is a genuine loading screen ('Loading' text visible) distinct from the prior unchange
+[ 659.0s] # 95 loading           static  wait                     load still on screen (barely changed)
+[ 663.9s] # 96 loading           static  wait                     load still on screen (barely changed)
+[ 668.9s] # 97 loading           static  wait                     load still on screen (barely changed)
+[ 673.9s] # 98 loading           static  wait                     load still on screen (barely changed)
+[ 679.9s] # 99 loading           static  wait                     load still on screen (barely changed)
+[ 688.9s] #100 title_screen      fast    START A                  Screen has changed from the loading screen to a branded title card; this looks new so try 
+[ 698.7s] #101 loading           fast    wait                     The screen now explicitly says 'Loading' - this is a loading screen, not a static title sc
+[ 704.6s] #102 loading           static  wait                     load still on screen (barely changed)
+[ 709.5s] #103 loading           static  wait                     load still on screen (barely changed)
+[ 715.5s] #104 loading           static  wait                     load still on screen (barely changed)
+[ 720.5s] #105 loading           static  wait                     load still on screen (barely changed)
+[ 725.4s] #106 loading           static  wait                     load still on screen (barely changed)
+[ 733.5s] #107 loading           fast    wait                     Loading screen is unchanged across many steps and inputs; nothing to press on a loading sc
+[ 742.4s] #108 loading           static  wait                     load still on screen (barely changed)
+[ 748.4s] #109 loading           static  wait                     load still on screen (barely changed)
+[ 753.3s] #110 loading           static  wait                     load still on screen (barely changed)
+[ 758.2s] #111 loading           static  wait                     load still on screen (barely changed)
+[ 763.2s] #112 loading           static  wait                     load still on screen (barely changed)
+[ 772.0s] #113 title_screen      fast    Y                        This is a new title card screen (different from the loading screen in history), showing th
+[ 784.1s] #114 publisher_logo    fast    wait                     Static branding splash; all buttons tried with no change per history, so waiting to see if
+[ 798.2s] #115 publisher_logo    fast    DOWN                     Branding/title card screen with league logos, not yet a menu; press START to advance past 
+[ 809.4s] #116 publisher_logo    fast    wait                     Static splash screen; many single-button inputs already tried with no effect, so waiting l
+[ 820.6s] #117 publisher_logo    fast    UP                       This is a title/branding card; many inputs tried with no change, trying START to advance [
+[ 830.6s] #118 publisher_logo    fast    wait                     Static branding splash; many inputs (UP/DOWN/Y/START/B/X/BACK/A combos) already tried with
+[ 843.0s] #119 loading           fast    wait                     The screen explicitly shows 'Loading' text which was not visible in prior described frames
+[ 851.0s] #120 loading           static  wait                     load still on screen (barely changed)
+[ 856.0s] #121 loading           static  wait                     load still on screen (barely changed)
+[ 860.9s] #122 loading           static  wait                     load still on screen (barely changed)
+[ 865.9s] #123 loading           static  wait                     load still on screen (barely changed)
+[ 870.8s] #124 loading           static  wait                     load still on screen (barely changed)
+[ 880.2s] #125 loading           fast    wait                     A loading screen with 'Loading' text explicitly shown; inputs listed as tried did nothing,
+[ 887.2s] #126 loading           static  wait                     load still on screen (barely changed)
+[ 892.1s] #127 loading           static  wait                     load still on screen (barely changed)
+[ 897.0s] #128 loading           static  wait                     load still on screen (barely changed)
+[ 902.0s] #129 loading           static  wait                     load still on screen (barely changed)
+[ 906.9s] #130 loading           static  wait                     load still on screen (barely changed)
+[ 916.4s] #131 loading           fast    wait                     Loading screen unchanged across many steps and many inputs tried with no effect; nothing t
+[ 925.3s] #132 loading           static  wait                     load still on screen (barely changed)
+[ 930.2s] #133 loading           static  wait                     load still on screen (barely changed)
+[ 935.1s] #134 loading           static  wait                     load still on screen (barely changed)
+[ 940.1s] #135 loading           static  wait                     load still on screen (barely changed)
+[ 946.1s] #136 loading           static  wait                     load still on screen (barely changed)
+[ 954.0s] #137 loading           fast    wait                     A genuine loading screen; all button presses have been tried with no effect per history, s
+[ 962.9s] #138 loading           static  wait                     load still on screen (barely changed)
+[ 967.8s] #139 loading           static  wait                     load still on screen (barely changed)
+[ 972.7s] #140 loading           static  wait                     load still on screen (barely changed)
+[ 977.6s] #141 loading           static  wait                     load still on screen (barely changed)
+[ 983.7s] #142 loading           static  wait                     load still on screen (barely changed)
+[ 991.4s] #143 loading           fast    wait                     Genuine loading screen; all button presses tried with no effect per history, so just wait 
+[1000.3s] #144 loading           static  wait                     load still on screen (barely changed)
+[1005.2s] #145 loading           static  wait                     load still on screen (barely changed)
+[1010.1s] #146 loading           static  wait                     load still on screen (barely changed)
+[1016.2s] #147 loading           static  wait                     load still on screen (barely changed)
+[1021.1s] #148 loading           static  wait                     load still on screen (barely changed)
+[1032.1s] #149 title_screen      fast    wait                     This looks like a static logo/title screen reached after loading finished; prior inputs (U
+[1041.3s] #150 loading           fast    wait                     The 'Loading' text is still visible under the logo, so this is still a loading screen desp
+[1048.3s] #151 loading           static  wait                     load still on screen (barely changed)
+[1053.2s] #152 loading           static  wait                     load still on screen (barely changed)
+[1058.1s] #153 loading           static  wait                     load still on screen (barely changed)
+[1063.0s] #154 loading           static  wait                     load still on screen (barely changed)
+[1067.8s] #155 loading           static  wait                     load still on screen (barely changed)
+[1077.3s] #156 title_screen      fast    RIGHT                    The loading screen finally resolved into a title/splash screen; this is a new screen not s
+[1089.7s] #157 title_screen      fast    LEFT                     Static splash screen; many inputs already tried with no effect, trying an untried input (L
+[1098.3s] #158 loading           fast    wait                     The screen says 'Loading' explicitly - this is a loading screen, not a static title screen
+[1104.3s] #159 loading           static  wait                     load still on screen (barely changed)
+[1109.2s] #160 loading           static  wait                     load still on screen (barely changed)
+[1115.4s] #161 loading           static  wait                     load still on screen (barely changed)
+[1120.3s] #162 loading           static  wait                     load still on screen (barely changed)
+[1125.2s] #163 loading           static  wait                     load still on screen (barely changed)
+[1133.9s] #164 title_screen      fast    START                    This is a new screen (title splash with logos) replacing the prior 'Loading' screen; previ
+[1143.0s] #165 loading           fast    wait                     Screen clearly says 'Loading' - this is still loading, not the title screen as previously 
+[1150.2s] #166 loading           static  wait                     load still on screen (barely changed)
+[1155.1s] #167 loading           static  wait                     load still on screen (barely changed)
+[1160.0s] #168 loading           static  wait                     load still on screen (barely changed)
+[1164.9s] #169 loading           static  wait                     load still on screen (barely changed)
+[1169.7s] #170 loading           static  wait                     load still on screen (barely changed)
+[1177.7s] #171 loading           fast    wait                     Screen still shows 'Loading' text explicitly; this is a genuine loading screen, not stuck 
+[1187.7s] #172 loading           static  wait                     load still on screen (barely changed)
+[1192.7s] #173 loading           static  wait                     load still on screen (barely changed)
+[1197.6s] #174 loading           static  wait                     load still on screen (barely changed)
+[1202.5s] #175 loading           static  wait                     load still on screen (barely changed)
+[1207.4s] #176 loading           static  wait                     load still on screen (barely changed)
+[1217.3s] #177 title_screen      fast    START                    This looks like a static title/logo screen that appeared after loading finished; none of t
+[1226.3s] #178 loading           fast    wait                     The 'Loading' text is visible under the logo, indicating this is actively loading rather t
+[1232.3s] #179 loading           static  wait                     load still on screen (barely changed)
+[1237.3s] #180 loading           static  wait                     load still on screen (barely changed)
+[1242.2s] #181 loading           static  wait                     load still on screen (barely changed)
+[1248.3s] #182 loading           static  wait                     load still on screen (barely changed)
+[1253.2s] #183 loading           static  wait                     load still on screen (barely changed)
+[1261.5s] #184 loading           fast    wait                     Loading text still visible, screen unchanged across many steps; inputs have no effect duri
+[1270.4s] #185 loading           static  wait                     load still on screen (barely changed)
+[1275.3s] #186 loading           static  wait                     load still on screen (barely changed)
+[1281.6s] #187 loading           static  wait                     load still on screen (barely changed)
+[1286.5s] #188 loading           static  wait                     load still on screen (barely changed)
+[1291.4s] #189 loading           static  wait                     load still on screen (barely changed)
+[1303.2s] #190 title_screen      fast    L1 R1 L3 R3              Static branded splash screen; many common inputs already tried with no change, so trying u
+[1320.7s] #191 title_screen      fast    A                        Static splash screen unchanged after many inputs; trying A alone (not yet tried standalone
+[1331.4s] #192 loading           fast    wait                     The text explicitly says 'Loading' - this is a loading screen, not an unchanging title scr
+[1337.4s] #193 loading           static  wait                     load still on screen (barely changed)
+[1342.4s] #194 loading           static  wait                     load still on screen (barely changed)
+[1348.4s] #195 loading           static  wait                     load still on screen (barely changed)
+[1353.2s] #196 loading           static  wait                     load still on screen (barely changed)
+[1358.2s] #197 loading           static  wait                     load still on screen (barely changed)
+[1367.4s] #198 loading           fast    wait                     Explicit 'Loading' text still showing; all tested inputs did nothing on this unchanged scr
+[1376.3s] #199 loading           static  wait                     load still on screen (barely changed)
+[1382.3s] #200 loading           static  wait                     load still on screen (barely changed)
+[1387.2s] #201 loading           static  wait                     load still on screen (barely changed)
+[1392.2s] #202 loading           static  wait                     load still on screen (barely changed)
+[1397.2s] #203 loading           static  wait                     load still on screen (barely changed)
+[1405.3s] #204 loading           fast    wait                     Screen still shows explicit 'Loading' text; many inputs already tried with no effect, cont
+[1413.4s] #205 loading           static  wait                     load still on screen (barely changed)
+[1418.4s] #206 loading           static  wait                     load still on screen (barely changed)
+[1423.3s] #207 loading           static  wait                     load still on screen (barely changed)
+[1428.3s] #208 loading           static  wait                     load still on screen (barely changed)
+[1433.2s] #209 loading           static  wait                     load still on screen (barely changed)
+[1448.8s] #210 title_screen      fast    R1                       Static logo splash card; all common buttons already tried with no effect per history, so t
+[1457.6s] #211 loading           fast    wait                     Explicit 'Loading' text is now visible under the logo, distinguishing this from the static
+[1463.5s] #212 loading           static  wait                     load still on screen (barely changed)
+[1468.4s] #213 loading           static  wait                     load still on screen (barely changed)
+[1473.4s] #214 loading           static  wait                     load still on screen (barely changed)
+[1478.5s] #215 loading           static  wait                     load still on screen (barely changed)
+[1484.5s] #216 loading           static  wait                     load still on screen (barely changed)
+[1493.5s] #217 title_screen      fast    wait                     This is the static title/logo screen, not actively loading. Many inputs already tried did 
+[1505.8s] #218 title_screen      fast    wait                     Static title screen; many inputs already tried with no effect. Trying a longer wait in cas
+[1519.4s] #219 title_screen      fast    HOLD:START:2             Static title screen; most standard inputs already tried without effect per the unchanged-s
+[1532.1s] #220 loading           fast    wait                     The screen now explicitly shows 'Loading' text under the title, indicating this is an acti
+[1539.1s] #221 loading           static  wait                     load still on screen (barely changed)
+[1544.0s] #222 loading           static  wait                     load still on screen (barely changed)
+[1549.9s] #223 loading           static  wait                     load still on screen (barely changed)
+[1554.9s] #224 loading           static  wait                     load still on screen (barely changed)
+[1559.9s] #225 loading           static  wait                     load still on screen (barely changed)
+[1568.7s] #226 loading           fast    wait                     Loading screen is unchanged across many steps and inputs; this is likely a genuine disc lo
+[1577.7s] #227 loading           static  wait                     load still on screen (barely changed)
+[1583.6s] #228 loading           static  wait                     load still on screen (barely changed)
+[1588.4s] #229 loading           static  wait                     load still on screen (barely changed)
+[1593.3s] #230 loading           static  wait                     load still on screen (barely changed)
+[1598.2s] #231 loading           static  wait                     load still on screen (barely changed)
+[1606.9s] #232 loading           fast    wait                     Genuine disc load screen, unchanged across many steps and many inputs tried; this is a kno
+[1618.8s] #233 loading           static  wait                     load still on screen (barely changed)
+[1623.8s] #234 loading           static  wait                     load still on screen (barely changed)
+[1628.8s] #235 loading           static  wait                     load still on screen (barely changed)
+[1633.6s] #236 loading           static  wait                     load still on screen (barely changed)
+[1638.7s] #237 loading           static  wait                     load still on screen (barely changed)
+[1649.1s] #238 title_screen      fast    START                    Screen changed from the stuck loading screen to a title splash with logos; this is new pro
+[1662.8s] #239 publisher_logo    fast    wait                     This is a logo splash screen without a visible press-start prompt; many button presses alr
+[1675.3s] #240 publisher_logo    fast    wait                     Static logo splash; many inputs already tried with no change, so waiting longer in case it
+[1686.7s] #241 publisher_logo    fast    wait                     Static splash screen; many single inputs already failed. Trying a longer wait since this c
+[1699.2s] #242 loading           fast    wait                     Screen now explicitly shows 'Loading' text under the logo, which is new information not se
+[1706.2s] #243 loading           static  wait                     load still on screen (barely changed)
+[1712.1s] #244 loading           static  wait                     load still on screen (barely changed)
+[1717.1s] #245 loading           static  wait                     load still on screen (barely changed)
+[1722.0s] #246 loading           static  wait                     load still on screen (barely changed)
+[1726.9s] #247 loading           static  wait                     load still on screen (barely changed)
+[1738.6s] #248 title_screen      fast    START                    This is a new logo/title splash screen (different from the stale loading screen in history
+[1748.4s] #249 loading           fast    wait                     This is a loading screen (text says 'Loading'), not an unchanging title screen; previous i
+[1755.4s] #250 loading           static  wait                     load still on screen (barely changed)
+[1760.4s] #251 loading           static  wait                     load still on screen (barely changed)
+[1765.4s] #252 loading           static  wait                     load still on screen (barely changed)
+[1770.5s] #253 loading           static  wait                     load still on screen (barely changed)
+[1775.5s] #254 loading           static  wait                     load still on screen (barely changed)
+[1783.6s] #255 loading           fast    wait                     Screen still shows explicit 'Loading' text; all inputs tried have done nothing, so continu
+[1792.5s] #256 loading           static  wait                     load still on screen (barely changed)
+[1798.8s] #257 loading           static  wait                     load still on screen (barely changed)
+{"name": "ESPN NHL Hockey USA", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 78, "steps": 257, "replayed": 0, "reason": "budget 30 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

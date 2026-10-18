@@ -1,0 +1,162 @@
+{
+  "title": "Batman Dark Tomorrow",
+  "title_id": null,
+  "name": null,
+  "device": "",
+  "ref": null,
+  "apk_sha": null,
+  "request_id": "n-4B420001-1007",
+  "route": null,
+  "surface_scale": null,
+  "adb_failures": null,
+  "thermal": {
+    "measured": false,
+    "samples": 0,
+    "unread": 0,
+    "pauses": [],
+    "in_window": false,
+    "window_covered": null,
+    "gap": null,
+    "first_pause_s": null,
+    "regimen": null,
+    "failed_sustained": null,
+    "still_heating": null
+  },
+  "human_review": "",
+  "booted": true,
+  "reached_gameplay": true,
+  "gameplay_by": "route",
+  "crash": false,
+  "crash_detail": [],
+  "crash_warnings": 0,
+  "gameplay_s": 2235.1,
+  "timeline": {
+    "play_s": 129.2,
+    "scored_s": 2235.1,
+    "play_share": 0.0578,
+    "by_state": {
+      "still": 2095.2,
+      "play": 129.2,
+      "menu": 10.5,
+      "no-timeline": 0.1
+    },
+    "play_spans": 2,
+    "changes": 4,
+    "fps_excluded_s": 2106.2,
+    "fps_excluded_windows": 1491
+  },
+  "capture_gaps_s": [],
+  "capture_lost_s": 0,
+  "capture_truncated": false,
+  "capture_truncated_s": null,
+  "hang": false,
+  "hang_gaps_s": [],
+  "fps_windows": 109,
+  "fps_bar": 30.0,
+  "fps_ok_share": 0.977,
+  "fps_ok_window_share": 0.9908,
+  "fps_window_median": 56.5,
+  "fps_window_min": 20.17,
+  "g_fps_mean_reported_not_judged": 52.79,
+  "target_fps": 30.0,
+  "own_target_share": 0.977,
+  "confirmation_need_s": 600.0,
+  "below_own_target": false,
+  "power": {
+    "measured": false,
+    "samples": 0,
+    "sign": "battery_w: + discharging, - charging; net_w = battery_w + usb_w",
+    "battery_w": null,
+    "usb_w": null,
+    "usb_from": null,
+    "usb_bound": null,
+    "net_w": null,
+    "sign_suspect": 0,
+    "thermal_status_max": null,
+    "scored_s": 129.5,
+    "flips": 6540,
+    "j_per_frame": null,
+    "j_per_frame_battery": null
+  },
+  "audio_measured": true,
+  "audio_starve_share": 0.0,
+  "audio_empty_calls": 0,
+  "pace": {
+    "lines": 1601,
+    "nominal_vblanks": 2,
+    "late_per_100": 0.11,
+    "worst_stall": 816.8,
+    "last": "f=103260 v0=0 v1=48 v2=12 v3=0 v4=0 vb=72 max=32.2 ms=1204.3"
+  },
+  "hitches": {
+    "n": 3,
+    "n_after_warmup": 2,
+    "per_min_after_warmup": 0.055,
+    "worst_ms": 816.8,
+    "n_big_after_warmup": 1,
+    "classification": {
+      "shader": 1,
+      "texture": 0,
+      "both": 0,
+      "unexplained": 2
+    },
+    "worst5": [
+      {
+        "off_s": 96.6,
+        "max_ms": 816.8,
+        "dsm": 7,
+        "dpc_ms": 25.0,
+        "shader_stage_ms": 24.6,
+        "tex_us": 77,
+        "cls": "shader"
+      },
+      {
+        "off_s": 56.1,
+        "max_ms": 615.5,
+        "dsm": 0,
+        "dpc_ms": 0.0,
+        "shader_stage_ms": 0.0,
+        "tex_us": 0,
+        "cls": "unexplained"
+      },
+      {
+        "off_s": 87.6,
+        "max_ms": 116.9,
+        "dsm": 0,
+        "dpc_ms": 0.0,
+        "shader_stage_ms": 0.0,
+        "tex_us": 254,
+        "cls": "unexplained"
+      }
+    ]
+  },
+  "hitch_allowance": null,
+  "static_window": {
+    "measured": true,
+    "frozen_frac": 0.0902,
+    "n": 64,
+    "source": "route-frames"
+  },
+  "position": {
+    "measured": true,
+    "reason": null,
+    "source": "route-frames",
+    "samples": 64,
+    "pairs": 63,
+    "still": 19,
+    "still_frac": 0.3016,
+    "first_last": 0.4281,
+    "bar": 0.025
+  },
+  "pass_kind": "confirmation",
+  "void": null,
+  "pass": false,
+  "failing": "menu time: 5.8% of the scored window in `play` (bar 90%; still 2095 s, play 129 s, menu 10 s, no-timeline 0 s)",
+  "failures": [
+    "menu time: 5.8% of the scored window in `play` (bar 90%; still 2095 s, play 129 s, menu 10 s, no-timeline 0 s)",
+    "hitches: a 817 ms stall after the first 60 s (bar 500 ms)"
+  ],
+  "rating_candidate": null,
+  "contact_sheet": "contact.png",
+  "judged_utc": "2026-10-08T01:02:00Z"
+}

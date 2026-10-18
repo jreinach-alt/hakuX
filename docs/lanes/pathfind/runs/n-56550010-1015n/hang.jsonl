@@ -1,0 +1,4 @@
+{"event": "probe", "action": ["A"], "since": 28166593.702, "tripped": 28166683.864, "arm": "stalled", "window": {"raise": 0, "idle_us": 0, "kicks": 0}, "at": 1792134299.3}
+{"event": "probe-cleared", "frame_change": 0.0, "at": 1792134319.9}
+{"event": "probe", "action": ["A"], "since": 28166700.063, "tripped": 28166790.247, "arm": "stalled", "window": {"raise": 0, "idle_us": 0, "kicks": 0}, "at": 1792134397.8}
+{"event": "probe-cleared", "frame_change": 0.010364583333333333, "at": 1792134418.4}

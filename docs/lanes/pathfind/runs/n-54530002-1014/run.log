@@ -1,0 +1,45 @@
+pathfind: Barbarian Europe En Fr De Es It (54530002) on nova: /storage/E6C6-D7AA/Games/XBox/54530002-Barbarian_Europe_En_Fr_De_Es_It.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 54530002 any, loaded golden eea65ed861a2
+[  18.1s] #  1 intro_video       fast    A                        0.1 min after cold boot; geometric shape in center suggests intro animation or loading gra
+[  29.3s] #  2 publisher_logo    fast    A                        New logo after the first skip; SAFFIRE is the developer. Skip with A.
+[  42.4s] #  3 main_menu         fast    A                        Game menu with play options; QUEST is highlighted and leads fastest to gameplay.
+[  55.8s] #  4 submenu           fast    A                        QUEST was selected in step 3, opening this submenu. NEW GAME is highlighted and is the fas
+[  70.6s] #  5 submenu           fast    A                        Character select screen after quest menu; REELA is the default highlighted warrior and rea
+[  81.5s] #  6 submenu           fast    A                        Character confirmation screen waiting for accept/back input. REELA is selected and ready t
+[  95.2s] #  7 submenu           fast    A                        Character confirmation menu; REELA already selected; A ACCEPT prompt visible at bottom to 
+[ 160.4s] #  8 submenu           fast    wait                     Character REELA is locked in for P1 on a warrior confirmation screen. Previous A press cha
+[ 223.2s] #  9 submenu           fast    START                    Character confirmation locked with REELA as P1. A presses (steps 7–8) failed; trying START
+[ 268.0s] # 10 submenu           fast    B                        Stuck in a loop on character confirmation: A (step 7), wait (step 8), and START (step 9) a
+[ 320.3s] # 11 submenu           fast    X                        Character select menu is stuck; A, wait, START, and B have all failed. Trying X, an unused
+[ 373.1s] # 12 submenu           fast    Y                        Character confirmation screen stuck; previous attempts with A, START, B, X all failed. The
+[ 407.0s] # 13 submenu           fast    UP                       Character confirmation dialog is stuck. A/START/B/X/Y all failed. Dialog shows two options
+[ 423.5s] # 14 submenu           fast    RIGHT                    Character confirmation dialog is stuck. Previous attempts with A, START, B, X, Y, and UP a
+[ 465.5s] # 15 submenu           fast    LEFT A                   Character confirmation dialog is stuck; options A and B are displayed side-by-side (typica
+[ 499.9s] # 16 save_load_prompt  fast    A                        Save slot selection; first empty slot is highlighted by default. Accepting will create a s
+[ 514.2s] # 17 submenu           fast    A                        Story selection screen with KEELA story highlighted as default. Accepting it will load int
+[ 534.2s] # 18 submenu           fast    A                        Story selection confirmation screen; KEELA'S LAMENT story is highlighted with ACCEPT and B
+[ 584.8s] # 19 loading           fast    wait                     Round-start banner (round title) displayed; per instructions, not yet live—wait 2s before 
+[ 629.7s] # 20 loading           fast    wait                     Round-start banner (ROUND 1) is visible; per instructions, a round-start banner is not yet
+[ 640.0s] # 21 loading           fast    wait                     LOADING... text indicates the game is loading the round; per instructions, wait 3-8s on lo
+[ 658.1s] # 22 submenu           fast    A                        Story/level confirmation screen with ACCEPT button ready; pressing A will confirm KEELA'S 
+[ 674.2s] # 23 submenu           fast    A                        Story confirmation screen with ACCEPT button ready to load the selected story 'KEELA'S LAM
+[ 696.6s] # 24 loading           fast    wait                     Round-start banner 'ROUND 1' is visible; per instructions, round-start banners (3, 2, 1, F
+[ 749.0s] # 25 loading           fast    wait                     Round-start banner 'ROUND 1' (the round title) is visible; per instructions, round-start b
+[ 771.0s] # 26 loading           fast    wait                     Round-start banner 'ROUND 2' (the round title) is visible; per instructions, a round-start
+[ 831.6s] # 27 submenu           fast    B                        Stuck in loop: pressed A twice on story/confirmation screens, rounds 1-2 banners appeared,
+[ 869.7s] # 28 submenu           fast    DOWN A                   This is a confirmation dialog for story selection. The previous attempts (A, A, B) created
+[ 897.2s] # 29 submenu           fast    A                        QUEST is already highlighted (bright blue vs. dimmed text for others). QUEST is the story/
+[ 914.2s] # 30 submenu           fast    A                        QUEST was selected; now on the NEW GAME / LOAD GAME choice screen. NEW GAME is highlighted
+[ 925.1s] # 31 submenu           fast    A                        Character/warrior select screen; KEELA is already highlighted with the blue border (the de
+[ 939.5s] # 32 submenu           fast    A                        Character select with the default (KEELA) already highlighted; accept it to advance to the
+[ 982.4s] # 33 submenu           fast    Y                        Stuck in a loop at warrior select after multiple A presses (steps 30-32 each sent A and cy
+[1072.4s] # 34 submenu           fast    START                    Stuck in a loop: A has been pressed multiple times and cycled back to this same screen; B 
+[1118.2s] # 35 submenu           fast    RIGHT                    Stuck in a loop: A has cycled back to this same screen multiple times (steps 31–32 and aft
+[1129.6s] # 36 submenu           fast    A                        Warrior confirmation screen with ACCEPT prompt; previous loops (steps 30-32) cycled on sel
+[1144.8s] # 37 submenu           fast    A                        Warrior confirmation screen after selection; KEELA is highlighted with P1 and the 'A ACCEP
+[1182.8s] # 38 submenu           fast    X                        Still locked in warrior select confirmation screen; A is labeled ACCEPT but has not progre
+[1220.5s] # 39 submenu           fast    Y                        Character confirmation screen; A and X have both failed to progress (steps 37-38). The vis
+{"name": "Barbarian Europe En Fr De Es It", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 39, "steps": 39, "replayed": 0, "reason": "budget 20 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

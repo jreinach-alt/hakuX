@@ -1,0 +1,1 @@
+pathfind: refused, below the bar (owner order 10-06 16:45): Buffy the Vampire Slayer: latest verdict docs/lanes/pathfind/runs/retro-buffy/verdict.json reads fps_ok_share 0.552 (bar 0.9); cause: retro fps 0.55; the earlier abort was a channel_valid/save-slot limit (owner 10-04); fps cause not named. No fix is committed; PATHFIND_BELOW_BAR=1 is for a telemetry run only

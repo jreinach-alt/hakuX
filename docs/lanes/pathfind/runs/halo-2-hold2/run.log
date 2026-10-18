@@ -1,0 +1,84 @@
+taken: nova by pathfind:halo2
+idle: nova is held and runs nothing
+pathfind: Halo 2 (4D530064) on nova: /storage/E6C6-D7AA/Games/XBox/Halo 2.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4D530064 any, loaded golden 0a4742f1e45d
+[   9.5s] #  1 publisher_logo    replay  A                        replay step 0: A publisher or studio logo animating in on a white background; no skip prom
+[  17.5s] #  2 loading           fast    wait                     Emulator is mid-load with the loading caption visible; no input needed, so wait and re-rea
+[  31.5s] #  3 unknown           fast    wait                     Abstract animated backdrop with no readable menu or prompt; not a logo, title, or gameplay
+[  36.1s] #  4 black             black   wait                     black frame
+[  40.6s] #  5 title_screen      replay  START                    replay step 3: Title screen with a 'Press START' prompt; per hints, START is the correct i
+[  45.1s] #  6 submenu           replay  A                        replay step 4: Profile select; hint says Create New Profile stays lit even with a profile 
+[  49.5s] #  7 name_entry        replay  A                        replay step 5: Default name is filled in and the cursor sits on DONE, which is lit. Hint s
+[  57.7s] #  8 main_menu         fast    A                        Main menu with CAMPAIGN lit by default; CAMPAIGN is the fastest route to play, so A accept
+[  66.0s] #  9 submenu           fast    A                        Submenu after main menu CAMPAIGN; New Campaign is the lit default and the fastest route to
+[  75.3s] # 10 submenu           fast    A                        Level select with The Heretic already lit, the first level of the campaign; A selects it a
+[  84.5s] # 11 submenu           fast    A                        Difficulty select after the level pick; Normal is the lit default, so A accepts it and mov
+[  90.8s] # 12 black             black   wait                     black frame
+[  94.4s] # 13 black             black   wait                     black frame
+[ 103.3s] # 14 cutscene          fast    START                    A non-interactive space cinematic after the black frames, with no HUD and no player contro
+[ 113.5s] # 15 cutscene          fast    START                    Non-interactive space cinematic with no HUD and no player control, following the black fra
+[ 122.8s] # 16 black             fast    wait                     Very dark frame, looks like a fade or dim cinematic in the Halo 2 intro sequence after the
+[ 132.6s] # 17 cutscene          fast    A                        Non-interactive space cinematic with no HUD and no player control, following the earlier b
+[ 143.0s] # 18 cutscene          fast    A                        This is the Armory-style scene with a caption and NPC, not a clean control-ready playfield
+[ 160.8s] # 19 unknown           fast    wait                     A HUD is partly visible, but the marine stands in the scene and there is no confirmed play
+[ 175.1s] # 20 unknown           fast    RSTICK:up:1.5            This is the Armory look-test tutorial, not free play, and the prompt asks for the right st
+[ 192.4s] # 21 unknown           fast    STICK:up:1.5             A HUD is up, but there is no proof of player control yet and no look-test or tutorial prom
+[ 205.6s] # 22 unknown           fast    RSTICK:up:1.5            This is the Armory look-test tutorial, not confirmed free play; the prompt wants the right
+[ 221.3s] # 23 gameplay          fast    wait                     The hint says 'Updating profile... done' marks the end of the Armory look test, after whic
+[ 226.0s] # 24 probe             probe   STICK:up:1.5             control 0.001, under input 0.003
+[ 239.2s] # 25 unknown           fast    wait                     The HUD is up, but the marine is an NPC-like figure in the scene and the screen has no con
+[ 249.8s] # 26 gameplay          fast    wait                     A HUD (radar and ammo/grenade counters) is up and no tutorial or cutscene prompt is shown,
+[ 254.5s] # 27 probe             probe   STICK:up:1.5             control 0.003, under input 0.003
+[ 266.7s] # 28 unknown           fast    STICK:down:1.5           The HUD is up, but STICK:up held 1.5 s did not change the scene in two earlier probes, so 
+[ 282.8s] # 29 unknown           fast    STICK:left:1.5           HUD is up but STICK:up and STICK:down (1.5 s each) did not move the scene. Trying a sidewa
+[ 300.1s] # 30 unknown           fast    A                        HUD is up, but STICK:up, STICK:down and STICK:left did nothing, so gameplay is not confirm
+[ 319.7s] # 31 unknown           fast    RSTICK:up:1.5            HUD is up, but the left stick (up, down, left) and A did nothing on this screen. Untried h
+[ 338.6s] # 32 gameplay          fast    wait                     HUD is up with no prompt, and the last input (RSTICK:up) visibly changed the view, so the 
+[ 351.6s] # 33 probe             probe   X RSTICK:left:1.5 RSTICK:left:1.5 RSTICK:left:1.5 control 0.007, under input 0.001
+[ 365.9s] # 34 unknown           fast    RSTICK:down:1.5          HUD elements are up, but the left stick and A failed to move the scene in several earlier 
+[ 386.1s] # 35 unknown           fast    STICK:right:1.5          A HUD is up, but the left stick has failed to move the scene on several earlier steps, so 
+[ 401.8s] # 36 unknown           fast    RT:1.5                   HUD is up but the scene has not responded to any stick or right-stick input across many st
+[ 418.9s] # 37 gameplay          fast    STICK:up:1.5             HUD and a first-person playfield are up, but the last inputs (RT and right stick) did noth
+[ 435.9s] # 38 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 control 0.007, under input 0.001
+[ 450.6s] # 39 unknown           fast    A                        A HUD is up, but the stick and right stick have not moved the scene in many earlier probes
+[ 466.0s] # 40 unknown           fast    X                        HUD and playfield are visible, but the scene has not responded to stick, right-stick, RT o
+[ 483.3s] # 41 gameplay          fast    R1 STICK:up:1.5          The HUD and first-person playfield are up, but X and A changed nothing and earlier stick a
+[ 499.1s] # 42 probe             probe   R1 STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 control 0.005, under input 0.000
+[ 508.4s] # 43 unknown           fast    B                        HUD is up, but the stick, right stick, RT, A, X and R1 have all changed nothing across man
+[ 521.9s] # 44 unknown           fast    LT:1.5                   A HUD is up, but after many probes (stick, right stick, triggers, A, X, R1, B) nothing has
+[ 540.9s] # 45 unknown           fast    Y                        A HUD is up, but stick, right stick, RT, A, X, R1, B and LT have all changed nothing. Y is
+[ 557.7s] # 46 unknown           fast    L3                       HUD is up but stick, right stick, RT, A, X, R1, B, LT and Y have all changed nothing; STAR
+[ 574.1s] # 47 unknown           fast    L1                       Still a HUD over a first-person playfield, but stick, right stick, triggers, A, B, X, Y, R
+[ 589.6s] # 48 unknown           fast    UP RIGHT R3              A HUD is up, but stick, right stick, triggers, A, B, X, Y, L1, L3 and R1 have all changed 
+[ 608.0s] # 49 unknown           fast    DOWN LEFT                HUD is up but the screen has ignored the stick, right stick, triggers, A, B, X, Y, L1, L3,
+[ 624.5s] # 50 unknown           fast    BACK                     A HUD is up, but the screen has ignored every input tried so far (stick, right stick, trig
+[ 642.6s] # 51 unknown           fast    RSTICK:left:1.5          A HUD is up but every tried input has changed nothing. Untried so far: right-stick look (R
+[ 652.5s] # 52 gameplay          fast    wait                     A HUD is up over a first-person playfield, and the last step (RSTICK:left:1.5) changed the
+[ 656.4s] # 53 probe             probe   STICK:up:1.5             control 0.001, under input 0.002
+[ 669.9s] # 54 unknown           fast    RSTICK:down:1.5          HUD is up, but the view is pinned on the floor and every input tried so far (stick, trigge
+[ 684.0s] # 55 unknown           fast    RSTICK:up:1.5            HUD is up but the view is pinned on the floor and RSTICK:down did nothing. Looking up with
+[ 702.8s] # 56 unknown           fast    RSTICK:up:1.5            A Halo HUD is up, but the view has been stuck on the floor for several steps, and STICK:up
+[ 714.8s] # 57 gameplay          fast    STICK:up:1.5             HUD and first-person playfield are up; the view is pinned on the floor and RSTICK:up did n
+[ 726.0s] # 58 probe             probe   STICK:up:1.5 STICK:up:1.5 control 0.001, under input 0.006
+[ 730.5s] # 59 gameplay          fast    wait                     HUD and a first-person playfield with a motion sensor are up; the view is pinned on the fl
+[ 739.6s] # 60 probe             probe   STICK:up:1.5             control 0.000, under input 0.005
+[ 751.2s] # 61 unknown           fast    RSTICK:right:1           Halo HUD is up, but the view stays pinned on the floor and previous stick probes produced 
+[ 767.9s] # 62 unknown           fast    RSTICK:left:1.5          HUD is up but the camera has been pinned on the floor through several up and right look at
+[ 782.9s] # 63 unknown           fast    RSTICK:down:1.5          Halo 2 HUD is up, but RSTICK up, right and left all failed to move the view. The hint says
+[ 799.1s] # 64 gameplay          fast    RSTICK:up:1.5            HUD and playfield are up, but the earlier stick probes produced no movement; this is the s
+[ 814.4s] # 65 probe             probe   RSTICK:up:1.5 STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 control 0.007, under input 0.001
+[ 826.9s] # 66 gameplay          fast    RSTICK:up:3              Gameplay HUD is up, but the camera has stayed pinned on the floor through repeated short r
+[ 843.5s] # 67 probe             probe   RSTICK:up:3 RSTICK:up:3 RSTICK:up:3 RSTICK:up:3 control 0.006, under input 0.006
+[ 852.0s] # 68 gameplay          fast    STICK:up:2               HUD is up and the playfield is visible, but the camera has stayed pinned on the floor thro
+[ 864.8s] # 69 probe             probe   STICK:up:2 STICK:up:1.5  control 0.001, under input 0.006
+[ 872.6s] # 70 gameplay          fast    wait                     The Halo 2 HUD (ammo counters and motion tracker) is up with a first-person playfield. Ear
+[ 884.3s] # 71 probe             probe   STICK:left:2 STICK:left:2 STICK:left:2 control 0.006, under input 0.007
+[ 891.7s] # 72 gameplay          fast    RSTICK:down:2            Halo 2 HUD (grenade counters, motion tracker) is up with a first-person playfield. Earlier
+[ 904.2s] # 73 probe             probe   RSTICK:down:2 RSTICK:down:1.5 control 0.000, under input 0.005
+{"name": "Halo 2", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 95, "steps": 73, "replayed": 4, "reason": "budget 15 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256
+PATHFIND_EXIT=1
+released: nova by pathfind:halo2
+HOLD_RELEASED=0

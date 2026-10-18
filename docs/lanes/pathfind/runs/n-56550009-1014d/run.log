@@ -1,0 +1,64 @@
+pathfind: Antz Extreme Racing (56550009) on nova: /storage/E6C6-D7AA/Games/XBox/56550009-Antz_Extreme_Racing_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 56550009 any, loaded none
+[  16.4s] #  1 publisher_logo    fast    A                        Green star logo at 6 seconds after boot is a publisher logo. Skip with A per the standard 
+[  27.1s] #  2 publisher_logo    fast    A                        Second publisher logo in sequence after the green star; standard Vivendi path skips with A
+[  41.5s] #  3 publisher_logo    fast    A                        Third publisher/engine logo in the sequence (RenderWare after Vivendi logos); standard Viv
+[  54.9s] #  4 main_menu         fast    A                        Menu screen with selectable options; Single Player Game is highlighted at the top. This is
+[  67.9s] #  5 main_menu         fast    A                        Menu with New Game highlighted; A selects it and reaches gameplay fastest per Vivendi titl
+[  81.8s] #  6 submenu           fast    A                        Character selection screen before gameplay; the ant is the default highlighted character. 
+[ 105.2s] #  7 submenu           fast    A                        Mission briefing menu waiting for confirmation to start the race. Menu navigation prompts 
+[ 136.2s] #  8 cutscene          fast    START                    This is a race introduction/briefing screen shown after character selection, before the ra
+[ 164.9s] #  9 gameplay          fast    wait                     Race is live with visible HUD (position, laps, timer) and the player's vehicle actively on
+[ 186.9s] # 10 probe             probe   RT:1.5 RT+left:1.2 RT+right:1.2 control 0.343, under input 0.353
+[ 196.6s] # 11 results           fast    A                        Post-race results menu, not active gameplay; race ended and results are displayed with a C
+[ 224.1s] # 12 results           fast    A                        Post-race results menu asking if player wants to race again; Yes option is highlighted
+[ 245.8s] # 13 cutscene          fast    START                    Pre-race briefing with explicit 'Press START' prompt; the race description and intro are s
+[ 270.2s] # 14 gameplay          fast    wait                     HUD visible with position, laps, and timer; player's vehicle is actively on the track in a
+[ 291.6s] # 15 probe             probe   RT:1.5 RT+left:1.2 RT+right:1.2 control 0.273, under input 0.710
+[ 305.9s] # 16 results           fast    A                        Race has ended, results menu displayed with leaderboard and Continue prompt; not active ga
+[ 325.2s] # 17 results           fast    A                        Post-race confirmation dialog; Yes is highlighted; A to confirm and proceed to next screen
+[ 336.6s] # 18 cutscene          fast    START                    Pre-race briefing with explicit 'Press START' prompt; race description and character shown
+[ 360.4s] # 19 gameplay          fast    wait                     HUD visible with position, lap counter, and race timer; player's kart actively on track in
+[ 377.9s] # 20 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.308, under input 0.712
+claim: 3 live reads with self-moving refused probes: entering the hold
+[ 416.6s] # 29 retracted         probe   wait                     retracted after 30 s: Post-race menu dialog ('Race Again?') is displayed; race has ended a
+[ 430.7s] # 30 results           fast    DOWN A                   Post-race dialog after gameplay ended; Yes is highlighted but previous A inputs looped bac
+[ 486.4s] # 31 submenu           fast    A                        Post-race menu with no Resume option. First item 'Select A Challenge' is selected by defau
+[ 506.4s] # 32 submenu           fast    A                        Pre-race challenge briefing screen with A Select button to confirm and launch the race.
+[ 533.4s] # 33 cutscene          fast    START                    Race challenge briefing screen before the race starts; 'Press START' is the explicit promp
+[ 549.9s] # 34 gameplay          fast    wait                     Player controls ant-car on live race track with HUD (lap/position/timer), full game scene 
+[ 569.7s] # 35 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.153, under input 0.556
+[ 579.6s] # 36 results           fast    DOWN A                   Post-race confirmation dialog. Previous A inputs selecting 'Yes' looped back to post-race 
+[ 623.4s] # 37 submenu           fast    BACK                     Stuck in post-race menu loop. Previous attempts selected 'Select A Challenge' repeatedly b
+[ 635.5s] # 38 submenu           fast    A                        Post-race menu after the challenge completed. Select A Challenge is the top item and faste
+[ 653.0s] # 39 submenu           fast    A                        Pre-race challenge selection screen. The prompt 'A Select' at the bottom confirms this is 
+[ 675.0s] # 40 submenu           fast    START                    Pre-race briefing screen showing race details and description. Not gameplay yet—waiting fo
+[ 702.3s] # 41 gameplay          fast    wait                     HUD visible with position and progress indicators; player-controlled kart on active race t
+[ 728.9s] # 42 probe             probe   STICK:up:2 STICK:left:1.2 STICK:right:1.2 control 0.212, under input 0.201
+[ 737.8s] # 43 results           fast    A                        Race completed, showing standings and points; not yet back in the game world or menu. A is
+[ 754.4s] # 44 submenu           fast    A                        Post-race menu asking to repeat the race; Yes is highlighted; A confirms the selection
+[ 768.4s] # 45 submenu           fast    START                    This is a race briefing/challenge description menu, not active gameplay. The 'Press START'
+[ 792.7s] # 46 gameplay          fast    wait                     Kart is on active race track with full HUD (position, lap, timer); player-controlled vehic
+[ 810.3s] # 47 probe             probe   STICK:up:2 STICK:left:1.2 STICK:right:1.2 control 0.291, under input 0.358
+claim: 3 live reads with self-moving refused probes: entering the hold
+[ 846.4s] # 55 retracted         probe   wait                     retracted after 30 s: Race results screen showing final standings and points, not a charac
+[ 858.5s] # 56 results           fast    A                        Race completed with final standings and points display; not active gameplay or menu naviga
+[ 880.3s] # 57 submenu           fast    DOWN A                   Post-race loop: Yes→briefing→race→results→back here. Pressing A on Yes cycled without reac
+[ 907.6s] # 58 submenu           fast    A                        Post-race menu cycle. Select A Challenge is the top highlighted option; pressing A returns
+[ 923.5s] # 59 submenu           fast    A                        Challenge selection screen with race briefing; menu prompts at bottom (B Back, A Select); 
+[ 939.7s] # 60 cutscene          fast    START                    Pre-race briefing with 'Press START' prompt; need to start the race to reach gameplay
+[ 984.4s] # 61 gameplay          fast    wait                     Race in progress with active HUD (position, lap counter, timer), vehicle on playable track
+[1008.3s] # 62 probe             probe   HOLD:X:3 STICK:left:1.2 STICK:right:1.2 control 0.285, under input 0.286
+[1018.1s] # 63 results           fast    A                        Race finished and results menu displayed showing leaderboard and finishing position; this 
+[1044.7s] # 64 submenu           fast    A                        Post-race menu asking to continue racing; Yes is highlighted; pressing A will start the ne
+[1060.1s] # 65 cutscene          fast    START                    Pre-race briefing cutscene with 'Press START' prompt; need to start the race to reach acti
+[1076.9s] # 66 gameplay          fast    wait                     Player-controlled character (ant) actively driving the vehicle on the race track with live
+[1096.2s] # 67 probe             probe   HOLD:X:3 STICK:left:1.2 STICK:right:1.2 control 0.244, under input 0.401
+[1117.6s] # 68 results           fast    BACK                     Post-race results menu. Previous attempts (A, then A again) looped back here from the subm
+[1148.1s] # 69 results           fast    A                        Post-race results screen after the race ended (step 67's probe likely crashed the car). 'A
+[1177.3s] # 70 submenu           fast    DOWN A                   Post-race menu. Previous A presses on Yes looped back through cutscene and results. Try DO
+[1225.1s] # 71 submenu           fast    UP UP A                  In the post-race menu; Options is highlighted after DOWN A at step 70. Need to navigate to
+{"name": "Antz Extreme Racing", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 56, "steps": 56, "replayed": 0, "reason": "budget 20 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

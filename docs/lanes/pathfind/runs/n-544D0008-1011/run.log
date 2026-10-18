@@ -1,0 +1,26 @@
+pathfind: Conan Europe En Fr De Es It (544D0008) on nova: /storage/E6C6-D7AA/Games/XBox/544D0008-Conan_Europe_En_Fr_De_Es_It.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 544D0008 any, loaded none
+[  10.2s] #  1 loading           fast    wait                     This appears to be an early loading or boot animation, not yet the game's title screen or 
+[  20.3s] #  2 publisher_logo    fast    START A                  Publisher logo screen playing; skip with START then A per instructions
+[  29.7s] #  3 cutscene          fast    START A                  Letterboxed, blurry artistic shot with no HUD or menu - this is an intro cinematic, not ga
+[  34.8s] #  4 black             black   wait                     black frame
+[  42.4s] #  5 cutscene          fast    START A                  Letterboxed artistic shot with no HUD, consistent with an intro cinematic continuing from 
+[  47.8s] #  6 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[  57.9s] #  7 main_menu         fast    A                        Main menu with New Game highlighted as default; selecting it starts a fresh game fastest w
+[  66.1s] #  8 submenu           fast    A                        Warrior is the default highlighted difficulty; confirm with A to proceed with default sett
+[  74.4s] #  9 cutscene          fast    START A                  Letterboxed, no HUD or menu, continuing intro cinematic after difficulty select; skip with
+[  80.2s] # 10 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[  86.6s] # 11 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[  96.5s] # 12 gameplay          fast    STICK:up:1.5             HUD with health bar and item counter visible, character fully rendered in the game world w
+[ 108.7s] # 13 probe             probe   STICK:up:1.5 STICK:up:1.5 control 0.002, under input 0.008
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 185 s: median 29.0, share>=30 1.0 over 93 samples
+hold-play: fps at 313 s: median 29.0, share>=30 1.0 over 157 samples
+hold-play: validity check stop 0 s (hold 604 s of play, verdict 606.0)
+hold-play: not held 604/600 s of play; verdict stops the hold: fps_ok 1.0, crash False, hang False
+held Conan Europe En Fr De Es It for 650s
+VERDICT Conan Europe En Fr De Es It ? PASS None gameplay=648.2s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=142.6 static_frac=0.0 play_share=0.9359 fps_excluded=44.0s
+{"name": "Conan Europe En Fr De Es It", "device": "nova", "result": "gameplay", "minutes": 1.81, "model_calls": 17, "steps": 13, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-544D0008-1011/frames/012-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

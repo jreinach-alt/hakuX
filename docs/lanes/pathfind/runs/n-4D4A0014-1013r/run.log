@@ -1,0 +1,21 @@
+pathfind: Aeon Flux (4D4A0014) on nova: /storage/E6C6-D7AA/Games/XBox/4D4A0014-Aeon_Flux.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4D4A0014 any, loaded none
+[  14.7s] #  1 publisher_logo    fast    A                        Aeon Flux is a Majesco title (4D4A); sibling BloodRayne and BloodRayne 2 skip publisher lo
+[  25.5s] #  2 publisher_logo    fast    A                        Xbox publisher logo, standard startup screen for Majesco titles. Sibling BloodRayne titles
+[  37.5s] #  3 publisher_logo    fast    A                        Developer logo from Terminal Reality. Sibling Majesco/Terminal Reality titles (BloodRayne,
+[  78.3s] #  4 cutscene          fast    START A                  Opening cinematic after publisher logos with letterboxed presentation. Sibling BloodRayne 
+[  83.9s] #  5 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 127.6s] #  6 submenu           fast    A                        Objectives display with arrow pointing to 'Next objective' is an interactive briefing menu
+[ 161.3s] #  7 gameplay          fast    wait                     Player character visible in active game world with control scheme HUD displayed. Environme
+[ 184.8s] #  8 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.380, under input 0.583
+hold-play: genre shooter, need 600 s of play
+hold-play: fps at 189 s: median 29.0, share>=30 0.883 over 94 samples
+hold-play: fps at 311 s: median 29.0, share>=30 0.869 over 153 samples
+hold-play: validity check stop 0 s (hold 601 s of play, verdict 602.6)
+hold-play: not held 601/600 s of play; verdict stops the hold: fps_ok 0.8455, crash False, hang False
+held Aeon Flux for 605s
+VERDICT Aeon Flux ? FAIL(fps: 84.6% of gameplay at >= 30 fps (bar 90%)) gameplay=603.6s fps_ok=0.846 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0032 play_share=0.9993 fps_excluded=0.0s
+{"name": "Aeon Flux", "device": "nova", "result": "gameplay", "minutes": 3.08, "model_calls": 15, "steps": 8, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4D4A0014-1013r/frames/007-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

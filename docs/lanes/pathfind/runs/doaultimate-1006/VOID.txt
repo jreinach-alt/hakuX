@@ -1,0 +1,1 @@
+VOID-COLLISION: hostops devwatch auto-lifted the pathfind hold at 00:33; gpunonrender's restore request force-stopped hakuX ('left the foreground' at 996 s of play, share short by 0.35 pt). Not a below-bar result; do not seed below-bar.tsv. Rerun clean (chain5).

@@ -1,0 +1,44 @@
+taken: nova by lane.pathfind
+idle: nova is held and runs nothing
+held at 19:45:43
+pathfind: Tork: Prehistoric Punk (55530040) on nova: /storage/E6C6-D7AA/Games/XBox/Tork - Prehistoric Punk (USA).iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 55530040 any, loaded golden 6cb2e3c07c9e
+[   6.0s] #  1 publisher_logo    replay  START A                  replay step 0: Ubisoft-style logo/splash on white background, no HUD or menu yet
+[  17.9s] #  2 publisher_logo    fast    START A                  Ubisoft publisher logo, not yet the title. Per the hints, START while the title is up; the
+[  25.1s] #  3 title_screen      replay  START                    replay step 2: Tork title card with publisher/copyright text, no 'Press Start' visible but
+[  29.7s] #  4 title_screen      replay  A                        replay step 3: Tork 'START GAME' menu with Empty save slot highlighted and A Select prompt
+[  39.5s] #  5 submenu           fast    A                        Per the recorded path, the next step after the slot/character screen is A to confirm; Cont
+[  48.9s] #  6 publisher_logo    fast    START                    This is the Tork title logo card, not a menu yet; the recorded path expects START on the t
+[  53.1s] #  7 publisher_logo    repeat  START                    repeat START: it advanced the publisher_logo
+[  63.8s] #  8 cutscene          fast    START A                  A static scenic establishing shot with no HUD and no visible player character; not confirm
+[  74.6s] #  9 cutscene          fast    wait                     A dissolve between scenes, not yet player control. The recorded path's gameplay frames sho
+[  83.3s] # 10 cutscene          fast    START A                  Letterbox bars and no HUD mean a cinematic, not player control. Skip with START then A, as
+[  94.6s] # 11 cutscene          fast    STICK:up:1.5             The scene looks like the in-world village, but no HUD is visible and control is unproven. 
+[ 105.8s] # 12 cutscene          fast    START A                  Letterbox bars, a staged close-up framing and no HUD mean a cinematic, not player control.
+[ 114.9s] # 13 cutscene          fast    START A                  Staged close-up with letterbox bars and a dissolve, no HUD, so not player control. Per the
+[ 123.8s] # 14 cutscene          fast    START A                  Staged close-up with letterbox bars and no HUD, so it is a cinematic, not player control. 
+[ 135.3s] # 15 cutscene          fast    START A                  Staged close-up dialogue-style framing with no HUD and no visible player control, the same
+[ 144.0s] # 16 cutscene          fast    START A                  Letterbox bars and a staged close-up with no HUD mean a cinematic, not player control. Fol
+[ 152.3s] # 17 cutscene          fast    START A                  Staged close-up with letterbox bars and no HUD is a cinematic, not player control. Same as
+[ 166.1s] # 18 cutscene          fast    B START                  Staged cinematic with letterbox bars and no HUD, not player control. START A has been repe
+[ 171.9s] # 19 black             black   wait                     black frame
+[ 179.4s] # 20 cutscene          fast    wait                     Staged close-up with no HUD and no player control, and the frame is still fading. Previous
+[ 187.5s] # 21 cutscene          fast    wait                     A staged death/knockdown scene with the character prone and no HUD or player control; this
+[ 195.6s] # 22 cutscene          fast    B START A                Staged knockdown/close-up with no HUD; the character is not responding as player-controlle
+[ 203.8s] # 23 black             black   wait                     black frame
+[ 212.1s] # 24 cutscene          fast    A                        Dialogue box with portrait and subtitle is a scripted story moment, not player control. Ad
+[ 220.6s] # 25 gameplay          fast    wait                     HUD (hearts and counter) is up and the character is in the world with no letterbox or dial
+[ 231.3s] # 26 probe             probe   STICK:up:1.5             control 0.014, under input 0.223
+hold-play: genre other, need 600 s of play
+hold-play: fps at 188 s: median 29.0, share>=30 1.0 over 95 samples
+hold-play: fps at 303 s: median 29.0, share>=30 1.0 over 152 samples
+hold-play: HELD 601/600 s of play; 
+held Tork: Prehistoric Punk for 633s
+VERDICT Tork: Prehistoric Punk ? PASS None gameplay=632.7s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0976 play_share=0.952 fps_excluded=32.0s
+{"name": "Tork: Prehistoric Punk", "device": "nova", "result": "gameplay", "minutes": 3.85, "model_calls": 28, "steps": 26, "replayed": 3, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/retro-tork/frames/025-gameplay.jpg"}
+titlestate: cannot read x1box_prefs.xml
+pathfind rc=1 at 20:01:28
+released: nova by lane.pathfind
+released rc=0

@@ -1,0 +1,33 @@
+pathfind: Blowout (4D4A0008) on nova: /storage/E6C6-D7AA/Games/XBox/4D4A0008-Blowout.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4D4A0008 any, loaded none
+[   6.0s] #  1 publisher_logo    replay  A                        replay step 0: Publisher/developer logo still animating after cold boot; per hints, skip w
+[  10.3s] #  2 title_screen      replay  START                    replay step 1: replay step 1: Title screen with 'Press START' prompt; START advances past 
+[  20.0s] #  3 main_menu         fast    A                        Main menu with New Game as the fastest route into play; Load Game and File Options should 
+[  28.3s] #  4 submenu           fast    A                        Confirmation dialog for New Game; the fastest route to play is Yes, which is already highl
+[  33.6s] #  5 main_menu         replay  A                        replay step 3: replay step 4: Game's main menu; 'Next Mission' is the top, highlighted ite
+[  39.8s] #  6 main_menu         replay  A                        replay step 4: replay step 5: Start Mission is the highlighted item and leads straight int
+[  53.2s] #  7 gameplay          fast    wait                     A player-style character stands in a 3D playfield with no menu, letterbox or title, matchi
+[  65.7s] #  8 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 control 0.104, under input 0.122
+[  69.6s] #  9 gameplay          fast    wait                     Player character stands in the 3D world with the HUD (ammo and health panels) up and no me
+[  78.2s] # 10 probe             probe   STICK:left:1.5           control 0.026, under input 0.220
+hold-play: genre shooter, need 600 s of play
+hold-play: 3 still looks: walk reversed (back) at 60 s
+hold-play: fps at 188 s: median 29.0, share>=30 1.0 over 95 samples
+hold-play: fps at 305 s: median 29.0, share>=30 1.0 over 153 samples
+hold-play: play disagrees: hold 610.6 s, verdict 615.9 s (verdict trusted)
+hold-play: validity check share 1024 s (hold 611 s of play, verdict 615.9)
+hold-play: verdict short on share by 1024 s; holding on (budget 1483 s left)
+hold-play: validity check share 1061 s (hold 662 s of play, verdict 666.2)
+hold-play: verdict short on share by 1061 s; holding on (budget 1422 s left)
+hold-play: validity check share 1202 s (hold 704 s of play, verdict 705.7)
+hold-play: verdict short on share by 1202 s; holding on (budget 1362 s left)
+hold-play: validity check share 1133 s (hold 772 s of play, verdict 775.3)
+hold-play: verdict short on share by 1133 s; holding on (budget 1293 s left)
+hold-play: validity check share 1379 s (hold 806 s of play, verdict 809.2)
+hold-play: not held 806/600 s of play; share short by 1379 s with no budget left
+held Blowout for 1054s
+VERDICT Blowout ? FAIL(menu time: 76.9% of the scored window in `play` (bar 90%; play 810 s, still 225 s, other 12 s, pause 6 s)) gameplay=1052.7s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.3805 play_share=0.7691 fps_excluded=242.3s
+{"name": "Blowout", "device": "nova", "result": "gameplay", "minutes": 1.3, "model_calls": 24, "steps": 10, "replayed": 4, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/blowout-rev/frames/009-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

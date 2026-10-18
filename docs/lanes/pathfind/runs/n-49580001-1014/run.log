@@ -1,0 +1,40 @@
+pathfind: Bard s Tale The USA (49580001) on nova: /storage/E6C6-D7AA/Games/XBox/49580001-Bard_s_Tale_The_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 49580001 any, loaded none
+[  15.0s] #  1 loading           fast    wait                     0.1 min into cold boot; featureless dark screen with gradient suggests early initializatio
+[  28.1s] #  2 publisher_logo    fast    A                        INXILE publisher logo during boot sequence; skip with A
+[  41.0s] #  3 title_screen      fast    START                    Title screen with explicit 'Please press START to begin' prompt; the book is the game's lo
+[  54.2s] #  4 main_menu         fast    A                        Main menu with Start New Game highlighted as the fastest path to play; A button shown next
+[ 114.7s] #  5 submenu           fast    A                        Character configuration menu; Normal difficulty is acceptable default; Continue button rea
+[ 129.8s] #  6 submenu           fast    Y                        Character configuration screen with explicit Y prompt on the Continue button; A was tried 
+[ 198.2s] #  7 main_menu         fast    A                        Start New Game is the highlighted fastest path to gameplay. Previous attempt got stuck in 
+[ 249.1s] #  8 submenu           fast    UP A                     Still on character config. The 12 available points suggest the game requires allocation be
+[ 265.6s] #  9 submenu           fast    Y                        Character talent selection menu; Two-Handed Weapons already highlighted; A hasn't advanced
+[ 280.3s] # 10 submenu           fast    A                        Character stat allocation screen with 12 unallocated points. Auto-Allocate is highlighted;
+[ 318.7s] # 11 submenu           fast    B                        Stuck in loop: talent selection → stat allocation → back to talent selection. User tried A
+[ 340.2s] # 12 submenu           fast    Y                        Character talent selection screen; stuck in a loop between talent and stat allocation. Pre
+[ 405.2s] # 13 submenu           fast    UP                       Trapped looping between talent and stat allocation after A and Y both failed on this scree
+[ 445.5s] # 14 submenu           fast    DOWN DOWN A              Stuck in a loop between talent and stat allocation screens after repeated A/Y/B/UP attempt
+[ 487.7s] # 15 submenu           fast    X                        Stuck in a loop between talent selection and stat allocation after 11 prior attempts with 
+[ 518.5s] # 16 submenu           fast    START                    Stuck in submenu loop between talent and stat allocation screens. Previous 11 inputs (A, B
+[ 536.9s] # 17 submenu           fast    LEFT                     Stuck looping between talent and stat screens; A/Y/B/X/UP/DOWN/START all tried. Cursor app
+[ 557.9s] # 18 submenu           fast    RIGHT                    Character stat allocation screen; need to allocate 12 available points or bypass this step
+[ 580.8s] # 19 submenu           fast    BACK                     Stat allocation screen stuck; UP/DOWN/LEFT/RIGHT/START/X/A/Y/B all tried without change. N
+[ 596.9s] # 20 submenu           fast    Y                        Stuck allocating 12 stat points. The 'Auto-Allocate' button is visible with a Y label; Y w
+[ 609.0s] # 21 main_menu         fast    A                        Back at the title menu after being stuck in character creation loop. 'Start New Game...' i
+[ 641.1s] # 22 submenu           fast    DOWN A                   Stat allocation screen where 12 points must be distributed before proceeding. Previous att
+[ 755.8s] # 23 submenu           fast    UP A                     Stuck on stat allocation requiring 12 points to be assigned before proceeding. All single 
+[ 798.4s] # 24 submenu           fast    RIGHT A                  Stuck on stat allocation requiring 12 points assigned. Y (Auto-Allocate) was tried but onl
+[ 885.7s] # 25 submenu           fast    A                        Stat allocation stuck at 12 available points. Y (step 20) and combinations of D-pad + A (s
+[ 920.2s] # 26 submenu           fast    START                    Stat allocation menu requires 12 points to be distributed before proceeding. Previous atte
+[ 973.7s] # 27 submenu           fast    B                        Stuck on mandatory 12-point stat allocation before proceeding. Previous attempts (A, START
+[1010.9s] # 28 submenu           fast    LEFT                     Stat allocation screen locked: 12 points must be distributed before proceeding. Previous i
+[1049.5s] # 29 submenu           fast    DOWN                     Stat allocation screen still locked: 12 points needed. Previous attempts with UP, LEFT, RI
+[1114.2s] # 30 submenu           fast    DOWN DOWN DOWN DOWN DOWN DOWN DOWN A Stuck on mandatory stat allocation. Previous DOWN press caused 0.04 change (positive), sug
+[1142.2s] # 31 submenu           fast    UP A                     Stuck on mandatory stat allocation. Previous attempts tried manual stat entry and backing 
+[1158.9s] # 32 submenu           fast    A                        Talent selection menu. 'Two-Handed Weapons' is highlighted (marked with A). This is differ
+[1188.7s] # 33 loading           fast    wait                     Just completed talent selection (step 32, A applied); transitioning from character creatio
+[1202.4s] # 34 cutscene          fast    START                    Letterbox framing, cinematic composition, character in game world but not interactive—this
+{"name": "Bard s Tale The USA", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 34, "steps": 34, "replayed": 0, "reason": "budget 20 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

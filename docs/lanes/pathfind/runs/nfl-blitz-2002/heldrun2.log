@@ -1,0 +1,101 @@
+taken: nova by lane.pathfind
+NOT IDLE: nova is held but busy -- do not touch it yet:
+dispatcher pid 518495 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+running: 1-1791220908-lane.gpuclock-2641880 on nova
+run: hold.sh wait-idle nova <timeout_s>, and touch the device only on exit 0
+waiting for nova: dispatcher pid 518495 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+running: 1-1791220908-lane.gpuclock-2641880 on nova
+idle: nova is held and runs nothing
+held at 11:33:20
+pathfind: NFL Blitz 2002 (None) on nova: /storage/E6C6-D7AA/Games/XBox/NFL_Blitz_2002.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: - any, loaded all goldens (title not identified)
+[  10.0s] #  1 publisher_logo    fast    A                        This is a pre-title logo/intro graphic with no menu or HUD; per the hints, skip with A fir
+[  17.4s] #  2 publisher_logo    fast    A                        Pre-title Midway logo with no menu or HUD. Per hints, skip with A; the previous A changed 
+[  28.1s] #  3 cutscene          fast    A                        This looks like an abstract intro or logo animation (the Midway logo sequence), not a menu
+[  37.2s] #  4 publisher_logo    fast    A                        A static legal/credits screen before the title, not a menu or gameplay. Per the hints, A s
+[  45.7s] #  5 save_load_prompt  fast    A                        Save-data check screen with no records; the prompt asks for A to continue, and the default
+[  53.2s] #  6 cutscene          fast    A                        A tight pre-play huddle or close-up shot with no menu or HUD; the previous step was a save
+[  60.9s] #  7 loading           fast    wait                     Game is loading its data after the logos; no menu or input is needed. Pressing buttons dur
+[  72.8s] #  8 main_menu         fast    DOWN DOWN DOWN DOWN      Sports setup rule: before the first kickoff, set the quarter length to the longest value i
+[  84.7s] #  9 main_menu         fast    STICK:down:0.5           Previous DOWN presses left the cursor on QUICKPLAY, and the 4-press limit on an unchanged 
+[  93.2s] # 10 main_menu         fast    UP                       Sports setup rule: open OPTIONS before QUICKPLAY to set the longest quarter length. The cu
+[ 100.5s] # 11 main_menu         fast    A                        Sports setup rule: open OPTIONS before QUICKPLAY to set the longest quarter length. The hi
+[ 108.7s] # 12 submenu           fast    UP UP UP UP A            Options screen is open. Quarter length is 2 MINUTES and the sports setup rule requires the
+[ 117.9s] # 13 submenu           fast    A                        Quarter length lives under PLAYING CONDITIONS (highlighted, top item). Cursor is on PLAYIN
+[ 126.1s] # 14 submenu           fast    A                        Still on the OPTIONS list, with PLAYING CONDITIONS highlighted at the top. The sports setu
+[ 133.9s] # 15 submenu           fast    DOWN A                   Repeated A on PLAYING CONDITIONS just returns to this list, so that path is not working. T
+[ 145.4s] # 16 submenu           fast    DOWN A                   PLAYING CONDITIONS only shows weather and time of day, and repeated A on it has looped bac
+[ 153.7s] # 17 submenu           fast    DOWN A                   PLAYING CONDITIONS only holds weather and time of day and has looped back three times. The
+[ 161.1s] # 18 submenu           fast    DOWN A                   PLAYING CONDITIONS only holds weather and time of day and has looped back several times. T
+[ 173.4s] # 19 submenu           fast    STICK:down:0.3 A         Options list is open; PLAYING CONDITIONS only holds weather and time of day, so the quarte
+[ 183.6s] # 20 submenu           fast    START                    PLAYING CONDITIONS only holds weather and time of day, and every A on it has looped back. 
+[ 191.4s] # 21 submenu           fast    START                    PLAYING CONDITIONS only holds weather and time of day and has looped back many times. PLAY
+[ 202.7s] # 22 submenu           fast    START                    The right panel is the PLAYING CONDITIONS contents (weather, time of day), which has no qu
+[ 212.6s] # 23 submenu           fast    START                    PLAYING CONDITIONS only holds weather and time of day and has looped back repeatedly. Movi
+[ 222.0s] # 24 submenu           fast    LEFT DOWN A              PLAYING CONDITIONS only holds weather and time of day and has looped many times; the right
+[ 231.7s] # 25 submenu           fast    START                    PLAYING CONDITIONS only holds weather and time of day, so it is the wrong list. Moving the
+[ 239.8s] # 26 submenu           fast    START                    PLAYING CONDITIONS only holds weather and time of day, as the history shows. Its options a
+[ 247.6s] # 27 submenu           fast    START                    PLAYING CONDITIONS only holds weather and time of day, so it is the wrong list. Moving one
+[ 257.9s] # 28 submenu           fast    DOWN DOWN A              The right panel is still PLAYING CONDITIONS, which has no quarter-length setting. Repeated
+[ 267.8s] # 29 submenu           fast    DOWN A                   Playing Conditions holds only weather and time of day, so it is the wrong list. Play Optio
+[ 278.2s] # 30 submenu           fast    DOWN                     Still on the OPTIONS list with PLAYING CONDITIONS highlighted, which has no quarter-length
+[ 289.0s] # 31 submenu           fast    STICK:down:0.3           Still on the OPTIONS list with PLAYING CONDITIONS highlighted; DOWN presses have not moved
+[ 298.7s] # 32 submenu           fast    STICK:down:0.6           Still on the OPTIONS list. PLAYING CONDITIONS is the highlighted row, and DOWN presses hav
+[ 308.8s] # 33 submenu           fast    RIGHT DOWN               Options submenu; PLAYING CONDITIONS is highlighted and DOWN/stick have not moved the highl
+[ 318.1s] # 34 submenu           fast    UP                       Prior DOWN and stick presses never moved the red highlight off PLAYING CONDITIONS, so the 
+[ 326.1s] # 35 submenu           fast    B                        Six attempts to move the highlight off PLAYING CONDITIONS failed, and the repeated inputs 
+[ 337.1s] # 36 submenu           fast    B                        Six inputs failed to move the highlight off PLAYING CONDITIONS, which has no quarter-lengt
+[ 347.3s] # 37 main_menu         fast    A                        Back on the NFL Blitz main menu with OPTIONS highlighted. Quarter length is not on the Qui
+[ 358.9s] # 38 submenu           fast    UP UP UP                 QUARTER LENGTH is visible here at 2 MINUTES, but it is not on the PLAYING CONDITIONS row I
+[ 370.9s] # 39 submenu           fast    RIGHT DOWN A             PLAY OPTIONS tab is already selected and shows QUARTER LENGTH at 2 MINUTES. Earlier attemp
+[ 379.8s] # 40 submenu           fast    B                        This is the Controller Config submenu, not gameplay and not the quarter-length screen I ne
+[ 388.8s] # 41 submenu           fast    UP                       The OPTIONS list is open with CONTROLLER CONFIG highlighted, the wrong entry. PLAY OPTIONS
+[ 397.2s] # 42 submenu           fast    RIGHT                    PLAY OPTIONS tab is highlighted, and QUARTER LENGTH is in the right column. Prior attempts
+[ 406.6s] # 43 submenu           fast    STICK:right:0.5          Quarter length (2 MINUTES) is in the right column and must be set to the longest value. RI
+[ 417.7s] # 44 submenu           fast    R1                       Quarter length is in the right column, and every RIGHT, STICK:right and RIGHT DOWN A try l
+[ 428.0s] # 45 submenu           fast    RIGHT RIGHT A            PLAY OPTIONS is the highlighted tab and QUARTER LENGTH sits in the right column at 2 MINUT
+[ 439.8s] # 46 submenu           fast    RSTICK:right:0.5         Still in OPTIONS on PLAY OPTIONS, and the left-stick and D-pad RIGHT attempts never moved 
+[ 449.6s] # 47 submenu           fast    DOWN                     The arrows around SKILL LEVEL mark it as the focused item, so focus is in the right column
+[ 456.1s] # 48 submenu           fast    RIGHT RIGHT RIGHT        Quarter length is focused in the right column at 2 MINUTES; the arrows on either side mark
+[ 463.4s] # 49 submenu           fast    RIGHT                    Quarter length is focused at 5 MINUTES, the longest value offered in the list shown so far
+[ 471.9s] # 50 submenu           fast    RIGHT RIGHT              Quarter length is focused in the right column at 1 MINUTE, which is shorter than the 5 MIN
+[ 482.0s] # 51 submenu           fast    RIGHT                    Quarter length is the focused item at 3 MINUTES. Earlier presses cycled 1, 2, 3, 5 with RI
+[ 489.1s] # 52 submenu           fast    RIGHT                    Quarter length is the focused item at 4 MINUTES; the owner rule wants the longest value of
+[ 497.9s] # 53 submenu           fast    B                        Quarter length is already at 5 MINUTES, the longest value offered, so the period-length se
+[ 508.5s] # 54 submenu           fast    RIGHT DOWN DOWN DOWN A   Quarter length is already 5 MINUTES, the longest value, so the period rule is met. Backing
+[ 519.8s] # 55 main_menu         fast    UP UP UP UP A            The quarter length was already set to the 5-minute maximum, so the options check is done. 
+[ 530.5s] # 56 submenu           fast    A                        Team/controller select with controller 1 already assigned to HOME TEAM. The period length 
+[ 541.2s] # 57 submenu           fast    A                        Team select with controller 1 already on the home team, per the prior steps. The period le
+[ 551.8s] # 58 submenu           fast    A                        Team select with both teams set to Arizona. Quarter length was already set to the 5-minute
+[ 566.1s] # 59 unknown           fast    wait                     Pre-game matchup screen with no menu cursor; it is a transition between team select and ki
+[ 573.7s] # 60 loading           fast    wait                     Game is loading the match after team select; a loading screen with a filling bar is not pl
+[ 587.4s] # 61 loading           fast    wait                     A venue card overlays the field before kickoff; it is a transition, not a menu and not yet
+[ 595.1s] # 62 gameplay          fast    A                        Live field with HUD (scoreboard, clock counting 1ST 5:00, TURBO meter) and players in the 
+[ 603.7s] # 63 probe             probe   A A STICK:up:1.5         control 0.580, under input 0.000
+[ 618.4s] # 64 gameplay          fast    A                        Live field with HUD and a counting clock (5:00 to 4:56), but the tip panel is still up and
+[ 625.5s] # 65 probe             probe   A STICK:up:1.5           control 0.000, under input 0.000
+[ 637.3s] # 66 gameplay          fast    X                        The HUD, the clock, and a player-controlled pink player with a marker are up, but the tip 
+[ 651.9s] # 67 probe             probe   X HOLD:A:3               control 0.004, under input 0.423
+[ 687.6s] # 76 retracted         probe   wait                     retracted after 30 s: A 'HOW TO PLAY' info box overlays the field, which is a menu/pre-pla
+[ 693.3s] # 77 pause             fast    A                        The HOW TO PLAY tip panel covers the field and is not live play; the hint says A clears it
+[ 701.2s] # 78 pause             fast    A                        A HOW TO PASS tip overlay is up over live field; the hint says A clears such panels, and i
+[ 715.2s] # 79 pause             fast    B                        A tip overlay covers the field, not play. A already came back to this screen twice, so I'm
+[ 730.6s] # 80 pause             fast    A                        A tip overlay sits over the live field, so this is not gameplay. B did nothing here. The p
+[ 746.4s] # 81 unknown           fast    A                        Pre-snap formation with the HUD and clock up but no menu. Per the rules this is not live p
+[ 763.2s] # 82 unknown           fast    A                        Pre-snap formation with HUD and clock but no menu, so the play has not started yet. The pr
+[ 781.2s] # 83 gameplay          fast    wait                     A live play has just run: players are moving, the HUD shows the score and a ticking 1st-qu
+[ 793.0s] # 84 probe             probe   HOLD:A:3                 control 0.079, under input 0.804
+hold-play: sports look {'clock': '4:35', 'period': '1st', 'human_controlled': True, 'why': "HUD shows 1ST 4:35 with the score ARZ 0 – ARZ 0, and the controlled player is marked by a yellow arrow on the scoreboard, with a play-by-play banner '1 YARD LOS"}
+hold-play: genre team, need 600 s of play
+hold-play: fps at 191 s: median 45.0, share>=30 1.0 over 139 samples
+hold-play: fps at 310 s: median 47.0, share>=30 0.991 over 228 samples
+hold-play: HELD 601/600 s of play; 
+held NFL Blitz 2002 for 608s
+VERDICT NFL Blitz 2002 ? PASS None gameplay=606.9s fps_ok=0.996 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0003 play_share=0.9902 fps_excluded=7.3s
+{"name": "NFL Blitz 2002", "device": "nova", "result": "gameplay", "minutes": 13.22, "model_calls": 93, "steps": 76, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nfl-blitz-2002/hold2/frames/083-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256
+pathfind rc=0 at 11:57:32
+released: nova by lane.pathfind
+released rc=0

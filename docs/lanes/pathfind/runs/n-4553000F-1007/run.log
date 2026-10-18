@@ -1,0 +1,28 @@
+pathfind: Legacy of Kain Defiance USA (4553000F) on nova: /storage/E6C6-D7AA/Games/XBox/4553000F-Legacy_of_Kain_Defiance_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4553000F any, loaded none
+[  10.1s] #  1 loading           fast    wait                     No game content visible yet, just a loading animation on what appears to be the emulator's
+[  18.3s] #  2 publisher_logo    fast    START A                  Publisher logo screen before game content; skip with START then A per instructions
+[  27.1s] #  3 publisher_logo    fast    START A                  Publisher/developer copyright screen, skip with START then A per instructions
+[  36.3s] #  4 loading           fast    wait                     Loading screen with 'Loading' text visible; no input needed, just wait for it to progress.
+[  45.3s] #  5 publisher_logo    fast    START A                  Another publisher logo screen, skip with START then A per instructions
+[  54.8s] #  6 gameplay          fast    STICK:up:1.5             HUD with health orb and character in a 3D game world, no menu or cutscene elements visible
+[  66.8s] #  7 probe             probe   STICK:up:1.5 STICK:up:1.5 control 0.004, under input 0.696
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 187 s: median 51.0, share>=30 0.98 over 149 samples
+hold-play: fps at 315 s: median 56.0, share>=30 0.989 over 261 samples
+hold-play: validity check share 278 s (hold 608 s of play, verdict 608.7)
+hold-play: verdict short on share by 278 s; holding on (budget 1588 s left)
+hold-play: validity check share 211 s (hold 675 s of play, verdict 676.4)
+hold-play: verdict short on share by 211 s; holding on (budget 1521 s left)
+hold-play: validity check share 140 s (hold 746 s of play, verdict 747.5)
+hold-play: verdict short on share by 140 s; holding on (budget 1450 s left)
+hold-play: validity check share 69 s (hold 818 s of play, verdict 818.8)
+hold-play: verdict short on share by 69 s; holding on (budget 1377 s left)
+hold-play: validity check stop 0 s (hold 886 s of play, verdict 888.0)
+hold-play: not held 886/600 s of play; verdict stops the hold: fps_ok 0.9681, crash False, hang False
+held Legacy of Kain Defiance USA for 989s
+VERDICT Legacy of Kain Defiance USA ? PASS None gameplay=987.2s fps_ok=0.9681 crash=False hang=False audio_short=0.0 hitches=1/0.065pm worst_ms=157.4 static_frac=0.0746 play_share=0.9001 fps_excluded=101.5s
+{"name": "Legacy of Kain Defiance USA", "device": "nova", "result": "gameplay", "minutes": 1.11, "model_calls": 18, "steps": 7, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4553000F-1007/frames/006-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

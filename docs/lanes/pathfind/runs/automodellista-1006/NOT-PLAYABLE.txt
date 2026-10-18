@@ -1,0 +1,1 @@
+VOID-AS-PLAYABLE: harness PASS is false. Frames 094/224 (full res): speedometer 000 mph, gear 1, 8th/8, lap 1/3 after 29 min (total_time 29'34); throttle probe 'control 0.001, under input 0.007'. The car never drove: the hold held RT but the game takes another accelerate button. Do not bank. Needs a throttle mapping and a speed-based gate.

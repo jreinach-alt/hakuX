@@ -1,0 +1,98 @@
+taken: nova by lane.pathfind
+NOT IDLE: nova is held but busy -- do not touch it yet:
+dispatcher pid 518495 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+running: 1-1791216614-lane.frametrace-2373212 on nova
+run: hold.sh wait-idle nova <timeout_s>, and touch the device only on exit 0
+waiting for nova: dispatcher pid 518495 has not seen the hold yet (lanes/nova is still registered): it may be claiming, or a request is running
+running: 1-1791216614-lane.frametrace-2373212 on nova
+idle: nova is held and runs nothing
+held at 10:50:09
+pathfind: NFL Blitz 2002 (None) on nova: /storage/E6C6-D7AA/Games/XBox/NFL_Blitz_2002.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: - any, loaded all goldens (title not identified)
+[   9.0s] #  1 publisher_logo    fast    A                        A logo/splash is on screen with no title or menu yet. Per the hints, skip with A first, th
+[  16.5s] #  2 publisher_logo    fast    A                        Publisher logo on screen; per hints, skip with A and re-read. Last step A changed the scre
+[  27.8s] #  3 unknown           fast    A                        Abstract 3D scene that is neither a logo nor a menu; it looks like an unmarked intro or te
+[  37.4s] #  4 publisher_logo    fast    A                        Publisher/title splash with no menu yet; per hints, skip with A once and re-read rather th
+[  42.3s] #  5 publisher_logo    repeat  A                        repeat A: it advanced the publisher_logo
+[  50.5s] #  6 cutscene          fast    A                        This is an FMV intro cinematic with no menu or HUD, after the publisher logos; per hints, 
+[  58.6s] #  7 loading           fast    wait                     Game is loading after the logos; no input needed, wait for the next screen.
+[  68.9s] #  8 main_menu         fast    A                        Quickplay is already highlighted and is the fastest route to a game. Its team select is wh
+[  76.9s] #  9 submenu           fast    A                        Controller 1 is already assigned to the home team, so a human controls a side. Press A to 
+[  86.0s] # 10 submenu           fast    A                        Team select, not play yet. A FORWARD advances toward game setup, where the quarter length 
+[  95.7s] # 11 submenu           fast    A                        Still on team select; the earlier A did not advance it. Pressing A on FORWARD moves toward
+[ 107.6s] # 12 loading           fast    wait                     The screen is a half-drawn transition between menus, not a readable menu or gameplay, so t
+[ 114.2s] # 13 loading           fast    wait                     Tip screen shown during game loading; no input needed, wait for the next screen to appear.
+[ 123.4s] # 14 loading           fast    wait                     Game is still loading into the match after team select; no input is accepted on a loading 
+[ 136.8s] # 15 loading           fast    wait                     A venue info card over a pre-play field view is the game's pre-kickoff intro, not live con
+[ 147.8s] # 16 gameplay          fast    wait                     Game HUD (score, quarter clock, TURBO meter) is up over a live field with players in forma
+[ 155.0s] # 17 probe             probe   A STICK:up:1.5           control 0.000, under input 0.000
+[ 164.5s] # 18 gameplay          fast    A                        The HUD shows the match is past kickoff, so the quarter-length and clock settings no longe
+[ 187.0s] # 19 probe             probe   A A STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.551, under input 0.520
+[ 194.4s] # 20 submenu           fast    A                        Play-call menu before the snap; SUB ZERO is highlighted, so A picks it. A second A should 
+[ 201.8s] # 21 gameplay          fast    A                        Live 1st-quarter play with HUD and clock counting, but a 'HOW TO PLAY' info box is coverin
+[ 215.0s] # 22 probe             probe   A A HOLD:A:3             control 0.000, under input 0.099
+[ 228.0s] # 23 submenu           fast    A                        A tutorial info box is waiting for a confirm over the play, so it is not yet clean gamepla
+[ 239.0s] # 24 gameplay          fast    wait                     HUD and clock are up with no menu or info box covering the field, so this is live play. Pr
+[ 254.1s] # 25 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.428, under input 0.528
+[ 259.9s] # 26 period_break      fast    START A                  A replay card after a play is not live play, so per the replay/break rule I press START th
+[ 270.5s] # 27 gameplay          fast    wait                     The HUD, the quarter and clock, and the field are all visible with no menu or tutorial box
+[ 285.7s] # 28 probe             probe   RT:3 RT+left:1.2 RT+right:1.2 control 0.468, under input 0.574
+[ 291.8s] # 29 submenu           fast    A                        Pre-snap play-call menu, not live play. The highlighted defensive play is STUFF IT, so A p
+[ 307.4s] # 30 submenu           fast    A                        Pre-snap play-call screen, not live play yet. No menu list is visible, so I press A to con
+[ 316.8s] # 31 submenu           fast    A                        Pre-snap formation with no menu box showing; the play is set, so A should snap the ball. N
+[ 326.9s] # 32 gameplay          fast    wait                     Live field with HUD, clock running, and a player on the field; the incomplete-pass banner 
+[ 342.8s] # 33 probe             probe   RT:3 RT+left:1.2 RT+right:1.2 control 0.243, under input 0.238
+[ 350.1s] # 34 submenu           fast    A                        Pre-snap formation with the play already set and no menu list showing, so this is not live
+[ 360.3s] # 35 gameplay          fast    wait                     Live play with HUD, scoreboard and clock running, and players moving on the field. Previou
+[ 377.7s] # 36 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.172, under input 0.129
+[ 384.0s] # 37 submenu           fast    A                        Play-call menu, not live play. STUFF IT is the highlighted defense play; pressing A confir
+[ 393.5s] # 38 gameplay          fast    wait                     Live play with HUD, clock running, and players moving with a TURBO meter; no menu or pre-s
+[ 408.2s] # 39 probe             probe   HOLD:X:3 STICK:left:1.2 STICK:right:1.2 control 0.830, under input 0.133
+[ 415.4s] # 40 submenu           fast    RIGHT A                  Play-call menu, not live play. A on STUFF IT already came back here, so I'm moving the hig
+[ 428.2s] # 41 gameplay          fast    wait                     Scoreboard, clock, TURBO meter and players moving with no menu on screen, so this is live 
+[ 445.3s] # 42 probe             probe   HOLD:X:3 STICK:left:1.2 STICK:right:1.2 control 0.581, under input 0.570
+[ 453.2s] # 43 submenu           fast    A A                      Pre-snap play-call menu. SUB ZERO is the highlighted offensive play. Previous A presses on
+[ 466.8s] # 44 gameplay          fast    wait                     The HUD, clock and TURBO meter are up and no menu is on screen, but the frame may be a pre
+[ 484.2s] # 45 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.597, under input 0.538
+[ 492.2s] # 46 gameplay          fast    wait                     Players are mid-motion with a ball carrier, a tackle pile, a scorebug, clock and TURBO met
+[ 512.7s] # 47 probe             probe   LT:2 LT:2 LT:2           control 0.114, under input 0.136; 2 of 3 idle/input rounds won
+[ 521.3s] # 48 gameplay          fast    wait                     Live play in progress: players are mid-motion with a ball carrier, HUD and clock are up, a
+[ 533.5s] # 49 probe             probe   LT:2                     control 0.093, under input 0.181
+[ 540.0s] # 50 submenu           fast    A A                      Play-call menu before the snap, not live play. The highlighted play is SAFE COVER, so A pi
+[ 551.1s] # 51 gameplay          fast    wait                     The play-call menu is gone and the offense is set in a pre-snap formation with the HUD up.
+[ 568.1s] # 52 probe             probe   A HOLD:B:3 STICK:left:1.2 STICK:right:1.2 control 0.809, under input 0.152
+[ 573.9s] # 53 submenu           fast    A A                      Still the play-call menu, not live play. The highlighted defensive play is STUFF IT, so A 
+[ 585.0s] # 54 gameplay          fast    wait                     The HUD, clock and scoreboard are up and the players are moving with no menu overlay, so t
+[ 598.8s] # 55 probe             probe   HOLD:B:3 STICK:left:1.2 STICK:right:1.2 control 0.802, under input 0.217
+[ 606.0s] # 56 submenu           fast    RIGHT A                  Same play-call menu as before; A on STUFF IT twice just returned here. Changing the input:
+[ 616.5s] # 57 gameplay          fast    wait                     Play-call menu is gone, the HUD and clock are up, and the players are moving with no overl
+[ 631.3s] # 58 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.529, under input 0.804
+[ 637.9s] # 59 submenu           fast    A                        Still the play-call menu, not live play. STUFF IT is the lit defensive play, so A picks it
+[ 650.9s] # 60 gameplay          fast    wait                     HUD, scoreboard and down marker are up with no play-call menu on screen, so this reads as 
+[ 666.5s] # 61 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.552, under input 0.651
+[ 671.4s] # 62 submenu           fast    A                        A coaching-tips card waiting for A to continue to play, not live gameplay. The 'PLAY' prom
+[ 679.4s] # 63 submenu           fast    A                        This is the pre-snap play-call menu, not live play. SAFE COVER is the highlighted defensiv
+[ 697.9s] # 64 gameplay          fast    wait                     HUD and down marker are up with no menu on screen, and the formation is set. Pressing A sn
+[ 716.0s] # 65 probe             probe   A STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.830, under input 0.486
+[ 724.1s] # 66 submenu           fast    A                        Play-call menu is still up with no snap yet; BANK is the highlighted offensive play, so A 
+[ 735.6s] # 67 gameplay          fast    wait                     No menu is on screen; the HUD and down marker are up and the formation is set, so this is 
+[ 753.8s] # 68 probe             probe   A STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.561, under input 0.295
+[ 761.2s] # 69 submenu           fast    RIGHT A                  Two A presses on the highlighted BANK returned to this same screen, so A alone on BANK is 
+[ 774.6s] # 70 gameplay          fast    A                        Pre-snap formation with the HUD up and no menu open. The play-call menu is gone, so the ne
+[ 793.1s] # 71 probe             probe   A STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.542, under input 0.578
+[ 800.0s] # 72 submenu           fast    A                        Play-call menu is still open before the snap, and BANK is the highlighted offensive play. 
+[ 810.7s] # 73 gameplay          fast    A                        HUD and down marker are up with no menu, so this is the pre-snap formation. The last play-
+[ 830.4s] # 74 probe             probe   A A STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.551, under input 0.441
+[ 837.4s] # 75 submenu           fast    DOWN A                   The play-call menu is still open after two A presses on BANK, which did not start the snap
+[ 856.1s] # 76 gameplay          fast    A                        Pre-snap formation with HUD up and no menu. The last play-call attempts were refused becau
+[ 874.2s] # 77 probe             probe   A STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.538, under input 0.459
+[ 882.8s] # 78 submenu           fast    A                        Play-call menu still open with no snap yet. The highlight is on SAFE COVER, so A confirms 
+[ 893.1s] # 79 gameplay          fast    A                        HUD is up with no menu, so this is the pre-snap formation rather than the play-call menu. 
+[ 912.7s] # 80 probe             probe   A A STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.827, under input 0.072
+{"name": "NFL Blitz 2002", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 84, "steps": 80, "replayed": 0, "reason": "budget 15 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256
+pathfind rc=1 at 11:05:24
+released: nova by lane.pathfind
+released rc=0

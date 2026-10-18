@@ -1,0 +1,33 @@
+pathfind: Conflict Vietnam USA (5343000A) on nova: /storage/E6C6-D7AA/Games/XBox/5343000A-Conflict_Vietnam_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 5343000A any, loaded none
+[  10.9s] #  1 loading           fast    wait                     This appears to be the very first frame post-boot, likely a black/loading transition befor
+[  14.5s] #  2 black             black   wait                     black frame
+[  22.0s] #  3 publisher_logo    fast    A                        This is a legal/credits screen shown after boot, before any title screen or menu; standard
+[  29.7s] #  4 publisher_logo    fast    A                        A new publisher logo appeared after the previous one was skipped; standard skip is A per i
+[  37.6s] #  5 cutscene          fast    START                    No HUD or player control indicators, this is an atmospheric intro cinematic showing the ga
+[  45.5s] #  6 main_menu         fast    A                        Main menu with SINGLE PLAYER highlighted as default; selecting it leads toward gameplay fa
+[  52.8s] #  7 save_load_prompt  fast    A                        A profile notification dialog with CONTINUE prompt at bottom; accepting default with A pro
+[  61.6s] #  8 submenu           fast    A                        NEW GAME is highlighted as default on Single Player submenu; selecting it is the fastest p
+[  70.6s] #  9 submenu           fast    A                        Difficulty selection screen; NORMAL appears to be the default highlighted option, accept i
+[  78.1s] # 10 cutscene          fast    START                    Letterboxed atmospheric scene with no HUD or player control indicators, consistent with an
+[  85.9s] # 11 cutscene          fast    A                        Level intro card with explicit A CONTINUE prompt at bottom; pressing A advances past this 
+[  95.1s] # 12 cutscene          fast    START                    A did nothing on this unchanged screen per history; trying START to advance past the brief
+[  99.6s] # 13 publisher_logo    sibreplay A                        sibling 53430006 step 3: Dolby Digital logo screen after loading spinner; a new publisher 
+[ 109.8s] # 14 gameplay          fast    STICK:up:1.5             Full-screen (no letterbox) third-person game world with the player character visible, foll
+[ 127.8s] # 15 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.200, under input 0.527
+hold-play: genre shooter, need 630 s of play
+hold-play: fps at 191 s: median 29.0, share>=30 0.622 over 90 samples
+hold-play: fps at 309 s: median 29.0, share>=30 0.669 over 145 samples
+hold-play: 3 still looks: walk reversed (forward) at 482 s
+hold-play: 3 still looks: walk reversed (forward) at 533 s
+hold-play: stuck (scene unchanged for 4 consecutive samples (genre shooter)): prompt look at 571 s
+hold-play: stuck (scene unchanged for 4 consecutive samples (genre shooter)): unstick STICK:left:2 RT:1 at 571 s
+hold-play: stuck (scene unchanged for 5 consecutive samples (genre shooter)): unstick STICK:right:2 RT:1 at 618 s
+hold-play: stuck_abort: scene unchanged for 6 consecutive samples (genre shooter); 2 unstick rung(s) tried, still stuck
+hold-play: not held 511/630 s of play; stuck_abort: scene unchanged for 6 consecutive samples (genre shooter); 2 unstick rung(s) tried, still stuck
+held Conflict Vietnam USA for 681s
+VERDICT Conflict Vietnam USA ? FAIL(hang: 245.2 s without 60 guest flips after the mark) gameplay=680.5s fps_ok=0.703 crash=False hang=True audio_short=0.0 hitches=0/0.0pm worst_ms=145.7 static_frac=0.0129 play_share=0.7532 fps_excluded=0.0s
+{"name": "Conflict Vietnam USA", "device": "nova", "result": "gameplay", "minutes": 2.13, "model_calls": 32, "steps": 15, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-5343000A-1015n/frames/014-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

@@ -1,0 +1,81 @@
+{
+ "title_id": "4A570005",
+ "name": "Ski Racing 2005 Europe",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/4A570005-Ski_Racing_2005_Europe.xiso.iso",
+ "result": "gameplay",
+ "tool": "920a61de3c",
+ "started": "2026-10-16 03:33:51 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4A570005-1015n/frames/030-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4A570005-1015n/frames/030-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4A570005-1015n/frames/030-probe-left.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4A570005-1015n/frames/030-probe-right.jpg"
+ ],
+ "claim_live_selfmove": 3,
+ "minutes": 4.98,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4A570005-1015n/frames/029-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4A570005-1015n/frames/031-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4A570005-1015n/frames/032-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4A570005-1015n/frames/033-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4A570005-1015n/frames/034-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4A570005-1015n/frames/035-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4A570005-1015n/frames/036-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4A570005-1015n/frames/037-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4A570005-1015n/frames/038-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-4A57.md"
+ ],
+ "hold": {
+  "genre": "drive",
+  "why": "Skier moving down a snowy course through a gate, third-person view, similar to vehicle traversal of a track.",
+  "gas": "RT",
+  "ok": false,
+  "play_s": 452.8,
+  "need_s": 630.0,
+  "hold_s": 604.1,
+  "model_navs": 18,
+  "frames": 19,
+  "still_windows": 1,
+  "shed": [],
+  "reversals": 0,
+  "reason": "off play 146 s of a 604 s scored window cannot drop to 10% with 799 s of budget left: no amount of further play can pass",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 187,
+    "median": 59.0,
+    "share": 1.0,
+    "at_s": 186.9,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 303,
+    "median": 59.0,
+    "share": 1.0,
+    "at_s": 303.1,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "stuck_abort": false,
+  "verdict": "VERDICT Ski Racing 2005 Europe ? FAIL(menu time: 75.8% of the scored window in `play` (bar 90%; play 458 s, period_break 45 s, cutscene 34 s, menu 33 s)) gameplay=604.5s fps_ok=1.0 crash=False hang=False audio_short=0.000142 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0 play_share=0.7578 fps_excluded=147.7s"
+ },
+ "model_calls": 54,
+ "calls_by_model": {
+  "claude-sonnet-5": 54
+ },
+ "steps": 30,
+ "seconds": 949.6,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4A570005-1015n/frames/109-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4A570005-1015n/strip.jpg"
+}

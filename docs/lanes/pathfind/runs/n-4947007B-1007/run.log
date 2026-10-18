@@ -1,0 +1,110 @@
+pathfind: Indigo Prophecy USA (4947007B) on nova: /storage/E6C6-D7AA/Games/XBox/4947007B-Indigo_Prophecy_USA.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4947007B any, loaded none
+[  10.7s] #  1 loading           fast    wait                     No menu or video content, just a loading graphic shortly after cold boot; waiting for the 
+[  21.6s] #  2 loading           fast    wait                     This appears to be a loading or transition effect screen with no interactive elements, lik
+[  32.5s] #  3 title_screen      fast    START                    Title screen explicitly prompts 'Please press START to begin', so press START.
+[  41.6s] #  4 profile_creation  fast    A                        NEW PROFILE is the only entry and is highlighted; select it with A to create a profile and
+[  51.6s] #  5 name_entry        fast    START                    Profile name entry keyboard; press START to jump to OK/Done rather than typing letters one
+[  73.7s] #  6 name_entry        fast    A DOWN DOWN DOWN RIGHT RIGHT A Field is empty and cursor is on letter 'A' tile; START did nothing here, so type a letter 
+[  86.4s] #  7 save_load_prompt  fast    A                        Confirmation dialog for creating the new profile; confirm with A (Yes) to proceed.
+[  97.3s] #  8 loading           fast    wait                     Profile save is in progress (explicit 'Saving profile...' message); wait for it to finish 
+[ 106.2s] #  9 save_load_prompt  fast    wait                     Save Successful confirmation banner is showing; this is a transient notification, not an i
+[ 116.6s] # 10 save_load_prompt  fast    wait                     Transient 'Save Successful' confirmation banner is still showing over the keyboard; it's n
+[ 126.9s] # 11 save_load_prompt  fast    A                        The 'Save Successful' banner has not cleared after two waits; try A to dismiss the transie
+[ 137.1s] # 12 main_menu         fast    A                        New movie is the lit/default menu item, which starts a new game; confirm with A.
+[ 150.9s] # 13 main_menu         fast    DOWN A                   Tutorial is highlighted but New game is the actual path to real gameplay per policy (avoid
+[ 161.3s] # 14 publisher_logo    fast    START A                  Atari publisher logo screen, part of intro sequence after main menu selections; skip with 
+[ 171.5s] # 15 publisher_logo    fast    START A                  Developer logo screen after Atari publisher logo; skip with START then A per logo-skip pol
+[ 181.5s] # 16 loading           fast    wait                     Loading screen with progress bar visible, no HUD or menu; wait for it to finish.
+[ 192.2s] # 17 cutscene          fast    START A                  Letterboxed cinematic with no HUD or player control indicators; this is a story cutscene a
+[ 203.9s] # 18 cutscene          fast    START A                  Letterboxed cinematic with no HUD or player control, continuing from previous loading scre
+[ 209.9s] # 19 black             black   wait                     black frame
+[ 218.5s] # 20 loading           fast    wait                     Ambiguous dim screen with no HUD or clear menu, likely a transition/loading or fading logo
+[ 227.8s] # 21 cutscene          fast    START A                  Letterboxed-less but still a non-interactive dark atmospheric scene, likely continuing the
+[ 234.4s] # 22 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 241.1s] # 23 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 247.8s] # 24 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 254.3s] # 25 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 260.5s] # 26 black             black   wait                     black frame
+[ 269.8s] # 27 cutscene          fast    START A                  This is the opening credits sequence of the game continuing from the intro cutscene; text 
+[ 275.9s] # 28 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 281.6s] # 29 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 287.2s] # 30 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 292.9s] # 31 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 298.6s] # 32 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 304.3s] # 33 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 316.1s] # 34 cutscene          fast    START A                  Continuing non-interactive candle vigil cinematic; prior repeated START A inputs have been
+[ 322.9s] # 35 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 329.6s] # 36 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 336.3s] # 37 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 342.9s] # 38 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 349.6s] # 39 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 356.1s] # 40 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 367.7s] # 41 cutscene          fast    START A                  Dramatic fixed camera angle over a corpse, no HUD, likely a cutscene/flashback sequence fo
+[ 372.8s] # 42 black             black   wait                     black frame
+[ 381.3s] # 43 cutscene          fast    START A                  Continuing the dark flashback/cutscene sequence seen in prior steps; same pattern of advan
+[ 386.9s] # 44 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 392.5s] # 45 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 398.2s] # 46 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 404.0s] # 47 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 409.6s] # 48 cutscene          repeat  START A                  repeat START: it advanced the cutscene
+[ 420.2s] # 49 cutscene          fast    A                        This is a save-notification tooltip overlay, not yet free player control; dismiss it with 
+[ 424.0s] # 50 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 428.0s] # 51 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 432.0s] # 52 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 435.8s] # 53 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 439.7s] # 54 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 443.6s] # 55 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 452.6s] # 56 cutscene          fast    A                        This looks like a scripted scene (bloody hands, specific framing) rather than free player 
+[ 457.6s] # 57 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 462.5s] # 58 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 467.5s] # 59 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 472.4s] # 60 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 477.4s] # 61 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 482.3s] # 62 cutscene          repeat  A                        repeat A: it advanced the cutscene
+[ 494.3s] # 63 cutscene          fast    A                        No HUD/health or controls indicator, bloody hands suggest a scripted scene continuing; las
+[ 513.8s] # 64 cutscene          fast    B X Y                    A has not advanced this frame for several repeats; bloody hands overlay and lack of any HU
+[ 531.8s] # 65 gameplay          fast    STICK:up:1.5             The 'Lucas' name plate with mood state 'DEPRESSED' is Indigo Prophecy's real-time mental-h
+[ 540.6s] # 66 probe             probe   STICK:up:1.5 STICK:up:1.5 control 0.097, under input 0.269
+[ 553.4s] # 67 gameplay          fast    STICK:up:1.5             Full-screen view (no letterbox bars) with contextual action icons over interactable object
+[ 578.4s] # 68 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.652, under input 0.098
+[ 588.8s] # 69 cutscene          fast    A                        Tight character-focused shot on an NPC with no player HUD or interactable icons suggests a
+[ 597.6s] # 70 loading           fast    wait                     Loading screen between scenes, no HUD or input prompt visible; wait for it to finish
+[ 610.8s] # 71 gameplay          fast    STICK:up:1.5             No cutscene bars, player character visible from behind in an explorable room with interact
+[ 630.1s] # 72 probe             probe   STICK:up:1.5 HOLD:A:3 HOLD:A:3 HOLD:A:3 control 0.098, under input 0.010
+[ 644.2s] # 73 gameplay          fast    STICK:up:1 A             Explorable room, player character and camera visible, no letterbox/menu; continuing to pro
+[ 663.6s] # 74 probe             probe   STICK:up:1 A HOLD:A:3 HOLD:A:3 HOLD:A:3 control 0.107, under input 0.027
+[ 673.1s] # 75 gameplay          fast    STICK:up:1.5             First-person explorable room with player hand visible and HUD icons present, no letterbox 
+[ 688.6s] # 76 probe             probe   STICK:up:1.5 RT:3        control 0.126, under input 0.582
+hold-play: genre other, need 600 s of play
+hold-play: fps at 187 s: median 57.0, share>=30 0.994 over 167 samples
+hold-play: 3 still looks: walk reversed (back) at 294 s
+hold-play: fps at 306 s: median 59.0, share>=30 0.993 over 275 samples
+hold-play: validity check share 612 s (hold 606 s of play, verdict 607.0)
+hold-play: verdict short on share by 612 s; holding on (budget 929 s left)
+hold-play: validity check share 542 s (hold 675 s of play, verdict 676.3)
+hold-play: verdict short on share by 542 s; holding on (budget 860 s left)
+hold-play: validity check share 478 s (hold 739 s of play, verdict 741.0)
+hold-play: verdict short on share by 478 s; holding on (budget 795 s left)
+hold-play: validity check share 416 s (hold 801 s of play, verdict 803.3)
+hold-play: verdict short on share by 416 s; holding on (budget 733 s left)
+hold-play: validity check share 350 s (hold 868 s of play, verdict 869.8)
+hold-play: verdict short on share by 350 s; holding on (budget 666 s left)
+hold-play: validity check share 287 s (hold 930 s of play, verdict 932.4)
+hold-play: verdict short on share by 287 s; holding on (budget 603 s left)
+hold-play: validity check share 221 s (hold 995 s of play, verdict 998.1)
+hold-play: verdict short on share by 221 s; holding on (budget 538 s left)
+hold-play: validity check share 155 s (hold 1061 s of play, verdict 1063.9)
+hold-play: verdict short on share by 155 s; holding on (budget 472 s left)
+hold-play: validity check share 93 s (hold 1123 s of play, verdict 1126.3)
+hold-play: verdict short on share by 93 s; holding on (budget 409 s left)
+hold-play: validity check share 32 s (hold 1184 s of play, verdict 1187.3)
+hold-play: verdict short on share by 32 s; holding on (budget 348 s left)
+hold-play: validity check stop 0 s (hold 1246 s of play, verdict 1249.9)
+hold-play: not held 1246/600 s of play; verdict stops the hold: fps_ok 0.9947, crash False, hang False
+held Indigo Prophecy USA for 1388s
+VERDICT Indigo Prophecy USA ? PASS None gameplay=1386.0s fps_ok=0.9947 crash=False hang=False audio_short=0.0 hitches=1/0.045pm worst_ms=130.4 static_frac=0.0792 play_share=0.9023 fps_excluded=136.0s
+{"name": "Indigo Prophecy USA", "device": "nova", "result": "gameplay", "minutes": 11.48, "model_calls": 66, "steps": 76, "replayed": 0, "reason": "four probes refused", "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4947007B-1007/frames/075-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256
