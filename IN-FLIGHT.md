@@ -8,7 +8,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `gta3fps1017b` | claude-opus-5-5 | 56 min | gta3fps1017b: GTA III fps -- R2 (bind the forced-alpha surface view) and R3 (share one copy between nodes), bo |
+| `gta3fps1017b` | claude-opus-5-5 | 58 min | gta3fps1017b: GTA III fps -- R2 (bind the forced-alpha surface view) and R3 (share one copy between nodes), bo |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `lane.xbox-fps1018`
@@ -124,6 +124,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Recently landed on master
 
+- 2026-10-18 gta3fps1017: GTA III fps -- the census on foot (neither R2 nor R3), and R1: no #474 drain ahead of a plain colour copy (#1049)
 - 2026-10-17 The compatibility page adds NBA Live 07 (454100A1) as Playable: 90 -> 91
 - 2026-10-17 compat1017b: the compatibility page catches up from 88 to 90 Playable
 - 2026-10-17 compat1017: catch up the compatibility page to the 88-row Playable ledger
@@ -134,7 +135,5 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 nearbar1017: three near-bar titles on the 0.5.2 build -- two clear Playable now
 - 2026-10-17 release052c: the 0.5.2 release page tells the story since v0.3.1, and the driver notice says handheld (#433)
 - 2026-10-17 Halo CE: the ship's rear lights show through the hull after the cut to the front (opening cinematic)
-- 2026-10-17 haloshadow1017: Halo CE's dark squares under soldiers' feet: the stock Adreno driver, not the code (#1038)
-- 2026-10-17 release052b: versionCode 10, the driver link, and two known-issue lines for 0.5.2 (#433)
 
-_Updated 2026-10-18 00:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 00:17 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
