@@ -45,8 +45,6 @@ playable	4553000F	Legacy of Kain: Defiance	USA	filename	Nova	47.58	0.9681	987.2	
 playable	5454000C	Max Payne 2: The Fall of Max Payne	USA	filename	Nova	59.94	1.0	603.4	2026-10-08	
 playable	41560046	X-Men: The Official Game (Europe)	Europe	filename	Nova	49.3	1.0	611.7	2026-10-12	
 playable	4C410015	Mercenaries: Playground of Destruction	USA, Europe	filename	Nova	53.33	1.0	604.9	2026-10-12	
-playable	5454000E	Grand Theft Auto III	?	none	nova	29.97	0.9967	648.5	2026-10-12	
-playable	5454000F	Grand Theft Auto: Vice City	?	none	nova	29.97	0.9872	684.4	2026-10-12	
 playable	544D0008	Conan (Europe)	Europe	filename	Nova	29.97	1.0	648.2	2026-10-12	
 playable	5451000E	Scooby-Doo! Mystery Mayhem (Europe)	Europe	filename	Nova	29.0	1.0	611.0	2026-10-12	
 playable	4D530053	Grabbed by the Ghoulies	USA	filename	nova	29.97	0.9805	1308.6	2026-10-12	
@@ -94,6 +92,8 @@ playable	4D570029	Mortal Kombat: Shaolin Monks	?	none	nova	39.89	1.0	603.9	2026-
 playable	45410011	Cel Damage	?	none	nova	29.9	0.9815	1082.1	2026-10-07	
 playable	4947001C	Micro Machines (Europe)	Europe	filename	nova	59.94	1.0	672.9	2026-10-14	
 playable	4156001F	Lemony Snicket's A Series of Unfortunate Events (USA)	USA	filename	nova	59.88	1.0	606.8	2026-10-11	
+below_bar	5454000E	Grand Theft Auto III	?	none	nova				2026-10-12	Plays, but drops into the teens while driving in the city (below the 30 fps bar); tracked as #1049.
+below_bar	5454000F	Grand Theft Auto: Vice City	?	none	nova				2026-10-12	Plays, but drops into the teens while driving in the city (below the 30 fps bar); tracked as #1049.
 below_bar	41430004	Turok Evolution	USA	archive	Nova	29.85	0.8351		2026-10-07	
 below_bar	4156002B	Spider Man 2	?	none	Nova	25.8	0.2895		2026-10-06	
 below_bar	41560055	Ty the Tasmanian Tiger: Night of the Quinkan	USA, Australia	filename	Nova	47.81	0.7856		2026-10-07	
