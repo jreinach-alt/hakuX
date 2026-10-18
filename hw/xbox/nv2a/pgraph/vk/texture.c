@@ -89,6 +89,7 @@ static struct {
 } while (0)
 
 static void tsc_log_window(unsigned int frames);
+static void s2c_log_window(unsigned int frames);
 
 static void txw_log_window(PGRAPHState *pg)
 {
@@ -125,6 +126,7 @@ static void txw_log_window(PGRAPHState *pg)
 #undef TXW_N
 #undef TXW_MS
     tsc_log_window(frames);
+    s2c_log_window(frames);
     memset(&txw, 0, sizeof(txw));
     txw.frame0 = pg->frame_time;
     txw.t0 = now;
@@ -1919,6 +1921,51 @@ static bool texscan_on(void)
 }
 
 /*
+ * #433 (lane.gta3drive1017), HAKUX_S2T_DRAIN: create_texture's #474 drain
+ * ahead of a plain colour surface-to-texture copy. Unset or "0" skips it:
+ * the copy is recorded in the frame's own command buffer, and the barrier
+ * out of SHADER_READ_ONLY (image.c, srcStage FRAGMENT_SHADER) waits for the
+ * fragment reads of every earlier submission on the one queue, the same
+ * argument as texscan's copy. "1" restores the drain. GTA III drove at
+ * ~21 fps with 72 of these drains a flip, 11.6 ms of fence wait, while the
+ * GPU sat idle for half the frame. Zeta, HAKUX_S2T_CVT and upload copies
+ * keep the drain.
+ */
+static int s2t_drain_state = -1;
+
+static bool s2t_drain_on(void)
+{
+    if (s2t_drain_state < 0) {
+        const char *e = getenv("HAKUX_S2T_DRAIN");
+        s2t_drain_state = e && e[0] == '1';
+        if (s2t_drain_state) {
+#ifdef __ANDROID__
+            __android_log_print(ANDROID_LOG_INFO, "hakuX", "[s2tdrain] on");
+#else
+            fprintf(stderr, "[s2tdrain] on\n");
+#endif
+        }
+    }
+    return s2t_drain_state;
+}
+
+/* Once per process: the first plain copy that skipped a drain it would have
+ * had, so a run shows the switch acted, not only that it was read. */
+static void s2t_drain_note_skip(void)
+{
+    static bool noted;
+
+    if (!noted) {
+        noted = true;
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_INFO, "hakuX", "[s2tdrain] first skip");
+#else
+        fprintf(stderr, "[s2tdrain] first skip\n");
+#endif
+    }
+}
+
+/*
  * #939 (lane.x1port1012), HAKUX_S2TSHELF: create_texture's shelf lookup,
  * which binds a shelved, still draw_dirty surface at the texture's address
  * when no active surface there is compatible. It runs after an incompatible
@@ -2510,6 +2557,179 @@ static bool surface_view_decodes_as_texture(const SurfaceBinding *surface,
     static const VkComponentMapping identity = { 0 };
     return !memcmp(&tex_vkf.component_map, &identity, sizeof(identity));
 }
+
+#if NV2A_PERF_LOG
+/*
+ * #433, R2/R3's census, NV2A_PERF_LOG only. GTA III copies a surface into a
+ * texture ~73 times a flip while driving, and each copy breaks a render pass.
+ * Each copy made instead of a direct bind is counted by the first reason that
+ * refused the bind, in surface_view_decodes_as_texture()'s order: zeta with
+ * stencil (zs), pad alpha (pad), a host format unlike the texture's (fmt), a
+ * component map that is not identity (map). Within a flip, a copy of a
+ * surface at a draw_time an earlier copy already read is a dup: the copy R3
+ * would share between nodes. srf counts the distinct surfaces copied, per
+ * flip, summed over the window. Each distinct surface/texture pair is printed
+ * once when first seen; each 60-flip window prints the counts beside txw[].
+ */
+enum { S2C_ZS, S2C_PAD, S2C_FMT, S2C_MAP, S2C_NONE, S2C__N };
+
+typedef struct S2cSig {
+    uint8_t why, scolor, sfmt, tfmt;
+    uint32_t svk, tvk;
+    uint16_t sw, sh, tw, th;
+    uint32_t s_addr;
+} S2cSig;
+
+#define S2C_MAX 32
+#define S2C_SEEN 256
+static struct {
+    S2cSig sig[S2C_MAX];
+    bool used[S2C_MAX];
+    uint32_t n[S2C_MAX];     /* this window */
+    uint8_t idle[S2C_MAX];   /* windows since last seen */
+    uint32_t overflow;
+    uint32_t why[S2C__N];
+    uint32_t cp, dup, srf;
+    int frame;               /* the flip seen_* describe */
+    int nseen;
+    const SurfaceBinding *seen_s[S2C_SEEN];
+    int seen_t[S2C_SEEN];
+} s2c;
+
+static int s2c_reason(const SurfaceBinding *surface, const TextureShape *shape)
+{
+    if (!surface->color) {
+        return (surface->host_fmt.aspect & VK_IMAGE_ASPECT_STENCIL_BIT) ?
+                   S2C_ZS : S2C_NONE;
+    }
+    if (surface_sampled_pad_alpha(surface) != VK_COMPONENT_SWIZZLE_IDENTITY) {
+        return S2C_PAD;
+    }
+    VkColorFormatInfo tex_vkf = kelvin_color_format_vk_map[shape->color_format];
+    if (surface->host_fmt.vk_format != tex_vkf.vk_format) {
+        return S2C_FMT;
+    }
+    static const VkComponentMapping identity = { 0 };
+    if (memcmp(&tex_vkf.component_map, &identity, sizeof(identity))) {
+        return S2C_MAP;
+    }
+    return S2C_NONE;
+}
+
+static void s2c_note(PGRAPHState *pg, const SurfaceBinding *surface,
+                     const TextureShape *shape)
+{
+    static const char *const why_names[S2C__N] = {
+        "zs", "pad", "fmt", "map", "none",
+    };
+    S2cSig k;
+
+    if (s2c.frame != pg->frame_time) {
+        s2c.frame = pg->frame_time;
+        s2c.nseen = 0;
+    }
+    bool dup = false, srf_seen = false;
+    for (int i = 0; i < s2c.nseen; i++) {
+        if (s2c.seen_s[i] == surface) {
+            srf_seen = true;
+            if (s2c.seen_t[i] == surface->draw_time) {
+                dup = true;
+            }
+        }
+    }
+    if (!dup && s2c.nseen < S2C_SEEN) {
+        s2c.seen_s[s2c.nseen] = surface;
+        s2c.seen_t[s2c.nseen] = surface->draw_time;
+        s2c.nseen++;
+    }
+    s2c.cp++;
+    s2c.dup += dup;
+    s2c.srf += !srf_seen;
+
+    memset(&k, 0, sizeof(k));
+    k.why = s2c_reason(surface, shape);
+    k.scolor = surface->color;
+    k.sfmt = surface->color ? surface->shape.color_format :
+                              surface->shape.zeta_format;
+    k.tfmt = shape->color_format;
+    k.svk = surface->host_fmt.vk_format;
+    k.tvk = kelvin_color_format_vk_map[shape->color_format].vk_format;
+    k.sw = surface->width;
+    k.sh = surface->height;
+    k.tw = shape->width;
+    k.th = shape->height;
+    k.s_addr = surface->vram_addr;
+    s2c.why[k.why]++;
+
+    int free_slot = -1;
+    for (int i = 0; i < S2C_MAX; i++) {
+        if (!s2c.used[i]) {
+            if (free_slot < 0) {
+                free_slot = i;
+            }
+            continue;
+        }
+        if (!memcmp(&s2c.sig[i], &k, sizeof(k))) {
+            s2c.n[i]++;
+            s2c.idle[i] = 0;
+            return;
+        }
+    }
+    if (free_slot < 0) {
+        s2c.overflow++;
+        return;
+    }
+    s2c.sig[free_slot] = k;
+    s2c.used[free_slot] = true;
+    s2c.n[free_slot] = 1;
+    s2c.idle[free_slot] = 0;
+    VkComponentMapping m = kelvin_color_format_vk_map[k.tfmt].component_map;
+#ifdef __ANDROID__
+    __android_log_print(ANDROID_LOG_INFO, "hakuX",
+        "[s2c] new #%d %s | surf @%x color%d fmt0x%x vk%u %ux%u | tex fmt0x%x "
+        "vk%u %ux%u map%d%d%d%d",
+        free_slot, why_names[k.why], k.s_addr, k.scolor, k.sfmt, k.svk, k.sw,
+        k.sh, k.tfmt, k.tvk, k.tw, k.th, m.r, m.g, m.b, m.a);
+#else
+    fprintf(stderr,
+        "[hakuX] [s2c] new #%d %s | surf @%x color%d fmt0x%x vk%u %ux%u | tex "
+        "fmt0x%x vk%u %ux%u map%d%d%d%d\n",
+        free_slot, why_names[k.why], k.s_addr, k.scolor, k.sfmt, k.svk, k.sw,
+        k.sh, k.tfmt, k.tvk, k.tw, k.th, m.r, m.g, m.b, m.a);
+#endif
+}
+
+static void s2c_log_window(unsigned int frames)
+{
+    char buf[640];
+    int len = snprintf(buf, sizeof(buf),
+        "[s2c] f%u cp%u dup%u srf%u why[zs%u pad%u fmt%u map%u none%u] "
+        "ovf%u |",
+        frames, s2c.cp, s2c.dup, s2c.srf, s2c.why[S2C_ZS], s2c.why[S2C_PAD],
+        s2c.why[S2C_FMT], s2c.why[S2C_MAP], s2c.why[S2C_NONE], s2c.overflow);
+    for (int i = 0; i < S2C_MAX; i++) {
+        if (!s2c.used[i]) {
+            continue;
+        }
+        if (s2c.n[i] && len < (int)sizeof(buf) - 16) {
+            len += snprintf(buf + len, sizeof(buf) - len, " #%d:%u", i,
+                            s2c.n[i]);
+        }
+        /* a pair unseen for three windows frees its slot for the next */
+        if (!s2c.n[i] && ++s2c.idle[i] >= 3) {
+            s2c.used[i] = false;
+        }
+        s2c.n[i] = 0;
+    }
+#ifdef __ANDROID__
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-stall", "%s", buf);
+#else
+    fprintf(stderr, "[hakuX-stall] %s\n", buf);
+#endif
+    s2c.overflow = s2c.cp = s2c.dup = s2c.srf = 0;
+    memset(s2c.why, 0, sizeof(s2c.why));
+}
+#endif
 
 static void create_dummy_texture(PGRAPHState *pg)
 {
@@ -3286,13 +3506,25 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
                      * bind directly without this drain. On AUF (Nova) it ran
                      * 0.27 times a flip at 16.6 ms each, every one of them
                      * ahead of a direct bind.
+                     *
+                     * #433: the plain colour copy (vkCmdCopyImage) does not
+                     * need it either; see s2t_drain_on().
                      */
-                    if (snode->submit_time + r->num_active_frames >
-                        r->submit_count) {
+                    bool plain_copy =
+                        surface->color &&
+                        !(pgraph_vk_s2t_cvt_on() &&
+                          pgraph_texture_format_expands_by_replication(
+                              snode->key.state.color_format));
+                    bool in_flight = snode->submit_time +
+                                     r->num_active_frames > r->submit_count;
+                    if (in_flight && (!plain_copy || s2t_drain_on())) {
                         TXW_BEGIN(FAF);
                         pgraph_vk_flush_all_frames(pg);
                         TXW_END(FAF);
+                    } else if (in_flight) {
+                        s2t_drain_note_skip();
                     }
+                    TEX_PERF(s2c_note(pg, surface, &snode->key.state));
                     TXW_BEGIN(CP);
                     copy_surface_to_texture(pg, surface, snode);
                     TXW_END(CP);
@@ -3769,6 +4001,7 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
             r->tex_surface_direct_views[texture_idx] = surface->image_view;
             r->tex_surface_direct_layout[texture_idx] = direct_layout;
         } else {
+            TEX_PERF(s2c_note(pg, surface, &snode->key.state));
             TXW_BEGIN(CP);
             copy_surface_to_texture(pg, surface, snode);
             TXW_END(CP);
