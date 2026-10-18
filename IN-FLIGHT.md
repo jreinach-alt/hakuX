@@ -8,8 +8,8 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `dispatchdoctor1017` | claude-sonnet-5 | 58 min | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what  |
-| `nearbar1017b` | claude-sonnet-5 | 27 min | nearbar1017b: three more near-cap titles on the 0.5.2 build |
+| `dispatchdoctor1017` | claude-sonnet-5 | 1h 13m | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what  |
+| `nearbar1017b` | claude-sonnet-5 | 42 min | nearbar1017b: three more near-cap titles on the 0.5.2 build |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `lane.nearbar1017b`
@@ -132,4 +132,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 lane worktrees are created sparse, without docs/lanes/pathfind/runs (#433)
 - 2026-10-17 relnotes1017: release notes carry only features and bug fixes (#433)
 
-_Updated 2026-10-17 20:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-17 20:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
