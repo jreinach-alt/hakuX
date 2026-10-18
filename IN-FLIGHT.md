@@ -8,7 +8,8 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `dispatchdoctor1017` | claude-sonnet-5 | 1h 58m | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what  |
+| `dispatchdoctor1017` | claude-sonnet-5 | 2h 13m | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what  |
+| `gta3fps1017` | claude-opus-5-5 | 14 min | gta3fps1017: GTA III fps, R2/R3 copy-count remedies from an on-foot census, with R1 (#1049) |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `owner.gta3play-1017`
@@ -18,10 +19,11 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Playable titles
 
-**87 titles are confirmed Playable** (0 today). Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
+**88 titles are confirmed Playable** (1 today). Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
 
 | Confirmed | Title | Result |
 |---|---|---|
+| 2026-10-17 | Marvel Nemesis: Rise of the Imperfects | Playable, 10-minute run on the Nova |
 | 2026-10-16 | Family Guy Video Game | Playable, accepted on review, median 29.97 fps |
 | 2026-10-16 | ESPN MLS ExtraTime 2002 | Playable, 10-minute run, median 59.94 fps |
 | 2026-10-16 | Dance Dance Revolution Ultramix 3 | Playable, 10-minute run, median 59.94 fps |
@@ -117,6 +119,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
 | `lane/dispatchdoctor1017` | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what stops a ru | `439feb72b2` | 2026-10-17 19:45 |
+| `lane/gta3fps1017` | gta3fps1017: GTA III fps, R2/R3 copy-count remedies from an on-foot census, with R1 (#1049) | `24b5bcd5fa` | 2026-10-17 21:32 |
 
 ## Recently landed on master
 
@@ -130,4 +133,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 drivernotice1017: every release note names the one tested GPU driver (#433)
 - 2026-10-17 bindpose1017: THPS4 and Max Payne 2 bind pose: the stock Adreno driver, not the code (#1043)
 
-_Updated 2026-10-17 21:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-17 21:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
