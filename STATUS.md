@@ -1,14 +1,14 @@
 # hakuX status
 
-_updated 2026-10-18 10:05 PDT_
+_updated 2026-10-18 10:37 PDT_
 
-0.6: Measured 263 / 300 · Playable 92 / 110.
+0.6: Measured 263 / 300 · Playable 94 / 110.
 
 ## How close is 0.6?
 
 Measured **263** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓▓▓░`
 
-Playable **92** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓▓░░`
+Playable **94** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓▓▓░`
 
 ![Titles over time](chart.svg)
 
@@ -18,11 +18,11 @@ Playable **92** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓▓░░`
 
 | release | Measured target | projected date | Playable target | projected date |
 |---|---|---|---|---|
-| 0.6 | 300 | 2026-10-20 | 110 | 2026-10-21 |
+| 0.6 | 300 | 2026-10-20 | 110 | 2026-10-20 |
 | 0.7 | 425 | 2026-10-29 | 185 | 2026-10-31 |
-| 0.8 | 575 | 2026-11-07 | 300 | 2026-11-17 |
-| 0.9 | 725 | 2026-11-17 | 480 | 2026-12-13 |
-| 1.0 | 876 | 2026-11-27 | 789 | 2027-01-28 |
+| 0.8 | 575 | 2026-11-08 | 300 | 2026-11-16 |
+| 0.9 | 725 | 2026-11-17 | 480 | 2026-12-11 |
+| 1.0 | 876 | 2026-11-27 | 789 | 2027-01-23 |
 
 Measured: titles with a frame rate reading taken during gameplay, on either handheld. Playable: titles rated Playable. The charts place each title on the date it first qualified, and the projected dates in the table assume the last 7 days' pace continues.
 
@@ -93,6 +93,7 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | **MLB SlugFest 2003** | 🟢 Playable | **59.9**<br>Nova, Oct 5 |
 | **MLB SlugFest 2004** | 🟢 Playable | **44.4**<br>Nova, Oct 5 |
 | **Mortal Kombat: Armageddon** | 🟢 Playable | **59.2**<br>Nova, Oct 6 |
+| **Mortal Kombat: Shaolin Monks** | 🟢 Playable | **59.9**<br>Nova, Oct 18 |
 | **MTV Celebrity Deathmatch** | 🟢 Playable | **57.2**<br>Nova, Oct 4 |
 | **MVP Baseball 2003** | 🟢 Playable |  |
 | **NBA 2K2** | 🟢 Playable | **57.0**<br>Nova, Oct 5 |
@@ -103,6 +104,7 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | **NFL Blitz 2002** | 🟢 Playable | **45.0**<br>Nova, Oct 5 |
 | **Pac-Man World 2** | 🟢 Playable | **59.9**<br>Nova, Oct 13 |
 | **Panzer Dragoon Orta** | 🟢 Playable | **54.1**<br>Nova, Oct 3 |
+| **RalliSport Challenge** | 🟢 Playable | **59.9**<br>Nova, Oct 4 |
 | **Ratatouille** | 🟢 Playable | **52.8**<br>Nova, Oct 6 |
 | **Rayman 3 Hoodlum Havoc** | 🟢 Playable | **59.9**<br>Nova, Oct 13 |
 | **Ricky Ponting International Cricket 2005** | 🟢 Playable |  |
@@ -233,7 +235,6 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | **Micro Machines Europe En Fr De Es It** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 14 |
 | **Midnight Club II** | 🔵 Measured, not rated yet | **23.1**<br>Nova, Oct 5 |
 | **Mortal Kombat: Deadly Alliance** | 🔵 Measured, not rated yet | **39.9**<br>Nova, Oct 6 |
-| **Mortal Kombat: Shaolin Monks** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 18 |
 | **Motor Trend Presents Lotus Challenge USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 15 |
 | **MTV Music Generator 3 This Is the Remix USA En Es** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 7 |
 | **MVP Baseball 2003 USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 16 |
@@ -258,7 +259,6 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | **Prince of Persia: The Sands of Time** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 13 |
 | **Project Gotham Racing 2** | 🔵 Measured, not rated yet | **55.7**<br>Thor, Sep 29 |
 | **Psychonauts** | 🔵 Measured, not rated yet | **22.0**<br>Thor, Sep 30 |
-| **RalliSport Challenge** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 4 |
 | **RalliSport Challenge 2** | 🔵 Measured, not rated yet | **41.7**<br>Nova, Oct 7 |
 | **Rent a Hero No 1 Japan** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 7 |
 | **Ricky Ponting International Cricket 2005 Australia** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 15 |
@@ -662,5 +662,5 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 
 </details>
 
-620 titles: 92 Playable, 8 below 30 fps, 15 crash or hang, 149 measured but not rated yet, 356 not tested yet.
+620 titles: 94 Playable, 8 below 30 fps, 15 crash or hang, 147 measured but not rated yet, 356 not tested yet.
 
