@@ -1173,3 +1173,68 @@ NEW ISSUE: the verdict's fps bar here is 30.0 (fps_ok 0.891), while the 10-04 co
 [lane.pathfind] Batman Begins (45410389) FAIL, batman-2: gameplay 365 s, play 320 s of 600 (hold stopped at "hakuX left the foreground"). Ref bbea2b885f (HEAD), apk not recorded by the verdict, env []. Run dir docs/lanes/pathfind/runs/batman-2. Last frame 095-hold.jpg is Android App info for hakuX. Not re-run (identification first). Counter-prompt fix not exercised (no "Press X/Y now" read on play looks). Spend: 41 model calls this claim.
 
 NEW ISSUE: the Batman hold dropped to Android App info (hakuX, test builds) at 20:39 and the hold ended on "left the foreground". Evidence: runs/batman-2/frames/090-095-hold.jpg, hold.jsonl n=88-94, run.log. Blocks Batman's Playable.
+
+## #433 -- 2026-10-18 (lane.pathfind, attempt 3, offline reconciliation)
+
+[lane.pathfind] Resumed in an existing worktree with no committed pathfind activity since 2026-10-12/10-14: the gap was
+an unattended pathfind chain running through at least 10-16 (new routes in `pathknow/hints/*.md` for Half Life 2, Harry
+Potter, Oddworld, Burnout 3, TY the Tasmanian Tiger, three Tiger Woods titles, Knockout Kings 2002, MVP Baseball 2003)
+plus ~290 uncommitted run dirs (~5.2 GB), none of it reported. Spent this attempt offline (Nova was busy with
+lane.local's own queue): merged origin/master clean, re-ran pathfind_selftest (159 ok), then scanned every uncommitted
+`runs/*/verdict.json` for pass=true and cross-checked by title against pm/playable-accepted.tsv (92 rows at the start).
+
+Result: 9 new titles frame-reviewed and banked (Mortal Kombat: Deadly Alliance, Mortal Kombat: Shaolin Monks,
+RalliSport Challenge, Cel Damage, Bad Boys: Miami Takedown, Scooby-Doo: Mystery Mayhem, Nickelodeon Avatar: The Last
+Airbender, Micro Machines, Tron 2.0: Killer App) -- ledger now 101 rows. 16 titles from the same scan were already
+banked by an intervening lane.local session (rows 54-87). 2 verdicts carried an already-written void marker
+(Auto Modellista: wrong button mapped to throttle; Beyond Good & Evil: mislabelled capture, actually Batman Begins).
+
+NEW ISSUE (false playable, caught by frame review, not by the gates): **Black Stone: Magic & Steel**
+(runs/black-stone-hold2, judged 10-03): verdict says pass=true but the character stands on one octagonal platform
+turning in place for the whole ~550 s hold -- the same STICK:up/STICK:down cancel bug already fixed for Tork
+(pm/playable-accepted.tsv row 22), here undetected because static_window/position were never measured (0
+route-frames). NOT-PLAYABLE.txt written in the run dir; row added to pm/pathfind-pool.tsv (class false-playable).
+
+NEW ISSUE (false playable, same class): **NHL 2K3** (runs/nhl-2k3/hold2, judged 10-06): verdict says pass=true but
+3 of 4 route-frame samples are the post-goal instant-replay/net camera (2 with the in-game Rewind/Forward/Zoom
+control bar burned into the capture), and roughly 470 s of the 605.5 s scored play is the model reading that same
+near-static framing as "gameplay." Crowd/board motion blur kept the stuck-frame gate from firing. NOT-PLAYABLE.txt
+written in the run dir; row added to pm/pathfind-pool.tsv (class false-playable). This is a new failure mode for
+pathfind's window check (a sports title's instant replay, not a menu or a stuck idle) -- needs a replay/overlay
+classifier or a post-goal skip input before any hockey/sports title with instant replays can be trusted on this gate.
+
+Not done this attempt: the remaining ~280 untracked run dirs (most of the ~5.2 GB) were not scanned beyond the
+pass=true pass above; their FAIL/void evidence may still be worth feeding into below-bar.tsv, and the dirs themselves
+are evidence this lane's convention says to commit. Named in NOTES.md for the next session. No device time spent.
+
+## #433 -- 2026-10-18 (lane.pathfind, attempt 3, offline reconciliation continued)
+
+Finished the pass=true scan on the remaining 173 of the ~290 uncommitted run dirs (the 13 above were the first
+batch). 32 carry pass=true; 31 were already on pm/playable-accepted.tsv by title_id (further copies of the same
+chain the first batch covered). 1 was genuinely new and got frame-reviewed before banking:
+
+**Lemony Snicket's A Series of Unfortunate Events (USA)**, title_id 4156001F, runs/n-4156001F-1011, judged
+2026-10-11T12:48:36Z. Unlike the two false-playables caught above, this one's static_window/position were both
+actually measured (16 route-frames, frozen_frac 0.0317, still_frac 0.0, first_last 0.529). contact.png's 12
+route/boot samples show the character moving through a cluttered attic/study from a different camera angle at
+every sample (bookshelf, arched window, lit lantern, crate corner, the character in frame), HUD live throughout;
+the "switch between Violet or Klaus" text baked into every frame is a persistent HUD hint (present from the
+earliest boot samples, before the hold even starts), not a stuck tutorial screen. Banked to the ledger.
+
+The other 96 of 173 are fails (pass false/absent) and 45 have no verdict.json at all (navigation runs that never
+reached a hold). Neither group scanned further. Remaining untriaged backlog is now 141 directories, not ~280 --
+named in NOTES.md for the next session. No device time spent.
+
+## #433 -- 2026-10-18 (lane.pathfind, attempt 3, below-bar.tsv regenerated via the tool's own seed function)
+
+Before hand-filing the fps-capped fails above into below-bar.tsv, read how it's actually used
+(`docs/testing/titles/pathfind.py:929-993`): `below_bar_refusal()` only refuses a title whose *latest* verdict has
+fps_ok_share < 0.9 with no fix_commit, and `seed_below_bar()` already exists to regenerate the file correctly from
+`runs/*/verdict.json`, preserving every row's existing cause/fix_commit. Ran it against the real tree (backed up
+first, diffed after): 30 -> 150 rows, the 8 pre-existing owner-written `cause` entries intact verbatim, 12 new
+genuine fps-bar refusals added (Turok Evolution, Ty the Tasmanian Tiger: Night of the Quinkan, Medal of Honor:
+Frontline, Burnout 3: Takedown, Oddworld: Stranger's Wrath, Half-Life 2, Panzer Elite Action: Fields of Glory, Star
+Wars: The Clone Wars, Aeon Flux, NBA Inside Drive 2004, Area 51, NBA 2K7), each backed by a confirmation-length hold
+(600-640 s play) whose `failing` field names the fps bar directly, not an early abort/hang/menu-stuck run. A first
+pass that filtered fps_ok_share<0.9 by hand would have wrongly flagged several hung/short/menu-stuck runs as fps
+caps; using the maintained seed function instead of a hand-written filter avoided that. No device time spent.
