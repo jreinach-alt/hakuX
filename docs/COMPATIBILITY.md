@@ -1,10 +1,10 @@
 # Compatibility
 
-_Last updated 2026-10-16, for version 0.5.0._
+_Last updated 2026-10-17, for version 0.5.0._
 
 This lists Xbox titles tried on this project's test devices, split into three groups: titles that clear the **Playable** bar, titles that run but fall short of 30 fps, and titles that do not yet play. It is not a full compatibility list: plenty of other titles have simply not been tried yet. See [`KNOWN_ISSUES.md`](../KNOWN_ISSUES.md) and the [issue tracker](https://github.com/jreinach-alt/hakuX/issues) for what is tracked about titles not on this page.
 
-90 Playable · 19 run below 30 fps · 11 not playable
+91 Playable · 19 run below 30 fps · 11 not playable
 
 ## What "Playable" means
 
@@ -108,6 +108,7 @@ with another Turnip build, may differ.
 | MVP Baseball 2003 | USA | Nova | 59.9 | 100% | 2026-10-16 |  |
 | NBA 2K2 | USA | Nova | 57.0 | 100% | 2026-10-05 |  |
 | NBA 2K3 | USA | Nova | 42.9 | 96% | 2026-10-06 |  |
+| NBA Live 07 | ? | Nova | 50.8 | 99% | 2026-10-17 | Owner play session; telemetry only, no frames |
 | NBA Live 2004 | USA | Nova | 35.5 | 100% | 2026-10-06 |  |
 | Need for Speed: Most Wanted | ? | Nova | 29.9 | 95% | 2026-10-12 | Hand-played race; 30 fps cap |
 | NFL Blitz 2002 | USA | Nova | 45.0 | 100% | 2026-10-05 |  |
