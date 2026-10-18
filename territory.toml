@@ -3000,3 +3000,9 @@ issues = []
 standing = false
 files = ["README.md", "docs/HISTORY.md", "docs/lanes/storydoc1017/**"]
 note = "BRIEFED by lane.xbox 2026-10-17 on the owner's request ('On the story doc, lets get it into the readme, specifically, the More table.'), row added by lane.local 22:2x PDT: copy the owner-reviewed project history to docs/HISTORY.md unchanged and add one row to README.md's More table. Docs only, no device. README.md is SHARED with [lane.compat1017] (which edits the Playable count wording); the hunks are disjoint (one added table row here), whichever lane folds second rebases. Brief: briefs/storydoc1017.md."
+
+[lane.stallraise1017]
+issues = []
+standing = false
+files = ["docs/lanes/stallraise1017/**", "docs/testing/title_registry.py", "docs/testing/title_registry_selftest.py", "pm/stall-raised.tsv", "host-tools/hourly_report.sh"]
+note = "STARTED lane.local 2026-10-17 ~22:50 PDT on lane.xbox's request (owner 10-17: a title with one measured hitch is raised to the owner the same day, not buried in a hold or report): registry flags single-stall candidates, pm/stall-raised.tsv records the raise, the hourly report gets a STALL ASKS section, a check fails a candidate unraised for 2 h. No bar change. Harness fix, brief not issue. Brief: briefs/stallraise1017.md."
