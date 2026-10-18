@@ -2,6 +2,24 @@
 
 The bar is 30 fps while driving. On-foot numbers are not evidence about it and are not reported as progress here.
 
+## Resume (attempt 2, 2026-10-18 ~12:50 PDT)
+
+Attempt 1 did not finish: it implemented `HAKUX_S2T_FB` (section 5/5.1), queued and read back the two golden
+checks (both `ok`, 0 differing pixels), and ran the in-car A/B itself (batch c2, 11:20-11:35 PDT, arms W/O1/F1/S1/
+S2/F2 -- `captures/gta3car1018/batches/c2`, `runs/c2-*`) -- but the session ended before reading `c2`'s logcats
+back through `dipwin_read.py` or writing section 6, leaving `FINDINGS.md`'s result section as "(in-car A/B in
+progress)" and `PR.md` saying "The in-car A/B with the switch is next" even though the device run that answers it
+was already on disk. Nothing was lost; this attempt reads `c2` (section 6) instead of re-running it.
+
+This attempt also merged `origin/master` (11 commits; clean, no conflicts touching this lane's files) before
+reading anything from it, took the Nova hold to get a second `S` (`HAKUX_S2T_FB=2`) reading since `c2`'s `S2`
+aborted on an adb/vsock glitch before the state loaded, and found the Nova absent from `adb devices -l` entirely
+(not offline/unauthorized, just not listed) after a `kill-server`/`start-server` cycle -- a USB/connection state
+this session cannot fix. The hold was released unused (section 6.2). The Thor was reachable but is under an
+owner thermal test (`hold.sh who thor`); interleaving a second title's save-state load and pad input onto that
+run was judged not worth the risk to a running owner test for one more repeat of an already-clear direction, so
+this attempt reports on `c2` alone and flags the gap.
+
 ## 0. Already tried
 
 A resume reads this table first and extends it; it never repeats a row.
@@ -153,3 +171,67 @@ needs a run boundary in bind_surface (surface.c); the switch is off by default m
 The `[dipwin]` line is under `#if NV2A_PERF_LOG`, so the arms run a perflog build of this branch. The dispatcher
 builds `$D/builds/<sha>-perflog.apk` when it serves a request with `--perflog --ref <sha>`; the in-car arms then
 run that APK under a Nova hold, the switch set per arm through the env_vars pref (`arm.sh` writes and restores it).
+
+## 6. In-car A/B, batch c2 (Nova, 11:20-11:35 PDT, perflog 635141c4cc)
+
+Same owner state and protocol as section 4, one APK (`635141c4cc-perflog.apk`, sha256 `e5300ec6f67b`), `env_vars`
+set per arm (`arm.sh`): `W` and `O1`/`O2` off, `F1`/`F2` `HAKUX_S2T_FB=1`, `S1`/`S2` `HAKUX_S2T_FB=2`. Order
+W, O1, F1, S1, S2, F2, O2 (not a clean palindrome -- `batch.sh`'s arm list was written in that order; `O2` never
+got a dipwin line, see 6.2). Every launched arm logged `GPU: PurpleVK-public Adreno (TM) 740 (git-62ac221a33)`.
+Logs and screenrecords: `captures/gta3car1018/runs/c2-*`; batch log `captures/gta3car1018/batches/c2/batch.log`.
+
+### 6.1 fps (`score2.py`, hold = windows wholly inside [RT+1, RT+61] s; `dipwin_read.py`, same span, 60-flip sums)
+
+| arm | env | score2 hold fps | >=28.5 fps share | dipwin ms/flip | dipwin fps | dipwin rp/flip |
+|---|---|---|---|---|---|---|
+| W | off (warm-up) | 21.8 | 3.5% | -- | -- | -- |
+| O1 | off | 24.8 | 24.3% | 40.36 | 24.8 | 57.11 |
+| F1 | `HAKUX_S2T_FB=1` | 26.8 | 51.5% | 37.38 | 26.8 | 20.15 |
+| S1 | `HAKUX_S2T_FB=2` | 28.2 | 69.9% | 35.89 | 27.9 | 38.20 |
+| S2 | `HAKUX_S2T_FB=2` | ABORT: pause menu not as expected (imgcheck diff=63.5; a `WSL ... UtilAcceptVsock accept4 failed 110` line sits right after launch) -- not scored | | | |
+| F2 | `HAKUX_S2T_FB=1` | 22.6 | 0.0% | 44.18 | 22.6 | 33.67 |
+| O2 | off | ABORT (ran out of session before scoring; see 6.2) | | | |
+
+Both switch values cut the dominant cause and gain fps in their first (clean) reading: `O1` 57.11 rp/flip at
+24.8 fps against `F1` 20.15 rp/flip at 26.8 fps and `S1` 38.20 rp/flip at 27.9 fps. `S1`'s last third (device
+clock 11:30:38-11:30:46, light traffic) drops to 9-14 rp/flip and 33.2-34.5 ms/flip -- the 30 fps cap, read
+straight off the per-window table -- while its first third (heavy traffic re-entering the scene) still runs
+34-46 ms/flip at 88-154 rp/flip. The mechanism (section 5) is confirmed by a live run, not just the fit.
+
+`F2`, run after `S2`'s abort, falls to 44.18 ms/flip at 22.6 fps -- below `O1` -- at rp/flip (33.67) lower than
+`S1`'s. No cold-pipeline confound (`lib_ms` ~0 throughout) and no infra fault in its own log; the GTA drive is
+unscripted (RT held, car goes wherever it was facing -- NOTES section 0, "no scripted driving"), so each arm
+covers a different stretch of road and `F2`'s run plausibly had more `bsnb`/`bclre` traffic the switch does not
+touch. One trial per switch value from this batch is confounded by scene content as much as by the switch;
+`F1`/`F2` bracket it directly (20.15 vs 33.67 rp/flip, 26.8 vs 22.6 fps) and `S1` has no second reading to bracket
+with (6.2).
+
+### 6.2 What is missing, and why it stayed missing this session
+
+- `S2` (the repeat meant to pair with `S1`) aborted on an adb/vsock glitch before the save state loaded -- a
+  transient infra fault (`device-run-flakes: rerun twice`), not a measurement of the switch.
+- `O2` has only `m1-menu.png` (menu match) and a partial `logcat.txt`; the batch produced no `== O2` summary line,
+  so the previous session's turn (and with it the foreground `batch.sh`) ended mid-arm. Nothing after that point
+  ran; this is the "attempt 1 did not finish" gap named above.
+- This attempt took the Nova hold (`lane.gta3car1018`, 2026-10-18 ~12:58 PDT) to run `S3`/`O3` and resolve both
+  gaps, called `wait-idle` (idle), then found the Nova absent from `adb devices -l` outright after a
+  `kill-server`/`start-server` cycle. Released the hold unused (`hold.sh release nova lane.gta3car1018`, exit 0).
+  The Thor was reachable (`bdc158a5`) but is under an owner thermal test (hold held by `lane.local`, "stop above
+  42 C battery temp"); running a second title's save-state/pad protocol on it was judged not worth risking that
+  test for one more repeat of a direction `F1`/`S1`/`F2` already show clearly. Next lane to touch this: get a
+  live `adb devices -l` listing for the Nova first (`device-presence-needs-a-live-listing`), then re-run `S` and
+  `O` once each, non-palindrome is fine since `F1`/`F2` already show the scene-content confound needs same-stretch
+  comparison, not just reordering.
+
+### 6.3 Reading the result against the bar
+
+30 fps while driving is not reached by either switch value in this batch: the best mean (`S1`, 27.9-28.2 fps) is
+still under it, though `S1`'s light-traffic windows do hit the 33.3 ms cap. `HAKUX_S2T_FB=2` (exact: only stages
+whose program does not read the texture) is the better-evidenced and safer of the two off-by-default values --
+one clean run beating `O1` by ~3 ms/flip and ~17 rp/flip pass-for-pass with the fit in section 4.1, against
+`HAKUX_S2T_FB=1`'s two runs bracketing both above and below baseline. Neither is proven the better default yet;
+both are opt-in and off by default, so shipping the switch does not require that ranking to be settled.
+What it would still take to clear the bar: the fence wait (`fen`/`rotfen`) and stalled finishes that also scale
+with the pass count (section 4.1) are still 10-15 ms/flip in `S1`'s heavy-traffic windows after the switch, so
+the surface-to-texture copy is not the only cost scaling with passes -- the next lever is in what else a render
+pass break stalls on, not in this switch.
