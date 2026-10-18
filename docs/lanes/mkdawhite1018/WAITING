@@ -1,1 +1,2 @@
-dev_push's /mnt/d adb.exe path fix (lane.dispatchpush1018, #433) to land and the host dispatcher to redeploy it; then re-queue request 1792337550-mkdawhite1018-3995143 unchanged (its request.json is in the result dir). See NOTES.md section 6.
+# dev_push's /mnt/d adb.exe path fix (lane.dispatchpush1018, #433); then re-queue request 1792337550-mkdawhite1018-3995143 unchanged (request.json in the result dir). See NOTES.md section 6.
+fold dispatchpush1018
