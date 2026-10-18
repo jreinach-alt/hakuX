@@ -8,21 +8,23 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `holdcap1018` | claude-sonnet-5 | 2h 30m | holdcap1018: an owner-play hold starts a host logcat capture |
-| `vtxstale1018` | claude-opus-5-5 | 18 min | vk: bring a frame slot's vertex RAM current by page, not by span (#1049) |
+| `holdcap1018` | claude-sonnet-5 | 2h 45m | holdcap1018: an owner-play hold starts a host logcat capture |
+| `perflog1016` | claude-opus-5-5 | 2 min | perflog1016: a pause-menu switch for the perflog telemetry tier, and a "Mark this moment" button (#433) |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `lane.local`
   - Thor: held by `lanelocal-offline`
-- **Device queue:** 0 waiting, 0 running.
+- **Device queue:** 1 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
 
-**92 titles are confirmed Playable** (3 today). Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
+**94 titles are confirmed Playable** (5 today). Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
 
 | Confirmed | Title | Result |
 |---|---|---|
+| 2026-10-18 | Mortal Kombat: Shaolin Monks | Playable, 10-minute run, median 45.91 fps |
+| 2026-10-18 | RalliSport Challenge | Playable, 10-minute run |
 | 2026-10-18 | Lemony Snicket's A Series of Unfortunate Events (USA) | Playable, 10-minute run, median 59.88 fps |
 | 2026-10-18 | Micro Machines (Europe) | Playable, 10-minute run, median 59.94 fps |
 | 2026-10-18 | Cel Damage | Playable, 10-minute run, median 29.9 fps |
@@ -123,7 +125,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
 | `lane/holdcap1018` | holdcap1018: an owner-play hold starts a host logcat capture | `6a009e01b6` | 2026-10-18 07:38 |
-| `lane/vtxstale1018` | vk: bring a frame slot's vertex RAM current by page, not by span (#1049) | `f3bd1ea198` | 2026-10-18 09:54 |
+| `lane/perflog1016` | perflog1016: a pause-menu switch for the perflog telemetry tier, and a "Mark this moment" button (#433) | `a082156b89` | 2026-10-16 10:08 |
 
 ## Recently landed on master
 
@@ -140,4 +142,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-18 Top Spin: a state:any route that gets past Controller Select
 - 2026-10-18 high-speed driving fps (GTA III + GTA: San Andreas)
 
-_Updated 2026-10-18 10:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 10:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
