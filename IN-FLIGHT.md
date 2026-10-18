@@ -8,9 +8,9 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `dispatchdoctor1017` | claude-opus-5-5 | 1h 55m | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what  |
-| `gta3fps1017b` | claude-opus-5-5 | 35 min | gta3fps1017b: GTA III fps -- R2 (bind the forced-alpha surface view) and R3 (share one copy between nodes), bo |
-| `snaptargets1018` | claude-sonnet-5 | 1h 3m | snaptargets1018: the dispatcher snapshot ships titlestate.py but not targets.toml (#433) |
+| `dispatchdoctor1017` | claude-opus-5-5 | 2h 10m | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what  |
+| `snaptargets1018` | claude-sonnet-5 | 1h 19m | snaptargets1018: the dispatcher snapshot ships titlestate.py but not targets.toml (#433) |
+| `topspinroute1018` | claude-sonnet-5 | 10 min | Top Spin: a state:any route that gets past Controller Select |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -122,9 +122,9 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/dispatchdoctor1017` | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what stops a ru | `443c11c985` | 2026-10-18 01:21 |
-| `lane/gta3fps1017b` | gta3fps1017b: GTA III fps -- R2 (bind the forced-alpha surface view) and R3 (share one copy between nodes), both off by  | `7343e14054` | 2026-10-18 02:40 |
+| `lane/dispatchdoctor1017` | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what stops a ru | `ac2c73c9d3` | 2026-10-18 02:51 |
 | `lane/snaptargets1018` | snaptargets1018: the dispatcher snapshot ships titlestate.py but not targets.toml (#433) | `6aa30dabdc` | 2026-10-18 01:47 |
+| `lane/topspinroute1018` | Top Spin: a state:any route that gets past Controller Select | `1336f9d1f3` | 2026-10-18 03:00 |
 
 ## Recently landed on master
 
@@ -140,4 +140,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 release052c: the 0.5.2 release page tells the story since v0.3.1, and the driver notice says handheld (#433)
 - 2026-10-17 Halo CE: the ship's rear lights show through the hull after the cut to the front (opening cinematic)
 
-_Updated 2026-10-18 02:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 03:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
