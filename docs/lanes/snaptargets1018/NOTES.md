@@ -108,16 +108,63 @@ Checked the other five scripts the brief named for the same class of bug:
    original crash; removing it from the fix reinstates the failure
    (checked, see below).
 
+### The mutant leg needed devices.sh beside it to run at all
+
+`sd_env_at()` (this fragment's helper for the `no-pathclass.sh`/`no-head.sh`
+mutants) sources a standalone mutant file whose own directory becomes
+dispatcher.sh's `HERE`. dispatcher.sh's first two real lines are `.
+"$HERE/devices.sh"` then `device_env ... || exit 2`; with no `devices.sh`
+copied beside the mutant, sourcing dies there -- before `snapshot_scripts`
+is even defined -- and the whole `( ... )` subshell exits 2. My first
+`no-targets.sh` mutant run showed exactly that: `$SD/dnt/bin` never existed
+at all, not just without `targets.toml`.
+
+This also affects the two pre-existing mutants in this file, but silently:
+both check file *absence*, which is trivially true whether or not
+`snapshot_scripts` ever ran, so `no-pathclass.sh` and `no-head.sh` have
+never actually exercised `snapshot_scripts` and still reported `ok`. I
+confirmed this by fixing it once, centrally, in `sd_env_at()` itself (copy
+`$TESTING/devices.sh` beside the mutant before sourcing) and re-running: the
+`no-pathclass.sh` leg turned red -- *"still shipped it"* -- because
+`snapshot_scripts`'s real copy loop is a separate hardcoded `for f in ...`
+list, not the `SCRIPT_DEPS` variable `mutant_drop` edits, so dropping a word
+from `SCRIPT_DEPS` text never stopped the copy. That is a second,
+independent latent bug in the `SCRIPT_DEPS`-mutant pattern, pre-existing,
+and out of this brief's scope (targets.toml/SNAPSHOT_GLOBS only) --
+reported here, not fixed, per "do not widen the snapshot beyond what a
+shipped script reads" and to avoid changing a leg I wasn't asked to touch.
+
+Fix actually shipped: a `cp "$TESTING/devices.sh" "$SD/devices.sh"` scoped
+to just the new `targets` leg, right before its own `sd_env_at` call --
+not in the shared helper, so `no-pathclass.sh`/`no-head.sh` are untouched
+and keep passing exactly as before (still for the wrong reason, but that is
+not this brief's defect to fix). Next lane touching this file: `sd_env_at`
+itself is the right place to fix the `SCRIPT_DEPS` pattern, and it will
+flip `no-pathclass.sh` red when you do -- expected, not a regression.
+
 ### Verification
 
-- `bash docs/testing/jobs/selftest.sh` run after the fix: green (full
-  output in the PR).
-- Reverted `SNAPSHOT_GLOBS` by hand (dropped `titles/targets.toml`) and
-  reran just the new `targets` leg: it fails with the same
-  `FileNotFoundError: .../targets.toml` the brief describes, confirming the
-  leg is red on the un-fixed list (the required mutant check). Restored the
-  fix afterward.
+- `bash docs/testing/jobs/selftest.sh`, full run, twice: 3606 passed, 1
+  failed, both times, same failure both times -- `66-status-titles.sh`'s
+  `check --pages passes when every page agrees...` (`PAGE README.md: the
+  Playable line is not the numberless form home_page.py rewrites`).
+  Reproduces alone (`SELFTEST_ONLY=66-status-titles.sh`), and reproduces
+  identically with only the two committed lane commits checked out (no
+  `dispatcher.sh`/`97-dispatch-snapshot-drive.sh` edits applied) --
+  pre-existing on master, unrelated to this defect (README.md/status.sh/
+  home_page.py, no file this lane touches). Not fixed: out of the brief's
+  files list.
+- `SELFTEST_ONLY=97-dispatch-snapshot-drive.sh`: 27 passed, 0 failed, both
+  before and after the full run above.
+- Reverted `SNAPSHOT_GLOBS` by hand (`git checkout -- docs/testing/dispatcher.sh`,
+  dropping the fix) and reran just the new `targets` leg: 5 of its checks go
+  red (`targets.toml`/`profile-transition.toml`/`routes/` absent, `admit`
+  returns a traceback not JSON, and the mutant's own anchor check), the same
+  failure shape the brief describes. Reapplied the fix from a saved patch
+  afterward and reconfirmed green.
 
 ### Stop rule
 
-Not triggered -- no selftest fragment failed twice for the same cause.
+Not triggered -- no selftest fragment failed twice for the same *new*
+cause. The one full-suite failure above repeats across runs, but it is the
+same pre-existing cause each time, not a new one introduced by this change.
