@@ -65,6 +65,24 @@ old` — a freshness warning about `pm/title-registry.tsv`'s build age,
 unrelated to the page-count check this PR fixes and outside this lane's
 writable files.
 
+## preflight.sh: two board-state failures, filed as a board request
+
+`preflight.sh` FAILs `territory` (five of this lane's files are still
+double-claimed by the stale, never-started `[lane.compat1016]` and the
+folded `[lane.release052c]`/`[lane.storydoc1017]` rows) and `coverage`
+(`[issue.851]` says `status = "open"` though it isn't open on GitHub,
+stale since before the owner's 2026-10-17 ruling). Both require editing
+`territory.toml`/`nv2a_issues.toml`, which this lane may not do. Filed
+`dispatch/board-requests/compat1017.md` with the exact asks. Every check
+this lane can run directly on its own files passes (table above); these two
+are the board's to apply.
+
+[lane.compat1017] waiting: `dispatch/board-requests/compat1017.md` applied
+(territory.toml releases for compat_notes.tsv/compatibility.csv from
+compat1016 and README.md/COMPATIBILITY.md/compat_page.py from release052c,
+plus #851's status corrected in nv2a_issues.toml), then a clean
+`preflight.sh` run on this branch.
+
 Release note (none): docs-only change, no emulator code touched.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

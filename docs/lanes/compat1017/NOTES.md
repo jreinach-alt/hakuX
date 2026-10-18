@@ -137,3 +137,30 @@ split, which handles the mixed endings correctly.
 all 19 fragments in it exercise `compat_page.py` end to end (row building,
 rendering, `--check`) and all pass against the updated `compat_notes.tsv`.
 No other selftest file is specific to the compat page.
+
+## preflight.sh: territory + coverage FAIL, both board-state, both filed
+
+`docs/testing/preflight.sh` FAILs two gates neither of which this lane can
+fix directly (both require editing `territory.toml` or `nv2a_issues.toml`,
+which a lane may not touch per the lane contract):
+
+- **territory**: `docs/testing/compat_notes.tsv` and `docs/compatibility.csv`
+  are still claimed by `[lane.compat1016]` (standing=false, never started —
+  this lane's own territory note already says compat1017 replaces it, but
+  the files were never released); `README.md`, `docs/COMPATIBILITY.md` and
+  `docs/testing/compat_page.py` are still claimed by the folded
+  `[lane.release052c]` (its own handoff note already says these go to
+  compat1017/titlekey1016, but the release was never recorded); `README.md`
+  is also listed by the folded `[lane.storydoc1017]`, whose own row says
+  that overlap is expected and disjoint.
+- **coverage**: `[issue.851]` in `nv2a_issues.toml` still has
+  `status = "open"` though the issue isn't open on GitHub — stale since
+  before the owner's 2026-10-17 ruling that resolved it (Marvel Nemesis to
+  Playable).
+
+Filed `dispatch/board-requests/compat1017.md` asking the board to release
+the five files from the stale/folded rows and correct `#851`'s status.
+Every check this lane can run directly (`compat_page.py`, `--check`,
+`compat_page_selftest.py`, `title_registry.py check --pages`) passes; these
+two preflight failures are the board's to apply, not a defect in this
+lane's own files.
