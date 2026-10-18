@@ -35,7 +35,7 @@ def ppm_rgb(path):
     return np.frombuffer(parts[3][:w * h * 3], dtype=np.uint8).reshape(h, w, 3).astype(np.float64) / 255
 
 
-fs = sorted(glob.glob(os.path.join(fdir, "v*.ppm")))
+fs = sorted(glob.glob(os.path.join(fdir, opt.get("pattern", "v*.ppm"))))
 T = None
 for f in fs:
     im = ppm_rgb(f)
@@ -55,8 +55,9 @@ m[:, :15] = False
 m[:30, :70] = False
 print(f"template from {len(fs)} frames; calibration px {m.sum()} (overlay px with T lum > 0.1: {(m & (Tl > 0.1)).sum()})")
 curves = {}
-for c, name in enumerate("RGB"):
-    t, p = T[m, c], P[m, c]
+LUM = np.array([0.299, 0.587, 0.114])
+for c, name in enumerate("RGBL"):
+    t, p = (T[m, c], P[m, c]) if c < 3 else (Tl[m], P[m] @ LUM)
     # fixed-width bins: the space pixels (most of them) would take every quantile bin
     edges = np.linspace(0.06, 1.0, NB + 1)
     xs, ys, ns = [0.0], [float(np.median(p[t <= 0.06]))], [int((t <= 0.06).sum())]

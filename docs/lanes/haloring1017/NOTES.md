@@ -85,15 +85,17 @@ console's brightness.
 
 | id | hypothesis | symptom | P | row | hit | miss | instrument |
 |---|---|---|---|---|---|---|---|
-| R1 | the reflection term is wrong: R lands on the wrong face, or v1 scales it to near zero | (a) | 0.35 | A8, A10, A15 | the console look returns with the cube term forced to a bright face and v1 replaced | forcing it gives a coloured sheen, not grey crater mottling | `swr.py`-style software render of `n5` from the dg dump, and a desktop PSHDBG mode once A7's crash is fixed |
-| R1b | ...the global cube mirror | (a) | in R1 | A10 | the mirrored R lands on face 0 or 4 (bright) over most of the hull at photo 5's pose | mirrored R still on dark faces | `vpemu.py` R per vertex, face histogram per mirror |
+| R1 | the reflection term is wrong: R lands on the wrong face, or v1 scales it to near zero | (a) | 0.35 -> 0.1 (M6: a bright face everywhere, with the fresnel, adds nothing over D) | A8, A10, A15 | the console look returns with the cube term forced to a bright face and v1 replaced | forcing it gives a coloured sheen, not grey crater mottling | `swr.py`-style software render of `n5` from the dg dump, and a desktop PSHDBG mode once A7's crash is fixed |
+| R1b | ...the global cube mirror | (a) | in R1 -> 0.03 (M6: none of 48 signed axis permutations beats the identity) | A10 | the mirrored R lands on face 0 or 4 (bright) over most of the hull at photo 5's pose | mirrored R still on dark faces | `vpemu.py` R per vertex, face histogram per mirror |
 | R2 | another draw (`n4`, `n6`, `n0`) ignores its own scroll | (c) | 0.3 if (c) reproduces -> 0.02 (M2, M2b: `n4` follows its scroll; `n6` has none by design) | new: searched x1 NOTES and git, nothing (A6 left them undone) | across consecutive frames, a per-frame change in the draw's guest state that its generated shader does not use | every per-frame change is used, and the output moves | `gdread.py diff` over consecutive frames, per draw |
 | R2b | the guest computes `n4`'s scroll wrongly (a CPU defect, like (b)) | (c) | 0.1 -> 0.02 (M1: missed; the rates agree to three figures, on Turnip, run 13) | new: A12 measured c13.w on `n5` only | `n4`'s w rate (0.0000977/frame, ~8x below `n5`'s 0.00078) times its c13.x gives a different angular rate from `n5`'s | rates agree, so the guest means the band to turn at the hull's speed | `gdread.py draw` for c13 on `n4`/`n5` in two frames |
-| R3 | v0.a non-zero on hardware: the final combiner lerps toward c0_8 (white) | (a), and a common wash of `n4`+`n5` | 0.2 | A14 | a software render with v0.a = k matches photo 5's brightness and keeps faint panel lines; the terrain band whitens by the same k | the panel lines vanish before the brightness is reached, or the band's whitening differs | software render against the pose-matched pair |
+| R3 | v0.a non-zero on hardware: the final combiner lerps toward c0_8 (white) | (a), and a common wash of `n4`+`n5` | 0.2 -> 0.1 (M6: v4 is 2 components on both draws, so the premise holds; but the floor is inert at this pose, a lerp leaves the lower hull's texture-led pattern unexplained, and one k does not fit both draws' levels) | A14 | a software render with v0.a = k matches photo 5's brightness and keeps faint panel lines; the terrain band whitens by the same k | the panel lines vanish before the brightness is reached, or the band's whitening differs | software render against the pose-matched pair |
 | R4 | the static inside surface was the stock driver | (c) | 0.25 -> **0.9** (M2, M2b: hit) | new: searched tracker #1038/#1039 (stock-driver defects that week), nothing on #939 | (c) absent in run 13's Turnip video and on the desktop | (c) present off the stock driver | run 13's video; a desktop clip; per-draw scroll in a `gd` dump |
 | R5 | other combiner or final-combiner semantics, or the fast paths, for (a) | (a) | 0.1 | A3 (for (b) only), A20 | a fast-paths-off clip (A3's video) shows the layer, or a combiner op proves wrong against the hardware docs | | A3's video; reading `psh.c` against nv2a docs |
 | R7 | `n5` follows `n4` in the same shader with only c13 changed; the second draw's constants never reach the GPU | (c) | 0.05 -> 0 off the stock driver (M2, M2b: each scrolls at its own rate) | new (M1). Code read: `vsh.c:1213` copies all of c[] every draw; `shaders.c:2108-2138` marks the upload by dirty flag or by layout hash, so a c13 change is caught either way | on screen, one of `n4`/`n5` scrolls at the other's rate or not at all | each scrolls at its own c13.w rate | M2 (`bandfit.py`) |
-| R6 | unwritten VP outputs take the attribute registers' current values on hardware (Cxbx-R PR #2109); hakuX sets them to (0,0,0,1). The hull never writes oT0/oT1/oT2.zw (the PROJECT2D q), oT3.w, oB0, oB1 | (a), perhaps (c) | 0.1 | new: searched hakuX git and `vsh.c`, nothing; Cxbx-R PR #2109 | inline attribute values for v9-v12 (or the slots each output maps to) give q != 1, and a render with that q matches the console | q = 1 under that model | the `gd` dump's inline attribute values; a software render |
+| R6 | unwritten VP outputs take the attribute registers' current values on hardware (Cxbx-R PR #2109); hakuX sets them to (0,0,0,1). The hull never writes oT0/oT1/oT2.zw (the PROJECT2D q), oT3.w, oB0, oB1 | (a), perhaps (c) | 0.1 -> 0.03 (M5: t0 and t2.r land on the console at the dump's own scale and phase, which a q != 1 would move) | new: searched hakuX git and `vsh.c`, nothing; Cxbx-R PR #2109 | inline attribute values for v9-v12 (or the slots each output maps to) give q != 1, and a render with that q matches the console | q = 1 under that model | the `gd` dump's inline attribute values; a software render |
+| R8 | the cube's LOD: on hardware the hull's reflection samples a coarse mip of the 64x64 cube (near each face's mean) where hakuX samples a fine one, so the reflection is t2.r times a near-constant over the whole hull, not only where a bright face is hit | (a), and (b)'s flicker source | 0.3 (new, M6) | new: M6's t2.r-without-cube fit | the reflection with the cube at a coarse LOD fits the console's rank and level better than at hakuX's LOD | no LOD bias raises the fit over D + c·t2.r's | `termfit.py` with an LOD bias on t3 |
+| R9 | the fresnel oD1 differs on hardware (its inputs: v5/v6's formats, or an unwritten register), so oD1.rgb·oD1.a is near-constant | (a) | 0.15 (new, M6) | new | a near-constant oD1 with the cube at hakuX's or a coarse LOD fits the console | the fresnel-shaped term fits as well as a flat one | `termfit.py`; the VP's oD1 inputs read from the dump |
 
 ## Measurements
 
@@ -362,6 +364,81 @@ The photo's tone curve (`photocal.py`, from the flat parts of the overlays over 
 through it, the console's band is about hakuX's (photo 0.70 ~ framebuffer 0.55, hakuX 0.565) while the console's hull
 is about 1.6x hakuX's (photo 0.37-0.44 ~ framebuffer 0.23-0.26, hakuX 0.14-0.16). That curve rests on a few hundred
 overlay pixels per bin, so it sets the size of the gap, not the model; the model is decided by pattern (M6).
+
+### M6: what the console's hull is made of (`termfit.py`, `floorfit.py`; controls `vidratio.py`, `edgecmp.py`)
+
+**Controls first.**
+- `hullsw.py` now clips triangles at the near plane (w >= 1e-4) as the GPU does. Before, it dropped every triangle
+  with a vertex behind the eye: `n4` 91 of 288, `n5` 458 of 1440 at f504. M4's control at f290 is unchanged: r 0.977,
+  render - image +0.002/-0.001/-0.002, fit a 0.998 b 0.979.
+- `vidratio.py`, the render at f504 against run 13's own Turnip video at that time (v01806). Video / render luminance
+  ratio:
+
+  | draw | median | p10 | p90 | r |
+  |---|---|---|---|---|
+  | band | 0.99 | 0.82 | 1.09 | 0.906 |
+  | hull | 1.03 | 0.75 | 2.11 | 0.402 |
+
+  The hull's r is low because the hull's fine texture is below the video's resolution (greyscale, compressed). Under 4%
+  of either draw has a ratio below 0.6. So at photo 5's pose the render is what hakuX draws on Turnip: no later pass
+  darkens the hull and no geometry differs.
+- `edgecmp.py`: the render's band/hull edges sit on hakuX's video edges and on the console's. I first read a narrow
+  bright strip on the console as a narrower band (a geometry difference); it is the band's own darker inner edge.
+  Retracted.
+
+**Pattern (`termfit.py`, f507, 3 px blur, 65,106 hull px).** The console's tone curve is unknown in detail, so models
+are compared by rank (Spearman) r with the console's luminance; a monotone curve leaves ranks alone. Each model is
+D + c·X, with D = 2·t0·t1·(oD0 + t2.g), and c scanned for its best r:
+
+| model | c | rank r: all | upper hull | lower hull |
+|---|---|---|---|---|
+| hakuX as drawn, D + X0 | 1 | 0.600 | 0.627 | 0.348 |
+| D alone | 0 | 0.646 | 0.696 | 0.337 |
+| D + c·X0 (the reflection rescaled) | 0.22 | 0.664 | 0.709 | 0.355 |
+| D + c·t2.r·oD1.rgb·oD1.a (cube = 1) | 0.05 | 0.646 | | |
+| D + c·t2.r·oD1.a | 0.05 | 0.649 | | |
+| D + c·t2.r (no cube, no fresnel) | 0.22 | **0.669** | 0.709 | **0.445** |
+| t2.r alone | | 0.633 | | 0.516 |
+| t0 alone | | 0.613 | | 0.538 |
+
+- **The console's hull pattern is hakuX's diffuse term.** Adding the reflection at hakuX's strength lowers the fit
+  (0.646 to 0.600).
+- **No cube orientation helps.** Over the 48 signed axis permutations of R, the best (+x-y+z) reaches 0.664; the
+  identity ranks 3rd, also at 0.664. Forcing a bright cube everywhere, with the fresnel, adds nothing over D. So R1's
+  forced face and R1b's mirror do not produce the console.
+- **The textures' t2.r, without the cube or the fresnel, is the one addition that helps**, and most on the lower hull
+  (0.337 to 0.445), where t2.r and t0 alone each beat hakuX's whole model. Where hakuX's shading darkens the hull, the
+  console's pattern is the textures', not the shading's.
+
+**R3 by pattern and level (`floorfit.py`, f507).** The dump's vertex array records read v4 as type 1 (S1), 2 bytes, 2
+components on both `n4` and `n5`, so v4.z is the missing-component default (0 in hakuX) on both draws. The VP uses it
+as oD0.w (the final combiner's lerp toward white) and as the floor of both lighting max()es. hullsw rendered with
+v4.z = k:
+
+| k | hull rank r (all / lower) | hull: render / floor alone | band: render | console in fb units (hull / band) |
+|---|---|---|---|---|
+| 0 | 0.588 / 0.349 | 0.133 / 0.133 | 0.531 | 0.245 / 0.643 |
+| 0.1 | 0.599 / 0.375 | 0.228 / 0.142 | 0.578 | |
+| 0.2 | 0.594 / 0.372 | 0.316 / 0.145 | 0.625 | |
+| 0.35 | 0.592 / 0.370 | 0.445 / 0.146 | 0.695 | |
+
+- **The floor barely acts**: +0.01 in level and in rank r. At this pose the visible hull is already lit above any
+  small floor (oD0 ~0.85, M3), so the lower hull's texture-led pattern is not the floor.
+- **The console sits ~0.11 above hakuX on both draws**, through the L curve of `cal5fb` (the desktop framebuffer's
+  overlays). By region: upper hull +0.114, lower hull +0.108, band +0.112. Between the upper hull and the band the
+  slope is 0.995. A lerp toward white adds k·(1 - x), less to the brighter band, so one k cannot fit both: the hull
+  needs k 0.13, the band k 0.24. An addition that is the same on both draws fits; a lerp fits only if the curve is
+  off by about 0.05 in the band's range.
+- The console's colour is not readable yet. The overlays that calibrate the camera are tinted, so blue against green
+  depends on the overlays' own colour. Uncalibrated, the console's hull is equally blue-grey (b/g ~1.2-1.3) at every
+  level of hakuX's render, where hakuX runs from green (0.80) to lavender (1.17).
+
+The two readings point the same way: the console adds a texture-shaped term over the whole hull, about 0.22·t2.r in
+hakuX's units (mean ~0.11), not gated by the cube's bright faces or by the fresnel. That is the owner's description:
+the "sprite" (t2.r, the reflection's mask) "applied across the entire ring, including the dark portions". Within
+hakuX's own combiner, the term that carries t2.r is the reflection, cube(R)·oD1.rgb·t2.r·oD1.a. So the console's
+reflection is t2.r times something near-constant and non-zero: the cube's lookup or the fresnel differs, not the
+mask. M7 tests the cube's LOD (a coarse mip is the face's mean everywhere) and the fresnel's inputs.
 
 ## Plan
 

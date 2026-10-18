@@ -239,38 +239,78 @@ def program(C, rec, v4z=0.0):
     return SX, SY, SZ, P[:, 3], var
 
 
+WCLIP = 1e-4
+
+
+def clip_near(Sh):
+    """Clip a triangle, given as homogeneous screen vertices (SX w, SY w, SZ w, w)
+    (an affine image of clip space), to w >= WCLIP. Returns [(Sh_k, lam_k)]: the
+    polygon's vertices and each one's weights over the triangle's 3 vertices."""
+    poly = [(Sh[i], np.eye(3)[i]) for i in range(3)]
+    out = []
+    for k in range(3):
+        (pa, la), (pb, lb) = poly[k], poly[(k + 1) % 3]
+        ina, inb = pa[3] >= WCLIP, pb[3] >= WCLIP
+        if ina:
+            out.append((pa, la))
+        if ina != inb:
+            t = (WCLIP - pa[3]) / (pb[3] - pa[3])
+            out.append((pa + t * (pb - pa), la + t * (lb - la)))
+    return out
+
+
 def raster(layers):
-    """layers: [(id, tris, SX, SY, SZ, PW)], drawn in order, cull 'neg', depth less-equal."""
+    """layers: [(id, tris, SX, SY, SZ, PW)], drawn in order, cull 'neg', depth less-equal.
+    A triangle with a vertex behind the eye is clipped at w = WCLIP, as the GPU
+    does (the first version dropped it, leaving holes in the near hull at
+    poses like photo 5's). Returns per pixel the layer, the triangle, and the
+    triangle's perspective-correct (clip-space) barycentric weights."""
     zbuf = np.full((H, W), np.inf)
     lid = np.full((H, W), -1)
     tid = np.full((H, W), -1)
     bary = np.zeros((H, W, 3))
     for L, tris, SX, SY, SZ, PW in layers:
+        Sh = np.stack([SX * PW, SY * PW, SZ * PW, PW], 1)
         for t, (a, b, c) in enumerate(tris):
-            if min(PW[a], PW[b], PW[c]) <= 0:
-                continue
-            xa, ya, xb, yb, xc, yc = SX[a], SY[a], SX[b], SY[b], SX[c], SY[c]
-            area = (xb - xa) * (yc - ya) - (xc - xa) * (yb - ya)
-            if area <= 0:
-                continue
-            x0, x1 = max(int(np.floor(min(xa, xb, xc))), 0), min(int(np.ceil(max(xa, xb, xc))), W - 1)
-            y0, y1 = max(int(np.floor(min(ya, yb, yc))), 0), min(int(np.ceil(max(ya, yb, yc))), H - 1)
-            if x0 > x1 or y0 > y1:
-                continue
-            gx, gy = np.meshgrid(np.arange(x0, x1 + 1) + 0.5, np.arange(y0, y1 + 1) + 0.5)
-            l0 = ((xb - gx) * (yc - gy) - (xc - gx) * (yb - gy)) / area
-            l1 = ((xc - gx) * (ya - gy) - (xa - gx) * (yc - gy)) / area
-            l2 = 1 - l0 - l1
-            inside = (l0 >= 0) & (l1 >= 0) & (l2 >= 0)
-            if not inside.any():
-                continue
-            z = l0 * SZ[a] + l1 * SZ[b] + l2 * SZ[c]
-            sub = zbuf[y0:y1 + 1, x0:x1 + 1]
-            m = inside & (z <= sub)
-            sub[m] = z[m]
-            lid[y0:y1 + 1, x0:x1 + 1][m] = L
-            tid[y0:y1 + 1, x0:x1 + 1][m] = t
-            bary[y0:y1 + 1, x0:x1 + 1][m] = np.stack([l0[m], l1[m], l2[m]], -1)
+            if min(PW[a], PW[b], PW[c]) >= WCLIP:
+                poly = [(Sh[a], np.array([1.0, 0, 0])), (Sh[b], np.array([0, 1.0, 0])), (Sh[c], np.array([0, 0, 1.0]))]
+            else:
+                poly = clip_near(Sh[[a, b, c]])
+                if len(poly) < 3:
+                    continue
+            for j in range(1, len(poly) - 1):
+                tri = (poly[0], poly[j], poly[j + 1])
+                w3 = np.array([v[0][3] for v in tri])
+                xs3 = np.array([v[0][0] for v in tri]) / w3
+                ys3 = np.array([v[0][1] for v in tri]) / w3
+                zs3 = np.array([v[0][2] for v in tri]) / w3
+                lam = np.stack([v[1] for v in tri])                       # (3 sub vertices, 3 original)
+                (xa, xb, xc), (ya, yb, yc) = xs3, ys3
+                area = (xb - xa) * (yc - ya) - (xc - xa) * (yb - ya)
+                if area <= 0:
+                    continue
+                x0, x1 = max(int(np.floor(xs3.min())), 0), min(int(np.ceil(xs3.max())), W - 1)
+                y0, y1 = max(int(np.floor(ys3.min())), 0), min(int(np.ceil(ys3.max())), H - 1)
+                if x0 > x1 or y0 > y1:
+                    continue
+                gx, gy = np.meshgrid(np.arange(x0, x1 + 1) + 0.5, np.arange(y0, y1 + 1) + 0.5)
+                l0 = ((xb - gx) * (yc - gy) - (xc - gx) * (yb - gy)) / area
+                l1 = ((xc - gx) * (ya - gy) - (xa - gx) * (yc - gy)) / area
+                l2 = 1 - l0 - l1
+                inside = (l0 >= 0) & (l1 >= 0) & (l2 >= 0)
+                if not inside.any():
+                    continue
+                z = l0 * zs3[0] + l1 * zs3[1] + l2 * zs3[2]
+                sub = zbuf[y0:y1 + 1, x0:x1 + 1]
+                m = inside & (z <= sub)
+                if not m.any():
+                    continue
+                sub[m] = z[m]
+                mu = np.stack([l0[m] / w3[0], l1[m] / w3[1], l2[m] / w3[2]], -1)
+                mu /= mu.sum(1, keepdims=True)
+                lid[y0:y1 + 1, x0:x1 + 1][m] = L
+                tid[y0:y1 + 1, x0:x1 + 1][m] = t
+                bary[y0:y1 + 1, x0:x1 + 1][m] = mu @ lam
     return lid, tid, bary
 
 
@@ -387,9 +427,7 @@ def render(dump, ram, frame, v4z=0.0, loaded=None, state=None):
         if len(ys) == 0:
             continue
         vi = p["tris"][tid[ys, xs]]
-        w = bary[ys, xs] / p["PW"][vi]
-        w /= w.sum(1, keepdims=True)
-        V = np.einsum("nk,nkc->nc", w, p["var"][vi])
+        V = np.einsum("nk,nkc->nc", bary[ys, xs], p["var"][vi])       # raster's weights are clip-space
         oD0, oD1, T0, T1, T2, T3 = V[:, 0:4], V[:, 4:8], V[:, 8:10], V[:, 10:12], V[:, 12:14], V[:, 14:17]
         ts = []
         for s, T in enumerate((T0, T1, T2)):
