@@ -3038,3 +3038,9 @@ issues = ["433"]
 standing = false
 files = ["docs/lanes/snaptargets1018/**", "docs/testing/dispatcher.sh", "docs/testing/jobs/selftest.d/97-dispatch-snapshot-drive.sh", "docs/testing/jobs/selftest.sh"]
 note = "STARTED lane.local 2026-10-18 ~01:45 PDT (Sonnet): the dispatcher snapshot ships titlestate.py but not targets.toml, so a first-run or find-route title (Fable, 4D5300D1) crashes at claim with FileNotFoundError; ship it and add a selftest."
+
+[lane.topspinroute1018]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/topspinroute1018/**", "docs/testing/titles/routes/gen-top-spin*.route", "docs/testing/titles/targets.toml"]
+note = "STARTED lane.local 2026-10-18 ~02:58 PDT (Sonnet): gen-top-spin dies on Exhibition > Controller Select (1P needs D-pad left before A); the recorded fps786-topspin route is first-run and refused for a profiled title; write a state:any route that reaches a match."
