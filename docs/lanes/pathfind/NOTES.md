@@ -1589,3 +1589,30 @@ What this shows, and what it does not:
   lane's own convention says to commit (`git ls-files docs/lanes/pathfind/runs/ | wc -l` = 12517 tracked already).
   I committed only the 13 directories this session actually reviewed (9 banked + 2 voided + 2 caught-false); the
   remaining backlog is untouched on disk, uncommitted, and still worth triaging before it is deleted or rewritten.
+
+## Offline reconciliation, continued (2026-10-18): the remaining 173 directories' pass=true pass
+
+After the first commit landed and pushed (`cb4e186e5b`), the 173 run directories left in the backlog (the full
+~290 that `git status` showed at the start of this attempt, minus the 13 already handled) got the same pass=true
+scan, one level deep (covers the `title/holdN` container shape `nhl-2k3/hold2` used, in case another one existed --
+none did):
+- 32 of 173 carry `pass: true`. 31 of those 32 are already on `pm/playable-accepted.tsv` (checked by title_id, not
+  just title string, since several titles differ only by region suffix) -- these are further copies of the same
+  10-07/10-11 through 10-16 chain that an intervening lane.local session, or this session's earlier pass, already
+  banked. No duplicate rows added.
+- 1 was genuinely new: **Lemony Snicket's A Series of Unfortunate Events (USA)**, title_id 4156001F,
+  `runs/n-4156001F-1011`, judged 2026-10-11T12:48:36Z. static_window/position were both actually measured here
+  (16 route-frames, frozen_frac 0.0317, still_frac 0.0, first_last 0.529) -- unlike the two false-playables above,
+  this one has the shape a trustworthy PASS should have. `contact.png`'s 12 route/boot samples (05:38:23-05:48:20)
+  show Violet/Klaus moving through a cluttered attic/study from a different camera angle at every sample (bookshelf,
+  arched window, lit lantern, crate corner, the character himself in frame), HUD meter live throughout; the
+  "switch between Violet or Klaus" text baked into every frame is a persistent HUD hint, not a stuck tutorial
+  screen (it is present even in the earliest boot-sample frames, well before the hold starts). Banked to the ledger.
+- 96 of 173 are `pass` false/absent (fails, same shape as `pathfind-pool.tsv`'s existing rows) and 45 of 173 have no
+  `verdict.json` at all (first-run/navigation attempts that never reached a hold -- `result.json`/`steps.jsonl`
+  only, no measurement). Neither group was scanned further this session; they are the remaining backlog for
+  below-bar.tsv evidence mentioned above, now 141 directories instead of ~280 (the 32 pass=true ones are accounted
+  for by this pass, so they do not need re-scanning even though they stay uncommitted on disk).
+- Committed only `runs/n-4156001F-1011` (23 MB) this round, on top of the already-committed 13. The 141-directory
+  FAIL/no-verdict backlog is unchanged from the prior entry's description: still uncommitted, still untriaged for
+  below-bar.tsv evidence, left for the next session.

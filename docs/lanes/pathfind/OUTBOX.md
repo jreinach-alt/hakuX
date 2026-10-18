@@ -1206,3 +1206,21 @@ classifier or a post-goal skip input before any hockey/sports title with instant
 Not done this attempt: the remaining ~280 untracked run dirs (most of the ~5.2 GB) were not scanned beyond the
 pass=true pass above; their FAIL/void evidence may still be worth feeding into below-bar.tsv, and the dirs themselves
 are evidence this lane's convention says to commit. Named in NOTES.md for the next session. No device time spent.
+
+## #433 -- 2026-10-18 (lane.pathfind, attempt 3, offline reconciliation continued)
+
+Finished the pass=true scan on the remaining 173 of the ~290 uncommitted run dirs (the 13 above were the first
+batch). 32 carry pass=true; 31 were already on pm/playable-accepted.tsv by title_id (further copies of the same
+chain the first batch covered). 1 was genuinely new and got frame-reviewed before banking:
+
+**Lemony Snicket's A Series of Unfortunate Events (USA)**, title_id 4156001F, runs/n-4156001F-1011, judged
+2026-10-11T12:48:36Z. Unlike the two false-playables caught above, this one's static_window/position were both
+actually measured (16 route-frames, frozen_frac 0.0317, still_frac 0.0, first_last 0.529). contact.png's 12
+route/boot samples show the character moving through a cluttered attic/study from a different camera angle at
+every sample (bookshelf, arched window, lit lantern, crate corner, the character in frame), HUD live throughout;
+the "switch between Violet or Klaus" text baked into every frame is a persistent HUD hint (present from the
+earliest boot samples, before the hold even starts), not a stuck tutorial screen. Banked to the ledger.
+
+The other 96 of 173 are fails (pass false/absent) and 45 have no verdict.json at all (navigation runs that never
+reached a hold). Neither group scanned further. Remaining untriaged backlog is now 141 directories, not ~280 --
+named in NOTES.md for the next session. No device time spent.
