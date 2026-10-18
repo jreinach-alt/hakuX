@@ -8,8 +8,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `dispatchdoctor1017` | claude-sonnet-5 | 2h 58m | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what  |
-| `gta3fps1017` | claude-opus-5-5 | 59 min | gta3fps1017: GTA III fps, R2/R3 copy-count remedies from an on-foot census, with R1 (#1049) |
+| `dispatchdoctor1017` | claude-sonnet-5 | 3h 13m | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what  |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `owner.gta3play-1017`
@@ -119,10 +118,10 @@ The harness dashboard, with each release's targets and the progress charts, is [
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
 | `lane/dispatchdoctor1017` | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what stops a ru | `439feb72b2` | 2026-10-17 19:45 |
-| `lane/gta3fps1017` | gta3fps1017: GTA III fps, R2/R3 copy-count remedies from an on-foot census, with R1 (#1049) | `24b5bcd5fa` | 2026-10-17 21:32 |
 
 ## Recently landed on master
 
+- 2026-10-17 A title with one measured stall reaches the owner the same day
 - 2026-10-17 storydoc1017: a project history page, linked from the README's More table
 - 2026-10-17 nearbar1017b: three more near-cap titles on the 0.5.2 build -- two clear, one inconclusive
 - 2026-10-17 bootstatic1017: black while the guest has the screen off, no static or green at title start (#1045)
@@ -132,6 +131,5 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 haloshadow1017: Halo CE's dark squares under soldiers' feet: the stock Adreno driver, not the code (#1038)
 - 2026-10-17 release052b: versionCode 10, the driver link, and two known-issue lines for 0.5.2 (#433)
 - 2026-10-17 drivernotice1017: every release note names the one tested GPU driver (#433)
-- 2026-10-17 bindpose1017: THPS4 and Max Payne 2 bind pose: the stock Adreno driver, not the code (#1043)
 
-_Updated 2026-10-17 22:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-17 22:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
