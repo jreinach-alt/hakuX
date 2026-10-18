@@ -8,7 +8,9 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `holdcap1018` | claude-sonnet-5 | 0 min |  |
+| `haloring1017` | claude-opus-5-5 | 10 min | haloring1017: Halo CE main-menu ring: the missing surface layer and the static inside surface (#939) |
+| `holdcap1018` | claude-sonnet-5 | 15 min | holdcap1018: an owner-play hold starts a host logcat capture |
+| `pathfind` | claude-opus-5-5 | 10 min | pathfind: a screen-reading agent that drives a title from boot into gameplay |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `owner-play`
@@ -18,14 +20,13 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Playable titles
 
-**95 titles are confirmed Playable** (4 today). Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
+**94 titles are confirmed Playable** (3 today). Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
 
 | Confirmed | Title | Result |
 |---|---|---|
 | 2026-10-18 | Lemony Snicket's A Series of Unfortunate Events (USA) | Playable, 10-minute run, median 59.88 fps |
 | 2026-10-18 | Micro Machines (Europe) | Playable, 10-minute run, median 59.94 fps |
 | 2026-10-18 | Cel Damage | Playable, 10-minute run, median 29.9 fps |
-| 2026-10-18 | Mortal Kombat: Shaolin Monks | Playable, 10-minute run, median 39.89 fps |
 | 2026-10-17 | NBA Live 07 | Playable, 10-minute run |
 | 2026-10-17 | Pac-Man World 2 | Playable, 10-minute run |
 | 2026-10-17 | Dead or Alive 3 | Playable, 10-minute run |
@@ -118,11 +119,15 @@ The harness dashboard, with each release's targets and the progress charts, is [
 | 2026-09-29 | KOF: Maximum Impact – Maniax | Playable, 10-minute run on the Nova |
 | 2026-09-26 | Alien Hominid | Playable, 10-minute run on the Thor |
 
-73 of these still await the owner's flicker check.
+72 of these still await the owner's flicker check.
 
 ## Work in progress
 
-No branch is being worked right now.
+| Branch | Topic | Tip | Last change |
+|---|---|---|---|
+| `lane/haloring1017` | haloring1017: Halo CE main-menu ring: the missing surface layer and the static inside surface (#939) | `835a37466a` | 2026-10-18 07:39 |
+| `lane/holdcap1018` | holdcap1018: an owner-play hold starts a host logcat capture | `6a009e01b6` | 2026-10-18 07:38 |
+| `lane/pathfind` | pathfind: a screen-reading agent that drives a title from boot into gameplay | `abe4efd7f0` | 2026-10-18 06:53 |
 
 ## Recently landed on master
 
@@ -138,4 +143,4 @@ No branch is being worked right now.
 - 2026-10-17 compat1017: catch up the compatibility page to the 88-row Playable ledger
 - 2026-10-17 A title with one measured stall reaches the owner the same day
 
-_Updated 2026-10-18 07:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 07:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
