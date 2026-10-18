@@ -522,9 +522,77 @@ void xemu_input_update_controllers(void)
     }
 }
 
+/*
+ * HAKUX_PAD_FILE=<path> (#1039, desktop): press a button from a file, for a run
+ * with no window to type into, as pad.sh does on a device. A file holding
+ * "<button> [ms]" (A B X Y START BACK UP DOWN LEFT RIGHT WHITE BLACK) is read
+ * and removed; the button is held for ms (default 300) on whatever controller
+ * the keyboard is bound to. Off unless set.
+ */
+static uint32_t pad_file_buttons(void)
+{
+    static const struct {
+        const char *name;
+        uint32_t bit;
+    } names[] = {
+        { "A", CONTROLLER_BUTTON_A },         { "B", CONTROLLER_BUTTON_B },
+        { "X", CONTROLLER_BUTTON_X },         { "Y", CONTROLLER_BUTTON_Y },
+        { "START", CONTROLLER_BUTTON_START }, { "BACK", CONTROLLER_BUTTON_BACK },
+        { "UP", CONTROLLER_BUTTON_DPAD_UP },
+        { "DOWN", CONTROLLER_BUTTON_DPAD_DOWN },
+        { "LEFT", CONTROLLER_BUTTON_DPAD_LEFT },
+        { "RIGHT", CONTROLLER_BUTTON_DPAD_RIGHT },
+        { "WHITE", CONTROLLER_BUTTON_WHITE },
+        { "BLACK", CONTROLLER_BUTTON_BLACK },
+    };
+    static const char *path;
+    static bool checked;
+    static uint32_t held;
+    static int64_t held_until, next_poll;
+
+    if (!checked) {
+        checked = true;
+        path = getenv("HAKUX_PAD_FILE");
+        if (path && !path[0]) {
+            path = NULL;
+        }
+    }
+    if (!path) {
+        return 0;
+    }
+    int64_t now = qemu_clock_get_ms(QEMU_CLOCK_REALTIME);
+    if (held && now >= held_until) {
+        fprintf(stderr, "[pad1039] release %#x\n", held);
+        held = 0;
+    }
+    if (held || now < next_poll) {
+        return held;
+    }
+    next_poll = now + 50;
+    FILE *fp = fopen(path, "r");
+    if (!fp) {
+        return 0;
+    }
+    char name[16] = { 0 };
+    int ms = 300;
+    int n = fscanf(fp, "%15s %d", name, &ms);
+    fclose(fp);
+    unlink(path);
+    for (size_t i = 0; n >= 1 && i < ARRAY_SIZE(names); i++) {
+        if (!strcmp(name, names[i].name)) {
+            held = names[i].bit;
+            held_until = now + MAX(ms, 50);
+            fprintf(stderr, "[pad1039] press %s %d ms\n", name, MAX(ms, 50));
+            return held;
+        }
+    }
+    fprintf(stderr, "[pad1039] unknown button '%s'\n", name);
+    return 0;
+}
+
 void xemu_input_update_sdl_kbd_controller_state(ControllerState *state)
 {
-    state->buttons = 0;
+    state->buttons = pad_file_buttons();
     memset(state->axis, 0, sizeof(state->axis));
 
     const uint8_t *kbd = SDL_GetKeyboardState(NULL);

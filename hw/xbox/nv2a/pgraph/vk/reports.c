@@ -69,6 +69,7 @@ typedef struct RaReport {
     uint8_t *dst;      /* the guest's 16-byte report; NULL for a clear */
     uint32_t off;      /* its offset in the report DMA object */
     uint32_t trace;    /* trace record, when tracing */
+    uint32_t rs, qs;   /* #1039's serials (HAKUX_ZREP) */
 } RaReport;
 
 typedef struct RaBatch {
@@ -99,6 +100,78 @@ static struct {
     uint32_t sum;
     uint64_t *results;
 } ra;
+
+/*
+ * #1039: HAKUX_ZREP=<path>[,<MB>], off unless set. Each query's count and
+ * each report's value as the path that reads them writes them, so a frame
+ * dump (schema 11: "zq" on a draw, {"t":"rep"} per report) can say which
+ * draws a report counted and what it came to. Nothing is written until a
+ * frame dump has been armed once; it stops at <MB> (default 256). Lines:
+ *
+ *   q <query serial> <samples>
+ *   r <report serial> <last query serial> <offset> <value> <early>
+ *   c <report serial> <last query serial>        (CLEAR_REPORT_VALUE)
+ *
+ * <value> is the report's own count, as the guest gets it unless <early> is
+ * 1 (HAKUX_REPORT_EARLY answered it with the offset's last value, the
+ * previous r line at the same offset). The serials are the dump's "zq" and
+ * "rs"/"qs". A report counts every query after the last clear's <last query
+ * serial> up to its own.
+ */
+static struct {
+    FILE *fp;
+    QemuMutex lock;
+    int64_t bytes, cap;
+} zr;
+
+static void zr_init(void)
+{
+    const char *e = getenv("HAKUX_ZREP");
+    char path[512];
+    const char *comma;
+    size_t len;
+
+    if (!e || !*e || zr.fp) {
+        return;
+    }
+    comma = strchr(e, ',');
+    len = comma ? (size_t)(comma - e) : strlen(e);
+    snprintf(path, sizeof(path), "%.*s", (int)MIN(len, sizeof(path) - 1), e);
+    zr.cap = (comma ? MAX(atoi(comma + 1), 1) : 256) * (int64_t)1048576;
+    zr.bytes = 0;
+    zr.fp = fopen(path, "w");
+    qemu_mutex_init(&zr.lock);
+    RA_LOG("[zrep1039] %s -> %s (cap %" PRId64 " MB)",
+           zr.fp ? "on" : "cannot open", path, zr.cap / 1048576);
+}
+
+static bool zr_on(void)
+{
+    return zr.fp && zr.bytes < zr.cap && pgraph_vk_fdump_armed_once();
+}
+
+static void zr_query(uint32_t qs, uint64_t samples)
+{
+    qemu_mutex_lock(&zr.lock);
+    int n = fprintf(zr.fp, "q %u %" PRIu64 "\n", qs, samples);
+    zr.bytes += MAX(n, 0);
+    qemu_mutex_unlock(&zr.lock);
+}
+
+static void zr_report(bool clear, uint32_t rs, uint32_t qs, uint32_t off,
+                      uint32_t value, bool early)
+{
+    qemu_mutex_lock(&zr.lock);
+    int n = clear ? fprintf(zr.fp, "c %u %u\n", rs, qs)
+                  : fprintf(zr.fp, "r %u %u 0x%x %u %d\n", rs, qs, off, value,
+                            (int)early);
+    zr.bytes += MAX(n, 0);
+    if (zr.bytes >= zr.cap) {
+        fprintf(zr.fp, "end cap\n");
+        fflush(zr.fp);
+    }
+    qemu_mutex_unlock(&zr.lock);
+}
 
 /* Trace: one record per GET_REPORT, in queue order. */
 #define RT_RING 8192
@@ -414,6 +487,7 @@ void pgraph_vk_init_reports(PGRAPHState *pg)
     ra.on = async && !strcmp(async, "1");
     rt_init(pg);
     re_init();
+    zr_init();
 
     QSIMPLEQ_INIT(&r->report_queue);
     QSIMPLEQ_INIT(&r->report_pool);
@@ -439,6 +513,8 @@ void pgraph_vk_init_reports(PGRAPHState *pg)
         .queryCount = ra.on ? NUM_SUBMIT_FRAMES * RA_SLOT_QUERIES
                             : r->max_queries_in_flight,
     };
+    r->query_serial_of =
+        g_malloc0_n(pool_create_info.queryCount, sizeof(uint32_t));
     VK_CHECK(
         vkCreateQueryPool(r->device, &pool_create_info, NULL, &r->query_pool));
 
@@ -476,6 +552,8 @@ void pgraph_vk_finalize_reports(PGRAPHState *pg)
     r->report_pool_entries = NULL;
     g_free(r->query_results);
     r->query_results = NULL;
+    g_free(r->query_serial_of);
+    r->query_serial_of = NULL;
 
     vkDestroyQueryPool(r->device, r->query_pool, NULL);
 }
@@ -642,9 +720,15 @@ void pgraph_vk_clear_report_value(NV2AState *d)
     report->clear = true;
     report->parameter = 0;
     report->query_count = r->num_queries_in_flight;
+    report->rs = ++r->report_serial;
+    report->qs = r->query_serial;
     QSIMPLEQ_INSERT_TAIL(&r->report_queue, report, entry);
 
     r->new_query_needed = true;
+
+    if (nv2a_dbg_framedump_active()) {
+        pgraph_vk_fdump_log_report(d, report);
+    }
 }
 
 void pgraph_vk_get_report(NV2AState *d, uint32_t parameter)
@@ -659,9 +743,15 @@ void pgraph_vk_get_report(NV2AState *d, uint32_t parameter)
     report->clear = false;
     report->parameter = parameter;
     report->query_count = r->num_queries_in_flight;
+    report->rs = ++r->report_serial;
+    report->qs = r->query_serial;
     QSIMPLEQ_INSERT_TAIL(&r->report_queue, report, entry);
 
     r->new_query_needed = true;
+
+    if (nv2a_dbg_framedump_active()) {
+        pgraph_vk_fdump_log_report(d, report);
+    }
 
     if (rt.on) {
         rt_queued(d, parameter);
@@ -745,6 +835,12 @@ static void ra_run(PGRAPHVkState *r, RaBatch *b)
     if (rt.on) {
         t_f = g_get_monotonic_time();
     }
+    bool zr_w = zr_on();
+    if (zr_w) {
+        for (int i = 0; i < b->nq; i++) {
+            zr_query(r->query_serial_of[b->qfirst + i], ra.results[i]);
+        }
+    }
 
     int counted = 0;
     for (int i = 0; i < b->nreports; i++) {
@@ -755,8 +851,14 @@ static void ra_run(PGRAPHVkState *r, RaBatch *b)
         }
         if (rep->clear) {
             ra.sum = 0;
+            if (zr_w) {
+                zr_report(true, rep->rs, rep->qs, 0, 0, false);
+            }
         } else {
             uint32_t v = ra.sum / b->divisor;
+            if (zr_w) {
+                zr_report(false, rep->rs, rep->qs, rep->off, v, rep->early);
+            }
             if (rt.on) {
                 rt_written(rep->trace, rep->dst, t_f);
             }
@@ -773,6 +875,11 @@ static void ra_run(PGRAPHVkState *r, RaBatch *b)
     }
     while (counted < b->nq) {
         ra.sum += ra.results[counted++];
+    }
+    if (zr_w) {
+        qemu_mutex_lock(&zr.lock);
+        fflush(zr.fp);
+        qemu_mutex_unlock(&zr.lock);
     }
 }
 
@@ -873,6 +980,8 @@ static void ra_internal(NV2AState *d)
             o->off = report->clear ? 0 :
                      GET_MASK(report->parameter, NV097_GET_REPORT_OFFSET);
             o->trace = (!report->clear && rt.on) ? rt_handoff(t_e) : 0;
+            o->rs = report->rs;
+            o->qs = report->qs;
             /* An early report's status word is our own 0, not the guest's. */
             if (o->dst && !o->early && !ldl_le_p(o->dst + 12)) {
                 unarmed = true;
@@ -1131,6 +1240,12 @@ void pgraph_vk_process_pending_reports_internal(NV2AState *d)
     int num_results_counted = 0;
     const int result_divisor =
         pg->surface_scale_factor * pg->surface_scale_factor;
+    bool zr_w = zr_on();
+    if (zr_w) {
+        for (int i = 0; i < r->num_queries_in_flight; i++) {
+            zr_query(r->query_serial_of[i], query_results[i]);
+        }
+    }
 
     QueryReport *report;
     while ((report = QSIMPLEQ_FIRST(&r->report_queue)) != NULL) {
@@ -1142,6 +1257,12 @@ void pgraph_vk_process_pending_reports_internal(NV2AState *d)
                 query_results[num_results_counted++];
         }
 
+        if (zr_w) {
+            zr_report(report->clear, report->rs, report->qs,
+                      report->clear ? 0 :
+                      GET_MASK(report->parameter, NV097_GET_REPORT_OFFSET),
+                      r->zpass_pixel_count_result / result_divisor, false);
+        }
         if (report->clear) {
             NV2A_VK_DPRINTF("Cleared");
             r->zpass_pixel_count_result = 0;
@@ -1165,6 +1286,11 @@ void pgraph_vk_process_pending_reports_internal(NV2AState *d)
     // Add remaining results
     while (num_results_counted < r->num_queries_in_flight) {
         r->zpass_pixel_count_result += query_results[num_results_counted++];
+    }
+    if (zr_w) {
+        qemu_mutex_lock(&zr.lock);
+        fflush(zr.fp);
+        qemu_mutex_unlock(&zr.lock);
     }
 
     r->num_queries_in_flight = 0;
