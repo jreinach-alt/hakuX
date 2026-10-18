@@ -8,7 +8,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `dispatchdoctor1017` | claude-sonnet-5 | 1h 28m | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what  |
+| `dispatchdoctor1017` | claude-sonnet-5 | 1h 43m | dispatchdoctor1017: the dispatcher stages a missing title before it fails, and a Sonnet doctor diagnoses what  |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -120,6 +120,8 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Recently landed on master
 
+- 2026-10-17 nearbar1017b: three more near-cap titles on the 0.5.2 build -- two clear, one inconclusive
+- 2026-10-17 bootstatic1017: black while the guest has the screen off, no static or green at title start (#1045)
 - 2026-10-17 nearbar1017: three near-bar titles on the 0.5.2 build -- two clear Playable now
 - 2026-10-17 release052c: the 0.5.2 release page tells the story since v0.3.1, and the driver notice says handheld (#433)
 - 2026-10-17 Halo CE: the ship's rear lights show through the hull after the cut to the front (opening cinematic)
@@ -127,7 +129,5 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-17 release052b: versionCode 10, the driver link, and two known-issue lines for 0.5.2 (#433)
 - 2026-10-17 drivernotice1017: every release note names the one tested GPU driver (#433)
 - 2026-10-17 bindpose1017: THPS4 and Max Payne 2 bind pose: the stock Adreno driver, not the code (#1043)
-- 2026-10-17 lane worktrees are created sparse, without docs/lanes/pathfind/runs (#433)
-- 2026-10-17 relnotes1017: release notes carry only features and bug fixes (#433)
 
-_Updated 2026-10-17 21:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-17 21:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
