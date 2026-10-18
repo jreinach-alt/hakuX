@@ -3086,7 +3086,32 @@ static void s2t_share_bind(PGRAPHVkState *r, int idx, TextureBinding *snode,
     r->texture_bindings_changed = true;
     s2t_share_src[idx] = e->node;
     snode->draw_time = UINT_MAX;
-    TEX_PERF(s2c.r3++);
+#if NV2A_PERF_LOG
+    /*
+     * The census counts copies saved. Because of the draw_time above, every
+     * later bind of snode at this draw_time shares again, where the copy
+     * path would have copied once and then taken the same-draw_time branch:
+     * so count a (node, surface, draw_time) once.
+     */
+    static struct {
+        const TextureBinding *node;
+        const SurfaceBinding *s;
+        int t;
+    } counted[S2T_SHARES];
+    static unsigned int counted_next;
+    bool seen = false;
+    for (int i = 0; i < S2T_SHARES && !seen; i++) {
+        seen = counted[i].node == snode && counted[i].s == e->s &&
+               counted[i].t == e->t;
+    }
+    if (!seen) {
+        unsigned int k = counted_next++ % S2T_SHARES;
+        counted[k].node = snode;
+        counted[k].s = e->s;
+        counted[k].t = e->t;
+        s2c.r3++;
+    }
+#endif
     if (!noted) {
         noted = true;
         s2t_log("[s2tshare] first share");
