@@ -10,6 +10,12 @@ the photo (photoreg.py's warp, frame pixels) and each frame (scaled to
 inside the ROI; scored by NCC. The ring and the planet both move with the
 camera, so the peak is the pose. The video's frame clock is its own
 (59.94 fps); M2b's anchor line maps it to dump frames where it applies.
+
+The frame rate is the stream's r_frame_rate (ffprobe), which is the rate
+ffmpeg's rawvideo output runs at. Run 13's video is 60000/1001. The Nova's
+video of 1792329678 (display at 120 Hz) is variable-rate on a 120/1 base,
+and ffmpeg repeats frames to fill it, so a fixed 59.94 put photo 4 at
+51.99 s instead of 40.98 s.
 """
 import subprocess
 import sys
@@ -49,18 +55,22 @@ m &= P > 0.0  # photoreg leaves 0 outside the photo
 Pb = blur(P, br)[m]
 Pb = (Pb - Pb.mean()) / Pb.std()
 
+rate = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=r_frame_rate",
+                       "-of", "csv=p=0", video], capture_output=True, check=True, text=True).stdout.strip()
+num, _, den = rate.partition("/")
+FPS = float(num) / float(den or 1)
 cmd = ["ffmpeg", "-v", "error", "-ss", f"{t0}", "-i", video, "-t", f"{t1 - t0}",
        "-vf", f"scale={W}:{H}", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"]
 raw = subprocess.run(cmd, capture_output=True, check=True).stdout
 n = len(raw) // (W * H * 3)
 fr = np.frombuffer(raw[:n * W * H * 3], dtype=np.uint8).reshape(n, H, W, 3)
-print(f"photo px {m.sum()}, {n} video frames from {t0} s")
+print(f"photo px {m.sum()}, {n} video frames from {t0} s at {FPS:.3f} fps")
 rows = []
 for i in range(n):
     V = blur(fr[i].astype(np.float64) / 255 @ LUM, br)[m]
     V = (V - V.mean()) / V.std()
     r = float((V * Pb).mean())
-    t = t0 + i / 59.94
+    t = t0 + i / FPS
     rows.append((t, r, i))
     print(f"t {t:.3f} ncc {r:.4f}")
 tb, rb, ib = max(rows, key=lambda x: x[1])

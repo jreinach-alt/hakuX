@@ -33,6 +33,7 @@ ov = np.asarray(Image.open(ovf).convert("L"), dtype=np.float64) / 255
 roi = np.zeros((hs.H, hs.W), bool)
 roi[y0:y1, x0:x1] = True
 roi &= ov < 0.12
+roi &= P > 0.0  # photoreg leaves 0 outside the photo
 # photo ring mask: Otsu threshold of the photo's luminance in the ROI
 v = P[roi]
 best = None

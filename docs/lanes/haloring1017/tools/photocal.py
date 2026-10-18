@@ -1,6 +1,6 @@
 """The console photo's tone curve, from the menu's overlays (#939, (a)).
 
-usage: photocal.py REG.npz RENDER.npz FRAMES_DIR [out=CAL.npz] [grad=0.02] [bins=16]
+usage: photocal.py REG.npz RENDER.npz FRAMES_DIR [out=CAL.npz] [grad=0.02] [bins=16] [margin=0] [exclude=MASK.png]
 
 A photo of a TV is not framebuffer values: the camera's exposure, white
 balance and tone curve sit between. The menu's 2D overlays (the HALO logo,
@@ -15,6 +15,10 @@ the template is locally flat (gradient < grad after a 1 px blur), so camera
 blur does not decide the value. Per channel, the photo's median per template
 bin is the curve photo = f(fb); it is monotone-fitted and inverted to read
 any photo pixel in framebuffer units. Writes the curve (fb, photo) per channel.
+
+lid < 0 is not "space" where the render misses ring that hakuX draws (M10: at
+f507 a triangle of hull between the V's arms, top right). margin=N keeps N px
+off the render's ring; exclude=MASK.png drops the mask's nonzero pixels.
 """
 import glob
 import os
@@ -50,6 +54,15 @@ for ax in (0, 1):
 gy, gx = np.gradient(Tb)
 flat = np.hypot(gx, gy) < float(opt.get("grad", 0.02))
 m = (lid < 0) & flat
+mg = int(opt.get("margin", 0))
+if mg:
+    ring = (lid >= 0).astype(float)
+    for ax in (0, 1):
+        ring = np.apply_along_axis(lambda r: np.convolve(r, np.ones(2 * mg + 1), mode="same"), ax, ring)
+    m &= ring == 0
+if "exclude" in opt:
+    from PIL import Image
+    m &= np.asarray(Image.open(opt["exclude"]).convert("L")) == 0
 m[452:, :] = False
 m[:, :15] = False
 m[:30, :70] = False

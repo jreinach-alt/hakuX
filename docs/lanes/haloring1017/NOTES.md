@@ -26,6 +26,15 @@ not waiting on anything. It spent its turns on photo 5 alone (M5-M7): one photo,
 everywhere, which cannot part the two accounts left. Attempt 3 (2026-10-18) starts with the four other console
 photos, looking for the unlit hull, and commits after each measurement.
 
+## Attempt 3 did not finish: the turn cap a third time
+
+Attempt 3 (10-18 05:29-07:03 PDT) ended on the 301-turn cap. It was not blocked. Its last commit (60ce32f010, 06:33)
+holds M8, M9 and the board request. After that the Nova dump landed (06:39), and attempt 3 started M10 without
+committing it: three new tools (`faceedge.py`, `glarefit.py`, `framepick.py`), a frame-rate fix in `vidpose.py` (the
+new run's video is on a 120/1 base, not 59.94), an outside-the-photo mask in `posefit.py`, and `margin=`/`exclude=`
+in `photocal.py`. Their outputs sat in scratch only (`hr/sw/n14`). Attempt 4 commits the tools first, reads those
+outputs instead of re-running them where they are complete, and commits after every measurement.
+
 ## Step 0: what was searched
 
 | where | query | found |
