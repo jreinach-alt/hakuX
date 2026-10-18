@@ -1185,6 +1185,253 @@ static void opt_stats_log_and_reset(void)
 #endif
 }
 
+#if NV2A_PERF_LOG
+#include "dipwin.h"
+#include <dlfcn.h>
+
+/*
+ * [dipwin] (#1049): what the frames of a 60-flip window spend their time on,
+ * one line under hakuX-rpbrk.
+ *
+ * The window is counted in flips and closed in one place, dipwin_flip() from
+ * the FLIP_STALL finish on the PFIFO thread. The counters are dipwin.h's, so
+ * an end counted by the render thread's presenting finish lands in exactly
+ * one window. cfl= crp= cbrk= are running totals; they only grow.
+ *
+ * Every field is a sum over the window's fl= flips:
+ *   rp= brk=      render passes begun / ended
+ *   b<why>=       ends by the cause that asked for them:
+ *                   bfin=<reason>:n  pgraph_vk_finish, by finish reason
+ *                   bfbd bpd         draw setup: framebuffer dirty / the
+ *                                    pipeline's render pass differs
+ *                   bqry             occlusion query begin or end
+ *                   bclr bclre       begin_draw's / end_draw's clear
+ *                   bnd              pgraph_vk_begin_nondraw_commands; its
+ *                                    callers by address in nd=
+ *                   bsnb bsbd bsmd   vk/surface.c's binding gate: no binding /
+ *                                    surface buffer dirty / guest memory dirty
+ *                 brk minus their sum is ends no cause was counted for.
+ *   <name>=n/ms   calls and time. The x-marked timers below leave out any
+ *                 pgraph_vk_finish nested in them, which fin= has already.
+ *   nd=+off:n     caller offsets from the library's load base; symbolise with
+ *                 llvm-addr2line -f -e <unstripped .so> off.
+ */
+#define DW_TIMERS(X) \
+    X(vsync)    /* x sync_vertex_ram_buffer with ranges to check */ \
+    X(vcopy)    /* x pgraph_vk_update_vertex_ram_buffer in it */ \
+    X(vclr)     /*   physical_memory_dirty_bits_cleared in it */ \
+    X(pipe)     /* x full path: create_pipeline / create_clear_pipeline */ \
+    X(bind)     /* x pgraph_vk_bind_shaders in it */ \
+    X(key)      /*   init_pipeline_key and the same-binding memcmp */ \
+    X(lru)      /*   fast_hash and lru_lookup */ \
+    X(descf)    /* x full path pgraph_vk_update_descriptor_sets */ \
+    X(descm)    /* x MFP path pgraph_vk_update_descriptor_sets */ \
+    X(sub)      /*   finish_submit */ \
+    X(fen)      /*   finish_fence */ \
+    X(rtfen)    /*   render thread context: vkWaitForFences after submit */ \
+    X(ndw)      /*   non-deferred finish: wait for the render thread's done */ \
+    X(defw)     /*   deferred finish: wait_frame_submitted */ \
+    X(rotw)     /*   rotation: wait_frame_submitted for the next slot */ \
+    X(rotfen)   /*   rotation: vkWaitForFences on the next slot */ \
+    X(dl)       /*   pgraph_vk_complete_staged_downloads, all three sites */ \
+    X(drain)    /*   rotation: framebuffer destroys and release drains */ \
+    X(stale)    /*   rotation: next slot's stale vertex-RAM span memcpy */ \
+    X(fall)     /*   pgraph_vk_flush_all_frames */
+
+#define DW_BREAKS(X) \
+    X(bfbd) X(bpd) X(bqry) X(bclr) X(bclre) X(bnd) X(bsnb) X(bsbd) X(bsmd)
+
+#define DW_NREASON (VK_FINISH_REASON_STALLED + 1)
+
+enum {
+#define DW_T(n) DW_##n, DW_##n##_NS,
+    DW_TIMERS(DW_T)
+#undef DW_T
+#define DW_B(n) DW_##n,
+    DW_BREAKS(DW_B)
+#undef DW_B
+    DW_FIN,                                 /* + 2 * reason: calls, ns */
+    DW_BFIN = DW_FIN + 2 * DW_NREASON,      /* + reason */
+    DW_VCOPY_B = DW_BFIN + DW_NREASON,
+    DW_STALE_B,
+    DW_FULL,        /* full-path draws */
+    DW_UBO,         /* full-path descriptor updates that take a new UBO set */
+    DW_RP,
+    DW_BRK,
+    DW__N
+};
+
+static const char *const dw_reason[DW_NREASON] = {
+    [VK_FINISH_REASON_VERTEX_BUFFER_DIRTY] = "vtx",
+    [VK_FINISH_REASON_SURFACE_CREATE] = "screate",
+    [VK_FINISH_REASON_SURFACE_DOWN] = "sdown",
+    [VK_FINISH_REASON_SURFACE_DOWN_FLUSH] = "sdflush",
+    [VK_FINISH_REASON_NEED_BUFFER_SPACE] = "buf",
+    [VK_FINISH_REASON_FRAMEBUFFER_DIRTY] = "fb",
+    [VK_FINISH_REASON_PRESENTING] = "present",
+    [VK_FINISH_REASON_FLIP_STALL] = "flip",
+    [VK_FINISH_REASON_FLUSH] = "flush",
+    [VK_FINISH_REASON_STALLED] = "stalled",
+};
+
+static uint64_t dw_c[DW__N];
+static DipwinPc dw_nd_pc;
+/* every pgraph_vk_finish's ns, never reset: the x timers subtract its growth */
+static uint64_t dw_fin_cum_ns;
+
+#define DW_INC(i) dipwin_add(&dw_c[DW_##i], 1)
+#define DW_ADD(i, n) dipwin_add(&dw_c[DW_##i], (n))
+
+static inline void dw_time(int i, int64_t ns)
+{
+    dipwin_add(&dw_c[i], 1);
+    dipwin_add(&dw_c[i + 1], ns > 0 ? ns : 0);
+}
+
+#define DW_T0(v) int64_t v = nv2a_clock_ns()
+#define DW_T1(name, v) dw_time(DW_##name, nv2a_clock_ns() - (v))
+#define DW_X0(v) \
+    int64_t v = nv2a_clock_ns(); \
+    uint64_t v##_f = __atomic_load_n(&dw_fin_cum_ns, __ATOMIC_RELAXED)
+#define DW_X1(name, v) \
+    dw_time(DW_##name, nv2a_clock_ns() - (v) - \
+            (int64_t)(__atomic_load_n(&dw_fin_cum_ns, __ATOMIC_RELAXED) - \
+                      v##_f))
+
+static void dw_break_pc(uintptr_t pc)
+{
+    DW_INC(bnd);
+    dipwin_pc_note(&dw_nd_pc, pc);
+}
+
+/* vk/surface.c's binding gate, before it ends the render pass. Declared here
+ * and in surface.c: renderer.h is outside this instrument's files. */
+void pgraph_vk_dipwin_surface_break(bool no_binding, bool buffer_dirty);
+void pgraph_vk_dipwin_surface_break(bool no_binding, bool buffer_dirty)
+{
+    if (no_binding) {
+        DW_INC(bsnb);
+    } else if (buffer_dirty) {
+        DW_INC(bsbd);
+    } else {
+        DW_INC(bsmd);
+    }
+}
+
+static void dw_put(char **p, char *end, const char *fmt, ...)
+    G_GNUC_PRINTF(3, 4);
+static void dw_put(char **p, char *end, const char *fmt, ...)
+{
+    if (*p >= end) {
+        return;
+    }
+    va_list ap;
+    va_start(ap, fmt);
+    int n = vsnprintf(*p, end - *p, fmt, ap);
+    va_end(ap);
+    *p = n < 0 ? end : MIN(*p + n, end);
+}
+
+/* The one reader. FLIP_STALL finish only, on the PFIFO thread. */
+static void dipwin_flip(void)
+{
+    static unsigned flips;
+    static uint64_t cum_fl, cum_rp, cum_brk;
+    static int64_t t_last;
+
+    if (++flips < 60) {
+        return;
+    }
+    uint64_t v[DW__N];
+    for (int i = 0; i < DW__N; i++) {
+        v[i] = dipwin_take(&dw_c[i]);
+    }
+    int64_t now = nv2a_clock_ns();
+    double secs = t_last ? (now - t_last) / 1e9 : 0;
+    t_last = now;
+    cum_fl += flips;
+    cum_rp += v[DW_RP];
+    cum_brk += v[DW_BRK];
+
+    char buf[3072];
+    char *p = buf, *end = buf + sizeof(buf);
+    dw_put(&p, end, "[dipwin] tid=%d fl=%u s=%.3f cfl=%" PRIu64
+           " crp=%" PRIu64 " cbrk=%" PRIu64 " rp=%" PRIu64 " brk=%" PRIu64,
+           qemu_get_thread_id(), flips, secs, cum_fl, cum_rp, cum_brk,
+           v[DW_RP], v[DW_BRK]);
+    flips = 0;
+
+    dw_put(&p, end, " bfin=");
+    bool any = false;
+    for (int i = 0; i < DW_NREASON; i++) {
+        if (v[DW_BFIN + i]) {
+            dw_put(&p, end, "%s%s:%" PRIu64, any ? "," : "", dw_reason[i],
+                   v[DW_BFIN + i]);
+            any = true;
+        }
+    }
+    if (!any) {
+        dw_put(&p, end, "-");
+    }
+#define DW_B(n) dw_put(&p, end, " " #n "=%" PRIu64, v[DW_##n]);
+    DW_BREAKS(DW_B)
+#undef DW_B
+
+    dw_put(&p, end, " full=%" PRIu64 " ubo=%" PRIu64 " vcopyK=%" PRIu64
+           " staleK=%" PRIu64, v[DW_FULL], v[DW_UBO], v[DW_VCOPY_B] >> 10,
+           v[DW_STALE_B] >> 10);
+#define DW_T(n) \
+    dw_put(&p, end, " " #n "=%" PRIu64 "/%.2f", v[DW_##n], \
+           v[DW_##n##_NS] / 1e6);
+    DW_TIMERS(DW_T)
+#undef DW_T
+
+    dw_put(&p, end, " fin=");
+    any = false;
+    for (int i = 0; i < DW_NREASON; i++) {
+        if (v[DW_FIN + 2 * i]) {
+            dw_put(&p, end, "%s%s:%" PRIu64 "/%.2f", any ? "," : "",
+                   dw_reason[i], v[DW_FIN + 2 * i],
+                   v[DW_FIN + 2 * i + 1] / 1e6);
+            any = true;
+        }
+    }
+    if (!any) {
+        dw_put(&p, end, "-");
+    }
+
+    dw_put(&p, end, " nd=");
+    any = false;
+    for (int i = 0; i < DIPWIN_PC_SLOTS; i++) {
+        uintptr_t pc;
+        uint64_t n = dipwin_pc_take(&dw_nd_pc, i, &pc);
+        if (!n) {
+            continue;
+        }
+        Dl_info info;
+        if (!pc) {
+            dw_put(&p, end, "%s?:%" PRIu64, any ? "," : "", n);
+        } else if (dladdr((void *)pc, &info) && info.dli_fbase) {
+            dw_put(&p, end, "%s+0x%" PRIxPTR ":%" PRIu64, any ? "," : "",
+                   pc - (uintptr_t)info.dli_fbase, n);
+        } else {
+            dw_put(&p, end, "%s0x%" PRIxPTR ":%" PRIu64, any ? "," : "", pc,
+                   n);
+        }
+        any = true;
+    }
+    if (!any) {
+        dw_put(&p, end, "-");
+    }
+
+#ifdef __ANDROID__
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-rpbrk", "%s", buf);
+#else
+    fprintf(stderr, "hakuX-rpbrk: %s\n", buf);
+#endif
+}
+#endif /* NV2A_PERF_LOG */
+
 void xemu_set_fast_fences(bool enable)
 {
     g_xemu_fast_fences = enable;
@@ -2964,7 +3211,13 @@ static void create_pipeline(PGRAPHState *pg)
     if (pg->program_data_dirty || !r->shader_binding ||
         pg->shader_state_gen != r->last_shader_state_gen ||
         pg->primitive_mode != r->shader_binding->state.geom.primitive_mode) {
+#if NV2A_PERF_LOG
+        DW_X0(dw_b0);
+#endif
         pgraph_vk_bind_shaders(pg);
+#if NV2A_PERF_LOG
+        DW_X1(bind, dw_b0);
+#endif
         r->last_shader_state_gen = pg->shader_state_gen;
         dcen_bound_shaders = true;
     } else {
@@ -2994,10 +3247,17 @@ static void create_pipeline(PGRAPHState *pg)
     }
 
     PipelineKey key;
+#if NV2A_PERF_LOG
+    DW_T0(dw_k0);
+#endif
     init_pipeline_key(pg, &key);
+    bool same_key = r->pipeline_binding &&
+        memcmp(&key, &r->pipeline_binding->key, sizeof(key)) == 0;
+#if NV2A_PERF_LOG
+    DW_T1(key, dw_k0);
+#endif
 
-    if (r->pipeline_binding &&
-        memcmp(&key, &r->pipeline_binding->key, sizeof(key)) == 0) {
+    if (same_key) {
         NV2A_VK_DPRINTF("Cache hit (same binding)");
         dcen_cp = DCEN_CP_SAMEKEY;
         gpl_take_next_pipeline(r, r->pipeline_binding);
@@ -3007,9 +3267,15 @@ static void create_pipeline(PGRAPHState *pg)
         return;
     }
 
+#if NV2A_PERF_LOG
+    DW_T0(dw_l0);
+#endif
     uint64_t hash = fast_hash((void *)&key, sizeof(key));
 
     LruNode *node = lru_lookup(&r->pipeline_cache, hash, &key);
+#if NV2A_PERF_LOG
+    DW_T1(lru, dw_l0);
+#endif
     if (!node) {
         /* Cache full — all entries in use by current command buffer */
         dcen_cp = DCEN_CP_LRUFULL;
@@ -4183,6 +4449,9 @@ static void begin_render_pass(PGRAPHState *pg)
     vkCmdBeginRenderPass(r->command_buffer, &render_pass_begin_info,
                          VK_SUBPASS_CONTENTS_INLINE);
     r->in_render_pass = true;
+#if NV2A_PERF_LOG
+    DW_INC(RP);
+#endif
 
     if (r->gpu_ts_supported && gpu_ts_inrp() &&
         r->gpu_ts_rp_index < GPU_TS_MAX_RENDER_PASSES) {
@@ -4198,6 +4467,9 @@ void end_render_pass(PGRAPHVkState *r)
 {
     if (r->in_render_pass) {
         OPT_STAT_INC(render_pass_breaks);
+#if NV2A_PERF_LOG
+        DW_INC(BRK);
+#endif
         if (r->gpu_ts_supported && gpu_ts_inrp() &&
             r->gpu_ts_rp_index < GPU_TS_MAX_RENDER_PASSES) {
             uint32_t base = r->current_frame * GPU_TS_QUERIES_PER_CB;
@@ -5138,6 +5410,9 @@ const enum NV2A_PROF_COUNTERS_ENUM finish_reason_to_counter_enum[] = {
 void pgraph_vk_flush_all_frames(PGRAPHState *pg)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
+#if NV2A_PERF_LOG
+    DW_T0(dw_fa0);
+#endif
     pgraph_vk_render_thread_wait_idle(r);
     for (int i = 0; i < NUM_SUBMIT_FRAMES; i++) {
         r->frame_enqueued[i] = false;
@@ -5188,6 +5463,9 @@ void pgraph_vk_flush_all_frames(PGRAPHState *pg)
         r->push_ubo_set_index = 0;
         pgraph_vk_compute_finish_complete(r);
     }
+#if NV2A_PERF_LOG
+    DW_T1(fall, dw_fa0);
+#endif
 }
 
 /*
@@ -5423,11 +5701,26 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
      * __android_log_print calls don't inflate the finish measurement. */
     if (finish_reason == VK_FINISH_REASON_FLIP_STALL ||
         finish_reason == VK_FINISH_REASON_PRESENTING) {
+#if NV2A_PERF_LOG
+        /*
+         * The perflog windows count flips, on the PFIFO thread. Counting
+         * the render thread's presenting finishes too made a "60-frame"
+         * window anything from 30 to 60 flips, printed from either thread.
+         */
+        if (finish_reason == VK_FINISH_REASON_FLIP_STALL) {
+            opt_stats_log_and_reset();
+            dipwin_flip();
+        }
+#else
         opt_stats_log_and_reset();
+#endif
         drawcensus_frame();
     }
 
     NV2A_PHASE_TIMER_BEGIN(finish);
+#if NV2A_PERF_LOG
+    DW_T0(dw_fin_t0);
+#endif
     PGRAPHVkState *r = pg->vk_renderer_state;
 
     int desired_frames = g_xemu_submit_frames;
@@ -5454,6 +5747,9 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
 
         if (r->in_render_pass) {
             OPT_STAT_INC(rp_break_finish);
+#if NV2A_PERF_LOG
+            DW_ADD(BFIN + finish_reason, 1);
+#endif
             end_render_pass(r);
         }
         if (r->query_in_flight) {
@@ -5535,6 +5831,9 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
 
         nv2a_profile_inc_counter(NV2A_PROF_QUEUE_SUBMIT);
         NV2A_PHASE_TIMER_BEGIN(finish_submit);
+#if NV2A_PERF_LOG
+        DW_T0(dw_sub_t0);
+#endif
 
         /* VERTEX_BUFFER_DIRTY: only HAKUX_VTX_HAZARD (vk/vertex.c) finishes
          * for it. The upload after it goes to the next frame's copy, whose
@@ -5586,9 +5885,15 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
                  * stay untouched until the GPU finishes. */
                 qatomic_set(&r->frame_submitted[r->current_frame], true);
             } else {
+#if NV2A_PERF_LOG
+                DW_T0(dw_w0);
+#endif
                 VK_CHECK(vkWaitForFences(r->device, 1,
                                          &r->command_buffer_fence,
                                          VK_TRUE, UINT64_MAX));
+#if NV2A_PERF_LOG
+                DW_T1(rtfen, dw_w0);
+#endif
                 if (r->pending_post_fence_cb) {
                     r->pending_post_fence_cb(r, NULL,
                                              r->pending_post_fence_opaque);
@@ -5601,7 +5906,13 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
                  * submitted with this frame's aux CB. */
                 if (r->deferred_downloads_frame == r->current_frame) {
                     NV2AState *d = container_of(pg, NV2AState, pgraph);
+#if NV2A_PERF_LOG
+                    DW_T0(dw_d0);
+#endif
                     pgraph_vk_complete_staged_downloads(d, r);
+#if NV2A_PERF_LOG
+                    DW_T1(dl, dw_d0);
+#endif
                 }
 
                 /* Immediate submit: GPU done, descriptor sets safe to
@@ -5654,7 +5965,13 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
 
             if (deferred) {
                 /* Wait for the render thread to complete vkQueueSubmit. */
+#if NV2A_PERF_LOG
+                DW_T0(dw_w0);
+#endif
                 wait_frame_submitted(r, deferred_frame, RWAIT_DEFERRED);
+#if NV2A_PERF_LOG
+                DW_T1(defw, dw_w0);
+#endif
             }
 
             if (!deferred) {
@@ -5685,7 +6002,13 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
                     pgraph_lock_release_for_fence(pg);
                 }
                 int64_t probe_t0 = probe_w ? get_clock() : 0;
+#if NV2A_PERF_LOG
+                DW_T0(dw_w0);
+#endif
                 qemu_event_wait(&finish_event);
+#if NV2A_PERF_LOG
+                DW_T1(ndw, dw_w0);
+#endif
                 if (probe_w) {
                     probe_nd = get_clock() - probe_t0;
                 }
@@ -5698,7 +6021,13 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
                 /* GPU done — complete any deferred downloads. */
                 if (r->deferred_downloads_frame == r->current_frame) {
                     NV2AState *d = container_of(pg, NV2AState, pgraph);
+#if NV2A_PERF_LOG
+                    DW_T0(dw_d0);
+#endif
                     pgraph_vk_complete_staged_downloads(d, r);
+#if NV2A_PERF_LOG
+                    DW_T1(dl, dw_d0);
+#endif
                 }
 
                 /* Non-deferred: GPU done, descriptor sets safe to reuse */
@@ -5709,8 +6038,14 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
         }
 
         NV2A_PHASE_TIMER_END(finish_submit);
+#if NV2A_PERF_LOG
+        DW_T1(sub, dw_sub_t0);
+#endif
 
         NV2A_PHASE_TIMER_BEGIN(finish_fence);
+#if NV2A_PERF_LOG
+        DW_T0(dw_fen_t0);
+#endif
 
         pgraph_vk_staging_reset(pg);
 
@@ -5750,15 +6085,27 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
              * wait until it does. With 3 frame slots this rarely
              * triggers since there's 2 frames of pipeline headroom. */
             if (r->frame_enqueued[next_frame]) {
+#if NV2A_PERF_LOG
+                DW_T0(dw_w0);
+#endif
                 wait_frame_submitted(r, next_frame, RWAIT_ROTATE);
+#if NV2A_PERF_LOG
+                DW_T1(rotw, dw_w0);
+#endif
             }
             r->frame_enqueued[next_frame] = false;
 
             if (qatomic_read(&r->frame_submitted[next_frame])) {
                 int64_t probe_t0 = probe_w ? get_clock() : 0;
+#if NV2A_PERF_LOG
+                DW_T0(dw_w0);
+#endif
                 VK_CHECK(vkWaitForFences(r->device, 1,
                                          &r->frame_fences[next_frame],
                                          VK_TRUE, UINT64_MAX));
+#if NV2A_PERF_LOG
+                DW_T1(rotfen, dw_w0);
+#endif
                 if (probe_w) {
                     probe_rot = get_clock() - probe_t0;
                 }
@@ -5769,8 +6116,17 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
                  * this frame slot's aux CB. */
                 if (r->deferred_downloads_frame == next_frame) {
                     NV2AState *d = container_of(pg, NV2AState, pgraph);
+#if NV2A_PERF_LOG
+                    DW_T0(dw_d0);
+#endif
                     pgraph_vk_complete_staged_downloads(d, r);
+#if NV2A_PERF_LOG
+                    DW_T1(dl, dw_d0);
+#endif
                 }
+#if NV2A_PERF_LOG
+                DW_T0(dw_dr0);
+#endif
                 for (int i = 0; i < r->deferred_framebuffer_count[next_frame]; i++) {
                     vkDestroyFramebuffer(r->device,
                                          r->deferred_framebuffers[next_frame][i],
@@ -5779,6 +6135,9 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
                 r->deferred_framebuffer_count[next_frame] = 0;
                 pgraph_vk_drain_deferred_texture_releases(r, next_frame);
                 pgraph_vk_drain_deferred_surface_releases(r, next_frame);
+#if NV2A_PERF_LOG
+                DW_T1(drain, dw_dr0);
+#endif
                 r->frame_staging[next_frame].index_staging.buffer_offset = 0;
                 r->frame_staging[next_frame].vertex_inline_staging.buffer_offset = 0;
                 r->frame_staging[next_frame].uniform_staging.buffer_offset = 0;
@@ -5858,11 +6217,20 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
                                  r->bitmap_size);
                 } else {
                     size_t lo, hi;
-                    if (vtxstale_copy(next_fs->vertex_ram.mapped,
+#if NV2A_PERF_LOG
+                    DW_T0(dw_s0);
+#endif
+                    size_t stale_b =
+                        vtxstale_copy(next_fs->vertex_ram.mapped,
                                       cur_fs->vertex_ram.mapped,
                                       next_fs->vertex_ram.buffer_size,
                                       next_fs->vertex_ram_stale,
-                                      r->bitmap_size, &lo, &hi)) {
+                                      r->bitmap_size, &lo, &hi);
+#if NV2A_PERF_LOG
+                    DW_T1(stale, dw_s0);
+                    DW_ADD(STALE_B, stale_b);
+#endif
+                    if (stale_b) {
                         next_fs->vertex_ram_flush_min = lo;
                         next_fs->vertex_ram_flush_max = hi;
                     }
@@ -5892,6 +6260,9 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
 #endif
 
         NV2A_PHASE_TIMER_END(finish_fence);
+#if NV2A_PERF_LOG
+        DW_T1(fen, dw_fen_t0);
+#endif
 
         if (probe_w) {
             probe_finish_book(finish_reason, probe_nd, probe_rot);
@@ -5907,6 +6278,13 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
     pgraph_vk_process_pending_reports_internal(d);
 
     NV2A_PHASE_TIMER_END(finish);
+#if NV2A_PERF_LOG
+    {
+        int64_t ns = nv2a_clock_ns() - dw_fin_t0;
+        dw_time(DW_FIN + 2 * finish_reason, ns);
+        __atomic_fetch_add(&dw_fin_cum_ns, ns > 0 ? ns : 0, __ATOMIC_RELAXED);
+    }
+#endif
 }
 
 void pgraph_vk_begin_command_buffer(PGRAPHState *pg)
@@ -5966,6 +6344,11 @@ VkCommandBuffer pgraph_vk_begin_nondraw_commands(PGRAPHState *pg)
     PGRAPHVkState *r = pg->vk_renderer_state;
     pgraph_vk_ensure_command_buffer(pg);
     if (r->in_render_pass) { OPT_STAT_INC(rp_break_nondraw); }
+#if NV2A_PERF_LOG
+    if (r->in_render_pass) {
+        dw_break_pc((uintptr_t)__builtin_return_address(0));
+    }
+#endif
     pgraph_vk_ensure_not_in_render_pass(pg);
     return r->command_buffer;
 }
@@ -6327,7 +6710,13 @@ static void begin_pre_draw_inner(PGRAPHState *pg)
             OPT_STAT_INC(push_tex_fast);
         }
         pgraph_vk_update_shader_uniforms(pg);
+#if NV2A_PERF_LOG
+        DW_X0(dw_ds0);
+#endif
         pgraph_vk_update_descriptor_sets(pg);
+#if NV2A_PERF_LOG
+        DW_X1(descm, dw_ds0);
+#endif
         if (r->framebuffer_index == 0) {
             create_frame_buffer(pg);
         }
@@ -6349,11 +6738,18 @@ mfp_miss: (void)0;
     }
 
     NV2A_PHASE_TIMER_BEGIN_EXCL(draw_pipeline);
+#if NV2A_PERF_LOG
+    DW_INC(FULL);
+    DW_X0(dw_p0);
+#endif
     if (pg->clearing) {
         create_clear_pipeline(pg);
     } else {
         create_pipeline(pg);
     }
+#if NV2A_PERF_LOG
+    DW_X1(pipe, dw_p0);
+#endif
     r->pipeline_vertex_attr_gen = pg->vertex_attr_gen;
     r->pipeline_num_active_attr_descs = r->num_active_vertex_attribute_descriptions;
     r->pipeline_num_active_bind_descs = r->num_active_vertex_binding_descriptions;
@@ -6395,6 +6791,15 @@ mfp_miss: (void)0;
 
         if (r->framebuffer_dirty || render_pass_dirty) {
             if (r->in_render_pass) { OPT_STAT_INC(rp_break_fb_dirty); }
+#if NV2A_PERF_LOG
+            if (r->in_render_pass) {
+                if (r->framebuffer_dirty) {
+                    DW_INC(bfbd);
+                } else {
+                    DW_INC(bpd);
+                }
+            }
+#endif
             pgraph_vk_ensure_not_in_render_pass(pg);
         }
         if (render_pass_dirty) {
@@ -6409,7 +6814,18 @@ mfp_miss: (void)0;
 
     NV2A_PHASE_TIMER_BEGIN_EXCL(draw_desc_set);
     if (!pg->clearing) {
+#if NV2A_PERF_LOG
+        /* pgraph_vk_update_descriptor_sets' own need_new_ubo_set */
+        if (r->shader_bindings_changed || r->need_descriptor_rebind ||
+            !r->push_ubo_set_index) {
+            DW_INC(UBO);
+        }
+        DW_X0(dw_ds0);
+#endif
         pgraph_vk_update_descriptor_sets(pg);
+#if NV2A_PERF_LOG
+        DW_X1(descf, dw_ds0);
+#endif
         drawrec_shc_consumed(pg);
     }
     NV2A_PHASE_TIMER_END_EXCL(draw_desc_set);
@@ -7188,16 +7604,25 @@ static void begin_draw(PGRAPHState *pg)
         if (!pg->clearing && pg->zpass_pixel_count_enable) {
             if (r->new_query_needed && r->query_in_flight) {
                 if (r->in_render_pass) { OPT_STAT_INC(rp_break_query); }
+#if NV2A_PERF_LOG
+                if (r->in_render_pass) { DW_INC(bqry); }
+#endif
                 end_render_pass(r);
                 end_query(r);
             }
             if (!r->query_in_flight) {
                 if (r->in_render_pass) { OPT_STAT_INC(rp_break_query); }
+#if NV2A_PERF_LOG
+                if (r->in_render_pass) { DW_INC(bqry); }
+#endif
                 end_render_pass(r);
                 begin_query(r);
             }
         } else if (r->query_in_flight) {
             if (r->in_render_pass) { OPT_STAT_INC(rp_break_query); }
+#if NV2A_PERF_LOG
+            if (r->in_render_pass) { DW_INC(bqry); }
+#endif
             end_render_pass(r);
             end_query(r);
         }
@@ -7205,6 +7630,9 @@ static void begin_draw(PGRAPHState *pg)
 
     if (pg->clearing) {
         if (r->in_render_pass) { OPT_STAT_INC(rp_break_clear); }
+#if NV2A_PERF_LOG
+        if (r->in_render_pass) { DW_INC(bclr); }
+#endif
         end_render_pass(r);
     }
 
@@ -7506,6 +7934,9 @@ static void end_draw(PGRAPHState *pg)
 
     if (pg->clearing) {
         OPT_STAT_INC(rp_break_clear);
+#if NV2A_PERF_LOG
+        DW_INC(bclre);
+#endif
         end_render_pass(r);
     }
 
@@ -9641,6 +10072,9 @@ static void sync_vertex_ram_buffer(PGRAPHState *pg)
     if (r->num_vertex_ram_buffer_syncs == 0) {
         return;
     }
+#if NV2A_PERF_LOG
+    DW_X0(dw_v0);
+#endif
 
     if (unlikely(drawrec_on(r))) {
         drawrec_tick(r);
@@ -9664,6 +10098,9 @@ static void sync_vertex_ram_buffer(PGRAPHState *pg)
         if (all_uploaded && !dirty) {
             OPT_STAT_INC(sync_early_exit);
             r->num_vertex_ram_buffer_syncs = 0;
+#if NV2A_PERF_LOG
+            DW_X1(vsync, dw_v0);
+#endif
             return;
         }
     }
@@ -9778,7 +10215,13 @@ static void sync_vertex_ram_buffer(PGRAPHState *pg)
             if (dirty) {
                 NV2A_VK_DPRINTF("Memory dirty. Synchronizing...");
                 if (!vtx_owe) {
+#if NV2A_PERF_LOG
+                    DW_T0(dw_c0);
+#endif
                     physical_memory_dirty_bits_cleared(start, size);
+#if NV2A_PERF_LOG
+                    DW_T1(vclr, dw_c0);
+#endif
                 }
                 vw->dirty_count++;
                 vw->bytes_copied += size;
@@ -9787,8 +10230,15 @@ static void sync_vertex_ram_buffer(PGRAPHState *pg)
                                      VTX_EXACT_DOWNLOAD);
                     r->vtx_exact_downloaded = true;
                 }
+#if NV2A_PERF_LOG
+                DW_X0(dw_u0);
+#endif
                 pgraph_vk_update_vertex_ram_buffer(pg, addr,
                                                    d->vram_ptr + addr, size);
+#if NV2A_PERF_LOG
+                DW_X1(vcopy, dw_u0);
+                DW_ADD(VCOPY_B, size);
+#endif
                 /* the update downloaded any draw_dirty overlap first */
                 if (num_exact) {
                     vtx_exact_pieces(pg, exact, num_exact, addr, size,
@@ -9828,6 +10278,9 @@ static void sync_vertex_ram_buffer(PGRAPHState *pg)
     r->num_vertex_ram_buffer_syncs = 0;
 
     NV2A_VK_DGROUP_END();
+#if NV2A_PERF_LOG
+    DW_X1(vsync, dw_v0);
+#endif
 }
 
 /*
