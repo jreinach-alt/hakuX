@@ -1880,6 +1880,21 @@ static struct {
     unsigned long su_upl, su_deferred;
     unsigned long why[UPW__COUNT];
     unsigned long clr, clrfull, clrskip;
+    /* fpsdata1018 H2: an eviction at the "incompatible" site in
+     * update_surface_part() (same address, different shape/pitch -- the
+     * mip-level reshape pattern) downloads the outgoing surface so a later
+     * reader can still get its bytes from VRAM. edl_dl counts those
+     * evictions; of them, edl_clrskip is the count whose replacement
+     * binding never read VRAM at all because a covering clear (the same
+     * mechanism as clrskip above) dropped its pending upload before
+     * anything else touched it -- i.e. the download's bytes were provably
+     * never read. edl_upload is the count whose replacement binding did
+     * upload (so the download fed a real read). edl_other is the small
+     * remainder whose binding's upload_pending was already false before
+     * the clearing check ran (a shelf hit with clean VRAM) -- ambiguous,
+     * not claimed as "wasted" by this counter. See NOTES.md "H2
+     * investigation". */
+    unsigned long edl_dl, edl_clrskip, edl_upload, edl_other;
     /* HAKUX_SURFSPLICE: updates it let defer with a binding uploading, the
      * uploads that spliced, the downloads and KiB spliced, and the uploads
      * that completed the downloads themselves (one could not be spliced). */
@@ -1939,8 +1954,47 @@ static void upw_clear_read(PGRAPHVkState *r)
     }
 }
 #define UPW_SET(s, why) upw_set((s), (why))
+
+/* fpsdata1018 H2: slot 0 is color, slot 1 is zeta. Set at the eviction
+ * site itself (update_surface_part), read and cleared in
+ * pgraph_vk_surface_update() once that call's clearing check has run. */
+static bool g_edl_flag[2];
+
+static void edl_mark(bool color)
+{
+    g_edl_flag[color ? 0 : 1] = true;
+}
+#define EDL_MARK(color) edl_mark(color)
+
+/*
+ * pending_before is the replacement binding's upload_pending as populated by
+ * update_surface_part(), read before surface_drop_covered_upload() had a
+ * chance to run on it this call. s is that same binding, read afterwards.
+ * Unmarked slots (no eviction this call) are a no-op.
+ */
+static void edl_resolve(int slot, bool pending_before, SurfaceBinding const *s)
+{
+    if (!g_edl_flag[slot]) {
+        return;
+    }
+    g_edl_flag[slot] = false;
+    g_sdcall.edl_dl++;
+    if (!pending_before) {
+        g_sdcall.edl_other++;
+    } else if (!(s && s->upload_pending)) {
+        g_sdcall.edl_clrskip++;
+    } else {
+        g_sdcall.edl_upload++;
+    }
+}
+#define EDL_RESET() do { g_edl_flag[0] = g_edl_flag[1] = false; } while (0)
+#define EDL_RESOLVE(slot, pending_before, s) edl_resolve((slot), (pending_before), (s))
 #else
 #define UPW_SET(s, why) ((void)(s), (void)(why))
+#define EDL_MARK(color) ((void)(color))
+#define EDL_RESET() ((void)0)
+#define EDL_RESOLVE(slot, pending_before, s) \
+    ((void)(slot), (void)(pending_before), (void)(s))
 #endif
 #if NV2A_PERF_LOG && defined(__ANDROID__)
 
@@ -1979,6 +2033,11 @@ static void sdcall_log(PGRAPHState *pg)
                  g_sdcall.spl_dl, g_sdcall.spl_kb, g_sdcall.spl_cmpl);
     }
     SURF92_LOG("%s", buf);
+    if (g_sdcall.edl_dl) {
+        SURF92_LOG("[edl] frames=%d dl=%lu clrskip=%lu upload=%lu other=%lu",
+                   frames, g_sdcall.edl_dl, g_sdcall.edl_clrskip,
+                   g_sdcall.edl_upload, g_sdcall.edl_other);
+    }
     rfin_log(frames);
     if (surfgpu_enabled()) {
         SURF92_LOG("[surfgpu] frames=%d detach=%lu nodisp=%lu dedup=%lu "
@@ -4142,6 +4201,7 @@ static void create_surface_image(PGRAPHState *pg, SurfaceBinding *surface)
     unsigned int width = surface->width ? surface->width : 1;
     unsigned int height = surface->height ? surface->height : 1;
     pgraph_apply_scaling_factor(pg, &width, &height);
+    surface->image_scale = pg->surface_scale_factor;
 
     assert(!surface->image);
     assert(!surface->image_scratch);
@@ -4251,6 +4311,14 @@ static void migrate_surface_image(SurfaceBinding *dst, SurfaceBinding *src)
     dst->image_scratch = src->image_scratch;
     dst->image_scratch_current_layout = src->image_scratch_current_layout;
     dst->allocation_scratch = src->allocation_scratch;
+    /*
+     * The migrated image's real texel grid does not change by moving to a
+     * new SurfaceBinding struct; the target's zeroed image_scale (#433,
+     * fpsdata1018 NOTES.md "Pixel scare resolved") would otherwise read as
+     * scale 0 forever, permanently refusing texscan_plan's `!= 1` check for
+     * this surface even once it is genuinely at the unscaled grid.
+     */
+    dst->image_scale = src->image_scale;
 
     src->image = VK_NULL_HANDLE;
     src->image_view = VK_NULL_HANDLE;
@@ -5768,6 +5836,7 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                     handoff_src = surface;
                 } else if (surface->draw_dirty) {
                     OPT_STAT_INC(sd_eviction_dl);
+                    EDL_MARK(color);
                     download_surface_deferred(d, surface);
                     surface->shelved_dirty = false;
                 }
@@ -6137,6 +6206,7 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
     SURF413_T(_s413);
     SURF413_FIN(_s413_fin);
     SDCALL_DO(upw_clear_read(r));
+    EDL_RESET();
     SURF413_DO(if (upload) { g_surf413.calls_up++; }
                else { g_surf413.calls_dn++; });
 
@@ -6194,9 +6264,17 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
     }
 
     SURF413_ACC(part_ns, _s413);
-    if (upload && pg->clearing) {
-        surface_drop_covered_upload(d, r->color_binding);
-        surface_drop_covered_upload(d, r->zeta_binding);
+    if (upload) {
+        bool edl_color_before = r->color_binding &&
+                                r->color_binding->upload_pending;
+        bool edl_zeta_before = r->zeta_binding &&
+                               r->zeta_binding->upload_pending;
+        if (pg->clearing) {
+            surface_drop_covered_upload(d, r->color_binding);
+            surface_drop_covered_upload(d, r->zeta_binding);
+        }
+        EDL_RESOLVE(0, edl_color_before, r->color_binding);
+        EDL_RESOLVE(1, edl_zeta_before, r->zeta_binding);
     }
     SDCALL_DO(if (r->num_deferred_downloads > 0 &&
                   !r->display_predownload_pending &&

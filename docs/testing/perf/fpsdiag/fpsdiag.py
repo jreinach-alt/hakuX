@@ -130,6 +130,7 @@ def parse_phase(msg):
     fin = re.search(r'Fin:([\d.]+)\(Sub:([\d.]+) Fen:([\d.]+)\)', msg)
     if fin:
         r['Fin'], r['Sub'], r['Fen'] = (float(x) for x in fin.groups())
+    r['Surf'] = num(r'^Surf:([\d.]+)', msg)
     tot = num(r'Tot:([\d.]+)', msg)
     if tot is not None:
         r['Tot'] = tot
@@ -458,6 +459,50 @@ def check_fin_fen_swing(windows, bar):
     return 'refuted', 'Fen (fence-wait) %.1fms dip vs %.1fms good (n=%d/%d) -- no swing' % (dip_fen, good_fen, len(dip), len(good))
 
 
+def check_fin_sub_swing(windows, bar):
+    """Fin:(Sub:.. Fen:..) splits two different waits on the same calling
+    thread (draw.c's finish_submit vs finish_fence phase timers, #433;
+    docs/lanes/fpsdata1018/NOTES.md, mechanism account): Sub is the CURRENT
+    finish's own wait -- on a non-render-thread caller, `qemu_event_wait`
+    for the async render thread to submit+complete (draw.c ~5924-6017) --
+    while Fen (check_fin_fen_swing, above) is the NEXT frame slot's
+    already-in-flight fence wait during frame rotation (draw.c ~6097-6107).
+    A title whose Fin swing is Sub, not Fen, is not queue-depth-bound the
+    way GTA III is; it is waiting on the render thread itself to service a
+    non-deferred finish."""
+    dip, good = _dip_good(windows, bar)
+    if not _need(dip, good):
+        return 'not measured', 'insufficient windows (need >=%d of each class)' % MIN_WINDOWS
+    dip_sub, good_sub = _mean_field(dip, 'phase', 'Sub'), _mean_field(good, 'phase', 'Sub')
+    if dip_sub is None or good_sub is None:
+        return 'not measured', 'hakuX-phase absent from this capture (perflog-only tag)'
+    if dip_sub - good_sub > 2.0:
+        return 'supported', 'Sub (finish-submit wait) %.1fms dip vs %.1fms good (n=%d/%d)' % (dip_sub, good_sub, len(dip), len(good))
+    return 'refuted', 'Sub (finish-submit wait) %.1fms dip vs %.1fms good (n=%d/%d) -- no swing' % (dip_sub, good_sub, len(dip), len(good))
+
+
+def check_surf_download_wait(windows, bar):
+    """Surf (hakuX-phase's surface_update_ms, pgraph/vk/surface.c:6134/6292)
+    swinging with no matching Fin/Fen/Sub swing points at
+    download_surface_complete_deferred_at (surface.c:2105), called from
+    pgraph_vk_surface_update's deferred-download retirement
+    (surface.c:6210-6227) -- its own `dfF` (df_flush_ms) sub-field in the
+    xemu-surf `Srf:` line (nv2a_profile_get_surf_timing_str, profile.c:1135)
+    accounts for most of Surf in every dip window checked while making this
+    candidate (#433; docs/lanes/fpsdata1018/NOTES.md, mechanism account),
+    not upload/create/bind. This check reads only the coarse Surf field;
+    `Srf:`'s dfF/dfR split is not parsed here (not needed for a verdict)."""
+    dip, good = _dip_good(windows, bar)
+    if not _need(dip, good):
+        return 'not measured', 'insufficient windows (need >=%d of each class)' % MIN_WINDOWS
+    dip_surf, good_surf = _mean_field(dip, 'phase', 'Surf'), _mean_field(good, 'phase', 'Surf')
+    if dip_surf is None or good_surf is None:
+        return 'not measured', 'hakuX-phase absent from this capture, or Surf field never printed (perflog-only tag)'
+    if dip_surf - good_surf > 2.0:
+        return 'supported', 'Surf (surface update) %.1fms dip vs %.1fms good (n=%d/%d)' % (dip_surf, good_surf, len(dip), len(good))
+    return 'refuted', 'Surf (surface update) %.1fms dip vs %.1fms good (n=%d/%d) -- no swing' % (dip_surf, good_surf, len(dip), len(good))
+
+
 def check_redo_shc_volume(windows, bar):
     dip, good = _dip_good(windows, bar)
     if not _need(dip, good):
@@ -496,7 +541,9 @@ CANDIDATES = [
     ('tlb_walk_cost', 'Fable, Blinx 2, GTA III pilot (Known/Not check)', check_tlb_walk_cost),
     ('c1_rpbrk_nondraw_breaks', 'GTA III', check_rpbrk),
     ('c2_fin_fen_queue_depth', 'GTA III', check_fin_fen_swing),
+    ('c2b_fin_sub_renderthread_wait', 'RalliSport 2, Fable', check_fin_sub_swing),
     ('c3_redo_shc_copy_bind_cost', 'Fable, Blinx 2', check_redo_shc_volume),
+    ('c9_surf_download_wait', 'Blinx 2', check_surf_download_wait),
     ('c4_competing_process_cpu', 'GTA III, Blinx 2, Fable', _needs_capture_samples('dumpsys cpuinfo / /proc/*/stat')),
     ('c5_memory_page_cache_pressure', 'GTA III, Blinx 2, Fable', _needs_capture_samples('/proc/meminfo samples')),
     ('c6_thread_core_migration', 'GTA III, Blinx 2, Fable', _needs_capture_samples('/proc/<pid>/task/*/stat processor field')),

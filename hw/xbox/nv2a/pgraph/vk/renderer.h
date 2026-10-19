@@ -399,6 +399,16 @@ typedef struct SurfaceBinding {
     VkImageLayout image_layout;
     VmaAllocation allocation;
 
+    /*
+     * pg->surface_scale_factor at the time image/image_scratch were sized
+     * (create_surface_image): image's real extent is width*image_scale x
+     * height*image_scale, not width x height, whenever this is not 1. The
+     * global factor can change (AA/surface-format register) while this
+     * binding stays draw_dirty with no flush, so a reader that assumes
+     * image's texel grid is width x height has to check this first.
+     */
+    unsigned int image_scale;
+
     // Used for scaling
     VkImage image_scratch;
     VkImageLayout image_scratch_current_layout;
