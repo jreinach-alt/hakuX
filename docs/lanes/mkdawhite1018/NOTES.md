@@ -330,3 +330,113 @@ Confirmed live in the dispatcher's own tree (/home/justin/hakuX, HEAD == origin/
 Re-queued request 1792345978 unchanged as `1792377843-mkdawhite1018-4522138.req` in
 dispatch/queue/ (same ref da6e8949dc, same route, same env). Resuming the lane to
 pick it up.
+
+## Attempt 3 (2026-10-18, continuing from the addendum above)
+
+Attempt 2 did not conclude; it stopped the moment the addendum above was written, waiting
+on `1792377843-mkdawhite1018-4522138` with nothing measured yet. This attempt picks that run
+up and reads it.
+
+### 8. Step 1 result: the defect reproduces on Turnip
+
+`1792377843-mkdawhite1018-4522138` finished (`DONE`, `dispatch/results/0-1792377843-mkdawhite1018-4522138/`).
+`request.json`: `ref da6e8949dc`, title `4D57000C`, `seconds 420`, `device nova`,
+`env XEMU_FRAME_DUMP=8,images,gd,after170,cap256`, route the absolute path to this lane's
+`mkda-arcade.route` (passed without the `.route` suffix -- `request.sh` appends it and
+resolves bare names under `docs/testing/titles/routes/`; the lane's own route lives
+elsewhere, so it has to be passed as an absolute path with the suffix stripped).
+
+- `logcat.txt:110`: `Driver: PurpleVK public driver (PurpleVK 26.3.0-devel (git-62ac221a33))`.
+- `logcat.txt:146,148`: `[gpl569] ext=1 lib=1 fast=1 interp=1 requested=3 mode=3`.
+  Both confirm Turnip, mode=3 (full graphics-pipeline-library), never the stock driver.
+- `frames/f00005.png` and `route-frames/230209-gameplay.png`: Shang Tsung vs. Johnny Cage,
+  stone-courtyard arena -- floor and the two side walls are flat white; fighters, HUD, pillars,
+  and torches render correctly.
+- `frames/f00010.png`: a second arena (vs. Sonya), same pattern: floor and walls white.
+- Sampled floor pixels directly with PIL on both frames: exactly `(255,255,255)`, not merely
+  bright. That rules out an overbright-lighting-gradient reading and points at a texture,
+  surface, or saturating-combiner cause rather than a lighting one.
+
+**This settles Step 1: the defect is not the stock driver.** It reproduces unchanged on the
+current Turnip build. Proceeding to Step 2.
+
+### 9. Step 2: the draw chain that produces the floor
+
+Read with `docs/lanes/haloshadow1017/tools/chain.py` and `texids.py` against the pulled dump
+(`dispatch/results/0-1792377843-mkdawhite1018-4522138/pulled/framedump_1792389801.jsonl`).
+The same three-stage structure recurs in every frame checked (frame 0 and frame 6 both show
+it with the same shader hashes, so it is the title's normal floor-render path, not a one-off):
+
+1. **Floor-paint pass** -- draws n0-10 and n14-19, shader `6e768052`, large vertex counts
+   (51-1845), `kind` truncated from `inline_array`/`inline_elements`/`inline_buffer`
+   (`nv2a_diag_log_draw_call` callers in `hw/xbox/nv2a/pgraph/vk/draw.c:10880,10967,11053,11148`),
+   **zero texture stages enabled**, combiner `A = v0.rgb` (vertex diffuse colour),
+   `B = invert(zero) = 1` -- a pure vertex-colour passthrough. Renders into offscreen
+   surface `0x36b6000`.
+2. **Blur-chain pass** -- draws n11-13 and n20-22, shader `e2c935ad`, 4-vertex quads,
+   `s2t=1`. A 3-tap ping-pong blur: `0x36b6000 -> 0x3603000 -> 0x36a6000 -> 0x3603000`
+   (frame 6 shows the identical chain at the identical addresses, plus a second parallel
+   chain through `0x3564000` feeding the composite's second texture slot at n130).
+3. **Composite pass** -- draw n129 (frame 0) / n129-130 (frame 6), shader `d8cb02a6`,
+   cnt 84, targets the main backbuffer `0x3dc8000`. Combiner stage0:
+   `v0.rgb * t0.rgb`; stage1: `c0(=0xffffffff) * r0` (passthrough). The texture stage's
+   `bv` field reads `"d"` -- bound via `tex_surface_direct`, i.e. the live Vulkan image
+   view of the blurred surface, not a guest-VRAM copy and not the dummy texture.
+
+That direct-bind finding **rules out two of NOTES.md's working hypotheses (§4) for this
+draw**: the dummy texture is not bound (`bv` would read `"z"`), and the texture is not
+"never uploaded" -- there is no upload step in this path at all; it is GPU-to-GPU.
+
+**Red herring, corrected before writing it up:** n129's bound surface `0x3603000` carries
+`gh=0e42bd26e77159f5`, which matches the guest-memory hash recorded right after n11's
+write to that address, not n13's *later* write to the same address. That looked at first
+like a stale-surface-cache bug -- the s2t binding sampling an old render into a reused
+address within one frame. It is not: `fdump_put_tex_gd` (`renderer.c:3539-3556`) computes
+`gh` by hashing `d->vram_ptr` -- **guest system-VRAM bytes** -- and a `tex_surface_direct`
+binding (`bv:"d"`) never round-trips through guest VRAM; the live GPU image is sampled
+directly. So a stale `gh` on a direct-bound stage is an expected artifact of the dump tool,
+not evidence of anything wrong in the render. Recording this so the next reader of this
+dump doesn't spend the same half hour on it.
+
+**What Step 2 has NOT settled:** whether draws n0-10/n14-19 write correct (non-white)
+vertex colour into `0x36b6000` in the first place, whether the `e2c935ad` blur shader
+produces white from correct input, or whether there is a read-after-write hazard from
+reusing one Vulkan image as render target then texture three times within one frame
+without an intervening barrier/layout transition. The `gd` dump carries no pixel data for
+these 128x128 offscreen targets -- register/combiner state only -- so none of the three
+can be told apart from this dump alone.
+
+### 10. Follow-up run queued: rtt readback of the blur-chain targets
+
+Queued `1792390708-mkdawhite1018-4087588` (`docs/testing/request.sh`, env
+`XEMU_FRAME_DUMP=8,images,gd,after170,cap256,rtt,rttmax16384`, same route
+`mkda-arcade`, same title, `--priority study`). `rttmax16384` raises the per-texture
+readback cap to 128x128 = 16384 texels, matching the blur targets' size, so the pulled
+dump should carry actual pixel values for `0x36b6000`, `0x3603000`, `0x36a6000`, and
+`0x3564000` at the point each is bound as a texture -- which of the three hypotheses in
+§9 holds falls out directly: white already in the floor-paint target means the paint pass
+is wrong; correct colour there but white after the blur means the blur shader or its s2t
+read is wrong; correct colour even after the blur but white at the composite means a
+GPU-side hazard between passes.
+
+As of this writing the request sits unclaimed in `dispatch/queue/`
+(`1792390708-mkdawhite1018-4087588.req`). One discrepancy worth recording: this request
+was queued without `--ref`, so it resolved to lane HEAD (`24fc4738c5` at queue time,
+now `a1e5a7d504` after the origin/master merge below) rather than `da6e8949dc`, the ref
+Step 1 ran on. Checked `git diff --stat da6e8949dc 24fc4738c5 -- hw/xbox/nv2a`: empty --
+no NV2A code changed between those two refs, so the rebuild is semantically identical,
+only slower to install. (The master merge below brings in two further nv2a vk changes --
+`HAKUX_S2T_FB`, gta3car1018, #1049, and a dipwin profiling window, gta3instr1018, #1049 --
+both unrelated to this path: `HAKUX_S2T_FB` is off by default and addresses a title
+sampling the *same* target it is currently drawing into, not this title's 3-tap ping-pong
+across *different* targets; dipwin is a profiling counter window. Neither changes what
+Step 2 found.)
+
+Merged `origin/master` into this branch before writing this section (lane was 100 commits
+behind at session start); merge was clean, no conflicts, new HEAD `a1e5a7d504`.
+
+Step 3 (fix or lever) and Step 4 (FINDINGS.md, tracker row) wait on this run's result.
+
+`[lane.mkdawhite1018] waiting:` on `1792390708-mkdawhite1018-4087588` -- whether the
+offscreen blur-chain targets hold real floor colour or white, which of the three
+candidates in §9 is the cause.

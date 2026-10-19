@@ -1,0 +1,7 @@
+Waiting on dispatch request 1792390708-mkdawhite1018-4087588 (queued, unclaimed as of
+2026-10-18): a Nova run with XEMU_FRAME_DUMP=8,images,gd,after170,cap256,rtt,rttmax16384
+on the mkda-arcade route, to read back actual pixel values from the three offscreen
+surfaces in Mortal Kombat: Deadly Alliance's floor blur chain (0x36b6000, 0x3603000,
+0x36a6000) at the point each is bound as a texture. Resolves which of three candidates
+(NOTES.md attempt-3 section 9) is the cause of the white floor on Turnip: the floor-paint
+pass itself, the blur shader/s2t read, or a GPU read-after-write hazard between passes.
