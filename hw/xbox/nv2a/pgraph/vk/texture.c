@@ -2953,6 +2953,18 @@ static void s2t_log(const char *msg)
  * Narrow on purpose: same VkFormat in surface, texture and node image, one
  * level, one layer, 2D, the node image exactly the surface's (scaled) size.
  * The pad-alpha swizzle is folded in by the same rule as the node's view.
+ *
+ * #433 (lane.fpsnext1019): every S2C_MAP copy measured in GTA III's in-car
+ * driving scene fell through this guard with wrej[off] (the switch itself,
+ * not a format/shape/scale mismatch) -- R2 had never been turned on in any
+ * capture, including gta3fps1017b's and fpsdata1018's own SYSMEM/GMEM
+ * batches. Turning it on (HAKUX_S2T_WIDEN=1) measured hold 25.3->28.3 fps,
+ * drive 23.7->27.1 fps (one run each, b4-W1 vs b5-W2), with r2[map] rising
+ * every window and cp/dup/srf all 0 for the whole run -- the copy this guard
+ * was built for stopped happening entirely. A parked-frame pixel check
+ * (m3-loaded.png, same save-state) read diff=1.4 (th=3.0, MATCH); see
+ * NOTES.md for the full numbers. So the default flips here, the same way
+ * HAKUX_S2T_FB's mode 2 did (#433, fpsdata1018): "0" still turns it off.
  */
 static int s2t_widen_state = -1;
 
@@ -2960,7 +2972,7 @@ static bool s2t_widen_on(void)
 {
     if (s2t_widen_state < 0) {
         const char *e = getenv("HAKUX_S2T_WIDEN");
-        s2t_widen_state = e && e[0] == '1';
+        s2t_widen_state = !(e && e[0] == '0');
         if (s2t_widen_state) {
             s2t_log("[s2twiden] on");
         }
