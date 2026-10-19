@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 313
-updated_utc = '2026-10-19T15:52:19Z'
+wave = 314
+updated_utc = '2026-10-19T16:31:53Z'
 
 [lane.alwaystelemetry]
 issues = ["433"]
@@ -3198,3 +3198,9 @@ issues = ["433"]
 standing = false
 files = ["docs/lanes/fpsnext1019/**", "docs/testing/perf/fpsdiag/**", "docs/testing/jobs/selftest.d/99-fpsdiag*.sh", "docs/testing/predictions/fpsnext1019-*.json"]
 note = "CLAIMED (hostops, jam duty, 2026-10-19 08:52 PDT): row written for a lane ALREADY RUNNING since ~07:00 PDT with none (SessionStart fleet FAIL: 'lane(s) are RUNNING with no territory row -- fpsnext1019'; check_territory.py cannot see a lane that is not in this file). Routed via board request dispatch/board-requests/territory-fpsnext1019.md (lane.local, 2026-10-19 ~09:00 PDT). Brief briefs/fpsnext1019.md, issue #433, successor to fpsdata1018 (PR #1085, head 0fd255d991, ready and in the fold queue). Files taken from fpsdiag/** and the 99-fpsdiag*.sh glob, both free (released by [lane.fpsdiag1018] at its PR-ready retirement and by [lane.fpsdata1018] above at its own release-at-ready; checked before writing -- no live row claims either). docs/testing/predictions/fpsnext1019-*.json is a new glob, no collision (grep for 'fpsnext1019' in this file before this edit returned nothing). Per the request, the lane claims renderer paths itself (hw/xbox/nv2a/pgraph/vk/**, android/app/src/main/cpp/xemu_android.cpp) on the board as it first edits them -- NOT pre-granted here; its worktree currently carries a merge of origin/lane/fpsdata1018, so surface.c/texture.c/renderer.h are the same content as that fold and need no separate claim until this lane itself edits them. No device claim in this row: the Nova is taken through hold.sh and queued at the 1- tier per the request, not a territory grant."
+
+[lane.compat1019b]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/compat1019b/**", "docs/testing/compat_notes.tsv", "docs/testing/compat_page.py", "docs/testing/compat_page_selftest.py", "docs/compatibility.csv", "docs/COMPATIBILITY.md", "README.md", "docs/testing/titles/targets.toml"]
+note = "CLAIMED (hostops, jam duty, 2026-10-19 09:31 PDT): foldqueue.log 09:16:53 PDT refused this lane's ready fold (699b55c527) with 'no [lane.compat1019b] row on origin/board' -- the lane ran and folded its three PES5/Wild Rings/KotT Playable promotions (#433) with no territory row ever written for it, same missing-row shape as fpsdata1018/fpsnext1019 above. Files taken verbatim from the brief's own Files: line (briefs/compat1019b.md); the lane's actual diff vs its merge-base touches only docs/COMPATIBILITY.md, docs/compatibility.csv, docs/testing/compat_notes.tsv and its own docs/lanes/compat1019b/** (confirmed via `git diff $(git merge-base origin/master origin/lane/compat1019b) origin/lane/compat1019b --stat`: 5 files, all within this grant), so the remaining brief-listed paths (compat_page.py, compat_page_selftest.py, README.md, targets.toml) are pre-granted but untouched. Checked for collision before writing: compat_page.py/compat_page_selftest.py/compatibility.csv/COMPATIBILITY.md/README.md/compat_notes.tsv appear in no other row (grep of this file); docs/testing/titles/targets.toml matched only [free]'s bare docs/testing/titles/** glob (untouched by this grant, same carve-out pattern as pathfind/localdrive1018 above). No device held (docs-only lane per its own brief: 'No device time needed: docs only')."
