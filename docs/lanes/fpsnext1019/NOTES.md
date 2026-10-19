@@ -357,3 +357,57 @@ after b7.
 
 **Landed, not just measured**: commit `3058a55767` flips `HAKUX_S2T_WIDEN`'s default to on (`"0"` opts out). This
 is GTA III's fix for this attempt -- lever (b) from the table above, landed rather than merely identified.
+
+## Attempt 2, item 4: lever (a) resolved -- score2.py's "drive" window was never motion-verified; S1 has a real crash in it
+
+G4's next item: resolve lever (a) (SYSMEM/GMEM) with the matched-window re-read, 0 new device time (data already
+on disk, per the plan written earlier this attempt). Before trusting any re-read, checked what "drive" actually
+means in `score2.py`: **it is a fixed span, `[RT+1, RT+31]` -- not pixel-motion-verified.** `movescore.py` is the
+tool that verifies motion, from a span read off the recording by eye; `score2.py`'s drive/hold split just assumes
+the car is still going for the first 30s. That assumption needed checking before using the window for anything,
+so it was checked: sampled `rec.mp4` frames at RT+2/8/14/20/23/25/26 (ffmpeg grabs) for each of S1/Y1/M1 (same
+save-state, same start frame confirmed identical at RT+2 across all three).
+
+**S1 (shipped) has a real crash inside its own "drive" window**: still driving normally at RT+23 ("Portland View"
+banner visible, moving), approaching a wall head-on at RT+25, and **flipped on its side pinned against a wall by
+RT+26** (`chk-26.png`: car rotated ~90 deg, "Portland View" text over a static wall, no motion). The last ~5-6s of
+S1's 30s "drive" window is a stopped, crashed car, not driving -- a different and not-comparable render workload
+(static geometry against a wall) folded into a number that was being read as "driving fps." Y1 (sysmem) and M1
+(gmem) show continuous scene progression (different streets/intersections, more collisions typical of RT-held
+autonomous input, but moving) through the same interval with no stop. This is exactly the class of problem
+`score2.py`'s own docstring does not claim to solve (it only says a window counts when wholly inside the fixed
+span) -- nothing upstream of this check had ever verified the span itself.
+
+Re-scored all three on the same crash-excluded span, `[RT+1, RT+24]` (23s, short enough to stay before S1's crash,
+same length for all three so the comparison is fair), with `movescore.py` (the motion-aware tool) and `dwseries.py`
+(same `[dipwin]` instrument as the earlier drive-window read):
+
+| Arm | movescore fps (RT+1..24) | dwseries ms/flip | dwseries fps | rp/flip | cs2t-ended/flip | cs2t share |
+|---|---|---|---|---|---|---|
+| S1 (shipped) | 21.3 | 48.1 | 20.8 | 130.2 | 119.2 | 91% |
+| Y1 (sysmem) | 24.2 | 41.3 | 24.2 | 70.3 | 59.3 | 84% |
+| M1 (gmem) | 21.1 | 46.1 | 21.7 | 108.4 | 97.6 | 90% |
+
+Clean, consistent, same-instrument, same-window-method, same-length-window result: **sysmem is faster on real,
+verified driving** -- about +3fps over shipped, fewer render passes/flip and fewer `copy_surface_to_texture`
+copies/flip, same direction as the earlier (less careful) drive-window read and the opposite of the hold-window
+ftbucket read. The hold-window reading is the one that should now be distrusted: it covers park (stationary,
+different workload) plus the first 30s of hold without excluding S1's crash, both of which dilute a real driving
+comparison with non-driving content, on top of `ftbucket.py`'s `rp` field being FRAMETRACE-csv-derived and
+possibly capped (flagged earlier, `phseries.py`'s own docstring).
+
+## Big-lever table, re-ranked again after item 4
+
+| # | Lever | Status | Why |
+|---|---|---|---|
+| b | `copy_surface_to_texture` / R2 (`HAKUX_S2T_WIDEN`) | **landed this attempt** (commit `3058a55767`) | see item 3 |
+| a | Per-title SYSMEM/GMEM render mode | **resolved: promote.** `TU_DEBUG=sysmem` measured +3fps over shipped on a crash-excluded, motion-verified, equal-length window, fewer render passes and fewer S2C copies/flip, same direction in two independent instruments (`dwseries.py`, `movescore.py`) | not yet landed -- it is a Turnip env var, not a code change in this tree; the still-open question is how to apply it (per-title default in the launcher/config, not a global env var an owner build ships with) |
+| c | Draw/state redundancy per pass | 2 (unchanged) | not yet measured this attempt |
+| e | vCPU translation / TB lookup | 3 (unchanged) | not yet measured this attempt |
+
+Both cs2t share columns above (84-91%) are still high with sysmem -- lever (a) and (b) are not mutually exclusive,
+and the natural next step is a run with BOTH `TU_DEBUG=sysmem` and the now-default-on `HAKUX_S2T_WIDEN` to see
+whether the gains stack (same mechanism, same copy, should be independent of render mode). Not run this attempt:
+this item's whole point was to resolve (a) at zero device cost, and item 3 already spent this attempt's device-time
+budget (~1270s / 21.2 of the 30 min pilot cap) landing lever (b). Next action for the next attempt: one short
+GTA III run with `TU_DEBUG=sysmem` on the current (post-item-3) binary, scored the same crash-excluded way.

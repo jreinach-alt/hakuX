@@ -22,7 +22,12 @@ render-passes/flip 47->33, the S2C_MAP copy eliminated entirely for the whole ru
 (same-save-state frame diff 1.4, threshold 3.0, MATCH), then **landed the default flip** (commit `3058a55767`,
 `"0"` still opts out, same pattern as `HAKUX_S2T_FB` mode 2). Two further confirming runs on the new default
 reproduced the render-pass drop in both but showed noisier fps, one confounded by a fresh-install shader-cache
-clear -- reported honestly in NOTES.md rather than re-run past this attempt's device-time budget. Blinx 2:
+clear -- reported honestly in NOTES.md rather than re-run past this attempt's device-time budget. Then resolved the
+SYSMEM/GMEM contest at zero new device time: `score2.py`'s "drive" window turned out to be an unverified fixed
+span, and the shipped-baseline arm (S1) actually crashes into a wall inside it (~RT+25); re-scoring all three
+attempt-1 arms on a crash-excluded, motion-verified, equal-length window (`movescore.py` + `dwseries.py`) shows
+sysmem clearly beats shipped (24.2 vs 21.3 fps, fewer render passes and S2C copies/flip) and gmem does not -- not
+yet landed (it is a Turnip env var, needs a per-title default mechanism, not a code change here). Blinx 2:
 root-caused (not fixed) why the generic drive route never reaches gameplay -- the dispatcher's `EXPLORE_LADDER`
 excludes `START` without a built profile, and Blinx 2 has none; deferred in favor of GTA III, which was directly
 actionable. Detail in `docs/lanes/fpsnext1019/NOTES.md`; per-title table in `FINDINGS.md`.
