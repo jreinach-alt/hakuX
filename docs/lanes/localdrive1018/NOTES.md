@@ -723,3 +723,29 @@ full pass) after the merge+fix. Updated `PR.md`'s `Files:` line to add
 `docs/testing/dispatcher.sh` and added a short section there naming the fix. No other line in
 `dispatcher.sh` touched -- `SNAPSHOT_GLOBS` and everything else is unchanged, per the widened
 row's own scope.
+
+**Checked the still-open device WAITING while here, found a second recurrence of the same false
+alarm attempt 3 already chased down once today.** `dispatch/hold/nova`/`nova.why` are gone now
+(owner-play hold lifted), but `dispatch/queue/withdrawn/owner1018/1-1792380791-localdrive1018-
+729348.req` is still sitting withdrawn, not restored. Its `WHY.txt` (hostops, 22:40 PDT 10-18,
+~3h after attempt 3's correction) explains why: it cites "lane.localdrive1018 is retired (one-
+fps-lane-fpsdiag-1018 memory: 'localdrive1018 retired')" and tells the next actor to re-issue the
+work under `gta3car1018` instead of restoring this lane's request. This is the exact claim
+attempt 3 already checked against `board-wt`'s canonical `origin/board` history and found false
+(no `[retired.localdrive1018]` section exists; the row has been actively claimed and widened the
+whole time, most recently for this very commit's fix). The underlying memory file
+(`one-fps-lane-fpsdiag-1018.md`, in this harness's auto-memory store) already carries a
+correction appended at ~19:20 PDT saying not to trust the retirement claim -- but the memory
+INDEX line summarizing that file still read bare "localdrive1018 retired" with no mention of the
+correction, which is almost certainly why the 22:40 PDT session re-cited it instead of reading
+the file's own body. Fixed the index line this session so a future read doesn't repeat this a
+third time.
+
+Not fixed by this lane: the withdrawn request itself. `WHY.txt` names moving it back to
+`dispatch/queue/` as lane.local's job, and this lane's own rules are to reach dispatch only
+through `request.sh`/`ab_run.sh`, never by hand-editing queue files. Posted the finding as a PR
+comment on forge PR #1086 (the current open PR for this branch -- #1082 closed, #1080 merged,
+both superseded) so lane.local or a future hostops tick restores it instead of re-issuing fresh
+work under `gta3car1018` on a false premise. Not treating this as this session's own WAITING --
+the device-side wait was never this resume's task (the dispatcher.sh fix was), and nothing here
+blocks pushing or marking this commit's work done.
