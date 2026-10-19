@@ -11,16 +11,16 @@
 # FAIL CLOSED: classify.py raises pathclass.Unavailable the first time the
 # venv/GPU/serve process is missing, and drive.py's run() turns that into
 # `ROUTE FAIL drive generic: pathclass unavailable (<why>)` -- never a blind
-# press, never a model call (ask_model is a no-op without ANTHROPIC_API_KEY,
-# which this host does not set).
+# press. Local tools only, always: no model call, no API key, anywhere in
+# this loop (#433).
 #
 # classifier_confidence 0.85: the #433 step-2 eval (pathknow's 120-frame
 # held-out set, docs/lanes/pathclass/NOTES.md) was 81.7% raw / 3.9% false
 # "gameplay" on non-gameplay -- short of the 90%/2% bar. At this threshold,
 # frames the head actually answers are 100% right with 0% false "gameplay"
-# (39/120 answered; the rest come back `unknown`, which drive.py waits on
-# rather than acting on). No crop or hand tuning can do better for a title
-# this profile has never seen. This floor applies only to a `gameplay`
+# (39/120 answered; the rest come back `unknown`). No crop or hand tuning
+# can do better for a title this profile has never seen. This floor applies
+# only to a `gameplay`
 # answer (the claim that matters): a false `play` would mark a route done
 # when it is not.
 #
@@ -51,9 +51,10 @@ classifier_confidence_menu = 0.7
 order = ["boot", "logo", "intro_video", "title", "profile", "main_menu", "loading", "cutscene", "play"]
 
 [drive]
-# unknown is the safe, common answer below the confidence floor: give a
-# route more time to resolve one before stall_fail_s/unknown_fail_s end it,
-# rather than inherit a hand-tuned title's tighter numbers.
+# unknown is the common answer below the confidence floor; drive.py never waits it out
+# any more (#433 Part B: it presses and learns instead), so only stall_fail_s -- a HUD up
+# and genuinely stuck -- stays generous rather than inherit a hand-tuned title's tighter
+# number.
 stall_fail_s = 40.0
 escape_max = 6
 ladder = ["A"]
