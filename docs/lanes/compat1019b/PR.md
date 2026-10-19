@@ -1,6 +1,6 @@
 # The compatibility page adds Pro Evolution Soccer 5 (Europe), The Wild Rings and Knights of the Temple II to Playable (94 -> 97)
 
-State: draft
+State: ready
 
 Lane: compat1019b            Issue: #433
 Base: master @ 3597b72b35886d3bc5a59bf3cfa2096a5ae37962
