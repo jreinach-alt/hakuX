@@ -514,15 +514,38 @@ work. That is a finished session under this lane's rules, not a stall.
   record, handed back as `uberpersist569`) are all written up with
   numbers. Did not re-queue, cancel, or touch either device.
 
+Attempt 6 (10-18, about 18:03 PDT) -- why attempt 5 did not finish: same
+external wait as attempts 3-4, re-checked and still true; attempt 5 ended
+correctly on `waiting:`, which is a finished session, not a stall.
+
+- Read this file and `git log` first, per the resume brief.
+- Re-checked every input again, this time reading `dispatch/logs/dispatcher.log`
+  directly instead of only `devices.sh`/`adb`: the Nova (serial `ee317437`)
+  last had a worker started at 11:50:10 PDT; the dispatcher's own log has
+  not advanced at all since 12:06:56 PDT (file mtime matches), over 6 h
+  ago, so the host has not even attempted to re-walk devices since --
+  consistent with, and sharper than, attempt 5's "no Nova worker running".
+  `dispatch/hold/` has no `nova` file (logical hold stays released, as
+  attempts 3-5 found); `adb devices -l` and `devices.sh list` both show
+  only `bdc158a5` (thor). `dispatch/queue/1-1792368418-lane.ralli2audio1018-1108710.req`
+  is still queued, unclaimed, nothing in `running/` or `results/` for it.
+  `dispatch/hold/thor` is unchanged (lane.local, same thermal-test note,
+  due back "about 17:00 PDT"); current time is now about 1 h past that
+  estimate (attempt 5 was 55 min past it).
+- Branch state unchanged: Work 1-3, the `vp.c` fix, `FINDINGS.md` and
+  `PR.md` were already complete entering this attempt; nothing new to
+  build or measure offline exists until the queued request runs.
+- Did not re-queue, cancel, or touch either device.
+
 [lane.ralli2audio1018] waiting: dispatch request
 `1-1792368418-lane.ralli2audio1018-1108710` (the cold-cache pilot on
 `ec7e06c467`, nova, 870s, `HAKUX_PLC_WIPE=1`), queued but unclaimed
 because the Nova is not yet physically reconnected to the dispatch host
 (Thor's hold note: offline for the thermal test since about 12:00 PDT,
-due back about 17:00 PDT; still absent as of 17:55 PDT, attempt 5's
-check, about 55 min past that window). Once `adb devices -l`/
-`devices.sh list` shows the Nova again and the request's
-`results/<id>/DONE` appears:
+due back about 17:00 PDT; still absent as of 18:03 PDT, attempt 6's
+check -- the dispatcher's own log has not moved since 12:06:56 PDT, over
+6 h). Once `adb devices -l`/`devices.sh list` shows the Nova again and
+the request's `results/<id>/DONE` appears:
 
 1. Read `tools/timeline.py results/<id>/logcat.txt --prod`, test `vp=`
    mean and wall-per-block against the prediction in "The fix the pilot
