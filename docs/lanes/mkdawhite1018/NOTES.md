@@ -742,3 +742,118 @@ exists to permit; `request.sh` accepted the request without the cap refusal this
 `[lane.mkdawhite1018] waiting:` on `1792399836-mkdawhite1018-2687998` -- whether the arena
 interior (any arena, this run landed on a different stage than `1792399140` did) shows correct
 colour or white on its floor/walls once the flythrough cuts to the fight.
+
+## Resuming attempt 3 (fourth continuation): why the prior turn stopped where it did
+
+Same reason as every prior continuation in this attempt: it queued `1792399836` and ended
+(headless session, no cross-turn wait). This turn resumes because that run finished (`DONE`).
+
+### 16. `1792399836` ran: a third distinct stage/character pair, and the SAME screen as before -- the "flythrough" is the stage card's own background, not a separate transition
+
+`dispatch/results/1792399836-mkdawhite1018-2687998/pulled/`: 180 `.ppm` frames pulled
+(`framedump_1792403085_f000.ppm` .. `_f179.ppm`), logcat confirms Turnip again (`Driver: PurpleVK`,
+`[gpl569] ... mode=3`). Sampled white-pixel fraction every 5th frame with PIL (`/tmp/mkda_scan.py`,
+not committed, reproducible from the pulled dump): **zero white anywhere across all 180 frames** --
+a different result from `1792377843`'s arena frames, which is expected if this window never
+reaches the arena. A frame-to-frame diff (`/tmp/mkda_diff.py`) found no cut anywhere in the
+window (one blip at f003, nothing else above noise) -- all 180 frames are one continuous shot.
+
+Converted f000, f045, f090, f135, f179 to PNG and looked at them directly. f000 through f135 are
+pixel-identical: a static "stage card" screen, "QUAN CHI'S FORTRESS" as the stage name, "KENSHI"
+and a second portrait as the matchup, "TIME: 00:00  DIFFICULTY: 25%" HUD, the ARCADE logo, and a
+slowly rotating starry-island backdrop (the camera position does not visibly move across these
+135 frames -- this is a near-static hold, not a continuous zoom). f179 is the same composition,
+uniformly darkened (a fade starting somewhere after f135). **A third different character/stage
+pair from the two before it** (`1792399140`: Kuatan Palace/Sonya; `1792395921`: Kuatan Palace,
+unnamed; this run: Quan Chi's Fortress/Kenshi) -- confirms again that the blind route's
+character-select landing varies run to run, now three ways in three runs.
+
+**This reconciles with the two prior "flythrough" runs instead of contradicting them.** Reading
+`mkda-arcade.route` as text (embedded verbatim in every `request.json` to date, including this
+one, but not re-read as a script until now) gives the route's own cumulative wall-clock timing,
+summed from its `wait N` lines in order: `30+4.5+4.5+4.5+4.5+5+6+9 = 68` to the "press START
+(stage card)" action, `+12 = 80` to the next press ("A", a self-heal against an accidental
+pause), `+3 = 83` to `mark gameplay`. So the stage card is pressed onto the screen at t=68 and
+the script does not touch the controller again until t=80 -- a 12-second gap the route's own
+comment does not explain further. The camera motion seen in `1792399140` (after63, 120 frames,
+t63-66: a continuous zoom from a distant orbital shot to a close temple courtyard) and the
+near-static hold seen here (after66, 180 frames, t66-69) are **the same screen** -- the stage
+card's own animated background, a slow rotating/zooming shot of the selected stage's island,
+visible immediately once the card appears (shortly before t=68) and continuing through the
+12-second gap until something (unmeasured) cuts to the arena. `1792399140` happened to sample a
+faster-moving part of that same background pan; this run sampled a part where the camera holds
+nearly still. Neither is a flythrough distinct from the card; both are the card's own backdrop.
+**None of the five runs to date (two at after170, three at after63/65/66) has covered [t68, t83]
+end-to-end** -- the only window the script's own timing says contains the cut from the stage card
+into the fight, which is the one thing still unmeasured. The"3 real seconds" window width used so
+far (120-180 frames) is also short against a possible 12-15 s gap; a window needs to span closer
+to that whole gap to be sure of catching the cut regardless of where in it the cut actually falls.
+
+### 17. Step 3 groundwork, while device time is spent elsewhere: `create_surface_image` never clears a surface on creation or pool-reuse
+
+Read `hw/xbox/nv2a/pgraph/vk/surface.c` (permitted once Step 0 was pushed, for diagnostics/fix
+reading; no file under `hw/xbox/nv2a/**` has been edited). Two facts, both confirmed from the
+code, not inferred:
+
+- **`pgraph_vk_surface_get` (surface.c:4002-4006) is a pure hash-table lookup** -- it creates
+  nothing. For it to find a `SurfaceBinding` at `0x35bf000` (the address `1792390708`'s rtt dump
+  showed being sampled with `s2t`/`bv:"d"` and never written in its capture window -- NOTES §11),
+  that binding must already exist, created earlier through the normal surface path. This rules
+  out "the emulator spontaneously manufactures a bogus binding at sample time" and supports
+  "this is a legitimate render target the title created, most likely at arena/round load,
+  outside every window captured so far."
+- **`create_surface_image` (surface.c:4138-4240) never clears the image it creates, on either
+  path.** A freshly allocated image (`vmaCreateImage`, :4191-4193) gets only a layout transition,
+  `VK_IMAGE_LAYOUT_UNDEFINED -> GENERAL` for a colour surface (:4229-4233) -- a layout transition
+  defines no content; a fresh allocation's bytes are host/driver-defined. A **pool-recycled**
+  image (`surface_image_pool_acquire`, :4074-4095, taken when :4165's call succeeds) is handed
+  back with **whatever a previous, unrelated surface last rendered into it** -- the pool matches
+  only on `format`/`width`/`height`/`usage` (`SurfaceImageConfig`, :4158-4163), never on
+  `vram_addr` or which title/draw owned it, and `surface_image_pool_acquire` does not clear
+  before returning the image either.
+
+This is the concrete lever Step 3 asked for if the cause turns out to be a bake that never writes
+real colour rather than one that writes correct colour that something later corrupts: an
+under-covered, discarded, or skipped bake draw into a freshly-created or pool-recycled surface
+would read back as whatever was already there -- undefined for a fresh allocation, or a
+completely different surface's stale content for a recycled one -- rather than a defined
+background such as black. That is also consistent with §11's own pixel read: every sampled texel
+in the chain is exactly `(255,255,255,A)` or `(0,0,0,A)`, only alpha varying -- not the smooth
+gradient of noise a literally-uninitialized allocation would usually show, which is more
+consistent with "recycled from a specific prior surface" (a mask/glow buffer storing white-or-
+black with alpha, which is what some *other* draw in this title or the pool's prior tenant
+produced) than with raw uninitialized memory. This is not yet proof of the fix -- it does not
+explain why the bake, if one happens, fails to cover (or is never issued for) this address -- it
+is the mechanism that would make a failed/skipped bake visible as this specific symptom, and the
+first place a fix lane should look once the bake draw itself is captured.
+
+### 18. Fifth run queued, this time sized to the script's own gap rather than another instant guess
+
+Wrote an addendum to `dispatch/pilots/mkdawhite1018.ok` (via `python3`, the sandbox's only path
+to `$DISPATCH_DIR`) justifying one further run on the strength of §16's timing derivation rather
+than another blind offset: this is a single, targeted run addressing the one gap five prior runs
+have bracketed but not covered, not a batch. Queued
+`1792403678-mkdawhite1018-3048897`: same ref (`da6e8949dc`), device (nova), route
+(`mkda-arcade`), `--seconds 100`, env
+`XEMU_FRAME_DUMP=600,gd,rtt,rttmax16384,after78,cap1024` -- `after78` (10 s before the script's
+"mark gameplay" at t=83, 2 s before its t=80 press) for 600 frames (`FDUMP_MAX_FRAMES`'s cap,
+confirmed at renderer.c:1794; ~10 real seconds at 60 fps with no drops, per every prior run's
+`nv2a_frame` delta matching its requested frame count), covering t78-88: the tail of the stage
+card, whatever cut or fade follows, and several seconds of actual gameplay. Dropped `images` from
+the env spec (confirmed optional against `*images` defaulting false unless the token is present,
+`fdump_parse_spec`, renderer.c:2221-2272) so the pulled payload is `gd`+`rtt` only, not 600 full
+640x480 PPMs (~900 KB each, ~540 MB for the window) -- the prior runs' full-frame image captures
+were only needed because this attempt did not yet know where the cut was; this run does not need
+the pictures to answer the same question once `gd`+`rtt` show whether the floor-glow source
+surface gets a write in this window and, if so, what colour it writes.
+
+Device-time tally with this run queued: 2066 + 100 + 90 = 2256 s (37.6 min), recorded in the
+pilot-file addendum before queuing.
+
+`[lane.mkdawhite1018] waiting:` on `1792403678-mkdawhite1018-3048897` -- whether the floor-glow
+source surface (or whatever renders the arena floor) gets a write in [t78, t88], and if so,
+whether that write's own colour is already white (pins the cause to the bake draw itself) or
+correct (pins it to something after the bake -- the composite's `v0` vertex colour, or a layout/
+barrier issue the rtt dump cannot see). This also directly answers Step 1's open half: whether
+the arena the fight actually reaches shows the white floor on this build, for whichever
+character/stage this run's blind route lands on.

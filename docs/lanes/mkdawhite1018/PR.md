@@ -80,10 +80,26 @@ two runs and 127 frames total, shows no white anywhere.
 Device time: 1876 s (31.3 min) queued/run against a 30-minute unpiloted cap, covered by the pilot
 verdict above.
 
-`[lane.mkdawhite1018] waiting:` on `1792399836-mkdawhite1018-2687998`, itself blocked behind a Nova
-hold another lane (`lane.pathfind`) is currently using (`dispatch/hold/nova.why`: "pathfind 4D530048
-one run, 600 s hold (#433)", taken 2026-10-19T08:49:33Z) -- this lane's request cannot be claimed
-until that hold clears. This is outside this session's control (the dispatcher claims queued requests
-on its own schedule once the device is free), not this lane's own background task.
+`1792399836` (180 frames, after66) landed on yet a third character/stage pair -- and the same screen
+`1792399140` saw, not a new one: reading `mkda-arcade.route`'s own fixed `wait N` lines (summed in
+NOTES.md section 16) shows the stage card is pressed onto screen at t=68 and the script does not
+touch the controller again until t=80, a 12-second gap. The "flythrough" `1792399140` sampled and the
+near-static hold this run sampled are the same thing -- the stage card's own animated background,
+caught moving at different points in that gap. **None of the six runs to date has covered [t68, t83]
+end-to-end**, the only window the script's own timing says contains the cut into the fight.
+
+Also read `hw/xbox/nv2a/pgraph/vk/surface.c`'s `create_surface_image` (NOTES section 17, no edits
+yet): neither a freshly allocated nor a pool-recycled surface image is cleared on creation -- a fresh
+allocation's content is driver-defined, and a pool-recycled one explicitly carries over a different,
+unrelated surface's last content (the pool matches only format/width/height/usage). That is the
+concrete lever if the floor-glow surface's bake draw turns out to be skipped or under-covered rather
+than simply wrong-coloured.
+
+A sixth run, `1792403678-mkdawhite1018-3048897`, is queued: `after78`, 600 frames (~10 s, covering
+t78-88), derived from the route script's timing rather than another guess, dropping `images` from the
+env spec to keep the payload light. `[lane.mkdawhite1018] waiting:` on it, itself still blocked
+behind a Nova hold another lane (`lane.pathfind`) currently holds (`dispatch/hold/nova.why`). This is
+outside this session's control (the dispatcher claims queued requests on its own schedule once the
+device is free), not this lane's own background task.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

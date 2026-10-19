@@ -1,17 +1,15 @@
-run 1792399836-mkdawhite1018-2687998
-# Waiting on dispatch request 1792399836-mkdawhite1018-2687998 (queued, unclaimed as of
-# 2026-10-19 ~08:55 PDT): 180 frames at after66 on the mkda-arcade route, meant to catch the cut
-# from the stage-intro flythrough into the fight's first frames. Two prior runs narrowed this:
-# 1792395921's 8-frame window landed mid-flythrough (frame count is not a duration -- NOTES
-# section 13 corrects this lane's own earlier assumption by reading renderer.c directly), and
-# 1792399140's 120-frame window at after63 landed further in, camera zoomed to a close temple
-# shot by its last frame but still before the cut (NOTES section 15). A pilot verdict
-# (dispatch/pilots/mkdawhite1018.ok) was written to queue this one past the 30-minute unpiloted
-# device-time line, since every prior request in this lane was read before the next was queued.
+run 1792403678-mkdawhite1018-3048897
+# Waiting on dispatch request 1792403678-mkdawhite1018-3048897 (queued 2026-10-19 ~09:54 PDT,
+# unclaimed as of this writing, behind a Nova hold another lane holds -- dispatch/hold/nova.why):
+# XEMU_FRAME_DUMP=600,gd,rtt,rttmax16384,after78,cap1024 on the mkda-arcade route, 600 frames
+# (~10 real seconds) armed at t=78, covering t78-88. This offset is derived directly from the
+# route script's own fixed wall-clock waits (mkda-arcade.route: cumulative time to the "press
+# START (stage card)" action is t=68, to "mark gameplay" is t=83 -- read and summed in NOTES.md's
+# pilot-verdict addendum, not estimated), not another blind guess. It targets the one window five
+# prior runs (two at after170, three at after63/65/66) have not covered: the cut from the
+# stage-card screen into the actual fight, where the floor-glow bake (if that is what produces
+# the white floor) would happen.
 #
-# This request is additionally blocked behind a Nova hold another lane is using right now:
-# dispatch/hold/nova.why reads "2026-10-19T08:49:33Z lane.pathfind: pathfind 4D530048 one run,
-# 600 s hold (#433)" -- that hold's nominal 600s has already elapsed as of this writing but the
-# hold file has not cleared, so the dispatcher has not claimed this lane's queued request. This
-# is outside this session's control: the dispatcher claims queued requests against device
-# availability on its own schedule, and lane.pathfind's hold is not this lane's to touch.
+# NOTES.md and dispatch/pilots/mkdawhite1018.ok carry the full reasoning. This is outside this
+# session's control: the dispatcher claims queued requests against device availability on its
+# own schedule, and the current Nova hold (lane.pathfind) is not this lane's to touch.
