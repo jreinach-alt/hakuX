@@ -502,3 +502,79 @@ above until this PR lands.
 Merged `origin/master` again before writing this (25 commits behind by the time the device run
 finished; clean merge, 4 lanes' unrelated files, no conflicts), re-ran `pathclass_selftest.py` and
 `classify_selftest.py` once more post-merge (0 failures each).
+
+## Resume 2026-10-18 ~20:28 PDT (attempt 4, mislabeled "attempt 3" in this dispatch's own header):
+why the prior session did not fail, and what was still actionable
+
+Attempt 3 did not fail either -- it ended correctly on the `WAITING` above, with A+B+C at
+`State: ready`, Part D's two crops verified on two independent frame sets (9 Thor stills, 87
+continuous Nova frames), and a specific, source-confirmed blocker written down (the dispatcher
+refuses to run a `drive` profile not on `master`, so this lane's own `gta3-drive.route`/
+`gta3.toml` cannot be dispatched pre-merge). Session logs (`/home/justin/hakux-work/logs/lane/
+localdrive1018.*.json`) show attempt 3 started ~17:02 PDT and this session started ~20:27 PDT --
+only ~6 minutes after attempt 3's last commit (`73792d2e58`, 20:22:04), far short of the 40-minute
+idle-resume window the role doc describes, and no `[job.arms]` verdict landed in that gap (no
+prediction is registered -- Part D has no arm). Most likely cause: a CI-green signal on
+`73792d2e58` triggered `handback.sh`'s other resume condition. Re-verified nothing was stale
+before acting further: `git status` clean, `pathclass_selftest.py`/`classify_selftest.py` still
+0 failures, `docs/testing/preflight.sh` still `territory ok` (not re-run again this entry --
+unchanged inputs since the last run 50 minutes ago would just reproduce the same result; see
+`idle-capacity-manufactures-unchecked-work` -- re-running a clean check with nothing changed
+underneath it is exactly the unchecked work that memory warns against).
+
+**What was still actionable, found by re-reading the WAITING blocker rather than accepting it as
+final**: the blocker is specific to the `drive` STEP (`route.sh`'s profile-gate check: "A 'drive'
+profile must be in the serving snapshot ... or on the serving tree's master"). It is not a
+blocker on dispatching *any* route this lane writes -- `route.sh`'s own grammar (its module doc,
+re-read this session) has `press`/`axis`/`wait`/`shot`/`waitfor`/`mark`/`repeat`, all already on
+`master` and used by the existing proven `gta-3.route` verbatim, with no profile/serving-snapshot
+check anywhere near them (grepped `route.sh` for where that refusal fires: it is scoped to the
+`drive <profile> ...` line's own handler in `request.sh`, nothing else). A NEW route file that
+never writes a `drive` step does not touch that gate at all, and `request.sh`'s own comment
+confirms a named route's TEXT is read "from THIS tree now" (the lane's worktree), not from
+`master` -- so a plain press-script route is dispatchable today, unmerged, exactly like this
+lane's own `gta3.toml`/`learned.py` are NOT. This is the one thing Part D's "Still not done" list
+was actually missing a device *path* for, not a device: car-entry (Y) and pause-menu (START)
+frames, which the one dispatchable existing route (`gta-3.route`, on-foot only, never presses Y
+or START) structurally cannot produce no matter how many times it runs.
+
+**Built**: `docs/testing/titles/routes/gta3-car-pause-probe.route` -- PROBE ONLY, explicitly
+never scored (no `mark`, only `shot`), reusing `gta-3.route`'s exact proven boot preamble
+(same `wait`/`press A`/`waitfor fist-hud` timing, not re-derived) so the one new thing being
+tested is the car-entry/pause sequence itself: `press Y` (enter the car, per the owner's own
+hands-on walkthrough in the brief) -> shot -> `press START` (open pause; `gta-3.route`'s own
+comment on the gtawedge1012 regression already established START toggles this title's pause
+menu) -> shot (Save should show as the default highlighted row here, per the owner's words --
+captured, not pressed: no `A` on this menu, so the run cannot create or overwrite a save) ->
+`press START` again (close pause, back to play) -> shot, to also confirm the sequence leaves
+the player in control rather than stuck on a dialog. Copied (not invented) the existing
+`routes/refs/gta-3/fist-hud.png` into this route's own `refs/gta3-car-pause-probe/` dir, since
+`route.sh`'s `ref_path()` keys a `waitfor` crop by the route's own filename stem, not a shared
+pool. Validated: `route.sh --check docs/testing/titles/routes/gta3-car-pause-probe.route` ->
+`route ok (55 lines)`.
+
+Checked device state live before dispatching, not from the stale WAITING note: `adb devices -l`
+and the dispatcher's own `dispatch/bin/devices.sh` both showed only `bdc158a5` (Thor) -- the Nova
+was briefly absent from the live listing despite no `dispatch/hold/nova`/`nova.why` file existing
+(memory `device-presence-needs-a-live-listing` cuts against trusting either the WAITING note's
+"freed ~19:33" claim or the absence of a hold file on its own). `dispatch/queue/` explained it:
+`lane.ralli2audio1018` had just placed a new request (`1-1792380737-...-709884`, 20:32) on top of
+one already in `dispatch/results/` from minutes earlier -- the Nova was mid-turnaround for that
+lane's own work, not actually gone. Re-checked once (device-flake rule: rerun twice) rather than
+concluding "unavailable" from one transient miss.
+
+**Dispatched** (not blocking-waited for yet, see below): `request.sh --who localdrive1018
+--purpose "car-entry + pause-menu frames for gta3.toml Part D crops, probe only, no scoring
+(#433)" --title 5454000E-Grand_Theft_Auto_III.xiso.iso --device nova --route
+gta3-car-pause-probe --seconds 240 --no-expect "evidence-gathering probe for offline
+crop-building, not an A/B arm"` -> queued **`1-1792380791-localdrive1018-729348`**, pinned to
+nova, release-priority (#433 is labelled 0.5), behind `lane.ralli2audio1018`'s own request in the
+same tier (FIFO, no action needed, same as this lane's first dispatch sitting behind two of that
+lane's requests earlier today). Device-time accounting for this requester today: 300s (the
+earlier `gta-3.route` survey) + this run's 240s + 90s setup = 630s = 10.5 min of the unconditional
+first-30-minutes pilot allowance: no `pilots/localdrive1018.ok` exists or is needed yet.
+
+This is committed and pushed BEFORE waiting on that result, per the lane rule (commit before
+every wait). The actual wait, and its outcome, are the next entry below -- or, if the queue has
+not reached it within one bounded foreground check, the `WAITING` file names this request id
+instead of re-describing the same merge-gate blocker, which is now only half the story.

@@ -8,7 +8,8 @@ Files: docs/testing/titles/drive.py, docs/testing/titles/pathclass.py,
 docs/testing/titles/pathclass_selftest.py, docs/testing/titles/drive-profiles/generic.toml,
 docs/testing/titles/drive-profiles/gta3.toml, docs/testing/titles/drive-profiles/gta3/,
 docs/testing/titles/pathknow/learned.py, docs/testing/titles/route.sh,
-docs/testing/titles/routes/gta3-drive.route, docs/lanes/localdrive1018/**
+docs/testing/titles/routes/gta3-drive.route, docs/testing/titles/routes/gta3-car-pause-probe.route,
+docs/testing/titles/routes/refs/gta3-car-pause-probe/, docs/lanes/localdrive1018/**
 Release note (none): offline test-harness/tooling under docs/testing/titles/, not emulator code; nothing
 a player sees.
 Prediction: none: analysis-only so far (no arm registered; the one device run this session made was a
