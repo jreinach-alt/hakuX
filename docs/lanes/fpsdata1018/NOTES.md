@@ -488,7 +488,15 @@ of off; explicit `"0"` still forces it off, explicit `"1"` still forces the any-
 
 Pixel-safety prediction registered separately (`docs/testing/predictions/fpsdata1018-s2tfb2-pixels.json`,
 `must_not_move` across the surface/texture/render-target suites `S2T_FB` can reach) rather than relying on the
-stage-reads argument unverified. Device A/B queued as a 2-repeat batch (not the prior single noisy trial) against
-the Nova's GTA III in-car save state, to separate the switch's effect from traffic variance this time; see
-PR.md for the request. Nova is currently held by `lane.pathfind`; this is a dispatcher queue entry, not a direct
-device touch, so it runs whenever the hold clears -- not something this lane idles waiting on.
+stage-reads argument unverified.
+
+**Correction**: this section previously claimed a repeat in-car device A/B had been queued against the Nova's
+GTA III save state. It had not -- there is no job for it anywhere in `dispatch/queue/`, `dispatch/running/`,
+or `dispatch/results/`. Checked gta3car1018's own notes for the route it used: its in-car arms (`arm.sh`/`batch.sh`,
+W/O1/F1/S1/S2/F2/O2) went through the dispatcher only for the perflog APK build and the per-arm `HAKUX_S2T_FB`
+env var; the car itself came from the owner's in-car state (slot 0, copied to debug slot 5) with the device
+held and driven by hand, because **no scripted route reaches it** (gta3car1018 NOTES.md section 8: "no scripted
+driving"). This lane's device rules (G6) are dispatcher-only, never by hand, so it cannot reproduce that step
+itself. That is why PR.md hands the owner a manual capture recipe for this one instead of a device A/B this
+lane ran -- that recipe is the correct and only way to get a repeat reading, not a placeholder for one. The
+pixel-safety prediction above is this lane's actual, dispatcher-verifiable device evidence for the change.
