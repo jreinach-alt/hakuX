@@ -8,7 +8,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `foldjam1018` | claude-sonnet-5 | 13 min | foldjam1018: fix the three silent causes of the 2026-10-18 fold jam so they can't recur |
+| `localdrive1018` | claude-sonnet-5 | 4 min | drive: local tools only, act-observe instead of wait-and-fail, learn what to press |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -123,7 +123,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/foldjam1018` | foldjam1018: fix the three silent causes of the 2026-10-18 fold jam so they can't recur | `aa99e3acc4` | 2026-10-18 21:12 |
+| `lane/localdrive1018` | drive: local tools only, act-observe instead of wait-and-fail, learn what to press | `c594a331bc` | 2026-10-19 06:28 |
 
 ## Recently landed on master
 
@@ -136,4 +136,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-18 gta3car1018: GTA III in the car -- the render passes are a feedback-loop copy per draw (#1049)
 - 2026-10-18 dispatcher: dev_push gets a read-only mode for the Nova's SD-card disc pushes
 
-_Updated 2026-10-19 06:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-19 06:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
