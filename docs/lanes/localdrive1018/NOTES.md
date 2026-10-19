@@ -578,3 +578,24 @@ This is committed and pushed BEFORE waiting on that result, per the lane rule (c
 every wait). The actual wait, and its outcome, are the next entry below -- or, if the queue has
 not reached it within one bounded foreground check, the `WAITING` file names this request id
 instead of re-describing the same merge-gate blocker, which is now only half the story.
+
+**One bounded foreground wait (8 min, 20 s polls of `dispatch/results/` and `dispatch/running/`,
+no chained sleeps after it) -- did not land.** Neither my request nor `lane.ralli2audio1018`'s
+own (queued one minute ahead of mine, same device, same tier) moved at all in that window:
+`dispatch/queue/` is byte-identical before and after, `dispatch/running/` stayed empty the whole
+time, and no new entry appeared under `dispatch/results/`. Checked why rather than waiting
+longer on a guess: `pgrep -af "dispatcher.sh worker"` shows exactly one worker process running on
+this host, `dispatcher.sh worker bdc158a5` (the Thor) -- **there is no worker process for the
+Nova (`ee317437`) at all right now**, despite the Nova itself being live on the bus (confirmed
+again: `dispatch/bin/devices.sh` now lists it) and having no hold file. A queued request with no
+worker servicing its device cannot run no matter how long it sits, and this matches the earlier
+transient "Nova missing from devices.sh" observation at 20:32 -- not a flake, the mid-run blip
+was probably this worker dying or never having been (re)started after the Nova came back off the
+owner's hold earlier this session.
+
+This is a dispatcher/hostops gap, not a `localdrive1018` one, and not something this lane fixes
+directly: the role rules this lane runs under say device access goes through `request.sh`/
+`ab_run.sh` only, never the device or its worker process directly, and restarting a dispatcher
+worker is infra the harness's own jam-duty role (lane.local's inbox instructions: "a device idle
+while work is queued ... -> find why and restart the runner") is positioned to do, with the
+authority and context this lane does not have. Named here instead of guessed around.
