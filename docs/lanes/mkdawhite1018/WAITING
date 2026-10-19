@@ -1,8 +1,10 @@
-run 1792390708-mkdawhite1018-4087588
-# Waiting on dispatch request 1792390708-mkdawhite1018-4087588 (queued, unclaimed as of
-# 2026-10-18): a Nova run with XEMU_FRAME_DUMP=8,images,gd,after170,cap256,rtt,rttmax16384
-# on the mkda-arcade route, to read back actual pixel values from the three offscreen
-# surfaces in Mortal Kombat: Deadly Alliance's floor blur chain (0x36b6000, 0x3603000,
-# 0x36a6000) at the point each is bound as a texture. Resolves which of three candidates
-# (NOTES.md attempt-3 section 9) is the cause of the white floor on Turnip: the floor-paint
-# pass itself, the blur shader/s2t read, or a GPU read-after-write hazard between passes.
+run 1792394397-mkdawhite1018-1306972
+# Waiting on dispatch request 1792394397-mkdawhite1018-1306972 (queued, unclaimed as of
+# 2026-10-19): a Nova run with XEMU_FRAME_DUMP=8,images,gd,rtt,rttmax16384,after65,cap256
+# on the mkda-arcade route, armed ~15-20s before the route's round-start mark instead of
+# 170s into steady-state play. The prior rtt run (1792390708) found the floor-glow source
+# surface (256x256, s2t direct-bind) already white at the very first draw that samples it,
+# but never written within its own (steady-state) capture window, so it could not tell a
+# correct bake read every frame since from a bake that never produced real colour. This run's
+# earlier window should span the arena-load bake, if there is one; NOTES.md section 11 has the
+# reasoning and what each outcome means for Step 3's lever.

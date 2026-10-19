@@ -30,18 +30,35 @@ input, or a GPU read-after-write hazard reusing one image as render target then 
 None of those three can be told apart from the `gd` dump alone, since it carries register/combiner state
 but no pixel data for these offscreen targets -- `NOTES.md` section 9 has the full draw-chain reading.
 
-A follow-up run, `1792390708-mkdawhite1018-4087588` (`rtt,rttmax16384`, same route, queued and unclaimed),
-should pull back actual pixel values for the three blur-chain targets and settle which of the three it is.
-`NOTES.md` section 10 has the request and one tracked discrepancy (queued at lane HEAD rather than
-`da6e8949dc`; confirmed no `hw/xbox/nv2a` diff between those two refs, so the result is unaffected).
+**The rtt readback landed** (`1792390708-mkdawhite1018-4087588`) and pulled real pixels for the chain.
+Two of the three candidates are now ruled out: it is not a GPU read-after-write hazard (the first draw
+in the chain is already ~91% solid white RGB on an address nothing else wrote this frame, so there is
+no stale content to hazard against), and the chain's shader is not a blur -- its generated GLSL,
+pulled straight from the dump, is a single `v0.rgb * t0.rgb` modulated sample, a copy/resample
+(correcting this lane's own earlier "3-tap ping-pong blur" label). That leaves one open candidate: the
+256x256 surface the chain's first draw samples (`s2t`, direct Vulkan-image bind) is never written
+within this run's capture window at all -- the window was armed 170s into a steady soak, deep past the
+~84s arena load the route's own notes record, so if this surface is baked once per arena load (a
+legitimate pattern: a static glow/AO map, resampled every frame rather than redrawn) this dump cannot
+tell a correct bake read every frame since from a bake that never produced real colour in the first
+place. `NOTES.md` section 11 has the full reading, the pixel-count table, and the shader source.
+
+A second follow-up, `1792394397-mkdawhite1018-1306972` (queued, unclaimed), re-arms the same dump
+15-20s before round-start instead of 170s in, to try to catch the bake itself. Its outcome decides
+Step 3's lever: the bake's own draw, or (if the bake write is itself already white, or still doesn't
+appear) the surface creation/pool-reuse path in `hw/xbox/nv2a/pgraph/vk/surface.c` (a freshly-created
+Vulkan image gets no explicit clear, and a pool-recycled one carries over a different surface's last
+content).
 
 | Request | Failure | Fix |
 |---|---|---|
 | 1792337550 (08:33) | `adb.exe` was handed a `/mnt/d/...` path and could not open it | `wslpath -w` in `dev_push`, folded 127cf0f2c1 (lane.dispatchpush1018) |
 | 1792345978 (11:05) | the disc transferred and its sha matched; then `dev_push` required mode 660 on it, and the SD card's mount pins every file at 770 (`dispatcher.log` 29392, and the doctor's retry at 29395) | `dev_push`'s read-only mode, folded f473f6b4c4 (lane.devpushro1018) |
 | 1792377843 (re-queued, ~19:4x PDT) | none -- ran to completion | Step 1 result above |
+| 1792390708 (rtt readback) | none -- ran to completion | Step 2 result above (section 11) |
 
-`[lane.mkdawhite1018] waiting:` on `1792390708-mkdawhite1018-4087588` -- the rtt pixel readback that
-settles which of the three Step 2 candidates is the cause.
+`[lane.mkdawhite1018] waiting:` on `1792394397-mkdawhite1018-1306972` -- whether the floor-glow
+source surface's bake, if there is one, produces real colour or is already white, which pins Step 3's
+lever.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

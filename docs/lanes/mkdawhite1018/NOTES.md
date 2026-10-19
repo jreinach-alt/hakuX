@@ -440,3 +440,139 @@ Step 3 (fix or lever) and Step 4 (FINDINGS.md, tracker row) wait on this run's r
 `[lane.mkdawhite1018] waiting:` on `1792390708-mkdawhite1018-4087588` -- whether the
 offscreen blur-chain targets hold real floor colour or white, which of the three
 candidates in §9 is the cause.
+
+## Resuming attempt 3 (continuation): why the prior turn stopped where it did
+
+The prior turn of this attempt ended correctly, not short: `1792390708-mkdawhite1018-4087588`
+was queued and still unclaimed, this is a headless session that cannot wait across turns on an
+external dispatch result (a `run_in_background` command or a Monitor dies with the session; the
+dispatcher does not), and the lane contract's own pattern for exactly this case is to write
+`WAITING`, say so in `NOTES.md`/`PR.md`, and end the turn -- which that turn did. This turn
+resumes because the run has since finished (`DONE` in its result dir); §11 reads it.
+
+### 11. The rtt pixel readback: the white is not a blur artefact, and it is already present at the first hop
+
+`1792390708-mkdawhite1018-4087588` finished (`DONE`). `logcat.txt:110`: `Driver: PurpleVK public
+driver`; `logcat.txt:146`: `[gpl569] ... mode=3` -- Turnip, confirmed again. The pulled dump is
+`pulled/framedump_1792393451.jsonl` plus one `.bin` per `rb` (readback) entry it logged.
+
+**Correction to §9's "3-tap ping-pong blur" label.** The dump's own `shader` record for
+`e2c935adecd1aeb2` (the chain's shader) gives the fragment GLSL verbatim. Its stage 0 is not a
+convolution:
+
+```
+vec4 t0 = textureProj(texSamp0, vec3((pT0.xy) + texelTieBias0 * pT0.w, pT0.w));
+...
+mux_sum.rgb = clamp(vec3(((max(v0.rgb, 0.0) * max(t0.rgb, 0.0)) + ...)), -1.0, 1.0);
+r0.rgb = mux_sum.rgb;
+...
+fragColor.rgb = max(r0.rgb, 0.0) + mix(...) /* all-zero operands here */;
+```
+
+That is `output = v0.rgb * t0.rgb`, a single bilinear sample modulated by the draw's vertex
+colour -- a copy/resample, not a blur. (The combiner-stage reading in §9 for the *composite*
+draw, `v0.rgb * t0.rgb` then a passthrough final combiner, was already correct and this
+confirms it against the actual generated shader rather than the decoded register state alone.)
+"3-tap ping-pong" was this attempt's own mislabel from the draw-address pattern (three draws,
+addresses alternating); correcting it here so the next reader doesn't inherit it.
+
+**The chain, this run's addresses** (same structure as §9, renumbered because addresses are
+per-run):
+
+- Chain A: draw 11 reads a 256x256 surface at `0x35bf000` (`s2t=1`, `bv:"d"`, never written
+  within this dump's window -- see below), writes 128x128 `0x350c000`. Draw 12 reads
+  `0x350c000`, writes `0x35af000`. Draw 13 reads `0x35af000`, writes back to `0x350c000`
+  (chain A's final).
+- Chain B: draw 18 reads the same `0x35bf000` source, writes 128x128 `0x3474000`. Draw 19 reads
+  `0x3474000`, writes `0x35af000` (the same scratch address chain A used). Draw 20 reads
+  `0x35af000`, writes back to `0x3474000` (chain B's final).
+- Composite: draw 75 (640x480, into the backbuffer `0x3c9c000`) samples chain B's final
+  (`0x3474000`). Draw 76 samples chain A's final (`0x350c000`).
+
+`rttmax16384` (128x128 = 16384 texels, matching these targets) made the dump pull real pixels,
+one `.bin` per `rb` entry, decoded as BGRA8 (`vkfmt:44`):
+
+| draw | role | file | solid-white RGB (255,255,255) |
+|---|---:|---|---:|
+| 11 | own OUTPUT, chain A seed | `f000_n0011_color0.bin` | 14981/16384 = 91.4% |
+| 12 | IN (=11's OUT) | `f000_n0012_srf0.bin` | 91.4% (identical set) |
+| 12 | own OUTPUT | `f000_n0012_color0.bin` | 90.6% |
+| 13 | IN (=12's OUT) | `f000_n0013_srf0.bin` | 90.6% |
+| 13 | own OUTPUT, chain A final | `f000_n0013_color0.bin` | 89.8% |
+| 18 | own OUTPUT, chain B seed | `f000_n0018_color0.bin` | 92.4% |
+| 20 | own OUTPUT, chain B final | `f000_n0020_color0.bin` | 90.7% |
+| 75 | composite backbuffer POST | `f000_n0075_post0.bin` | backbuffer is near-white too (dominant colour `(255,255,254)`) |
+
+(Full table in `/tmp/mkda_decode.py`'s output, not committed -- it's a 20-line summarizer over
+the pulled `.bin` files, reproducible from the dump; the numbers above are its output.) The
+white-with-varying-alpha pixels (`(255,255,255,0)` through `(255,255,255,255)` mixed in) and the
+dark pixels are `(0,0,0,alpha)` -- i.e. every pixel in this buffer is either white or black,
+only alpha varies continuously. That is consistent with a single-channel mask/glow buffer stored
+as alpha with RGB pinned, which is a legitimate rendering technique -- **if** RGB is meant to be
+pinned white. The composite's combiner (`v0.rgb * t0.rgb`) only reproduces that pinned white
+when the vertex colour `v0` is also ~white; it does not on its own explain why the engine would
+want the arena floor literally white, so this is evidence of an upstream problem, not proof of
+where it is.
+
+**This settles which of §9's three candidates is live, and rules out the other two:**
+- Not a GPU read-after-write hazard across passes within this frame: draw 11's *own output*,
+  computed from a source this frame never previously drew to, is already 91.4% white. There is
+  no "stale previous content" available to hazard against -- the white is new, this frame,
+  for this address, on the first draw that touches it.
+- Not the blur shader producing white from correct input (there is no blur shader; see the
+  correction above). A straight `v0.rgb * t0.rgb` modulate cannot manufacture white from
+  non-white input unless `v0` is itself white -- which is plausible for a full-surface quad
+  draw (dump does not decode `vtxD0`'s resolved value here, only the shader source; the next
+  dump should request `diag` or a `gdread.py`-style replay to pull it) -- or `t0.rgb` is
+  already ~white at the sample.
+- That leaves the input: `0x35bf000`, 256x256, `s2t=1`, `bv:"d"` (direct Vulkan-image bind of a
+  SurfaceBinding `pgraph_vk_surface_get` found at that address -- `hw/xbox/nv2a/pgraph/vk/texture.c:3682`).
+  **No draw in this entire dump (any frame, 0-7) writes `color.addr == "0x035bf000"`** (checked
+  programmatically against all `t:"draw"` records). The surface exists -- `pgraph_vk_surface_get`
+  only returns a binding pgraph created at some point -- but nothing in the ~150 ms this dump
+  covers (`after170`, armed 170 s into the soak) renders into it. It is being resampled,
+  unchanged, every frame, from whatever it last held.
+
+**Why "after170" could not have caught the write, and what that implies.** `after170` arms the
+dump 170 real seconds into the run (`renderer.c:2247-2250`, `after_s` bound 0-3600, parsed from
+the token's trailing digits). The route's own comments (`mkda-arcade.route`) record the fight
+starting ~84 s after launch and staying in one arena after that; the dump covers a window deep
+into steady-state gameplay, nowhere near arena load. If this floor-glow surface is baked once
+per arena/round load (a plausible, legitimate pattern -- precompute a static glow/AO map for a
+static arena, resample it every frame via `s2t` direct-bind rather than re-render it) then no
+frame in a 170s-in window would ever show a write to it, bug or not. **This dump cannot
+distinguish "the bake happened correctly before 170s and is being read correctly since" from
+"the bake never produced real floor colour (an empty/undefined image sampled as white) and
+nothing since has corrected it."** Both produce exactly the data above.
+
+**Next run queued:** `1792394397-mkdawhite1018-1306972`, same route and title, `--ref
+da6e8949dc` (same ref Step 1 used -- no `hw/xbox/nv2a` diff from this lane's current HEAD,
+reconfirmed), env `XEMU_FRAME_DUMP=8,images,gd,rtt,rttmax16384,after65,cap256`, `--seconds 150`.
+`after65` arms the dump ~15-20s before the route's own round-start mark (~84s), so the capture
+window should span the stage-card-to-ROUND-1 transition where an arena/round-load bake, if that
+is what this is, would happen; `seconds 150` leaves ~65s of post-round-start gameplay in the
+window too, enough to also re-capture the composite for comparison against this run's. If a draw
+writes `0x35bf000`-equivalent (addresses will differ run to run; match by the `[256,256,...]`
+`key` and the `s2t`-sampling draws immediately after it) and its OWN rtt-read output is not
+white, the bake is the point of failure and this pins it to whatever renders that bake (a new
+Already-tried entry: "3-tap ping-pong blur hypothesis", commit this attempt, verdict REFUTED --
+not a blur, confirmed from generated GLSL; the input surface's bake is the live hypothesis). If
+the bake write, when captured, is itself already white or never appears at all in a window that
+now covers it, that points at the bake's OWN input (deeper in the chain) or at the surface
+binding/creation path (`create_surface_image`, `hw/xbox/nv2a/pgraph/vk/surface.c:4136`, which
+leaves a freshly-created image's content host/driver-defined -- no explicit clear -- and a
+recycled pool image, `surface_image_pool_acquire`, carries over whatever a *different*,
+unrelated surface last held). That second file is outside this lane's `Files:` until Step 0 is
+pushed (it already is) and only for a fix or diagnostics-only instrument, per the brief's
+constraints, so reading it further waits on this run's answer rather than being explored blind.
+
+This is a continuation of the same investigation, not a repeat of a failed cause (the stop rule
+in the brief is about a void/failure recurring for the same reason; `1792390708` succeeded and
+answered part of the question). One more dump, same tools, same route, is the right next step
+rather than reading the surface-creation code blind without a frame to anchor it to.
+
+`[lane.mkdawhite1018] waiting:` on `1792394397-mkdawhite1018-1306972` -- whether the
+floor-glow source surface is baked (and renders real colour) somewhere in the arena-load window,
+or whether the white already shows up at its first write (or never gets a write even in this
+wider window), which decides whether Step 3's lever is the bake's own draw or the surface
+creation/pool-reuse path in `surface.c`.
