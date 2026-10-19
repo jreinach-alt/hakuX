@@ -2781,7 +2781,14 @@ note = "STARTED lane.local 2026-10-13 23:32 PDT (lane.local by hand, harness; no
 issues = ["433"]
 standing = false
 files = ["docs/lanes/titledb1014/**"]
-note = "STARTED lane.local 2026-10-14 ~08:3x PDT (Sonnet, harness; no device): owner 10-14, title status in one table keyed by title_id; the status page, hourly report, Wall sync check, prequeue, README and COMPATIBILITY read it (Playable 72). title_registry.py and dispatch_gate_selftest.py released by [lane.playsecs1013]; status_html.py, selftests 66 and 68 and synth.py released by [lane.statusfix1013]; selftests 60/64/65/67 are inside [free]. Host-only readers (hourly_report.sh, prequeue.py, status_md/page/svg) are not in the repo: the lane puts edited copies under docs/lanes/titledb1014/host-tools/. Brief: briefs/titledb1014.md."
+released = ["docs/lanes/titledb1014/**"]
+note = "RETIRED (hostops, jam duty, 2026-10-18 ~19:1x PDT): lane/titledb1014 confirmed an ancestor of origin/master (folded 2026-10-14, PR.md State: ready, Playable 72), no running unit (systemctl inactive). Files RELEASED to [free]: docs/lanes/titledb1014/** -- EXCEPT docs/lanes/titledb1014/fixture/pages_check_falsifier.py, carved out exact-string to [lane.pagesfix1018] (the check --pages falsifier fixture this dead lane left behind, stale against the numberless-README rule added 2026-10-17, blocking every fold touching harness files since at least 07:26 PDT today -- see that row). || Was: STARTED lane.local 2026-10-14 ~08:3x PDT (Sonnet, harness; no device): owner 10-14, title status in one table keyed by title_id; the status page, hourly report, Wall sync check, prequeue, README and COMPATIBILITY read it (Playable 72). title_registry.py and dispatch_gate_selftest.py released by [lane.playsecs1013]; status_html.py, selftests 66 and 68 and synth.py released by [lane.statusfix1013]; selftests 60/64/65/67 are inside [free]. Host-only readers (hourly_report.sh, prequeue.py, status_md/page/svg) are not in the repo: the lane puts edited copies under docs/lanes/titledb1014/host-tools/. Brief: briefs/titledb1014.md."
+
+[lane.pagesfix1018]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/pagesfix1018/**", "docs/lanes/titledb1014/fixture/pages_check_falsifier.py"]
+note = "STARTED (hostops, jam duty, 2026-10-18 ~19:1x PDT): the only file taken from retiring [lane.titledb1014]'s release above, carved out exact-string. lane.local unreachable all day (checked repeatedly via ListAgents); not previously relayed or escalated (checked pm/lanelocal-log.md and host-tools/escalations.md for 'pages_check_falsifier'/'numberless': no hits). Fixes the stale `write_pages()` README line in the check --pages falsifier fixture (numbered, written 2026-10-14 before the numberless-README rule existed) so the fixture's own 'agreeing pages PASS' assertion is not permanently false -- confirmed blocking folds since >= 07:26 PDT today across 3 lanes (pathfind, fpsdiag1018 x2, localdrive1018). Brief: briefs/pagesfix1018.md."
 
 [lane.locations1014]
 issues = ["433"]
