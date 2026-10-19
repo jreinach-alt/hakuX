@@ -671,3 +671,35 @@ forge PR #1082 (http://127.0.0.1:3330/jreinach-alt/hakuX/pulls/1082) once this i
 within tier), or (b) a future session checks `dispatch/results/` for `729348` directly. No code
 change is pending on this; the next session's first move is reading that result and continuing
 Part D's car-entry/pause-menu crop work from whatever frames it contains.
+
+## Resume 2026-10-19 (attempt labelled 3 in this dispatch's header): why attempt 5 did not
+finish, and the hostops addendum's one-line fix
+
+Attempt 5 (commit `db880005f0`) did not fail -- the Nova probe request got withdrawn by
+lane.local into `dispatch/queue/withdrawn/owner1018/` under an owner-play hold (`dispatch/
+hold/nova`, owner checking RalliSport by hand), which is genuinely owner-gated, not a loop or a
+flake, and the WAITING file already correctly says so as an `owner` line. That device wait is
+still open and this session does not touch it.
+
+What changed is that the hostops/jam-duty role (not this lane) separately root-caused a FOLD
+failure on this PR (`docs/lanes/localdrive1018/PR.md`'s addendum section, added directly to the
+brief at 01:13 and 06:13 PDT): `drive.py` line 154-156 does `sys.path.insert(0, .../pathknow);
+import learned`, but `docs/testing/dispatcher.sh`'s `SCRIPT_DEPS` string never listed
+`titles/pathknow/learned.py`, so `snapshot_scripts` never ships that module into a dispatched
+worker's snapshot, and the fold selftest's own `97-dispatch-snapshot-drive.sh` check (which
+exists precisely to catch this class of omission) correctly failed with `ModuleNotFoundError:
+No module named 'learned'` on every retry against two different master shas. hostops widened
+this lane's territory row onto `docs/testing/dispatcher.sh` for exactly this one line (confirmed
+directly in `board-wt`'s `territory.toml`, commit `af684bff11`: the row's `files` list now
+includes `"docs/testing/dispatcher.sh"`, and its note names the SCRIPT_DEPS line explicitly) and
+resumed this lane to apply it -- this is the actionable item for this session, separate from the
+still-open device wait above.
+
+Applied: added `titles/pathknow/learned.py` to `SCRIPT_DEPS` in `docs/testing/dispatcher.sh`,
+same pattern as the existing `titles/classify.py titles/waitfor_match.py titles/pathclass.py`
+entries, no other line touched (confirmed by diff: one token added). Re-ran
+`pathclass_selftest.py`/`classify_selftest.py` (0 failures, unchanged) and
+`docs/testing/jobs/selftest.d/97-dispatch-snapshot-drive.sh` directly to confirm the specific
+case that was failing now passes. Updated `PR.md`'s `Files:` line to add
+`docs/testing/dispatcher.sh`. This stays scoped to the one addition the widened row's note
+names; `SNAPSHOT_GLOBS` and the rest of `dispatcher.sh` are untouched.
