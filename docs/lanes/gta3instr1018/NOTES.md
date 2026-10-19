@@ -259,3 +259,63 @@ in-car A/B run. Either resolves the in-car `[dipwin]` measurement this lane was 
 resume whether `HAKUX_S2T_FB` closes the dip or whether this lane's own instrument still has unread numbers to
 contribute (e.g. splitting `rotfen` further, or the Fable gameplay window once a route is recorded). Until then,
 this lane should stay stopped rather than duplicate a live writer on `draw.c`/`surface.c`/`texture.c`.
+
+## 7. Attempt 3 (10-18 ~23:09 PDT resume) -- the wait condition was met; step 2(c)/(d) done from already-captured data
+
+Attempt 2 did not finish the brief: it only confirmed the wait condition (lane.gta3car1018 live, not folded yet)
+and stopped again, per its own stop rule (no new information, so no new work). This attempt's hostops addendum
+reports both conditions now true: `git merge-base --is-ancestor origin/lane/gta3car1018 origin/master` confirms
+the fold, and gta3car1018's NOTES.md 6.1-6.3 report the golden checks judged and a full in-car A/B run, scored.
+This attempt: merged `origin/master` (72 commits, clean, no conflicts -- `draw.c`/`dipwin.h`/`surface.c`/
+`99-dipwin-counters.sh` diff empty against the new master, confirmed with `git diff origin/master -- <paths>`,
+since gta3car1018 folded this lane's exact commit as an ancestor rather than reimplementing it), then did the
+work the addendum named: step 2(c) (time the fence wait) and 2(d) (render-pass-break-reason counts) on a live
+in-car run.
+
+**No new device run was taken.** gta3car1018's own in-car runs (`captures/gta3car1018/runs/c2-{O1,F1,S1,F2}`)
+already used this lane's exact `[dipwin]` instrument, in the car, under the owner's save state, with
+`HAKUX_S2T_FB` on and off -- precisely the measurement the brief's step 4 asked this lane to make, and it is
+sitting on disk, un-reread by `dipwin_read.py`. Re-reading it is this lane's unblock option 1 from section 5.2
+("a device-holding lane runs the perflog APK ... and hands over the logcat.txt"), which is exactly what
+happened. Spending a fresh device hold to re-measure the same build and protocol would not decide anything the
+existing capture doesn't, and section 5.4's "do not repeat" list already warns against re-running GTA III
+`[dipwin]` windows without a reason. Re-reading it did turn up something new (below), so it was not a wasted
+step; it was the right-ranked one (cheap, and it decided something, per this lane's own Ranking-options rule).
+
+**What the re-read found** (FINDINGS.md section 6, new):
+- `fen`'s children, read for the first time against a live in-car run: `rotfen` (the real `vkWaitForFences`)
+  is 63-66% of `fen` and scales down with `HAKUX_S2T_FB` (7.56 -> 3.72 ms/flip as `rp`/flip drops a quarter);
+  `rotw` (the software wait before it) costs nothing in either arm, cross-checked against the independent,
+  always-compiled `[rwait526]` line's own `rotate calls=... waits=0` -- so the remaining fence cost is a
+  genuine GPU-execution wait, not a scheduling stall. `stale` holds flat (~3.5-4.0 ms/flip) regardless of the
+  switch, confirming lever 3 (vtxstale1018, page-granular copy) is a real, separate cost from the feedback-loop
+  bug it was previously bracketed against (section 4 lever 2's old text, now resolved).
+- **New finding, not asked for by name but larger than anything else measured**: summing every top-level
+  `[dipwin]` timer (not double-counting nested children) against the measured frame interval leaves ~62-70% of
+  the frame (24-27 ms/flip) untimed, and that untimed span does not shrink when `HAKUX_S2T_FB` cuts the
+  render-pass count and `fen` with it -- it is now the single largest component of the in-car frame, bigger
+  than `fen` itself. The independent `[rwait526]` line's per-thread CPU-duty numbers corroborate it
+  qualitatively (menu ~5% CPU duty -> in-car ~55-64%, flat across the switch). FINDINGS.md 6.4 names where the
+  next timer goes (`draw.c`, around the render-pass-begin-to-end draw-call issue path) and why: the existing
+  `DW_TIMERS` cover vertex sync/copy, pipeline/bind/descriptor, and finish/fence, but not that path.
+
+**No code was written this attempt.** The brief's step 5 branches on whether the dominant cause is small and
+certain: it is not -- the untimed majority cannot be fixed blind, it needs its own timer before a lever can be
+named inside it, and that timer belongs in `draw.c`, which this lane does not currently need to touch (nothing
+here edits it) and so was not re-claimed on the board. A resume that adds a tenth `DW_TIMERS` entry should
+re-claim `draw.c` first, the same way section 2's table describes.
+
+**Board:** no territory claim made or needed this attempt -- no file under `hw/xbox/nv2a/pgraph/**` was edited.
+The hostops addendum's instruction to re-claim `draw.c`/`dipwin.h`/`surface.c`/`99-dipwin-counters.sh` before
+editing them applies to the next lane that adds the untimed-majority timer, not to this attempt, which only
+read already-captured logcats and this lane's own docs.
+
+**Do not repeat:** do not re-run `c2-O1`/`c2-S1` (or `c1-A1`/`c2-F1`/`c2-F2`) for a `[dipwin]` reading; they are
+already read in full (FINDINGS.md 6). Do not re-derive the fence split from the older `hakuX-phase` line (section
+3's table) now that `[dipwin]`'s own in-car numbers exist (section 6).
+
+[lane.gta3instr1018] This attempt completed the brief's step 2(c)/(d) and named the dominant remaining cost
+(the untimed majority, FINDINGS.md 6.3-6.4) without new device time, by re-reading lane.gta3car1018's already-
+captured in-car `[dipwin]` logs. No small, certain fix fell out of it; the lever for the next lane is a new
+timer in `draw.c` around the render-pass draw-call-issue path (claim `draw.c` on the board first). PR marked
+ready.
