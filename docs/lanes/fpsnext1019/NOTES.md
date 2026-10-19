@@ -12,6 +12,18 @@ on average in the SAME scene, or a measured per-pass GPU ms drop that accounts f
   transcript at all (empty log files), so it ended before its first turn completed; nothing was tried, so nothing
   here is "already tried" by this lane.
 - **Attempt 1 (2026-10-19, this session)**: Step 0 (below), PR claim, then Step 1.
+- **Attempt 2 (2026-10-19, resumed per addendum)**: attempt 1 ended on the 300-turn cap (`stop_reason max_turns`,
+  08:35 PDT) after Step 0, the budget-pass table and the big-lever table, but before starting either queued batch
+  (plan items 1-2 below were still "upcoming"). Nothing to redo on the diagnosis side. Start-of-attempt checks:
+  `0fd255d991` (fpsdata1018) is still not an ancestor of `origin/master` (foldjam1018's fold landed in the
+  meantime, `3597b72b35`/`6439ec7436`), so merged `origin/master` into this branch (`789b390b95`) rather than
+  waiting on the fpsdata1018 fold. `hold.sh who nova` -> `free: nova` (no stray screening/pathfind hold in front
+  of this lane). The devwatch.py auto-lift at 08:25:34 PDT (now fixed upstream) ran a `dispatch.restore` of
+  master APK `9f29b4aa5dd7` on the Nova 08:26-08:27 PDT while no hold of mine existed yet (attempt 1 never got to
+  taking one) -- nothing of this lane's was lost, but the device now has that APK installed, not necessarily the
+  merged build this attempt needs; rebuild and reinstall before any capture rather than assuming device state.
+  Continuing from the plan: item 1 (Blinx 2 H4 census) first, since it needs no device-mode A/B and the
+  `learned.py` route fix is already in place; item 2 (GTA III SYSMEM hold batch) next.
 
 ## Step 0: Already-tried (G1), carried from fpsdata1018
 
@@ -103,3 +115,162 @@ hold, then b on what they leave.
 2. GTA III in-car hold batch (gta3car1018's protocol: owner state slot 5, pause-menu load by screenshot, RT held 60 s):
    arms `S` (shipped) and `Y` (`TU_DEBUG=sysmem`), both with `HAKUX_FRAMETRACE=1`, palindrome S Y Y S.
 3. Read, then the next lever from the table.
+
+## Attempt 2, item 1: Blinx 2 census -- blocked on a pathfind gap, not the import bug
+
+Two fresh dispatcher runs this attempt (`1-1792424457-lane.fpsnext1019-345816`, 90s; `1-1792424727-lane.fpsnext1019-447829`,
+450s; both `route=gen-blinx2`, `--perflog`, PurpleVK confirmed in logcat) both finished with `time_to_play_s` empty --
+neither ever reached gameplay. This is **not** the `ModuleNotFoundError: No module named 'learned'` bug the addendum
+described as already fixed by hand: both runs got well past that point (the longer one logged 2140 `xemu-xfr` lines),
+so the `SCRIPT_DEPS`/`snapshot_scripts()` fix for `titles/pathknow/learned.py` is confirmed durable and this is a
+different, new void.
+
+Root cause, from reading `dispatch/bin/titles/drive.py` directly (outside this repo, the live serving tree):
+`EXPLORE_LADDER = ("A", "START", "B", "X", "Y", "DOWN", "LX:min", "R1", "L1")`, but
+`rung = [b for b in EXPLORE_LADDER if self.has_pause_crop or "START" not in b]` drops `START` from the ladder on any
+title with no built profile (no pause-menu crop) -- which is every button the generic `unknown`-screen explorer will
+press on Blinx 2 (`4D530065`; `targets.toml` route `gen-blinx2`, "not yet device-proven"). `pathknow/hints/series-blinx.md`
+records the only known working sequence as "plain alternating START and A" through Story mode to the locker room --
+exactly the button the generic explorer cannot press without a profile. `pathknow/hints/learned-series-blinx.md` has a
+learned entry for Blinx 1 (`4D530013`) but none for Blinx 2.
+
+This is a real, named mechanism (not "needs more data" -- G5): Blinx 2 needs either a built profile (pause crop) so
+`has_pause_crop` lets START back into the ladder, or a `learned.py` entry recorded by hand once a human/owner session
+presses through the locker room once. Both are a pathfind/profile-building effort, not a quick dispatcher fix, and
+GTA III is directly actionable without one and ranked higher in the brief's own list. **Decision: defer** -- parked,
+not pursued this attempt. Device time spent on this: ~540s (~9 min) of the Nova, both runs under the 30 min pilot
+cap, `--issue 433` tier `1-`.
+
+## Attempt 2, item 2: GTA III SYSMEM/GMEM hold batch -- already run by attempt 1, recovered and analyzed (not re-dispatched)
+
+The 08:36 PDT resume addendum said this batch "had not yet started." That claim was stale: `/home/justin/hakux-work/captures/fpsnext1019/`
+(outside the repo, attempt 1's own scratch area) holds three full batches run 07:58-08:35 PDT, all through
+`request.sh`/the dispatcher's `arm.sh`, GTA III in-car save state (slot 5), pause-menu load, RT held ~60s, scored by
+`score2.py` into park/hold/drive windows, every arm's logcat confirms `GPU: PurpleVK-public`. Re-running this would
+have wasted Nova time and broken G1 ("never re-run a row that already exists") once documented, so this attempt reads
+and credits the existing captures instead of re-dispatching.
+
+**b1** (7 arms, clean): `W,S1,S2,S3` = shipped (`HAKUX_FRAMETRACE=1` only, no render-mode override -- `W`/`S1-S4` are
+literal repeats of the same config, giving a same-arm noise floor); `Y1,Y2` = `TU_DEBUG=sysmem`; `M1,M2` = `TU_DEBUG=gmem`.
+**b2** (4 arms): `F1,F2` = `HAKUX_S2T_FB=1` (forces the older texture-scan mode instead of shipped's default mode 2);
+`S3,S4` = shipped repeats. `F2` has **no windows at all** -- it was the arm running when the devwatch bug auto-lifted
+the Nova hold at 08:25:34 and was killed by the dispatcher's 08:27:13 `dispatch.restore` install of master APK
+`9f29b4aa5dd7` (confirmed by `batch3.sh`'s own inline comment and by `F2`'s absent score). **b3** (3 arms queued:
+`D1,X1,D2`) is *not* "void from the wrong APK" as I first read it -- `batch.log` shows the script detected the stray
+install and correctly reinstalled this lane's `05c6771a16-perflog.apk` (`e44ad7cedcd7`) before running; `D1`'s
+`arm.log` confirms `GPU: PurpleVK`, a clean savestate load and `RT_DOWN`, but has no `RT_RELEASED` and an empty
+`screenrecord.txt` -- it was killed mid-hold when attempt 1 hit the 300-turn cap at 08:35. `X1` and `D2` never started
+(no run directories exist). **b3 contributes no data, for a different reason than first suspected** (truncated by
+the turn cap, not a bad binary).
+
+score2.txt hold/drive fps, all clean arms (b1 + b2's S3; b2's S4 and both F arms handled separately below):
+
+| arm | env | hold fps (n, span) | drive fps (n, span) |
+|---|---|---|---|
+| W | shipped | 23.5 (23, 58.8s) | 20.5 (10, 29.2s) |
+| S1 | shipped | 26.6 (25, 56.5s) | 22.8 (10, 26.3s) |
+| S2 | shipped | 25.0 (24, 57.6s) | 20.7 (9, 26.1s) |
+| S3 | shipped | 25.4 (25, 59.1s) | 21.2 (10, 28.2s) |
+| Y1 | sysmem | 17.3 (16, 55.5s) | 21.9 (9, 24.6s) |
+| Y2 | sysmem | 19.7 (19, 57.8s) | 19.6 (9, 27.5s) |
+| M1 | gmem | 20.1 (19, 56.7s) | 21.2 (10, 28.3s) |
+| M2 | gmem | 26.2 (25, 57.3s) | 22.0 (10, 27.2s) |
+| F1 | S2T_FB=1 | 16.4 (16, 58.5s) | 18.1 (8, 26.6s) |
+
+Group means: shipped (W,S1,S2,S3) hold 25.1 fps (spread 23.5-26.6, 3.1 fps / ~12%), drive 21.3 fps (spread 20.5-22.8,
+2.3 fps). sysmem (Y1,Y2) hold 18.5 fps (**below the shipped spread entirely**), drive 20.75 fps (inside the shipped
+spread). gmem (M1,M2) hold 23.15 fps (spread 20.1-26.2, wider than shipped's own noise floor), drive 21.6 fps (inside
+the shipped spread). F1 (S2T_FB=1) hold 16.4 / drive 18.1, both well below shipped -- consistent with, not new beyond,
+row 22/24's already-landed finding that mode 2 beats mode 1 for GTA III; not treated as new evidence here.
+
+`S4` (hold 22.5 fps, n=**11**, 29.4s) is the compromised arm, not a second clean shipped reading: every other clean
+arm logged **62** `[dipwin]` lines total (park+hold+drive); `S4` logged **45**. `S4`'s own `RT_DOWN`/`RT_RELEASED`
+device-clock span is a nominal 60.5s, same as the others, so RT itself was never dropped -- but 08:25:34 (the
+devwatch hold-lift) falls *inside* that span (`RT_DOWN` device 08:25:01.7, lift 08:25:34, `RT_RELEASED` device
+08:26:02.2), and the missing ~17 `[dipwin]` lines (a ~27% shortfall, concentrated in the "hold" bucket: 11 logged vs
+~22-25 expected) line up with a logcat/capture dropout coincident with that event, not with slow or dropped frames
+(frametrace CSV and screenrecord both pulled normally). **Verdict: `S4` excluded from the shipped group**, its
+numbers are a partial, discontinuous sample and not comparable to the other three.
+
+FRAMETRACE per-vblank-bucket analysis (`ftbucket.py`, same tool attempt 1 built in `captures/fpsnext1019/scripts/`),
+hold window, one representative arm per group:
+
+| arm | all-bucket P (ms) | guest work | guest idle | RP (passes) | GPU busy | GPU clock |
+|---|---|---|---|---|---|---|
+| S1 (shipped) | 38.2 | 17.4 | 18.2 | 31 | 24.5 | 432 MHz |
+| Y1 (sysmem) | 55.8 | 28.1 | 25.6 | 47 | 33.2 | 488 MHz |
+| M1 (gmem) | 49.0 | 23.9 | 21.6 | 52 | 33.5 | 650 MHz |
+
+guest work + guest idle accounts for essentially all of each arm's own frame period at every vblank bucket (checked
+per-bucket, not just the all-row above) -- this resolves the Step 1 budget table's "11-16 ms/flip gap outside every
+PFIFO phase timer" (lever d): it is guest-side (vCPU) idle time that scales with render-pass count and GPU busy time,
+not a separate, independently removable wait. Lever (d) is folded into lever (b) rather than tracked on its own.
+
+**Lever (a): CONTESTED, not a settled refutation -- correcting what I wrote above.** The hold-window verdict above
+used `ftbucket.py`'s FRAMETRACE-csv `rp`/`gpu` fields over the *whole* ~60s hold span. Re-running the same question
+with `dwseries.py` directly against the `[dipwin]` logcat lines (an uncapped, independent counter already in every
+capture) over just the RT-press-aligned span that matches `score2.txt`'s own **drive** (confirmed-motion) sub-window
+length gives the opposite direction for sysmem:
+
+| arm | window | ms/flip | fps | rp/flip | cs2t-ended/flip | cs2t share |
+|---|---|---|---|---|---|---|
+| S1 (shipped) | drive, 08:02:56-08:03:23 (27s, matches score2's 26.3s) | 47.7 | 21.0 | 135.9 | 125.0 | 92% |
+| Y1 (sysmem) | drive, 08:05:30-08:05:55 (25s, matches score2's 24.6s) | 40.9 | 24.5 | 72.4 | 61.4 | 85% |
+| M1 (gmem) | drive, 08:08:05-08:08:33 (28s, matches score2's 28.3s) | 45.9 | 21.8 | 102.1 | 91.4 | 90% |
+
+Here sysmem has *fewer* render passes/flip and a *better* ms/flip than shipped during actual driving -- the opposite
+of the hold-window ftbucket reading. The two readings are not a clean apples-to-apples pair: different instrument
+(FRAMETRACE csv `rp` field, which `phseries.py`'s own docstring says is capped, vs `[dipwin]`'s raw per-window
+counter) and a window boundary I set by hand from `RT_DOWN` + the score2-reported drive span length, not from
+`movescore.py`'s actual per-window motion verdict. **Do not trust either direction on this data alone.** The needed
+next instrument is `[dipwin]` (or `dwseries.py`) joined to `movescore.py`'s own confirmed-motion window boundaries,
+same arms, before ranking lever (a) up or down -- that is a re-read of logs already on disk, not a new device run.
+
+What *is* robust across all three arms, independent of how (a) resolves: **`copy_surface_to_texture` ends 85-92% of
+render passes in every arm during actual driving**, and the raw scale is far larger than the inherited budget-table
+figure (38 passes/flip, from an older gta3car1018 capture) suggested -- this attempt's own captures show 72-136
+passes/flip during the confirmed-motion window, of which 61-125/flip end at that one site. That number does not
+depend on resolving the lever-(a) contradiction above, so it is kept as the basis for promoting lever (b).
+
+## Big-lever table, re-ranked after Attempt 2
+
+| # | Lever | Status | Why |
+|---|---|---|---|
+| b | Render-pass count/merging via `copy_surface_to_texture` (`texture.c:1311`) | **rank 1 (promoted)** | 85-92% of render passes end at this one site during actual driving in every arm measured (S1/Y1/M1), 61-125 of them per single flip -- robust regardless of which render mode wins |
+| d | 11-16 ms/flip gap, 3-vblank frame share | **resolved, folded into b** | FRAMETRACE data: guest work + guest idle account for the whole frame period at every vblank bucket; the gap is guest-side idle that scales with RP/GPU, not an independent wait |
+| a | Per-title SYSMEM/GMEM render mode | **contested, re-rank after a matched-window re-read** | hold-window ftbucket reading says forced modes are worse; drive-window `[dipwin]` reading (above) says sysmem is better; two different instruments/windows, not reconciled yet -- re-read with `movescore.py`'s own window boundaries before trusting either |
+| c | Draw/state redundancy per pass | 3 (unchanged) | not yet measured this attempt |
+| e | vCPU translation / TB lookup | 4 (unchanged) | FRAMETRACE guest-idle data this attempt still shows the vCPU is not the limiter (idle tracks GPU/RP, not starved) |
+
+Next concrete action per G4: lever (b), render-pass count/merging at `copy_surface_to_texture`. Read it on this
+batch's own captures first (no new device time): every `[s2c]` window in every arm (S1 shipped, Y1 sysmem, F1
+`S2T_FB=1`) shows `why[... map<N> ...]` at **100%** of copies (`zs`/`pad`/`fmt`/`none` always 0) and `r2[map0]
+r3[share0]` **always 0** -- the two fast paths already built for exactly this (`s2t_widen_view()`/R2 component-map
+view, `s2t_share_find()`/R3 draw_time share, lane gta3fps1017b, `texture.c:2912` comment: "~73 a flip on the Nova,
+each one breaking a render pass") never engage once in these captures, regardless of render mode or `S2T_FB`
+setting. R2's own guard chain (`s2t_widen_view()`, `texture.c:3228`) has six early-return points (off/surface-null,
+identity-map, format mismatch, shape -- cubemap/mip/array/dimensionality, scale/size mismatch, `S2T_CVT` replication)
+and nothing in the existing logs says which one is rejecting every GTA III S2C_MAP case.
+
+**Mechanism step taken this attempt** (G2, before any remedy): added per-guard reject counters to
+`s2t_widen_view()` (`texture.c`, new `s2t_widen_rej[]`, `TEX_PERF`-gated like every other counter in this file) and
+wired them into the existing `[s2c]` census line as a new `wrej[off id fmt shape scale cvt]` field, reset alongside
+`s2c`'s own window reset. This is instrumentation only, no behavior change, and the device census this attempt
+already has (every arm's logcat) was taken before this code existed, so it cannot answer the question retroactively
+-- one short dispatcher run with this build is needed.
+
+**Falsifiable prediction (G3), before building or queuing:** one guard will dominate GTA III's `wrej[]` counts (not
+an even split), and it will NOT be `off` (if `s2t_widen_on()` were simply false, `r2[map]` would never have a chance
+regardless of scene, which the existing `r2[map0]`-always-zero reading does not distinguish from a real per-call
+rejection). Given this lane's own history of surface-scale-factor bugs breaking exactly this family of
+view/cache decision (rows 26 `s2t_fb_memo[].scale`, 27 `migrate_surface_image()` `image_scale`), `scale` is the
+likeliest single dominant guard; `shape` (mip/array/cubemap/dimensionality, plausible if GTA III samples a
+multi-level or array render target as a mirror/reflection texture) is the second candidate. Falsified if `wrej[]`
+comes back roughly even across guards (no single dominant mechanism) or if a guard other than `scale`/`shape`
+dominates -- either result still answers the question and names the next, different code change.
+
+Built, not yet queued: `git status` was clean before this change: this file and `texture.c` are the only two
+modified paths this attempt (`git diff --stat` matches `Files:` below once committed). Commit, then one short
+(<=90s) `request.sh --perflog --issue 433` GTA III in-car run to read `wrej[]` is the next action -- within this
+session if time remains, otherwise the first thing the next attempt does (no re-diagnosis needed, the prediction
+above is the falsifier to run).

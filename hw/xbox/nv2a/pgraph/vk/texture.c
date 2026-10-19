@@ -2739,6 +2739,17 @@ static bool surface_view_decodes_as_texture(const SurfaceBinding *surface,
  */
 enum { S2C_ZS, S2C_PAD, S2C_FMT, S2C_MAP, S2C_NONE, S2C__N };
 
+/* fpsnext1019: why s2t_widen_view() fell through to the copy, by guard. R2's
+ * own counter (s2c.r2[]) only sees the calls that *took* a view; every one of
+ * GTA III's S2C_MAP copies measured this attempt had r2[map]=0 with no way to
+ * tell which of the guards below rejected it. #433 */
+enum {
+    S2T_WIDEN_REJ_OFF, S2T_WIDEN_REJ_IDENTITY, S2T_WIDEN_REJ_FMT,
+    S2T_WIDEN_REJ_SHAPE, S2T_WIDEN_REJ_SCALE, S2T_WIDEN_REJ_CVT,
+    S2T_WIDEN_REJ__N,
+};
+static uint32_t s2t_widen_rej[S2T_WIDEN_REJ__N];
+
 typedef struct S2cSig {
     uint8_t why, scolor, sfmt, tfmt;
     uint32_t svk, tvk;
@@ -2877,11 +2888,15 @@ static void s2c_log_window(unsigned int frames)
     char buf[640];
     int len = snprintf(buf, sizeof(buf),
         "[s2c] f%u cp%u dup%u srf%u why[zs%u pad%u fmt%u map%u none%u] "
-        "ovf%u r2[map%u pad%u] r3[share%u] fb[n%u nos%u keep%u] |",
+        "ovf%u r2[map%u pad%u] r3[share%u] fb[n%u nos%u keep%u] "
+        "wrej[off%u id%u fmt%u shape%u scale%u cvt%u] |",
         frames, s2c.cp, s2c.dup, s2c.srf, s2c.why[S2C_ZS], s2c.why[S2C_PAD],
         s2c.why[S2C_FMT], s2c.why[S2C_MAP], s2c.why[S2C_NONE], s2c.overflow,
         s2c.r2[S2C_MAP], s2c.r2[S2C_PAD], s2c.r3, s2c.fb, s2c.fb_nos,
-        s2c.fb_keep);
+        s2c.fb_keep, s2t_widen_rej[S2T_WIDEN_REJ_OFF],
+        s2t_widen_rej[S2T_WIDEN_REJ_IDENTITY], s2t_widen_rej[S2T_WIDEN_REJ_FMT],
+        s2t_widen_rej[S2T_WIDEN_REJ_SHAPE], s2t_widen_rej[S2T_WIDEN_REJ_SCALE],
+        s2t_widen_rej[S2T_WIDEN_REJ_CVT]);
     for (int i = 0; i < S2C_MAX; i++) {
         if (!s2c.used[i]) {
             continue;
@@ -2906,6 +2921,7 @@ static void s2c_log_window(unsigned int frames)
     memset(s2c.r2, 0, sizeof(s2c.r2));
     s2c.r3 = 0;
     s2c.fb = s2c.fb_nos = s2c.fb_keep = 0;
+    memset(s2t_widen_rej, 0, sizeof(s2t_widen_rej));
 }
 #endif
 
@@ -3236,6 +3252,7 @@ static VkImageView s2t_widen_view(PGRAPHState *pg,
 
     if (!s2t_widen_on() || !surface->color ||
         surface->image_view == VK_NULL_HANDLE) {
+        TEX_PERF(s2t_widen_rej[S2T_WIDEN_REJ_OFF]++);
         return VK_NULL_HANDLE;
     }
 
@@ -3246,22 +3263,29 @@ static VkImageView s2t_widen_view(PGRAPHState *pg,
     }
     static const VkComponentMapping identity = { 0 };
     if (!memcmp(&map, &identity, sizeof(map))) {
+        TEX_PERF(s2t_widen_rej[S2T_WIDEN_REJ_IDENTITY]++);
         return VK_NULL_HANDLE;
     }
     if (surface->host_fmt.vk_format != tex_vkf.vk_format ||
-        cfg->format != tex_vkf.vk_format || shape->cubemap ||
-        shape->dimensionality != 2 || shape->levels != 1 ||
+        cfg->format != tex_vkf.vk_format) {
+        TEX_PERF(s2t_widen_rej[S2T_WIDEN_REJ_FMT]++);
+        return VK_NULL_HANDLE;
+    }
+    if (shape->cubemap || shape->dimensionality != 2 || shape->levels != 1 ||
         cfg->image_type != VK_IMAGE_TYPE_2D || cfg->mip_levels != 1 ||
         cfg->array_layers != 1) {
+        TEX_PERF(s2t_widen_rej[S2T_WIDEN_REJ_SHAPE]++);
         return VK_NULL_HANDLE;
     }
     unsigned int w = surface->width, h = surface->height;
     pgraph_apply_scaling_factor(pg, &w, &h);
     if (cfg->width != w || cfg->height != h) {
+        TEX_PERF(s2t_widen_rej[S2T_WIDEN_REJ_SCALE]++);
         return VK_NULL_HANDLE;
     }
     if (pgraph_vk_s2t_cvt_on() &&
         pgraph_texture_format_expands_by_replication(shape->color_format)) {
+        TEX_PERF(s2t_widen_rej[S2T_WIDEN_REJ_CVT]++);
         return VK_NULL_HANDLE;
     }
 
