@@ -6,9 +6,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Right now
 
-| Lane | Model | Running for | Working on |
-|---|---|---|---|
-| `localdrive1018` | claude-sonnet-5 | 4 min | drive: local tools only, act-observe instead of wait-and-fail, learn what to press |
+No lane session is running.
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -121,9 +119,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Work in progress
 
-| Branch | Topic | Tip | Last change |
-|---|---|---|---|
-| `lane/localdrive1018` | drive: local tools only, act-observe instead of wait-and-fail, learn what to press | `c594a331bc` | 2026-10-19 06:28 |
+No branch is being worked right now.
 
 ## Recently landed on master
 
@@ -136,4 +132,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-18 gta3car1018: GTA III in the car -- the render passes are a feedback-loop copy per draw (#1049)
 - 2026-10-18 dispatcher: dev_push gets a read-only mode for the Nova's SD-card disc pushes
 
-_Updated 2026-10-19 06:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-19 07:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
