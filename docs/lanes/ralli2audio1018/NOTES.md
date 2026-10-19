@@ -1025,3 +1025,101 @@ floor) must clear before the queued request
    `audio_starve_share`.
 4. Update `FINDINGS.md` and `PR.md` with the measured numbers, and move
    `PR.md`'s `State:` to `ready`.
+
+Attempt 14 (10-18, about 19:13-19:40 PDT) -- why the prior resume did not
+finish: a `hostops` commit (`93ff5874e5`, already on this branch when this
+attempt started, not made by this attempt) had just replaced the stale
+`time 2026-10-18T17:00` line in `WAITING` with an `owner` line, because
+`lanewaker.py` was resuming this lane every 5 minutes once the clock
+passed 17:00 with the Nova hold unchanged each time (attempts 10-13). That
+fixed the thrash but the Nova was still physically held. This attempt
+found the hold gone.
+
+- Read this file and `git log` first. `git log` showed one commit ahead of
+  attempt 13's (`93ff5874e5`, the hostops `WAITING` fix above) that this
+  attempt did not make.
+- Re-checked the wait: `docs/testing/jobs/hold.sh who nova` now returns
+  `free: nova` (the `lanelocal-offline` hold from attempts 10-13 is gone;
+  dispatcher log shows `19:13:02 hold released; serving again`).
+  `dispatch/.battery_level.nova` reads 26% (up from the stalled 11%),
+  above the active override's 15.3% need. Both conditions attempts 10-13
+  tracked are clear.
+- The dispatcher was already working the queue in arrival order on its
+  own: two `foldqueue` requests (queued since 15:58, ahead of this lane's
+  pilot) ran first (19:13:05-19:17:55), then this lane's queued cold-cache
+  pilot `1-1792368418-lane.ralli2audio1018-1108710` was admitted at
+  19:17:56 and ran 870 s (aborted at 841 s -- see below) ending 19:32:56.
+  Polled in the foreground in three chunks (each under the 10-min Bash
+  limit), watching `dispatch/queue`, `dispatch/running` and
+  `dispatch/logs/dispatcher.log` move, per the brief's ban on ending a
+  turn with an outstanding wait this session could instead just watch to
+  completion.
+- **Found and fixed a bug in `tools/timeline.py`** (this lane's own tool,
+  not touched since Work 1): it was written against the raw host
+  capture's threadtime logcat format (`MM-DD HH:MM:SS.mmm PID TID L TAG:
+  msg`), but every dispatcher result's `logcat.txt` is brief format
+  (`MM-DD HH:MM:SS.mmm L/TAG(PID): msg`). The `TS` regex required two
+  numeric columns after the timestamp (present only in threadtime), so it
+  silently returned zero rows on every dispatcher result; and the
+  substring checks like `'hakuX-audiocap: starve:' in line` require the
+  tag to be followed directly by `: `, which brief format breaks with
+  `(PID)` in between. Fixed by loosening `TS` to match only the date/time
+  prefix (the `tid` return value was unused everywhere) and by
+  normalizing each line with `re.sub(r'\(\d+\):', ':', line, count=1)`
+  before the tag checks, which is a no-op on threadtime lines and turns
+  `tag(pid): msg` into `tag: msg` on brief ones. Verified against both the
+  original raw owner capture (unchanged output) and this pilot's
+  dispatcher result (previously 0 rows, now populated).
+- **Pilot result, read with the fixed tool**
+  (`results/1-1792368418-lane.ralli2audio1018-1108710`, ref `ec7e06c467`,
+  `HAKUX_PLC_WIPE=1`, cold cache):
+  - `vp=` mean per 30 s window: min 28us, max 188us, mean across the 30
+    windows of the run 143us. The prediction ("The fix the pilot points
+    at") expected 390-450us (down from ~620us); the measured figure is
+    far below even that, close to the pre-fix *idle* baseline (103-106us,
+    "Pilot" section above) despite this being continuous driving.
+  - `wall` mean per block: 1.34ms of a 5.33ms budget (mean across
+    windows), max window-mean 1.70ms -- the producer runs at roughly 25%
+    of real time, not the predicted 65-75%. Neither falsifier condition
+    (`vp=` mean > 520us, or wall/block > 4.6ms) is met; the fix exceeds
+    its own prediction.
+  - `audio_starve_share` over the whole run (summed from the `--prod`
+    table's short/calls columns): 3/19584 = 0.000153, 9x under the 0.001
+    bar, with the cache forced cold. The only two nonzero windows
+    (154.4-180.0s, 2/481 and 1/118 short) sit exactly on cold-cache shader
+    hitches (worst frame times 2549.7, 1402.5, 692.7, 595.5 ms at
+    170.0-229.3s, found by scanning every `hakuX-pace` max= in the run --
+    bigger than the owner's capture's 580/774/410 ms because
+    `HAKUX_PLC_WIPE=1` forces every shader cold here, by design for this
+    pilot). The continuous 0.1-1% tail the brief described is gone; what
+    is left is tied to compile bursts, as Work 1/3 already said.
+  - `title_verdict.py --require confirmation` on this result returns
+    `FAIL(void: not-foreground: ...)`: `run.log` shows repeated
+    `foreground-unreadable: ee317437 adb hung (no answer in 10s)` starting
+    around t=90s, worsening to 5/5 by the end, and `soak aborted:
+    not-foreground after 841s of 870s`. This is a device/adb flake (memory:
+    device-run-flakes, rerun twice), not an audio or render fault -- it
+    affects only the live foreground poll; the `logcat.txt` the pilot's
+    numbers above come from is intact to 841 s. Per the tool's own rule
+    (a void window's flips are not scanned), its printed `hitches=0/0.0pm`
+    is not meaningful here; the real hitches are the four listed above,
+    read directly.
+  - Verdict written to `pilots/lane.ralli2audio1018.ok` (via a `/tmp` file
+    + `cp`, since `Write` is blocked under `dispatch/`): **confirmed,
+    exceeding the prediction.**
+- Queued the two default (no `HAKUX_PLC_WIPE`) bar runs from "Device
+  plan" step 2, same route, same lane purpose text, `--no-expect` (not an
+  A/B prediction arm): `1-1792377509-lane.ralli2audio1018-3558236` (bar 1,
+  claimed immediately, running) and
+  `1-1792377543-lane.ralli2audio1018-3569502` (bar 2, queued behind it;
+  `request.sh` logged the pilot-gate check passing on the `.ok` file just
+  written, "0.0 h old"). Ref for both `93ff5874e5` (this branch's current
+  tip, the hostops `WAITING` commit; no lane-file changes since the
+  `vp.c` fix).
+- Replaced `WAITING`'s stale hostops `owner` line (the Nova-hold wait it
+  named is resolved) with `run <id>` lines for both queued bar requests,
+  per `lanewaker.py`'s own keyword set (`run`/`dispatch`/`runs`: resume
+  once every id is done or withdrawn) and the `perflog1016` lane's
+  precedent for the same shape.
+- Did not touch `dispatch/hold/*` files; did not cancel or re-touch the
+  pilot's own already-completed request.

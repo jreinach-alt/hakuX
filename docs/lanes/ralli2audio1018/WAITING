@@ -1,10 +1,2 @@
-# hostops 2026-10-18 19:1x PDT: the `time 2026-10-18T17:00` line below stays satisfied forever once
-# the clock passes it, so lanewaker resumed this lane every 5-min tick for ~2h (attempts 10-13,
-# dispatch/hold/nova.why unchanged each time: owner took the Nova offline ~12:00 PDT "for ~5h (back
-# ~17:00 PDT)", it is now past 19:00 and the hold is still in force, reasserted verbatim at 18:42
-# PDT) -- a real wait, but the wrong primitive: `time` only knows the clock, not whether the owner's
-# estimate held. The real gate is dispatch/hold/nova.why's own text: "release when the owner says it
-# is back". That is an owner call, not a clock call -- `owner` is correct here, and `fixed in
-# lanewaker.py (hash the WAITING text, not the branch sha, so an unchanging wait stops auto-resuming
-# after the first one) so a future lane with the same shape does not thrash either.
-owner the Nova's lanelocal-offline hold (dispatch/hold/nova.why) is well past its ~17:00 PDT estimate (now past 19:00) and was reasserted unchanged at 18:42 PDT; resume lane.ralli2audio1018 once the owner confirms the Nova is back and the hold is lifted
+run 1-1792377509-lane.ralli2audio1018-3558236
+run 1-1792377543-lane.ralli2audio1018-3569502

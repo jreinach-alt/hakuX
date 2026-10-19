@@ -21,15 +21,15 @@ inside the starve window.
 import re
 import sys
 
-TS = re.compile(r'^\d\d-\d\d (\d\d):(\d\d):(\d\d)\.(\d\d\d)\s+\d+\s+(\d+)\s')
+TS = re.compile(r'^\d\d-\d\d (\d\d):(\d\d):(\d\d)\.(\d\d\d)')
 
 
 def ts(line):
     m = TS.match(line)
     if not m:
         return None, None
-    h, mi, s, ms, tid = m.groups()
-    return int(h) * 3600 + int(mi) * 60 + int(s) + int(ms) / 1000.0, int(tid)
+    h, mi, s, ms = m.groups()
+    return int(h) * 3600 + int(mi) * 60 + int(s) + int(ms) / 1000.0, None
 
 
 def kv(line, key, cast=float):
@@ -101,6 +101,10 @@ def main():
             t, tid = ts(line)
             if t is None:
                 continue
+            # brief-format logcat puts the pid in parens before the colon
+            # (`tag(pid): msg` vs threadtime's `pid tid L tag: msg`); normalize
+            # so the tag-prefix substring checks below match either.
+            line = re.sub(r'\(\d+\):', ':', line, count=1)
             if 'hakuX-audiocap: starve:' in line:
                 m = re.search(r'starve: (\d+)/(\d+) callbacks short \((\d+) empty\), '
                               r'(\d+)/(\d+) bytes zero-filled = ([0-9.]+)%', line)
