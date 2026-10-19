@@ -1,6 +1,0 @@
-# Step 1 is blocked on the harness a second time (NOTES.md 7.1). Run 1792345978 got the disc onto
-# the Nova (the wslpath fix works), then dev_push's dev_make_660 failed: the SD card mount pins the
-# ISO at mode 770 (dispatcher.log 29392; doctor retry 29395). Unblock: give dev_push a read-only mode
-# for ensure_title_staged's disc push (skip the 660 step and the final mode check, keep the sha
-# check), deploy it to dispatch/bin, then re-queue 1792345978 unchanged.
-owner who takes the dev_push SD-card mode fix (dispatcher.sh:1053/1055, NOTES.md 7.1)? every disc staged to the Nova fails until it lands
