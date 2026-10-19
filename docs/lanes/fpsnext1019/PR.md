@@ -3,14 +3,22 @@
 State: draft
 
 Lane: fpsnext1019            Issue: #433
-Base: master @ 5dc1218a8f (+ merge of lane/fpsdata1018 @ 0fd255d991, mid-fold; dropped once it lands)
-Files: docs/lanes/fpsnext1019/NOTES.md, docs/lanes/fpsnext1019/PR.md, docs/lanes/fpsnext1019/FINDINGS.md, android/app/src/main/cpp/xemu_android.cpp, hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/texture.c
-Prediction: none: measurement first (frame trace and render-mode A/B on the owner's scenes); a prediction is registered before any build
+Base: master @ 2e6d29d4f8 (fpsdata1018's fold landed on master; merged in)
+Files: docs/lanes/fpsnext1019/NOTES.md, docs/lanes/fpsnext1019/PR.md, docs/lanes/fpsnext1019/FINDINGS.md, hw/xbox/nv2a/pgraph/vk/texture.c
+Prediction: none: measurement first. A falsifiable prediction for the one code change so far (s2t_widen_view()
+  reject-reason counters) is written in NOTES.md but not yet run through the dispatcher -- no pixel/fps claim is
+  made yet, so no ab_compare.py registration applies
 Needs device: yes    Needs NDK: yes
 
-Measures where the frame goes in GTA III's in-car scene and Blinx 2's gameplay, and lands the levers that move them
-toward 30 fps. Detail in `docs/lanes/fpsnext1019/NOTES.md`; per-title table in `FINDINGS.md`.
+Measures where the frame goes in GTA III's in-car driving scene and in Blinx 2's gameplay. GTA III: recovered and
+analyzed attempt 1's SYSMEM/GMEM render-mode hold batches (contested, not a clean win either direction -- see
+FINDINGS.md), then found every captured arm's surface-to-texture copies are 100% caused by a texture component-map
+mismatch with the two fast paths built for exactly that case never engaging; added reject-reason counters to
+`s2t_widen_view()` (instrumentation only, no behavior change) to find out which of its guards is rejecting every
+call. Blinx 2: root-caused (not fixed) why the generic drive route never reaches gameplay -- the dispatcher's
+`EXPLORE_LADDER` excludes `START` without a built profile, and Blinx 2 has none; deferred in favor of GTA III.
+Detail in `docs/lanes/fpsnext1019/NOTES.md`; per-title table in `FINDINGS.md`.
 
-Release note (none): measurement only so far.
+Release note (none): instrumentation/measurement only so far, no behavior change for players.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
