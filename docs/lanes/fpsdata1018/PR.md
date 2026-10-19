@@ -4,8 +4,9 @@ State: draft
 
 Lane: fpsdata1018            Issue: #433
 Base: master @ 72af9cb92c
-Files: hw/xbox/nv2a/pgraph/vk/texture.c, hw/xbox/nv2a/pgraph/vk/surface.c, hw/xbox/nv2a/pgraph/vk/renderer.h, docs/lanes/fpsdata1018/NOTES.md, docs/lanes/fpsdata1018/PR.md, docs/lanes/fpsdata1018/typecheck.py, docs/lanes/fpsdata1018/routes/fpsdata1018-ralli2-drive.route, docs/testing/predictions/fpsdata1018-texscan2d-pixels.json, docs/testing/perf/fpsdiag/fpsdiag.py, docs/testing/jobs/selftest.d/99-fpsdiag.sh
+Files: hw/xbox/nv2a/pgraph/vk/texture.c, hw/xbox/nv2a/pgraph/vk/surface.c, hw/xbox/nv2a/pgraph/vk/renderer.h, docs/lanes/fpsdata1018/NOTES.md, docs/lanes/fpsdata1018/PR.md, docs/lanes/fpsdata1018/typecheck.py, docs/lanes/fpsdata1018/routes/fpsdata1018-ralli2-drive.route, docs/testing/predictions/fpsdata1018-texscan2d-pixels.json, docs/testing/predictions/fpsdata1018-s2tfb2-pixels.json, docs/testing/perf/fpsdiag/fpsdiag.py, docs/testing/jobs/selftest.d/99-fpsdiag.sh
 Prediction: docs/testing/predictions/fpsdata1018-texscan2d-pixels.json @ 2aed2cea325ead44a673f008d5155ac193891f2fa6fa1d773cb485608818437e
+Prediction: docs/testing/predictions/fpsdata1018-s2tfb2-pixels.json @ 2666753999a5c2ecabfeeb211c32979ea7867698e40c07d47c716463613d2063
 Needs device: yes    Needs NDK: yes
 
 Reads the owner's 2026-10-18 capture of RalliSport 2, GTA III, Fable and Blinx 2 (master perflog 72af9cb92c) for
@@ -41,6 +42,24 @@ and the copy route declines a render target whose image does not match the curre
 to the pre-existing download path, which already handles this correctly). Pixel prediction re-registered against
 this fix; its arms result will post to this PR.
 
-Release note (performance): RalliSport Challenge 2 races and Fable gameplay no longer stall every frame reading a render target back through system memory.
+**GTA III's in-car dip: the surface-sampled-as-its-own-texture copy loop now keeps a run's copy by default.**
+`HAKUX_S2T_FB` (built earlier, off by default) lets a slot reuse this run's cached copy of a colour target it
+also samples, instead of re-copying and ending the render pass on every sample. Mode 2 only reuses the copy for
+a sampling stage whose shader program provably does not read its texture at all, so it cannot change a rendered
+pixel; that argument is now backed by a registered pixel prediction, not just the code reading. `HAKUX_S2T_FB=2`
+is now the default (`=0` opts out, `=1` keeps the unsafe any-stage mode as opt-in only). A prior device trial
+(gta3car1018, #1049) measured fewer render passes and frame time in this mode against a same-session baseline,
+with light-traffic moments reaching 30 fps; it stopped short of proving the size of the win because its second
+repeat aborted on an adb glitch. This fix does not reach 30 fps on its own in heavy traffic (the fence wait and
+stalled finishes still scale with pass count); it is this lever's contribution, not the whole dip.
+
+**Owner capture recipe to confirm the fps size of this one** (no reproducible device route exists for GTA III's
+specific in-car save state through the dispatcher's own --save registry, and this lane's device verification
+goes through the dispatcher only -- never by hand): build a perflog APK from this PR's head, play Grand Theft
+Auto III, get in the car, and drive for about a minute, twice -- once as built (HAKUX_S2T_FB defaults to 2) and
+once with `HAKUX_S2T_FB=0` set first (the old behaviour) -- then read back `[dipwin]` (`dipwin_read.py`, as
+`gta3car1018/NOTES.md` section 4.1/6 did) for `rp`/flip, `fen`, and `rotfen` in each run's moving windows.
+
+Release note (performance): RalliSport Challenge 2 races and Fable gameplay no longer stall every frame reading a render target back through system memory; Grand Theft Auto III's in-car render-pass count is cut by keeping a texture copy across samples that cannot see a stale one.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
