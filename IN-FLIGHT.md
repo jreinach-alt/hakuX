@@ -8,7 +8,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `fpsnext1019` | claude-opus-5-5 | 10 min | fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433) |
+| `fpsnext1019` | claude-opus-5-5 | 25 min | fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433) |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `lane.fpsnext1019`
@@ -137,4 +137,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-18 gta3car1018: GTA III in the car -- the render passes are a feedback-loop copy per draw (#1049)
 - 2026-10-18 dispatcher: dev_push gets a read-only mode for the Nova's SD-card disc pushes
 
-_Updated 2026-10-19 08:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-19 08:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
