@@ -41,6 +41,35 @@ gameplay window by hand (no dispatcher-reachable route reaches either scene, rec
 H4 is blocked on the host-wide `drive generic` harness bug already briefed on PR #1085. PR.md stays
 `State: draft` until the two pixel predictions above post PASS.
 
+**Attempt 3, continued again (this resume)**: why the prior turn ended there and not further -- it is the
+state above, confirmed, not a new dead end. Read back the PR's own comment history (`gh pr view 1085
+--json comments`) rather than trusting NOTES.md's snapshot alone: the last two `[job.arms]` verdicts are a
+FAIL at 08:59:03Z (`s2tfb2` @ `88ad82540966`, pre-narrowing) and a FAIL at 10:00:44Z (`texscan2d` @
+`c689d167b09d`, 17/1038, the noise-floor re-check this file's own "Noise floor measured" section already
+explains and discounts) -- both predate or restate what is already written up; no new, unexplained verdict
+has posted. `dispatch/running/` and `dispatch/queue/` currently hold the live re-run against the narrowed
+predictions (`1-1792404006-arms-fpsdata1018-fix-3062074` for `s2tfb2` @ `b50667ac35`, running; `1-1792404008`'s
+base/fix pair for `texscan2d` @ `245ddc4964`/`b46f4cb8d3`, queued) -- the wait is still live, not stale.
+
+Used the time before that verdict to check something the brief's own board-request rule (G-file-claims:
+"claim exactly the files you edit on the board FIRST") flagged as outstanding, not something new: the
+`[lane.fpsdata1018]` row in `territory.toml` (read via `origin/board`, this lane never edits it directly) was
+last written at 22:10 PDT, before Fix #1 existed, and still only grants `docs/lanes/fpsdata1018/**`,
+`docs/testing/perf/fpsdiag/**`, `docs/testing/jobs/selftest.d/99-fpsdiag*.sh`. The branch has since committed
+to `hw/xbox/nv2a/pgraph/vk/texture.c`, `surface.c`, `renderer.h`, and `docs/testing/predictions/fpsdata1018-*`
+-- the first two were already asked for in `dispatch/board-requests/fpsdata1018.md` (~22:50 PDT) and are
+still ungranted; `renderer.h` (added for Fix #1's `image_scale` field, commit `e1a99c506d`) was never asked
+for at all. Appended an update to that same board-request file (not territory.toml) naming `renderer.h` and
+the predictions glob, with the live-grep check that no other row or `[free]` entry holds any of the four
+paths. This does not block anything this lane can do itself today (no fold has been attempted this attempt),
+but it is real, free-standing work a wait-filled turn should not skip, and it is the correct, non-territory-
+editing way to close the gap (same channel the brief's own files-claim instruction, read literally, would
+have had this lane bypass).
+
+No other ranked item changed state this turn: H2/H4/the two owner device-A/Bs are still exactly the external
+waits described above; nothing on disk (`dispatch/results/`, the PR's comments) supplies new data for any of
+them. Stopping here rather than re-deriving the same conclusion a third time in one turn.
+
 ## Attempt log
 
 - **Attempt 1** (session 4431cc4c, 2026-10-19 04:39-04:51Z): committed nothing. It added two candidates to
