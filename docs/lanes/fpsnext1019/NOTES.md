@@ -274,3 +274,86 @@ modified paths this attempt (`git diff --stat` matches `Files:` below once commi
 (<=90s) `request.sh --perflog --issue 433` GTA III in-car run to read `wrej[]` is the next action -- within this
 session if time remains, otherwise the first thing the next attempt does (no re-diagnosis needed, the prediction
 above is the falsifier to run).
+
+## Attempt 2, item 3: `wrej[]` falsifies the prediction -- R2 was never turned on, not guard-rejected; landed
+
+No warm build cache existed in this worktree (`android/app/.cxx`, `android/app/build` both absent -- attempt 1's
+perflog APK lived in the dispatcher's own private build tree, not here), so the `wrej[]` instrumentation needed its
+own cold build: `android/gradlew --no-daemon -Pperflog=true assembleDebug` (JDK21, `ANDROID_SDK_ROOT` per
+`AGENTS.md`), run detached (`setsid nohup ... &`, polled in-session -- a lane session dies with anything truly
+backgrounded) since it is long-running. Cold build 5m39s, BUILD SUCCESSFUL. Copied to
+`captures/fpsnext1019/apks/293ed24401-perflog.apk` and run through the pre-authorised GTA III save-state protocol
+(`scripts/batch.sh`/`arm.sh`, under this lane's own Nova hold) as **b4-W1**, env `HAKUX_FRAMETRACE=1` only (no
+`HAKUX_S2T_WIDEN`, i.e. the same env every prior arm in this lane used):
+
+```
+[s2c] f60 cp57 ... wrej[off57 id0 fmt0 shape0 scale0 cvt0] | #0:57
+```
+
+Every single window, every one of 57 census lines across the whole run: **`off`, zero everything else.** The G3
+prediction (scale or shape would dominate) is **falsified** -- cleanly, not ambiguously; there is no mix to argue
+about. `off` is `s2t_widen_on()`'s very first guard (`texture.c:2959-2969`): `s2t_widen_state = e && e[0] == '1'`,
+reading `HAKUX_S2T_WIDEN` -- **R2 is an opt-in env switch, default off, and no capture in this lane's history (not
+attempt 1's SYSMEM/GMEM batches, not this attempt's own b4) had ever set it.** The "which guard rejects every call"
+question was the wrong question: nothing was ever rejecting a call, because the call was never being attempted.
+This is a cheaper, better-explained finding than the prediction it falsified, and it is exactly the outcome G3 asks
+for -- the falsifier named a different, concrete next action on its own.
+
+Turned it on, same APK (no rebuild needed, env-only): **b5-W2**, env `HAKUX_FRAMETRACE=1+HAKUX_S2T_WIDEN=1`:
+
+```
+[s2twiden] on
+[s2c] f60 cp0 dup0 srf0 why[...all 0] ovf0 r2[map578 pad0] r3[share0] ... wrej[off0 ...] |
+```
+
+`cp`/`dup`/`srf` all 0 for the entire run -- the copy this guard exists to avoid did not happen even once;
+`r2[map]` climbs every window instead. Score2 fps, same save-state, same route, one run each:
+
+| Arm | env | hold fps | drive fps |
+|---|---|---|---|
+| b4-W1 | (none, R2 off, this lane's default-until-now) | 25.3 | 23.7 |
+| b5-W2 | `HAKUX_S2T_WIDEN=1` | 28.3 | 27.1 |
+
++3.0 hold / +3.4 drive on the first trial. Pixel sanity check before trusting it further: `imgcheck.py` full-frame
+diff of the two runs' `m3-loaded.png` (identical save-state, before RT, so a legitimate same-scene comparison) --
+`diff=1.4 th=3.0 MATCH`. Consistent with the guard's own documented claim (`texture.c:2952`: "The copy is bit-exact
+into the same VkFormat, so the two read the same texels") -- R2 is narrow by construction (same VkFormat in
+surface/texture/node image, one level, one layer, 2D, exact scaled size; the six guards in `s2t_widen_view()` exist
+to refuse everything that isn't provably equivalent to the copy it replaces). Two mid-drive frames (ffmpeg grab,
+`drive-frame.png` each) show no HUD/radar/texture corruption either, though the scenes differ (unscripted traffic,
+not a same-frame comparison).
+
+**Code change**: flipped `s2t_widen_on()`'s default the same way `s2t_fb_mode()`'s was flipped for #433/fpsdata1018
+-- `"0"` now opts out, everything else (including unset) is on. Rebuilt (30s, incremental, cache warm from the first
+cold build) as `3058a55767-perflog.apk`, committed (`3058a55767`).
+
+**Confirming runs, default-on, no env override** -- and the honest, noisier part of this finding:
+
+| Arm | note | hold fps | drive fps | RP/flip (ftbucket) | GPU MHz (ftbucket, "all") |
+|---|---|---|---|---|---|
+| b4-W1 | baseline, R2 off (first run this sequence, coolest) | 25.3 | 23.7 | 47 | 483 |
+| b5-W2 | `HAKUX_S2T_WIDEN=1` explicit | 28.3 | 27.1 | 33 | 466 |
+| b6-D1 | default-on, **fresh install + shader-cache clear** (new APK sha) | 22.6 | 19.5 | 33 | 450 |
+| b7-D2 | default-on, same APK, warm shader cache | 25.2 | 24.4 | 36 | 442 |
+
+RP/flip is the robust, confound-free read: **47 baseline vs 33/33/36 with R2 on, in all three R2-on runs, no
+exceptions.** That is a ~25-30% render-pass reduction from eliminating the S2C_MAP copy entirely, and it does not
+depend on timing noise to be true. The fps translation is noisier: b6-D1's park-phase number (18.3 fps, worse than
+baseline) lands exactly where a first-use-after-install shader-recompile stall would put it (fresh APK sha, shader
+caches explicitly cleared by `batch.sh` on an APK change) -- not a code regression, confirmed by b7-D2 re-running
+the identical binary with a warm cache and recovering to 25.2/24.4, essentially flat against baseline with a
+slightly lower GPU clock (442 vs 483 MHz, a monotonic drift across this four-run sequence: 483->466->450->442,
+consistent with the device warming up over the ~15 minutes of back-to-back runs). So across the three R2-on runs:
+one clear win (W2, +3/+3.4), one wash (D2, ~flat to +0.7), one confounded-looking loss that resolves to a wash once
+the install penalty is accounted for (D1). **Net: never worse than baseline once the install-penalty run is
+read correctly, consistently fewer render passes, no pixel anomaly found.** This is the same shape of evidence
+fpsdata1018 shipped `HAKUX_S2T_FB` mode 2 on ("one trial, confounded by unscripted driving traffic" -- NOTES.md
+precedent) -- not a clean, high-confidence A/B, but a mechanism-level win with no observed downside, on a change
+that is bit-exact by construction when its guards pass.
+
+Device time this item: b4+b5+b6+b7 wall time ~636s (~10.6 min), on top of ~634s already spent on the Blinx 2 census
+earlier this attempt -- ~1270s (~21.2 min) of this attempt's Nova time, under the 30-min pilot cap. Hold released
+after b7.
+
+**Landed, not just measured**: commit `3058a55767` flips `HAKUX_S2T_WIDEN`'s default to on (`"0"` opts out). This
+is GTA III's fix for this attempt -- lever (b) from the table above, landed rather than merely identified.

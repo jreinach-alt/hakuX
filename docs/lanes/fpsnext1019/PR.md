@@ -1,24 +1,35 @@
 # fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433)
 
-State: draft
+State: ready
 
 Lane: fpsnext1019            Issue: #433
 Base: master @ 2e6d29d4f8 (fpsdata1018's fold landed on master; merged in)
 Files: docs/lanes/fpsnext1019/NOTES.md, docs/lanes/fpsnext1019/PR.md, docs/lanes/fpsnext1019/FINDINGS.md, hw/xbox/nv2a/pgraph/vk/texture.c
-Prediction: none: measurement first. A falsifiable prediction for the one code change so far (s2t_widen_view()
-  reject-reason counters) is written in NOTES.md but not yet run through the dispatcher -- no pixel/fps claim is
-  made yet, so no ab_compare.py registration applies
+Prediction: none: ab_compare.py's golden-capture registration does not fit a GTA III driving-scene fps claim (no
+  golden exists for it). The falsifiable prediction that mattered (NOTES.md, "one guard dominates wrej[], likely
+  scale/shape, not off") was written before the device run that tested it and was falsified by that run -- see
+  NOTES.md "Attempt 2, item 3". The fix that followed was measured on-device (pre-authorised GTA III save-state
+  protocol, this lane's own Nova hold) before landing, not registered through ab_compare
 Needs device: yes    Needs NDK: yes
 
-Measures where the frame goes in GTA III's in-car driving scene and in Blinx 2's gameplay. GTA III: recovered and
-analyzed attempt 1's SYSMEM/GMEM render-mode hold batches (contested, not a clean win either direction -- see
-FINDINGS.md), then found every captured arm's surface-to-texture copies are 100% caused by a texture component-map
-mismatch with the two fast paths built for exactly that case never engaging; added reject-reason counters to
-`s2t_widen_view()` (instrumentation only, no behavior change) to find out which of its guards is rejecting every
-call. Blinx 2: root-caused (not fixed) why the generic drive route never reaches gameplay -- the dispatcher's
-`EXPLORE_LADDER` excludes `START` without a built profile, and Blinx 2 has none; deferred in favor of GTA III.
-Detail in `docs/lanes/fpsnext1019/NOTES.md`; per-title table in `FINDINGS.md`.
+GTA III: recovered and analyzed attempt 1's SYSMEM/GMEM render-mode hold batches (contested, not a clean win either
+direction -- see FINDINGS.md), then found every captured arm's surface-to-texture copies are 100% caused by a
+texture component-map mismatch (`S2C_MAP`). Added reject-reason counters to `s2t_widen_view()` to find out which of
+its guards was rejecting the fast path built for exactly this case (R2, lane gta3fps1017b) -- and found none of
+them were: R2 is gated behind an opt-in env var (`HAKUX_S2T_WIDEN`) that had never been set in any capture taken by
+this lane or its predecessor. Turned it on and measured it (one run: hold 25.3->28.3 fps, drive 23.7->27.1 fps,
+render-passes/flip 47->33, the S2C_MAP copy eliminated entirely for the whole run), pixel-sanity-checked
+(same-save-state frame diff 1.4, threshold 3.0, MATCH), then **landed the default flip** (commit `3058a55767`,
+`"0"` still opts out, same pattern as `HAKUX_S2T_FB` mode 2). Two further confirming runs on the new default
+reproduced the render-pass drop in both but showed noisier fps, one confounded by a fresh-install shader-cache
+clear -- reported honestly in NOTES.md rather than re-run past this attempt's device-time budget. Blinx 2:
+root-caused (not fixed) why the generic drive route never reaches gameplay -- the dispatcher's `EXPLORE_LADDER`
+excludes `START` without a built profile, and Blinx 2 has none; deferred in favor of GTA III, which was directly
+actionable. Detail in `docs/lanes/fpsnext1019/NOTES.md`; per-title table in `FINDINGS.md`.
 
-Release note (none): instrumentation/measurement only so far, no behavior change for players.
+Release note (performance): GTA III driving scenes do fewer GPU render passes per frame (a texture copy the
+renderer was already built to avoid, but had never been turned on, now runs by default); measured as an fps
+increase on one of three device trials, flat on the other two once a one-time shader-recompile cost on the first
+trial is accounted for.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
