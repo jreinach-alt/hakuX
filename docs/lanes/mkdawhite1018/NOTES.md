@@ -689,3 +689,56 @@ leaving no room for a further unplanned guess without writing a pilot verdict fi
 `[lane.mkdawhite1018] waiting:` on `1792399140-mkdawhite1018-2541099` -- whether the arena
 interior (floor, walls) renders correct colour or white in the few seconds after the stage
 flythrough, and whether any offscreen glow/mask draw appears in this wider window at all.
+
+### 15. `1792399140` ran: Turnip confirmed again, but still no offscreen draws -- the 2 s window was all stage-flythrough, now visibly mid-zoom
+
+`1792399140-mkdawhite1018-2541099` finished (`DONE`). `logcat.txt`: `Driver: PurpleVK public
+driver`, `[gpl569] ... mode=3` -- Turnip, confirmed a fourth time. The dump
+(`framedump_1792399582.jsonl`, 120 `frame` records, 4792 `draw` records) shows **every draw in
+all 120 frames target the 640x480 backbuffer** -- again zero offscreen 128x128/256x256 draws, so
+again no `rb` readback fired. `nv2a_frame` advances by exactly 119 across the 120 captured frames
+(2718 -> 2837, no drops), spanning wall-clock 1792399582-1792399585 (~3 real seconds) -- the
+120-frame request bought slightly more real time than the nominal 2 s estimate, not less, so the
+frame-count-is-not-duration correction in section 13 holds and this is the expected amount of
+coverage for it.
+
+Converted frames 0, 20, 40, 60, 80, 100, 119 to PNG (`/tmp/mkda2_f000.png` .. `_f119.png`, not
+committed, reproducible from the dump). This run picked a **different stage than the previous
+one** ("Lung Hai Temple", a female fighter -- "SONYA" labelled by f119 -- vs. the prior run's
+"Kuatan Palace"/male fighter), confirming the blind route's character-select landing is not
+fixed run to run (expected: it is a blind press sequence over a cursor position that can differ
+with small timing variance, not a bug in this diagnosis). The sequence across f000->f119 is a
+continuous camera zoom from a distant orbital shot of the whole island (f000) to a close shot
+of the temple courtyard with the character portrait on screen (f119) -- the stage-intro
+flythrough, confirmed still in progress and now close to its end: by f119 the camera is near
+ground level, individual structures (a torii-style gate, a red shrine, a paved circular
+platform, a walled courtyard) are resolved in detail. **No white is visible in any of these 7
+sampled frames** -- the visible ground, walls and platform in this flythrough all carry normal
+stage textures. This is consistent with the hypothesis that the defect is specific to the
+in-fight camera/lighting path (or a bake that happens at the fight's own start, not during the
+pre-rendered flythrough), not a blanket "this title never texture-samples arenas" problem --
+useful because it narrows where to keep looking, not where to stop.
+
+This settles that `after63`+120 frames reached well past where `after65`+8 frames did (that run's
+single instant was mid-flythrough on a different, earlier-looking shot; this one's 120th frame is
+materially closer to the ground) but still stops short of the cut into actual gameplay. A fifth
+single-instant-style guess was not queued; instead:
+
+**Wrote a pilot verdict** (`dispatch/pilots/mkdawhite1018.ok`, via `python3` per the sandbox note
+-- `Write`/`cp` do not reach `$DISPATCH_DIR`) summarising this chain of four reads-before-queuing
+runs and the reason one more follow-up is justified: this lane has not once queued a second
+request without reading the first's result, and the remaining step is the one thing four runs
+have not yet shown -- the arena interior itself. That lifts `request.sh`'s 30-minute unpiloted
+cap, which this lane's cumulative time (~28 min) was about to hit.
+
+**Fifth run queued:** `1792399836-mkdawhite1018-2687998`, same ref/route/title, `--seconds 100`,
+env `XEMU_FRAME_DUMP=180,images,gd,rtt,rttmax16384,after66,cap512` -- `after66` picks up one
+second before `1792399140`'s last captured frame (which was `wall 1792399585`, roughly t=66 given
+`after63` + ~3s), 180 frames (~3 s) to carry past the flythrough's end and into the fight's first
+frames, `cap512` again for headroom. Device-time tally with this run: 1686 + 100 + 90 = 1876 s
+(31.3 min) -- over the unpiloted 30-minute line, which is exactly what the pilot file above
+exists to permit; `request.sh` accepted the request without the cap refusal this time.
+
+`[lane.mkdawhite1018] waiting:` on `1792399836-mkdawhite1018-2687998` -- whether the arena
+interior (any arena, this run landed on a different stage than `1792399140` did) shows correct
+colour or white on its floor/walls once the flythrough cuts to the fight.
