@@ -2739,6 +2739,17 @@ static bool surface_view_decodes_as_texture(const SurfaceBinding *surface,
  */
 enum { S2C_ZS, S2C_PAD, S2C_FMT, S2C_MAP, S2C_NONE, S2C__N };
 
+/* fpsnext1019: why s2t_widen_view() fell through to the copy, by guard. R2's
+ * own counter (s2c.r2[]) only sees the calls that *took* a view; every one of
+ * GTA III's S2C_MAP copies measured this attempt had r2[map]=0 with no way to
+ * tell which of the guards below rejected it. #433 */
+enum {
+    S2T_WIDEN_REJ_OFF, S2T_WIDEN_REJ_IDENTITY, S2T_WIDEN_REJ_FMT,
+    S2T_WIDEN_REJ_SHAPE, S2T_WIDEN_REJ_SCALE, S2T_WIDEN_REJ_CVT,
+    S2T_WIDEN_REJ__N,
+};
+static uint32_t s2t_widen_rej[S2T_WIDEN_REJ__N];
+
 typedef struct S2cSig {
     uint8_t why, scolor, sfmt, tfmt;
     uint32_t svk, tvk;
@@ -2763,6 +2774,10 @@ static struct {
      * texture (nos: NONE, PASS_THROUGH, CLIP_PLANE, DOT_PRODUCT), and the
      * copies the switch kept instead (keep) */
     uint32_t fb, fb_nos, fb_keep;
+    /* #433 HAKUX_S2T_DEAD: of fb, those whose texel no part of the draw
+     * reads (dead), and the copies taken once to give a node's image a
+     * layout it can be sampled in (prime) */
+    uint32_t fb_dead, fb_prime;
     int frame;               /* the flip seen_* describe */
     int nseen;
     const SurfaceBinding *seen_s[S2C_SEEN];
@@ -2877,11 +2892,17 @@ static void s2c_log_window(unsigned int frames)
     char buf[640];
     int len = snprintf(buf, sizeof(buf),
         "[s2c] f%u cp%u dup%u srf%u why[zs%u pad%u fmt%u map%u none%u] "
-        "ovf%u r2[map%u pad%u] r3[share%u] fb[n%u nos%u keep%u] |",
+        "ovf%u r2[map%u pad%u] r3[share%u] fb[n%u nos%u keep%u] "
+        "dead[n%u prime%u] "
+        "wrej[off%u id%u fmt%u shape%u scale%u cvt%u] |",
         frames, s2c.cp, s2c.dup, s2c.srf, s2c.why[S2C_ZS], s2c.why[S2C_PAD],
         s2c.why[S2C_FMT], s2c.why[S2C_MAP], s2c.why[S2C_NONE], s2c.overflow,
         s2c.r2[S2C_MAP], s2c.r2[S2C_PAD], s2c.r3, s2c.fb, s2c.fb_nos,
-        s2c.fb_keep);
+        s2c.fb_keep, s2c.fb_dead, s2c.fb_prime,
+        s2t_widen_rej[S2T_WIDEN_REJ_OFF],
+        s2t_widen_rej[S2T_WIDEN_REJ_IDENTITY], s2t_widen_rej[S2T_WIDEN_REJ_FMT],
+        s2t_widen_rej[S2T_WIDEN_REJ_SHAPE], s2t_widen_rej[S2T_WIDEN_REJ_SCALE],
+        s2t_widen_rej[S2T_WIDEN_REJ_CVT]);
     for (int i = 0; i < S2C_MAX; i++) {
         if (!s2c.used[i]) {
             continue;
@@ -2906,6 +2927,8 @@ static void s2c_log_window(unsigned int frames)
     memset(s2c.r2, 0, sizeof(s2c.r2));
     s2c.r3 = 0;
     s2c.fb = s2c.fb_nos = s2c.fb_keep = 0;
+    s2c.fb_dead = s2c.fb_prime = 0;
+    memset(s2t_widen_rej, 0, sizeof(s2t_widen_rej));
 }
 #endif
 
@@ -2937,6 +2960,18 @@ static void s2t_log(const char *msg)
  * Narrow on purpose: same VkFormat in surface, texture and node image, one
  * level, one layer, 2D, the node image exactly the surface's (scaled) size.
  * The pad-alpha swizzle is folded in by the same rule as the node's view.
+ *
+ * #433 (lane.fpsnext1019): every S2C_MAP copy measured in GTA III's in-car
+ * driving scene fell through this guard with wrej[off] (the switch itself,
+ * not a format/shape/scale mismatch) -- R2 had never been turned on in any
+ * capture, including gta3fps1017b's and fpsdata1018's own SYSMEM/GMEM
+ * batches. Turning it on (HAKUX_S2T_WIDEN=1) measured hold 25.3->28.3 fps,
+ * drive 23.7->27.1 fps (one run each, b4-W1 vs b5-W2), with r2[map] rising
+ * every window and cp/dup/srf all 0 for the whole run -- the copy this guard
+ * was built for stopped happening entirely. A parked-frame pixel check
+ * (m3-loaded.png, same save-state) read diff=1.4 (th=3.0, MATCH); see
+ * NOTES.md for the full numbers. So the default flips here, the same way
+ * HAKUX_S2T_FB's mode 2 did (#433, fpsdata1018): "0" still turns it off.
  */
 static int s2t_widen_state = -1;
 
@@ -2944,7 +2979,7 @@ static bool s2t_widen_on(void)
 {
     if (s2t_widen_state < 0) {
         const char *e = getenv("HAKUX_S2T_WIDEN");
-        s2t_widen_state = e && e[0] == '1';
+        s2t_widen_state = !(e && e[0] == '0');
         if (s2t_widen_state) {
             s2t_log("[s2twiden] on");
         }
@@ -3038,6 +3073,82 @@ static bool s2t_fb_stage_reads(PGRAPHState *pg, int texture_idx)
      * same as mode 2's other stages that do read.
      */
     return !(prog == 0x00 || prog == 0x04 || prog == 0x05);
+}
+
+/*
+ * #433 (lane.fpsnext1019), HAKUX_S2T_DEAD=1: a sample of the colour target
+ * whose stage fetches (PROJECT2D, so mode 2 above keeps nothing) but whose
+ * texel no part of the draw reads. On the owner's GTA III in-car state the
+ * 128x128 target @0x038aa080 is sampled this way 40-140 times a flip, and
+ * each sample still ends the render pass: in bind_surface_as_texture()'s
+ * barrier with R2's widen on, in copy_surface_to_texture() with it off
+ * (fpsnext1019 NOTES, g1). If the texel is dead, any image of the node's
+ * shape samples to the same pixels, so the slot keeps the node's own image
+ * and the pass goes on.
+ *
+ * Dead means all of: no combiner stage in use and no final combiner input
+ * names the stage's register (any channel, any mapping; a stage that writes
+ * the register before reading it still counts as a read); no later stage
+ * runs a mode other than a plain fetch, NONE, PASS_THROUGH or CLIP_PLANE
+ * (every dependent mode reads an earlier stage's texel); and the stage
+ * neither alpha-kills nor colour-keys. Anything else answers live.
+ */
+static int s2t_dead_state = -1;
+
+static bool s2t_dead_on(void)
+{
+    if (s2t_dead_state < 0) {
+        const char *e = getenv("HAKUX_S2T_DEAD");
+        s2t_dead_state = e && e[0] == '1';
+        if (s2t_dead_state) {
+            s2t_log("[s2tdead] on");
+        }
+    }
+    return s2t_dead_state;
+}
+
+static bool s2t_fb_texel_dead(PGRAPHState *pg, int texture_idx)
+{
+    uint32_t prog = pgraph_vk_reg_r(pg, NV_PGRAPH_SHADERPROG);
+
+    for (int j = texture_idx; j < NV2A_MAX_TEXTURES; j++) {
+        unsigned int m = (prog >> (j * 5)) & 0x1F;
+        bool fetch = m == PS_TEXTUREMODES_PROJECT2D ||
+                     m == PS_TEXTUREMODES_PROJECT3D ||
+                     m == PS_TEXTUREMODES_CUBEMAP;
+        if (j == texture_idx ? !fetch :
+            !(fetch || m == PS_TEXTUREMODES_NONE ||
+              m == PS_TEXTUREMODES_PASSTHRU ||
+              m == PS_TEXTUREMODES_CLIPPLANE)) {
+            return false;
+        }
+    }
+    if (pgraph_vk_reg_r(pg, NV_PGRAPH_TEXCTL0_0 + texture_idx * 4) &
+        (NV_PGRAPH_TEXCTL0_0_ALPHAKILLEN | NV_PGRAPH_TEXCTL0_0_COLORKEYMODE)) {
+        return false;
+    }
+
+    uint32_t in[2 * PSH_MAX_COMBINER_STAGES + 2];
+    int n = 0;
+    int stages = psh_num_combiner_stages(
+        pgraph_vk_reg_r(pg, NV_PGRAPH_COMBINECTL));
+    for (int s = 0; s < stages; s++) {
+        in[n++] = pgraph_vk_reg_r(pg, NV_PGRAPH_COMBINECOLORI0 + s * 4);
+        in[n++] = pgraph_vk_reg_r(pg, NV_PGRAPH_COMBINEALPHAI0 + s * 4);
+    }
+    in[n++] = pgraph_vk_reg_r(pg, NV_PGRAPH_COMBINESPECFOG0);
+    /* E, F, G; the low byte is the final combiner's flags */
+    in[n++] = pgraph_vk_reg_r(pg, NV_PGRAPH_COMBINESPECFOG1) & ~0xFFu;
+
+    unsigned int reg = PS_REGISTER_T0 + texture_idx;
+    for (int k = 0; k < n; k++) {
+        for (int b = 0; b < 32; b += 8) {
+            if (((in[k] >> b) & 0xF) == reg) {
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 /* Per slot, the copy of the colour target it took in this run */
@@ -3139,6 +3250,13 @@ static bool s2t_fb_keep(PGRAPHState *pg, int texture_idx,
     PGRAPHVkState *r = pg->vk_renderer_state;
     int mode = s2t_fb_mode();
 
+    /* HAKUX_S2T_DEAD: the texel is not read, so any image the node holds
+     * will do, provided it can be sampled; see s2t_fb_texel_dead() */
+    if (surface == r->color_binding && s2t_dead_on() &&
+        snode->current_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL &&
+        s2t_fb_texel_dead(pg, texture_idx)) {
+        return true;
+    }
     if (!mode || surface != r->color_binding ||
         (mode == 2 && s2t_fb_stage_reads(pg, texture_idx))) {
         return false;
@@ -3172,11 +3290,14 @@ static bool s2t_fb_keep(PGRAPHState *pg, int texture_idx,
 
 #if NV2A_PERF_LOG
 /* A sample of the colour target being drawn that would copy */
-static void s2t_fb_census(PGRAPHState *pg, int texture_idx, bool keep)
+static void s2t_fb_census(PGRAPHState *pg, int texture_idx, bool keep,
+                          bool prime)
 {
     s2c.fb++;
     s2c.fb_nos += !s2t_fb_stage_reads(pg, texture_idx);
     s2c.fb_keep += keep;
+    s2c.fb_dead += s2t_fb_texel_dead(pg, texture_idx);
+    s2c.fb_prime += prime;
 }
 #endif
 
@@ -3236,6 +3357,7 @@ static VkImageView s2t_widen_view(PGRAPHState *pg,
 
     if (!s2t_widen_on() || !surface->color ||
         surface->image_view == VK_NULL_HANDLE) {
+        TEX_PERF(s2t_widen_rej[S2T_WIDEN_REJ_OFF]++);
         return VK_NULL_HANDLE;
     }
 
@@ -3246,22 +3368,29 @@ static VkImageView s2t_widen_view(PGRAPHState *pg,
     }
     static const VkComponentMapping identity = { 0 };
     if (!memcmp(&map, &identity, sizeof(map))) {
+        TEX_PERF(s2t_widen_rej[S2T_WIDEN_REJ_IDENTITY]++);
         return VK_NULL_HANDLE;
     }
     if (surface->host_fmt.vk_format != tex_vkf.vk_format ||
-        cfg->format != tex_vkf.vk_format || shape->cubemap ||
-        shape->dimensionality != 2 || shape->levels != 1 ||
+        cfg->format != tex_vkf.vk_format) {
+        TEX_PERF(s2t_widen_rej[S2T_WIDEN_REJ_FMT]++);
+        return VK_NULL_HANDLE;
+    }
+    if (shape->cubemap || shape->dimensionality != 2 || shape->levels != 1 ||
         cfg->image_type != VK_IMAGE_TYPE_2D || cfg->mip_levels != 1 ||
         cfg->array_layers != 1) {
+        TEX_PERF(s2t_widen_rej[S2T_WIDEN_REJ_SHAPE]++);
         return VK_NULL_HANDLE;
     }
     unsigned int w = surface->width, h = surface->height;
     pgraph_apply_scaling_factor(pg, &w, &h);
     if (cfg->width != w || cfg->height != h) {
+        TEX_PERF(s2t_widen_rej[S2T_WIDEN_REJ_SCALE]++);
         return VK_NULL_HANDLE;
     }
     if (pgraph_vk_s2t_cvt_on() &&
         pgraph_texture_format_expands_by_replication(shape->color_format)) {
+        TEX_PERF(s2t_widen_rej[S2T_WIDEN_REJ_CVT]++);
         return VK_NULL_HANDLE;
     }
 
@@ -4299,18 +4428,23 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
         bool did_s2t_copy = false;
         bool did_upload = false;
         bool fb_keep = false;
+        /* HAKUX_S2T_DEAD: a dead sample whose node has no image that can
+         * be sampled yet copies once, so the samples after it can keep */
+        bool dead_prime = false;
         if (surface_to_texture && surface->draw_time != snode->draw_time &&
             surface == r->color_binding) {
             /* #1049: the sample reads the target being drawn */
             fb_keep = s2t_fb_keep(pg, texture_idx, surface, snode);
-            TEX_PERF(s2t_fb_census(pg, texture_idx, fb_keep));
+            dead_prime = !fb_keep && s2t_dead_on() &&
+                         s2t_fb_texel_dead(pg, texture_idx);
+            TEX_PERF(s2t_fb_census(pg, texture_idx, fb_keep, dead_prime));
         }
         if (fb_keep) {
             /* HAKUX_S2T_FB: the slot keeps this run's copy; see s2t_fb_mode() */
         } else if (surface_to_texture) {
             if (surface->draw_time != snode->draw_time) {
                 bool can_direct_bind =
-                    (surface->color ||
+                    !dead_prime && (surface->color ||
                      !(surface->host_fmt.aspect &
                        VK_IMAGE_ASPECT_STENCIL_BIT)) &&
                     surface_view_decodes_as_texture(surface, &snode->key.state);
@@ -4334,7 +4468,8 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
                         surface->image_view;
                     r->tex_surface_direct_layout[texture_idx] = direct_layout;
                     r->texture_bindings_changed = true;
-                } else if ((wv = s2t_widen_view(pg, surface, snode,
+                } else if (!dead_prime &&
+                           (wv = s2t_widen_view(pg, surface, snode,
                                                 pad_alpha_override))) {
                     /* #1049 R2: the bind above, through a view that applies
                      * the texture's component map; see s2t_widen_view(). */
@@ -4348,7 +4483,8 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
                     r->texture_bindings_changed = true;
                     TEX_PERF(s2c.r2[s2c_reason(surface, &snode->key.state)]++);
                     s2t_widen_note_bind();
-                } else if ((sh = s2t_share_find(pg, surface, snode,
+                } else if (!dead_prime &&
+                           (sh = s2t_share_find(pg, surface, snode,
                                                 pad_alpha_override))) {
                     /* #1049 R3: this draw_time's copy is already made */
                     s2t_share_bind(r, texture_idx, snode, sh);
