@@ -6,10 +6,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Right now
 
-| Lane | Model | Running for | Working on |
-|---|---|---|---|
-| `fpsdata1018` | claude-sonnet-5 | 31 min | fpsdata1018: FPS dip causes in the 4-title owner capture, and fixes (#433) |
-| `mkdawhite1018` | claude-sonnet-5 | 26 min | mkdawhite1018: Mortal Kombat: Deadly Alliance arena floors and walls draw flat white (#1058) |
+No lane session is running.
 
 - **Handhelds:** 2 connected.
   - Nova: held by `lane.pathfind`
@@ -122,10 +119,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Work in progress
 
-| Branch | Topic | Tip | Last change |
-|---|---|---|---|
-| `lane/fpsdata1018` | fpsdata1018: FPS dip causes in the 4-title owner capture, and fixes (#433) | `2fd50f390d` | 2026-10-19 01:55 |
-| `lane/mkdawhite1018` | mkdawhite1018: Mortal Kombat: Deadly Alliance arena floors and walls draw flat white (#1058) | `3d38cb88bb` | 2026-10-19 01:51 |
+No branch is being worked right now.
 
 ## Recently landed on master
 
@@ -138,4 +132,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-18 dispatcher: dev_push gets a read-only mode for the Nova's SD-card disc pushes
 - 2026-10-18 home branch root: move chart.svg/chart2.svg/COPYING.LIB under docs (#433)
 
-_Updated 2026-10-19 02:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-19 02:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
