@@ -70,8 +70,8 @@ def write_pages(d, playable):
 
     readme = os.path.join(d, "README.md")
     open(readme, "w").write(
-        "[%d Playable games](docs/COMPATIBILITY.md)\n\n- **%d games rated Playable.** Each one...\n"
-        % (playable, playable))
+        "**Games rated Playable so far:** [the list, with progress charts]"
+        "(https://github.com/jreinach-alt/hakuX/blob/home/STATUS.md).\n")
 
     compat = os.path.join(d, "COMPATIBILITY.md")
     rows_md = "\n".join("| Title %d | ? | Nova | 59.9 | 100%% | 2026-10-14 |  |" % i for i in range(playable))
@@ -110,29 +110,32 @@ def main():
         print(out)
         if rc != 0:
             fails.append("the agreeing fixture (every page says 1, table is 1) was expected to PASS and did not")
-        if out.count("matches the table") != 6:
-            fails.append("expected all 6 pages to report 'matches the table'; got: %r" % out)
+        if "PAGE README.md: numberless Playable line, as home_page.py expects" not in out:
+            fails.append("expected README.md to report the numberless Playable line; got: %r" % out)
+        if out.count("matches the table") != 4:
+            fails.append("expected all 4 numeric pages to report 'matches the table'; got: %r" % out)
 
-        # The mutant: one page's own number, the README bullet, no longer
-        # agrees with the table -- the rest of the fixture is untouched.
+        # The mutant: README.md's Playable line, checked by exact format
+        # rather than by number, no longer matches the numberless form --
+        # the rest of the fixture is untouched.
         mutant_readme = os.path.join(agree_dir, "README.md")
         text = open(mutant_readme).read()
-        mutated = text.replace("1 games rated Playable.", "2 games rated Playable.")
+        mutated = text.replace("Games rated Playable so far:", "Games rated Playable:")
         if mutated == text:
-            fails.append("could not construct the mutant: the bullet text to replace was not found")
+            fails.append("could not construct the mutant: the numberless line text to replace was not found")
         open(mutant_readme, "w").write(mutated)
 
         rc2, out2 = run_check(root, registry, page_env)
-        print("mutant fixture (README bullet changed to 2): exit=%d" % rc2)
+        print("mutant fixture (README numberless line broken): exit=%d" % rc2)
         print(out2)
         if rc2 == 0:
-            fails.append("the mutant (README bullet says 2, table is 1) was expected to FAIL and did not")
-        if "PAGE README.md (bullet): Playable 2, table 1" not in out2:
-            fails.append("expected the mismatch line naming README.md (bullet); got: %r" % out2)
-        # Every OTHER page must still agree -- the mutant touched one line
-        # in one file, nothing else.
-        if out2.count("matches the table") != 5:
-            fails.append("expected the other 5 pages to still match; got: %r" % out2)
+            fails.append("the mutant (README no longer has the numberless line) was expected to FAIL and did not")
+        if "PAGE README.md: the Playable line is not the numberless form home_page.py rewrites" not in out2:
+            fails.append("expected the mismatch line naming README.md; got: %r" % out2)
+        # Every numeric page must still agree -- the mutant touched one
+        # line in one file, nothing else.
+        if out2.count("matches the table") != 4:
+            fails.append("expected the other 4 numeric pages to still match; got: %r" % out2)
 
     if fails:
         print("FAIL")
