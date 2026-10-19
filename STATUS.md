@@ -1,12 +1,12 @@
 # hakuX status
 
-_updated 2026-10-19 01:59 PDT_
+_updated 2026-10-19 02:30 PDT_
 
-0.6: Measured 264 / 300 · Playable 94 / 110.
+0.6: Measured 265 / 300 · Playable 94 / 110.
 
 ## How close is 0.6?
 
-Measured **264** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓▓▓░`
+Measured **265** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓▓▓░`
 
 Playable **94** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓▓▓░`
 
@@ -22,11 +22,11 @@ Playable **94** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓▓▓░`
 | 0.7 | 425 | 2026-10-30 | 185 | 2026-11-01 |
 | 0.8 | 575 | 2026-11-09 | 300 | 2026-11-18 |
 | 0.9 | 725 | 2026-11-19 | 480 | 2026-12-14 |
-| 1.0 | 876 | 2026-11-30 | 789 | 2027-01-28 |
+| 1.0 | 876 | 2026-11-29 | 789 | 2027-01-28 |
 
 Measured: titles with a frame rate reading taken during gameplay, on either handheld. Playable: titles rated Playable. The charts place each title on the date it first qualified, and the projected dates in the table assume the last 7 days' pace continues.
 
-Ships when both are met. At the last 48 h rate: about 2026-11-12.
+Ships when both are met. At the last 48 h rate: about 2026-11-05.
 
 Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/Nova handhelds.
 
@@ -295,6 +295,7 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | **Ultimate Pro Pinball Europe** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 16 |
 | **Ultimate Spider Man** | 🔵 Measured, not rated yet | **29.4**<br>Nova, Oct 7 |
 | **Whacked** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 4 |
+| **Wild Rings The Japan** | 🔵 Measured, not rated yet | **53.3**<br>Nova, Oct 19 |
 | **World Series Baseball USA** | 🔵 Measured, not rated yet | **22.0**<br>Nova, Oct 16 |
 | **World Snooker Championship 2005 Europe** | 🔵 Measured, not rated yet | **23.4**<br>Nova, Oct 15 |
 | **X Men The Official Game Europe** | 🔵 Measured, not rated yet | **49.3**<br>Nova, Oct 12 |
@@ -664,5 +665,5 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 
 </details>
 
-622 titles: 94 Playable, 8 below 30 fps, 16 crash or hang, 148 measured but not rated yet, 356 not tested yet.
+623 titles: 94 Playable, 8 below 30 fps, 16 crash or hang, 149 measured but not rated yet, 356 not tested yet.
 
