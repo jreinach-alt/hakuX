@@ -5,7 +5,7 @@ State: draft
 Lane: fpsdata1018            Issue: #433
 Base: master @ 72af9cb92c
 Files: hw/xbox/nv2a/pgraph/vk/texture.c, hw/xbox/nv2a/pgraph/vk/surface.c, hw/xbox/nv2a/pgraph/vk/renderer.h, docs/lanes/fpsdata1018/NOTES.md, docs/lanes/fpsdata1018/PR.md, docs/lanes/fpsdata1018/FINDINGS.md, docs/lanes/fpsdata1018/typecheck.py, docs/lanes/fpsdata1018/routes/fpsdata1018-ralli2-drive.route, docs/testing/predictions/fpsdata1018-texscan2d-pixels.json, docs/testing/predictions/fpsdata1018-s2tfb2-pixels.json, docs/testing/perf/fpsdiag/fpsdiag.py, docs/testing/jobs/selftest.d/99-fpsdiag.sh
-Prediction: docs/testing/predictions/fpsdata1018-texscan2d-pixels.json @ 19f09787277ab9f3e79c32f0574b73a0837585c5a7d7b259a6b6944d51725334
+Prediction: docs/testing/predictions/fpsdata1018-texscan2d-pixels.json @ 0b7b749a6836693bc58035f3b15dd316dd32ff97a28bef61122b713db2b8615e
 Prediction: docs/testing/predictions/fpsdata1018-s2tfb2-pixels.json @ 095ad2d3ea15762744ae3c7587cbfada403b47f8f46af06da10c2169eef0ead1
 Needs device: yes    Needs NDK: yes
 
@@ -80,6 +80,20 @@ fix caused. Both predictions above are re-registered without that suite in their
 described above are kept (each is independently correct reading the renderer code), but neither claims that
 suite's pixel checks as evidence, because a single device run cannot tell this suite's own noise apart from a
 real change in it.
+
+**A second, isolated flake, and a real fix found while chasing it.** Re-reading the texscan2d prediction's
+own arms a second time (same `a_ref`/`b_ref` as an earlier clean read-back) showed `Antialiasing_tests/
+CPUWriteIgnoresSurfaceConfig` move 0 -> 45,056 bytes -- but `sha256sum` across all four existing base/fix
+result directories on bit-identical builds found 3 of 4 byte-identical and only the one dissenting run differs:
+a device flake on this one test, outside the already-measured `Texture_shadow_comparator` noise floor, not a
+regression. Tracing it surfaced a real, separate gap: `migrate_surface_image()` (the function that moves a
+shelved or invalid surface's `VkImage` to a new binding when the same address/format/pitch recurs) copied
+every Vulkan-object field except `image_scale`, so a migrated surface's `image_scale` permanently read 0 and
+was refused by Fix #1's own `!= 1` check forever -- never corrupting (0 != 1 always refuses), but capping
+Fix #1's win to freshly-created surfaces only, missing the common steady-state case of a render target reused
+at the same address. Fixed: `migrate_surface_image()` now copies `image_scale` too. Pixel prediction
+re-registered a third time against this commit, since it changes texscan eligibility and needs its own
+falsifier.
 
 **Owner capture recipe to confirm the fps size of this one** (no reproducible device route exists for GTA III's
 specific in-car save state through the dispatcher's own --save registry, and this lane's device verification
