@@ -51,9 +51,14 @@
 #                               play, skips logos/intros/cutscenes with a
 #                               button ladder, resumes a pause it can see,
 #                               and stops the route (`ROUTE FAIL drive ...`)
-#                               on a pause it cannot leave, a stall (HUD up,
-#                               nothing moving) or a screen it cannot name.
-#                               `find`: end the step at 20 s of confirmed
+#                               on a pause it cannot leave or a stall (HUD up,
+#                               nothing moving) past its escape budget. A
+#                               screen it cannot name is never a route failure
+#                               any more (#433, 2026-10-18 Part B): it presses
+#                               and learns from the outcome (ACT-OBSERVE,
+#                               drive.py's module doc) until the step's own
+#                               <seconds> budget runs out, which ends the step
+#                               valid, not failed. `find`: end the step at 20 s of confirmed
 #                               play (path-finding: only what the route puts
 #                               after it runs). `mark`: drive.py writes
 #                               `mark gameplay` itself once play is
