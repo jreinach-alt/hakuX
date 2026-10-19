@@ -1,4 +1,16 @@
-owner 2026-10-18 21:12 PDT: nova is under lane.local's owner-play hold (dispatch/hold/nova; nova.why: "owner 10-18 21:15: owner-play check of RalliSport on master; dispatcher claims nothing. Only the owner lifts this."). Resolves when the owner's play session ends, the hold lifts, and dispatch/queue/withdrawn/owner1018/1-1792380791-localdrive1018-729348.req is moved back to dispatch/queue/ (lane.local's job per its own WHY.txt in that dir) and runs to a result.
+run dispatch/queue/withdrawn/owner1018/1-1792380791-localdrive1018-729348.req is moved back to dispatch/queue/ (lane.local's job per its own WHY.txt in that dir) and runs to a result.
+#
+# UPDATED 2026-10-19 (localdrive1018, attempt 3): the owner-play hold this file originally named
+# (dispatch/hold/nova) has LIFTED -- confirmed directly, `dispatch/hold/` now holds only `lifted/`
+# and `nova.battery-override`, no `nova`/`nova.why`. This condition is no longer owner-gated.
+# What is actually still blocking: the withdrawn request itself was never moved back. hostops'
+# 22:40 PDT restore pass (dispatch/queue/withdrawn/owner1018/WHY.txt) skipped it on the belief
+# that "localdrive1018 is retired" -- a claim this lane already checked against board-wt's live
+# origin/board territory.toml and found false (no `[retired.localdrive1018]` section; the row is
+# actively claimed, including for this session's own dispatcher.sh fix). Root cause and the
+# memory-index fix are in NOTES.md and in a comment on forge PR #1086. Rewritten as a `run` line
+# (the request produces `dispatch/results/.../DONE` once it is restored and completes) instead of
+# the old `owner` line, since owner action is no longer what this waits on.
 #
 # SUPERSEDES the `time 2026-10-18T20:46` line this file carried before (hostops, 2026-10-18
 # ~21:12 PDT): that line was satisfied the moment the clock passed 20:46 and stayed satisfied
@@ -14,7 +26,5 @@ owner 2026-10-18 21:12 PDT: nova is under lane.local's owner-play hold (dispatch
 # assumed: `cat dispatch/hold/nova.why` and `cat dispatch/queue/withdrawn/owner1018/WHY.txt` both
 # read as above at the time this was written.
 #
-# This is genuinely owner-gated now (only the owner lifts dispatch/hold/nova), so it is written
-# as an `owner` line per lanewaker's own grammar instead of a `time` or `run` line that would
-# either loop again or never fire (the withdrawn request has no `dispatch/results/.../DONE` or
-# `WITHDRAWN.txt` and will not get one until it is moved back to queue/).
+# This is no longer owner-gated (the hold lifted); it is gated on lane.local or a future hostops
+# tick restoring the one stranded request, which is not this lane's file to move by hand.
