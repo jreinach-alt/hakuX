@@ -4,6 +4,12 @@ Lane: fpsdata1018. Brief: `/home/justin/hakux-work/briefs/fpsdata1018.md` (owner
 causes of the FPS dips in the owner's 4-title capture (`/home/justin/hakux-work/captures/fps-owner-1018/`, master
 perflog 72af9cb92c, Nova, PurpleVK) and land fixes.
 
+[lane.fpsdata1018] waiting: on `[job.arms]`'s verdict for the two freshly re-registered pixel predictions
+(texscan2d @ `b46f4cb8d3`, S2T_FB mode 2 @ `b6064d61cc`) -- queued as `1-1792400325-*`/`1-1792400323-*`.
+PR.md stays `State: draft` until both post PASS. See the PR #1085 comment with the same text for what else
+this lane closed out first (FINDINGS.md, the corrected GTA III device-A/B claim, the briefed Blinx 2 harness
+bug, and the H2 investigation's named next step).
+
 ## Attempt log
 
 - **Attempt 1** (session 4431cc4c, 2026-10-19 04:39-04:51Z): committed nothing. It added two candidates to
