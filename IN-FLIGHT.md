@@ -6,12 +6,10 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Right now
 
-| Lane | Model | Running for | Working on |
-|---|---|---|---|
-| `foldjam1018` | claude-sonnet-5 | 30 min | foldjam1018: fix the three silent causes of the 2026-10-18 fold jam so they can't recur |
+No lane session is running.
 
 - **Handhelds:** 2 connected.
-  - Nova: held by `lane.local-owner1018`
+  - Nova: held by `owner-play-1018e`
   - Thor: held by `lane.local`
 - **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
@@ -121,9 +119,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Work in progress
 
-| Branch | Topic | Tip | Last change |
-|---|---|---|---|
-| `lane/foldjam1018` | foldjam1018: fix the three silent causes of the 2026-10-18 fold jam so they can't recur | `aa99e3acc4` | 2026-10-18 21:12 |
+No branch is being worked right now.
 
 ## Recently landed on master
 
@@ -138,4 +134,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-18 dispatcher: fix the staged-disc push's /mnt/d path so adb.exe can open it
 - 2026-10-18 The compatibility page adds RalliSport Challenge and Mortal Kombat: Shaolin Monks to Playable (92 -> 94)
 
-_Updated 2026-10-18 21:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 21:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
