@@ -180,7 +180,7 @@ finishes.
 
 | Title | Counter now | Predicted | fps now | Predicted fps |
 |---|---|---|---|---|
-| RalliSport 2 race | `fin=sdown` 60/window, 17-26 ms/frame; Fin 18-26 | `sdown` 0 in race windows; Fin < 2; `ts[bind]` ~60/window | 18-27 | 35-50 (frame becomes max(GPU 17-25, CPU 12-20)) |
+| RalliSport 2 race | `fin=sdown` 60/window, 17-26 ms/frame; Fin 18-26 | `sdown` 0 in race windows; Fin < 2; `ts[bind]` and `ts2[lin]` ~60/window | 18-27 | 35-50 (frame becomes max(GPU 17-25, CPU 12-20)) |
 | Fable gameplay | `sdown` 420/window, 37.8 ms/frame; `tobuf` 27.5 | `tobuf` and range `sdown` 0; `surfupd` grows from 6.3 to 10-25 ms (it is now the first sync) | 11-24 | +3 to +8 |
 | GTA III | no `sdown` | unchanged | -- | 0 |
 | Blinx 2 | `txr dl0`, `s2td600` | unchanged | -- | 0 |
@@ -188,8 +188,76 @@ finishes.
 **Cannot help:** GTA III and Blinx 2. Neither downloads for a texture in any gameplay window.
 
 **Falsifiers.**
-- RalliSport 2 race windows still show `fin=sdown` > 5 ms/frame, or `ts[bind]` 0 with `txdl dim60`. The plan
-  then did not take the bind.
+- RalliSport 2 race windows still show `fin=sdown` > 5 ms/frame, or `ts2[lin]` 0 with `txdl dim60`. The plan
+  then did not take the bind; `ts2[fb]` > 0 says it was refused.
 - The race fps does not rise while `sdown` falls. The wait moved: look for a new large `fin=` reason or `Fen`.
 - Fable: `surfupd` ms rises by as much as `tobuf` falls. Then H1 is real but Fable's gain needs H2 as well.
 - Any pixel change on the goldens (the must-not-move legs).
+
+## Fix #1 as built (38c8d53ba5)
+
+`hw/xbox/nv2a/pgraph/vk/texture.c` only. A slot is a cube face (as before), a swizzled 2D texture's mip level, or a
+linear texture's one surface. `texscan_slot()` (2149-2212) places each draw-dirty surface over the texture:
+- swizzled: `get_texture_layout`'s level walk; the surface must start at a level's offset and be that level's size;
+- linear: the offset gives x = (off % pitch) / bpp and y = off / pitch; the surface must fit inside the texture.
+
+Each slot then passes `check_surface_to_texture_compatiblity()` for a texture of exactly the slot's shape. That test
+checks extent, the linear pitch (1451, so a surface at another pitch is refused, as in the Antialiasing case it
+documents), layout (1483), converted formats and the texel stride. So the copied bytes are the round trip's.
+
+Two guards keep it from changing anything it does not take:
+- `texscan_prepare` returns before any flush or completion for a 2D texture with no draw-dirty surface over it
+  (`texscan_any_dirty`, 2297). Only cubes reached the flush and completion before.
+- For a 2D texture the plan refuses any shelved draw-dirty surface over it (2241), so `create_texture`'s shelf
+  lookup (3891), which can bind a shelved surface at the texture's address, cannot fire on a taken bind.
+- A linear texture takes one surface, never two: a duplicate slot refuses.
+
+The copy (`texscan_apply`, 2372-2531) sets `dstSubresource.mipLevel`, `baseArrayLayer` and `dstOffset` per slot.
+Counters (perflog): `[tsc] ... ts[bind cp keep force faf cmpl fb] ts2[mip lin fb]`; ts[] is unchanged, so
+`texread.py` still parses it. `ts2[fb]` counts refused 2D plans. The release tier logs `[texscan] on 2d=1` and, once
+per kind, `[texscan] first copy tex @addr WxH fmt faces levels lin`. `HAKUX_TEXSCAN2D=0` restores master's route,
+which takes cubes only.
+
+Built: `docs/lanes/fpsdata1018/typecheck.py` (shaderprebuild569's, plus `-D` passthrough) compiles texture.c with
+the NDK clang line of the last Android build. Release and `-DNV2A_PERF_LOG=1` both give rc=0. The 5 warnings are
+pre-existing (target_page shifts, `replaced`, `did_s2t_copy`).
+
+Territory: the brief says to claim the files in `territory.toml`, but the lane contract forbids editing it and says
+to write a board request instead. I followed the contract: `dispatch/board-requests/fpsdata1018.md` asks for
+`texture.c`, `surface.c` (H3, not edited yet) and `docs/testing/predictions/fpsdata1018-*`.
+
+Prediction (pixels): `docs/testing/predictions/fpsdata1018-texscan2d-pixels.json`, sha256 `af9b4547dc74...`,
+a_ref 245ddc4964, b_ref 38c8d53ba5. It covers 35 suites (texscan1010's 29 plus the render-to-texture ones), and every
+capture is predicted the same. Committed and pushed, so the arms job queues it.
+
+### Device A/B (RalliSport 2), queued 2026-10-19 05:38Z
+
+One build, 38c8d53ba5 perflog, on the Nova. The scene is ralli2audio1018's Copperhead race route
+(`routes/fpsdata1018-ralli2-drive.route`, copied unchanged), 480 s per arm:
+- A: `1-1792388258-lane.fpsdata1018-3191423`, `HAKUX_TEXSCAN2D=0`.
+- B: `1-1792388264-lane.fpsdata1018-3193935`, shipped. Queued last, so the device is left as shipped.
+
+Caveat, found before queuing: in four ralli2audio1018 release runs of this route (results `...3558236`, `...3569502`,
+`...219355`, `...709884`), the race ran at a median of **41-44 gfps**, against the owner's 18-27. That scene may not
+have the 260x260-in-640x480 render target at all; it could be a camera or stage the owner's race had. Arm A's
+`txdl why=dim` count answers that:
+- If A shows `dim` ~60/window and B shows `ts2[lin]` ~60 with `sdown` ~0, the A/B measures Fix #1 directly.
+- If A shows no `dim`, the route does not reach the owner's scene, and RalliSport 2's measurement goes to the owner
+  recipe below.
+
+Judge from both logcats: `GPU: PurpleVK` and `[texscan] on 2d=0/1` first. Then per race window: gfps,
+hakuX-phase Fin/Sub, `[sdcall]` sdown count/ms, `txdl` why, `[tsc] ts2[...]`, and the start temperature in
+thermal.jsonl. Compare the first 120 s of race in each arm, not the means of the whole runs, since ralli2audio saw a
+thermal cliff after 180 s.
+
+### Owner A/B recipe (Fable; RalliSport 2 if the route misses the scene)
+
+Fable has no route or save state to its gameplay scene. The recipe:
+1. Install the 38c8d53ba5 perflog build.
+2. Arm A: set `HAKUX_TEXSCAN2D=0` in env_vars. Play Fable's 10-18 stretch (gameplay, not the intro video) for 3
+   minutes. For RalliSport 2, play the same race and camera as on 10-18 for 2 minutes.
+3. Arm B: clear env_vars and play the same stretches again.
+4. Host capture throughout (`fpsdiag.py capture --attach`, CAPTURE.md).
+
+Counters to read: `[sdcall]` sdown and tobuf, `surfupd` (Fable: does it absorb the wait?), `txdl` why=dim/levels
+(A) against `ts2[lin]`/`ts2[mip]` (B), Fin/Sub, gfps.
