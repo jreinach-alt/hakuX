@@ -49,6 +49,121 @@ on average in the SAME scene, or a measured per-pass GPU ms drop that accounts f
   straight into the P0 census run named in the addendum: build first, then GTA III P0 (off arms only, per the
   prediction's own note that P0 does not depend on the switch), then the on/off palindrome; Blinx 2's
   `HAKUX_SWZKEEP` palindrome after that if device time allows.
+- **Attempt 5 (2026-10-19 ~15:00 PDT, resumed per addendum 4)**: attempt 4 ended on the 300-turn cap after
+  landing both predictions' device results (`HAKUX_S2T_DEAD` P0 falsified, `HAKUX_SWZKEEP` P1 holds/P2+P3
+  falsified, neither ships) and writing up Fable H2's `[edl]` census (P0 confirmed, P1 falsified at
+  `clrskip`/`dl`=0.504, conditional skip not started). Of the ranked open items, only item 4 (RalliSport 2 /
+  Fable landed-lever read-back) was still untouched and explicitly flagged in the addendum as next. Picked item
+  4 over Fable H2's conditional/per-binding skip because item 4 has no open mechanism question (both levers are
+  already landed and pixel-proven; this is a read-back, not a diagnosis) and the addendum named it first; H2's
+  conditional skip needs a per-binding design not started anywhere in this lane's history. Start-of-attempt
+  checks: `hold.sh who nova` -> held by `lane.fpsnext1019` since attempt 3; confirmed via
+  `systemctl --user show hakux-lane-fpsnext1019.service` that `MainPID` matches this session's own `claude -p`
+  process (not a stale leftover). `origin/master` was 0 commits ahead at the time (this lane's own attempt-4
+  fold already landed). Device: `dumpsys window | grep mCurrentFocus` and `dumpsys power | grep mWakefulness`
+  both showed the Nova idle/awake, no other process using it. Ran RalliSport 2's read-back this attempt (below);
+  Fable's half of item 4 still open for the next attempt.
+
+## Attempt 5, item 4: RalliSport 2 read-back -- `HAKUX_TEXSCAN2D` confirmed on real driving (sdown 100%->0%, fps 38.2->59.0 mean)
+
+fpsdata1018 landed `HAKUX_TEXSCAN2D` (RalliSport 2's shape-mismatch texture-copy fix, default on) but never read
+it back against real gameplay data on this lane's own route -- it shipped on pixel-sanity and the original
+lane's own capture, not this lane's dispatcher. This is a read-back of an already-landed, pixel-proven default,
+not a new diagnosis, so no G3 falsifiable prediction was registered (`ab_compare.py` also has no golden for this
+scene); PR.md already states this under `Prediction:`.
+
+Route: `rallisport-2.returning` (the kept, recorded route in `targets.toml`, title `4D530039`), via
+`docs/testing/request.sh`, `--no-expect "read-back of an already-landed default, no golden"`, perflog build.
+
+First attempt (`1-1792439821-lane.fpsnext1019-1639202`) voided: the run aborted "not foreground" before any
+input reached the app (device showed `mCurrentFocus=null`, `mWakefulness=Asleep` afterward; likely a cold-start
+focus race right after a fresh-install shader-cache clear). Per the flake-rerun policy, retried the identical
+request once rather than reporting it — not a finding, no `sdown`/`gfps` data was ever produced by this run.
+
+**ON arm** (default, `HAKUX_TEXSCAN2D` unset): `1-1792440047-lane.fpsnext1019-1747821`, ref `0bcd81c06c`.
+`mark gameplay` at 13:05:37.644. From that point through route end (~13:07:11), **zero** `[dipwin]` windows
+contain an `sdown` entry (checked all windows in range, not a sample). `gfps` histogram during driving:
+`{53:1, 55:3, 56:1, 57:1, 59:80, 60:11, 61:3, 63:2}`, weighted mean **59.0 fps**.
+
+**OFF arm** (`--env HAKUX_TEXSCAN2D=0`, confirmed applied via logcat env-echo): `1-1792440554-lane.fpsnext1019-2020839`.
+`mark gameplay` at 13:14:02.613. `sdown` present in **all 63 of 63** `[dipwin]` windows after that point.
+Representative lines: `fin=sdown:50/527.65,present:9/14.87,flip:60/71.63`, `fin=sdown:50/404.53,...`,
+`fin=sdown:39/288.21,...` — tens to hundreds of ms of fence-wait per ~1-2s window. `gfps` histogram during
+driving spans 31-49 (one 59 outlier), weighted mean **38.2 fps**.
+
+Honest caveat: both arms also show heavy `sdown` bursts **before** `mark gameplay` (menu/car-select/pre-race
+flyover screens) — e.g. the ON arm has 20 such windows around 13:04:28-46 with `fin=sdown:60/86-102ms` each.
+So the fix clearly does not suppress `sdown` on every screen's texture shapes, only on the driving scene's; this
+read-back is only a claim about the driving phase, which is what the owner's bar and the brief's item 4 are
+about. Not elided here because a reader comparing raw logcat without this note could reasonably ask why the
+"fixed" ON arm still shows `sdown` at all.
+
+**Conclusion: confirmed on real data.** The ON/OFF delta (sdown 0% vs 100% of driving windows, fps mean 59.0 vs
+38.2) is large, clean, and attributable — the identical route, only the env var differs. `HAKUX_TEXSCAN2D`'s
+landed default is doing exactly what fpsdata1018 claimed on RalliSport 2's actual driving gameplay, not just in
+a pixel-sanity capture. No further action needed on this lever; see FINDINGS.md for the table row.
+
+## Attempt 5, item 4 (Fable half): recipe written, not a lane-driven capture this attempt
+
+Fable's landed lever for this read-back is **not** `HAKUX_S2T_FB` (that one is GTA III's, #1049/lane.gta3car1018)
+-- checked against fpsdata1018's own FINDINGS.md rather than assumed: Fable's fix is the *same* switch as
+RalliSport 2's, `HAKUX_TEXSCAN2D` ("Same root cause as RalliSport 2 (H1)... Fix #1 covers both shapes"), and the
+counter to read is `[sdcall]`'s `tobuf` field (`SDC_TO_BUFFER` in `surface.c`), predicted `420/window -> 0`,
+`+3 to +8 fps`.
+
+No dispatcher route reaches Fable's gameplay (same gap named by fpsdata1018 and this lane's own attempt-5 item-1
+work). Attempt 5's Fable H2 reachability work drove the device by hand (`pad.sh`, cold boot, AutoSave) because
+at the time that was the only way to get a census at all. This write-up does not repeat that: driving the device
+directly, rather than through `docs/testing/request.sh`, is now explicitly out of bounds for this lane's own
+device access (the harness's lane rules name `request.sh`/`ab_run.sh` as the only sanctioned way in), and the
+brief's own wording for item 4 already asks for an **owner capture**, not a lane-driven one ("Hand the owner the
+recipe when a build is ready; he plays ten minutes and you analyze") -- unlike item 3's more open wording ("any
+dispatcher route... or the owner's gameplay"). So this half of item 4 is a recipe, not a run: written into
+`PR.md` (build to install -- `dispatch/builds/0bcd81c06c-perflog.apk`, confirmed no C/H source drift from this
+PR's HEAD via `git diff --stat 711315bbe7 HEAD -- '*.c' '*.h'`, empty -- ON arm via the in-app Settings ->
+Environment Variables field left empty, OFF arm with `HAKUX_TEXSCAN2D=0` added there and the app fully
+relaunched, ~10 minutes of ordinary gameplay each, full `adb logcat -v time` capture handed back for analysis).
+Nothing to analyze yet; this is the recipe, not the result.
+
+## Next-ranked item for the next attempt: GTA III's remaining passes, feedback-loop mechanism
+
+Brief item 4 (this attempt's assigned focus, per Addendum 4) is now done to the extent this lane can push it
+without new data: RalliSport 2 confirmed on real driving, Fable's half is a written recipe awaiting the owner's
+two captures (an external dependency, not something to wait on turns for). `HAKUX_S2T_DEAD` already ruled out the
+cheap remedy for GTA III's remaining ~140/150 in-car render passes (P0 falsified: the sampled texel is real
+feedback, not dead), and `HAKUX_S2T_FB` mode 2 cannot help it either for the same reason (mode 2 only keeps a
+copy for stages that provably do not read their texture; this one does). The only remedy left that was named and
+not started is a genuine feedback-loop attachment or in-pass self-dependency -- letting the shader read the
+colour target it is currently drawing into without ending the render pass to copy it out first, which is what
+`copy_surface_to_texture` (`texture.c:1311`) exists to work around today.
+
+This is a real architecture change (subpass self-dependency / `VK_EXT_attachment_feedback_loop_layout` /
+framebuffer-local-read class of extension), not a lever that fits in the tail of an attempt that has already
+spent its budget on two write-ups this session. Per the owner's own "balanced, not cheap first" direction: this
+is the higher-effort, higher-reach option and should be opened with, not reached for last -- but opening with it
+means giving it a full attempt's budget, not a rushed partial build here.
+
+**Feasibility check, done at zero device cost:** before ranking this any higher than a hope, checked whether
+PurpleVK's Turnip build actually has the extension this remedy needs, rather than assuming. `strings` against
+the driver binary this lane already uses (`/home/justin/hakux-work/drv/T30/vulkan.purple.so`, the T30 PurpleVK
+build) finds `VK_EXT_attachment_feedback_loop_layout`, `VK_KHR_dynamic_rendering_local_read`,
+`VK_EXT_fragment_shader_interlock` and `VK_EXT_rasterization_order_attachment_access` all present in what reads
+as the driver's own extension-name table (alongside ordinary advertised extensions like
+`VK_EXT_provoking_vertex`, `VK_EXT_queue_family_foreign` in the same sorted block) -- not a dead reference, a
+real code path: `"Disabling gmem due to VK_EXT_attachment_feedback_loop_layout"` sits next to
+`TU_AUTOTUNE_FLAGS`/`"hw binning disabled"` strings, matching upstream Turnip's own documented behaviour (a
+feedback-loop attachment forces sysmem rendering, because GMEM's per-tile binning can't give a shader a
+consistent read of an attachment it is also writing this pass). **This is notable on its own**: it means
+lever (a) (`TU_DEBUG=sysmem`, already measured +3fps over shipped, FINDINGS.md) and this remedy may not be two
+independent options to rank against each other -- a correct feedback-loop implementation would likely force (or
+at least prefer) the same sysmem path the driver already falls back to for this exact situation, so sysmem's
+measured win could be partially *this* mechanism already leaking through today, just without the explicit
+attachment-feedback-loop layout transitions that would let the shader read a stable in-progress value instead
+of whatever stale/undefined content sysmem happens to leave in the attachment between the write and the
+self-read. Feasibility: **confirmed, not a dead end.** Not started: the actual design (which of the two
+extensions to target, where the single 128x128 target's bind-as-texture call needs to become a same-pass
+self-read instead of `copy_surface_to_texture`'s copy-and-restart) and the G3 falsifiable prediction for it
+(pixel safety first, matching every prior lever's own sequencing) -- a full attempt's scope, next.
 
 ## Step 0: Already-tried (G1), carried from fpsdata1018
 

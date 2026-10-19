@@ -3,8 +3,8 @@
 State: ready
 
 Lane: fpsnext1019            Issue: #433
-Base: master @ 913e1524ff (fpsdata1018, foldjam1018, compat1019b and nova-tiers1019's folds landed on master; merged in)
-Files: docs/lanes/fpsnext1019/NOTES.md, docs/lanes/fpsnext1019/PR.md, docs/lanes/fpsnext1019/FINDINGS.md, hw/xbox/nv2a/pgraph/vk/texture.c, hw/xbox/nv2a/pgraph/vk/surface.c
+Base: master @ d30f91349b (fpsdata1018, foldjam1018, compat1019b and nova-tiers1019's folds landed on master, plus this lane's own attempt-4 fold; merged in)
+Files: docs/lanes/fpsnext1019/NOTES.md, docs/lanes/fpsnext1019/PR.md, docs/lanes/fpsnext1019/FINDINGS.md
 Prediction: none: ab_compare.py's golden-capture registration does not fit a GTA III driving-scene fps claim (no
   golden exists for it). The falsifiable prediction that mattered (NOTES.md, "one guard dominates wrej[], likely
   scale/shape, not off") was written before the device run that tested it and was falsified by that run -- see
@@ -59,7 +59,37 @@ zero census lines against a plain debug build; `opt_stats_log_and_reset()` compi
 **0.504**, not the 1.0 ("6/6") Addendum 2 set as the bar for building an unconditional download-skip lever --
 close to half of every window's evicted-and-downloaded content is real feedback a later stage reads, so the
 lever is **not built**. A conditional, per-binding skip is the next-ranked option if this is picked back up, not
-started this attempt. Detail in `docs/lanes/fpsnext1019/NOTES.md`; per-title table in `FINDINGS.md`.
+started this attempt. RalliSport 2: read back fpsdata1018's landed `HAKUX_TEXSCAN2D` default against real
+gameplay for the first time (previously only pixel-sanity-proven) -- on the kept dispatcher route, the ON arm
+shows zero `sdown` (deferred-download fence-wait) in every driving-phase window and a 59.0fps mean, the OFF arm
+(`HAKUX_TEXSCAN2D=0`) shows `sdown` in 63/63 driving windows and a 38.2fps mean, same route, only the env var
+differs -- confirmed on real data, nothing further to do on this lever. (Both arms still show `sdown` on
+pre-race menu/flyover screens; the claim is scoped to the driving phase, which is what the bar measures.) Fable's
+half of this read-back is **not yet done this attempt** -- Fable's landed fix is the same `HAKUX_TEXSCAN2D`
+switch (fpsdata1018's FINDINGS.md: "Same root cause as RalliSport 2 (H1)... Fix #1 covers both shapes"), not
+`HAKUX_S2T_FB`; the counter to read is `[sdcall]`'s `tobuf` field (`SDC_TO_BUFFER`), predicted `420/window -> 0`.
+No dispatcher route reaches Fable's gameplay, so per the brief's own item 4 wording ("hand the owner the recipe
+... he plays ten minutes and you analyze") this is an **owner capture**, not a lane-driven one:
+
+1. Install `dispatch/builds/0bcd81c06c-perflog.apk` (perflog build; no C/H source drift from this PR's HEAD, see
+   NOTES.md) over the current Fable install.
+2. **ON arm** (default, leave Settings -> Environment Variables empty of any `HAKUX_TEXSCAN2D` line): launch
+   Fable, start `adb logcat -v time > fable-on.txt` before or right at launch, play ~10 minutes of ordinary
+   gameplay (walking/exploring, not menus), confirm `GPU: PurpleVK` appears once near the start.
+3. **OFF arm**: in Settings -> Environment Variables, add a line `HAKUX_TEXSCAN2D=0` and save (applied on next
+   launch per the field's own description), fully close and relaunch Fable, capture `fable-off.txt` the same
+   way, another ~10 minutes of ordinary gameplay.
+4. Hand over both logcat files; analysis (`tobuf` sums, fps delta) happens from them, not on the device. Detail
+   in `docs/lanes/fpsnext1019/NOTES.md`; per-title table in `FINDINGS.md`.
+
+Next-ranked, not started this attempt: GTA III's remaining ~140/150 in-car render passes still end at
+`copy_surface_to_texture` (a real-feedback self-sample, so neither `HAKUX_S2T_DEAD` nor `HAKUX_S2T_FB` can touch
+it); the only named remedy left is a genuine feedback-loop attachment / in-pass self-dependency. Checked
+feasibility at zero device cost before ranking it: PurpleVK's driver binary advertises
+`VK_EXT_attachment_feedback_loop_layout` and `VK_KHR_dynamic_rendering_local_read` (matching upstream Turnip's
+own documented sysmem-fallback behaviour for feedback-loop attachments) -- confirmed feasible, not a dead end,
+and possibly the same mechanism already leaking through lever (a)'s measured sysmem win. Design + a falsifiable
+pixel-safety prediction is next attempt's scope, not started here.
 
 Release note (performance): GTA III driving scenes do fewer GPU render passes per frame (a texture copy the
 renderer was already built to avoid, but had never been turned on, now runs by default); measured as an fps
