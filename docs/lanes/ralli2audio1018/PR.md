@@ -52,8 +52,19 @@ Expected:
 - voice-worker time falls to about 390-450 us per frame;
 - the producer runs at about 65-75% of real time.
 
-Device verification on the Nova follows: one cold-cache arm, then the same
-race twice for the bar. Detail is in `docs/lanes/ralli2audio1018/NOTES.md`
-and `FINDINGS.md`.
+Device verification on the Nova: a cold-cache pilot confirmed the producer
+prediction by a wide margin (143 us mean fork-join vs. a predicted
+390-450 us). Two default-cache runs of the same race both confirm
+audio_starve_share (0.0, bar 0.001) and hitches (0, bar: none over 500 ms)
+by a wide margin; the owner's 1.34% starve share and 580/774/410 ms
+compile hitches are gone. `fps_ok` misses the 0.90 bar on both
+(0.8618, and a second run the tool could not score for fps for an
+unrelated route-frame gap); a third, independently-run confirmation
+reproduces the same shape (clean to ~200s, then degraded) even after a
+cooldown gap, which does not implicate this change's memory-read path
+(CPU-side APU code only) but could implicate its priority change
+(voice workers raised to nice -16) under thermal CPU contention. An
+isolation run with `HAKUX_APU_PRIO=0` is queued to tell these apart.
+Detail is in `docs/lanes/ralli2audio1018/NOTES.md` and `FINDINGS.md`.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

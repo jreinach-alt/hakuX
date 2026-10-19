@@ -1174,3 +1174,59 @@ found the hold gone.
   at the same ~180-210 s mark despite that gap, the confound explanation is
   wrong and needs more digging; if it does not, the gap was enough.
 - Updated `WAITING` to the new request id.
+
+**The gap did not clear it, which changes the explanation.** Bar run 3 got a
+genuine ~8 min gap behind a different title's shorter soak (GTA III, 300 s;
+`thermal.jsonl` for run 3 starts at a cooler 39-50C, not bar 2's 50-94C). Its
+`gfps=` bucketed the same way still holds a clean ~59 fps through t=210s,
+then drops to a 33-53 fps band from t=240s on -- the same shape a third
+time, just ~20-30s later. The run aborted at 391/870s (see below) before
+reaching bar 1/2's full length, but the cliff itself already reproduced by
+then. A cooldown gap before the run starts shifts the cliff a little but
+does not remove it, which argues against "today's accumulated device heat"
+and toward something that develops *within* a single sustained race
+regardless of starting temperature -- plausibly the SoC's own thermal
+response to several continuous minutes of this title's particular
+CPU+GPU load, independent of this lane's change. But there is a real
+alternative this lane's own change could cause that is not yet ruled
+out: raising the four voice-worker threads to nice -16 (Android's audio
+priority, same tier as the frame thread) is new with this fix and is a
+system-wide scheduling change, not confined to the APU -- under CPU
+contention (which thermal throttling itself produces, by cutting
+available clock-cycles per second) it is possible for four newly
+real-time-priority threads to preempt render-adjacent CPU work more than
+the old nice -4 workers did, which would show up as exactly this shape: a
+clean start, then a widening fps shortfall once the CPU is loaded enough
+for the priority difference to matter. The owner's own 10-18 hand-played
+capture (514 s, `fps_ok` 0.9873, no cliff) predates this fix entirely
+(pre-fix binary) and does not distinguish between these two explanations
+either way.
+- **While bar run 3 was in progress it lost the device entirely**: at
+  t=391s, `run.log` shows `adb.exe: device 'ee317437' not found` (not the
+  pilot's "hung, no answer in 10s" -- a flat absence from the device list),
+  `soak aborted: not-foreground after 391s of 870s`, and the dispatcher's
+  own battery poll went from a normal 30% reading to `BATTERY: level
+  unreadable on nova` at the same time, staying unreadable and stuck at the
+  pre-drop timestamp for the 8+ minutes checked since. `hold.sh who nova`
+  still reports `free` (no hold was taken, by this lane or anyone else, so
+  this is not an owner hold the way the memory note on killed owner runs
+  describes) and the dispatcher's own `supervising N device worker(s)` line
+  dropped from 2 workers to 1 shortly after, meaning the Nova's own worker
+  process ended, not just a slow poll. Nothing on the dispatch side points
+  at an owner interaction (no hold, no battery-override change, no other
+  lane's request touching nova); this reads as a device/connectivity drop
+  (USB, Wi-Fi adb, or a crash) that is outside what this lane can see or
+  act on -- only `request.sh`/the dispatcher can reach the device, and
+  touching it by hand is forbidden under any circumstance, hold or not.
+- **Queued the decisive isolation test**: `1-1792380737-lane.ralli2audio1018-709884`,
+  same race and route, `HAKUX_APU_PRIO=0` (this fix's priority change off,
+  the vp.c memory-read change still in effect since it is unconditional).
+  If the same cliff at ~t=200-240s still appears with the priority boost
+  off, that rules out the scheduling hypothesis above and leaves a
+  device/title thermal characteristic unrelated to this fix, which does not
+  block shipping the audio change (its own bar -- audio_starve_share,
+  hitches -- is already confirmed twice over). If the cliff shrinks or
+  disappears, `HAKUX_APU_PRIO`'s default needs to change before this ships
+  behind no flag. Queued even with the Nova currently unreachable --
+  `request.sh` queues regardless and the dispatcher will claim it once the
+  device is back, so there is nothing more to do until then.

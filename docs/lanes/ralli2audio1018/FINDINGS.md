@@ -98,6 +98,46 @@ build for this title. The fix:
 
 ## Status
 
-The memory-access change and the priority change still need two runs of
-the same race on the handheld. Each run is scored for audio_starve_share,
-hitches and fps_ok.
+A cold-cache pilot (`HAKUX_PLC_WIPE=1`, worst case) confirmed the producer
+prediction by a wide margin: voice fork-join time 143 us mean per frame
+(predicted 390-450 us), wall per block ~25% of budget (predicted 65-75%),
+`audio_starve_share` 0.000153 even with every shader forced cold.
+
+Two full default-cache runs of the same race on the Nova:
+
+| Measure | Bar run 1 | Bar run 2 | Bar |
+|---|---|---|---|
+| gameplay | 657.7 s | 629.8 s | 600 s |
+| audio_starve_share | 0.0 | 0.0 | <= 0.001 |
+| hitches over 500 ms after warm-up | 0 | 0 | none |
+| worst frame (ms) | 165.5 | not scored (route-frame gap) | <= 500 |
+| fps_ok | 0.8618 | not reliable (same gap) | >= 0.90 |
+
+Audio dropouts and shader-compile hitches are confirmed fixed, twice, by a
+wide margin -- the 1.34% starve share and the 580/774/410 ms compile
+hitches the owner saw are gone.
+
+`fps_ok` misses the 0.90 bar on both runs, and a third run (aborted
+early by a device disconnect, unrelated to this fix) reproduces the same
+shape a third time: a clean ~59 fps for the first 180-240 s of continuous
+racing, then a sustained drop to a 25-50 fps band for the rest of the run,
+even after a cooldown gap before the run starts. This does not move with
+a cooldown gap, which argues for a within-race thermal characteristic of
+this title on this device rather than cumulative heat from queuing runs
+back to back. It is also not something the vp.c memory-read change could
+cause (CPU-side APU code only). It could, in principle, be caused by this
+fix's own priority change (voice workers raised to nice -16, a new
+system-wide scheduling change) crowding out render-adjacent CPU work once
+the CPU is thermally constrained. An isolation run with
+`HAKUX_APU_PRIO=0` is queued to tell these apart; see NOTES.md.
+
+The owner's own hand-played capture (514 s, fps_ok 0.9873, no cliff) predates
+this fix and does not distinguish between the two explanations either way.
+
+**If the isolation run shows the same cliff with the priority change off**:
+the fps bar is not met for a reason outside this fix's control, the audio
+fix ships on its own merits (it only touches audio), and the fps finding is
+a separate, title/device-specific issue to hand off.
+**If the cliff shrinks or clears**: `HAKUX_APU_PRIO`'s default needs to
+change before this fix ships behind no flag, and that becomes the next
+step instead.
