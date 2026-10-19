@@ -8,9 +8,9 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `localdrive1018` | claude-sonnet-5 | 21 min | drive: local tools only, act-observe instead of wait-and-fail, learn what to press |
-| `pagesfix1018` | claude-sonnet-5 | 38 min |  |
-| `ralli2audio1018` | claude-sonnet-5 | 31 min | ralli2audio1018: RalliSport Challenge 2 audio dropouts: the voice processor's guest-memory overhead, producer  |
+| `localdrive1018` | claude-sonnet-5 | 36 min | drive: local tools only, act-observe instead of wait-and-fail, learn what to press |
+| `pagesfix1018` | claude-sonnet-5 | 53 min |  |
+| `ralli2audio1018` | claude-sonnet-5 | 46 min | ralli2audio1018: RalliSport Challenge 2 audio dropouts: the voice processor's guest-memory overhead, producer  |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -143,4 +143,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-18 haloring1017: Halo CE main-menu ring: the static inside surface is the stock driver
 - 2026-10-18 GTA III: where the 46 ms parked frame goes once every copy is removed
 
-_Updated 2026-10-18 19:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 20:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
