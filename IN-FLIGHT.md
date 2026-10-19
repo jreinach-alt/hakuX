@@ -6,9 +6,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Right now
 
-| Lane | Model | Running for | Working on |
-|---|---|---|---|
-| `ralli2audio1018` | claude-sonnet-5 | 3 min | ralli2audio1018: RalliSport Challenge 2 audio dropouts: the voice processor's guest-memory overhead, producer  |
+No lane session is running.
 
 - **Handhelds:** 2 connected.
   - Nova: held by `lanelocal-offline`
@@ -121,12 +119,11 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Work in progress
 
-| Branch | Topic | Tip | Last change |
-|---|---|---|---|
-| `lane/ralli2audio1018` | ralli2audio1018: RalliSport Challenge 2 audio dropouts: the voice processor's guest-memory overhead, producer timing, au | `555490292b` | 2026-10-18 18:38 |
+No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-18 dispatcher: dev_push gets a read-only mode for the Nova's SD-card disc pushes
 - 2026-10-18 home branch root: move chart.svg/chart2.svg/COPYING.LIB under docs (#433)
 - 2026-10-18 holdcap1018: an owner-play hold starts a host logcat capture
 - 2026-10-18 README Highlights: drop GTA III/VC from the Playable list, name TimeSplitters 2, Mortal Kombat: Shaolin Monks and Burnout Revenge, and add two fix bullets
@@ -138,6 +135,5 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-18 haloring1017: Halo CE main-menu ring: the static inside surface is the stock driver
 - 2026-10-18 GTA III: where the 46 ms parked frame goes once every copy is removed
 - 2026-10-18 Fable and Blinx 2: decompose the gameplay dips, find what the frame spends its time on
-- 2026-10-18 pathfind: a screen-reading agent that drives a title from boot into gameplay
 
-_Updated 2026-10-18 18:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 19:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
