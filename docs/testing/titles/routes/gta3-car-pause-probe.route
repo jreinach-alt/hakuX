@@ -28,6 +28,22 @@
 # No `mark`: this is not a scored play-share window (title_verdict.py),
 # only `shot` frames for building drive-profiles/gta3.toml's remaining
 # crops offline.
+#
+# RESULT (2026-10-19, nova run 1-1792380791-localdrive1018-729348, restored
+# after a stranded-withdrawal detour -- see NOTES.md): run completed, all 7
+# shots captured. CORRECTING the "Save should be the default highlighted
+# row" line above against the actual frame (route-frames/063430-pause-menu.png,
+# kept in docs/lanes/localdrive1018/gta3-car-pause-probe-1019/): the pause
+# menu's default tab shows "New Game" / "Load Game", NOT a Save option --
+# `START: Resume Game` is the only save-adjacent text on screen. GTA III's
+# save mechanic is gated on being at a safehouse (a floppy-disk map icon),
+# not available from the pause menu at an arbitrary location; this run never
+# drove anywhere near one. The owner's walkthrough was evidently describing
+# a different moment (at or near a safehouse) than where this scripted
+# opening sequence leaves the player. Flagging rather than guessing at a
+# fix: Part D's "state-save step" needs either a drive-to-safehouse leg
+# first, or the owner's own confirmation of which pause-menu tab/screen
+# actually shows Save from this spawn point. Not done here.
 wait 55
 repeat 4 {
     press A 300

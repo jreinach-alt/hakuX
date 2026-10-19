@@ -749,3 +749,134 @@ both superseded) so lane.local or a future hostops tick restores it instead of r
 work under `gta3car1018` on a false premise. Not treating this as this session's own WAITING --
 the device-side wait was never this resume's task (the dispatcher.sh fix was), and nothing here
 blocks pushing or marking this commit's work done.
+
+## Resume 2026-10-19 ~06:45 PDT (attempt labelled 4): the stranded probe ran, with real
+car-entry and pause-menu evidence -- and a correction to the brief's own premise
+
+The prior session did not fail: it ended correctly on a `run` line (`WAITING` for
+`1-1792380791-localdrive1018-729348` to reach `dispatch/results/`), having already fixed what
+it could (the dispatcher.sh fold gap) and flagged what it could not (the stranded withdrawn
+request, not this lane's file to move). Checked live rather than re-describing that WAITING:
+`dispatch/results/1-1792380791-localdrive1018-729348/DONE` now exists (06:36 PDT) --
+hostops/jam-duty restored the request from `dispatch/queue/withdrawn/owner1018/` at 06:36 PDT,
+explicitly re-confirming the false-retirement finding a second time
+(`dispatch/queue/withdrawn/owner1018/WHY.txt`, new entry: cites both board-wt's live territory
+row and this lane's own prior correction). It ran clean on the Nova and produced all 7
+requested shots (`route-frames/`): `introskip`, `pregameplay`, `fist-hud`, `onfoot`,
+`car-entered`, `pause-menu`, `resumed`. Copied into
+`docs/lanes/localdrive1018/gta3-car-pause-probe-1019/` (committed, real evidence, not
+synthetic -- same convention as the earlier `gta3-frames-1018/` Thor stills).
+
+**These frames are Nova captures (1280x960), not Thor (1920x1080)** -- `PIL`-measured size on
+all 7, confirmed. This matters for anything measured in raw pixel coordinates (the `waitfor`
+mechanism below): a region calibrated here is Nova-resolution-specific, same open caveat the
+existing `fist-hud` crop (gta-3.route, not this lane's) already carries unverified on the Thor.
+
+**Ran `classify.py table --profile gta3.toml` over all 7 real frames** (the actual
+`classify_frame` pipeline, not a hand score):
+
+    frame          state      source                      changed  letterbox hud-heart
+    introskip      cutscene   crop:letterbox-top                      0.0        -
+    pregameplay    unknown    hud:hud-heart+after-cutscene  0.576     44.3      2.1
+    fist-hud       stalled    hud:hud-heart+static          0.011     44.5      2.1
+    onfoot         stalled    hud:hud-heart+static          0.013     44.6      2.0
+    car-entered    play       hud:hud-heart+motion          0.391     55.3      3.0
+    pause-menu     paused     pathclass:pause               0.480     16.0      62.2
+    resumed        unknown    hud:hud-heart+after-paused    0.538     42.9      2.5
+
+Three findings, each checked against the real tool rather than assumed:
+
+1. **The pause menu is already correctly classified as `paused` with ZERO new code.**
+   `pathclass`'s own trained head recognizes GTA III's pause/load screen as `pause`
+   (score not shown by `table` for a non-crop pathclass call, but the `source` column says
+   `pathclass:pause` plainly) -- no gta3-specific crop was needed for this, contradicting
+   this lane's own earlier assumption (Part D's original writeup) that pause detection was
+   an open problem for this title. One title's worth of evidence, not a held-out claim, but
+   a real positive result worth not re-deriving.
+2. **`hud-heart` does NOT distinguish on-foot `play` from in-car `play`.** `car-entered`
+   scores 3.0 on the heart crop, inside the same near-zero band as on-foot (`fist-hud`/`onfoot`
+   score 2.0-2.1) -- because the health heart (and the fist/weapon-slot icon next to it) stay
+   on screen identically whether the player is on foot or driving in this build. This directly
+   answers the brief's own open question ("no on-foot weapon box" as the car/on-foot signal):
+   that signal does not exist in this HUD. The brief's requirement ("a drive scene is scored
+   only if `play` AND the player is in a car") needs a SEPARATE signal from `hud-heart`, not a
+   refinement of it.
+3. **Found that separate signal and built it, but it is route-level, not a classify.py state**
+   (`classify.py`'s `STATES` tuple -- checked directly, `load_profile` rejects any crop whose
+   `state` isn't in it -- has no `car`/`driving` entry, and adding one is the kind of shared,
+   cross-title change this lane is not taking on for one title's evidence, same reasoning Part
+   D already applied to `after_title`). Instead: GTA III draws a vehicle-nameplate watermark
+   ("Kuruma", this car's name) across the car body for a few seconds after entry -- a
+   `route.sh` `waitfor` reference crop (the SAME mechanism `gta-3.route`'s existing `fist-hud`
+   step already uses, independent of `classify.py`'s state machine entirely), not a profile
+   crop. Built `routes/refs/gta3-drive/car-entered.png` from the real `car-entered.png` frame,
+   region `780,740,400,90` (raw pixels, located by eye then confirmed with a color threshold
+   that the visible "Kuruma" text sits there) -- scored with `waitfor_match.py`'s own
+   `region_score()` function against all 7 frames from this run (not a hand-rolled diff):
+
+       car-entered   0.000   (itself)
+       onfoot       17.241
+       fist-hud     17.351
+       pregameplay  17.351
+       pause-menu   31.133
+       resumed      31.683
+       introskip    44.606
+
+   Threshold 10.0 sits with a clean margin below the nearest cluster (17.2, on-foot) and well
+   below everything else. Caveats stated plainly, not glossed over: this is ONE sample (no
+   second car-entry capture exists to confirm the margin holds on a re-run), the watermark
+   names THIS specific vehicle model so a run where a different car spawns at this scripted
+   spot may not match at all, and the region is Nova-resolution-only per the caveat above. A
+   genuine first debugging mistake worth recording: my first attempt at `region_score()`
+   scored `(x, y, w, h)` as if it were `(x1, y1, x2, y2)` -- `region_score`'s own box is
+   `(x, y, w, h)`, cropping `(x, y, x+w, y+h)` -- which produced an out-of-bounds crop and a
+   nonsense self-score of 44.7 instead of 0.0 for the frame the ref was cut from; caught by
+   checking the self-match score before trusting any of the cross-frame numbers, not by
+   assuming the first run was right.
+
+**Correcting the brief's own premise, not working around it.** The brief's walkthrough says
+"a save state (pause menu, Save is the default row)". The captured `pause-menu.png` frame
+shows the actual default tab reads **"New Game" / "Load Game"**, with `START: Resume Game` as
+the only save-adjacent text anywhere on screen -- no Save option is visible from this pause
+state at all. GTA III's save mechanic is gated on being at a safehouse (a floppy-disk map
+icon), not available from the pause menu at an arbitrary location, and this scripted opening
+sequence (prison escape, stolen car, highway overpass) is nowhere near one. The owner's
+hands-on description most likely referred to a different, later moment in the game (at or
+near a safehouse), not this spawn point. This is the same class of correction as
+`correct-the-premise-where-it-is-read` -- written here, in the route file's own RESULT note,
+and in PR.md, not silently routed around by inventing a Save row that is not on screen.
+
+**Built, verified, committed:**
+- `routes/refs/gta3-drive/car-entered.png` (the reference crop above).
+- `routes/gta3-drive.route` "STAGE 2": `drive gta3 300 find` (Stage 1, unchanged) followed by
+  `press Y` / `wait` / `waitfor car-entered 10 780,740,400,90 10` -- the Y-entry sequence
+  itself already ran live (as part of the probe route below) and worked in one capture; this
+  stage composes it with Stage 1 for a future live run, not newly tested as a combined file
+  (the `drive` step inside it still can't dispatch pre-merge -- see "Not done" below).
+  `route.sh --check` passes (44 lines).
+- `routes/gta3-car-pause-probe.route`: appended a RESULT section recording the run, the
+  Save-row correction, and a pointer to the kept frames -- the probe's original comment
+  claims (copied from the brief) are left intact above it so the correction is visible against
+  what it corrects, not edited away. `route.sh --check` still passes (71 lines).
+- `docs/lanes/localdrive1018/gta3-car-pause-probe-1019/` -- all 7 frames, committed as real
+  evidence (not the pathknow TRAIN/TEST pool: GTA III is not in `eval_set.tsv`'s held-out list,
+  confirmed again this session, so these are not yet wired into either; see "Not done").
+
+Re-ran `pathclass_selftest.py` and `classify_selftest.py` after every edit (0 failures each,
+unchanged from the last green run) and `docs/testing/preflight.sh` (`territory ok`, full pass)
+after this session's edits. `bash -n route.sh` clean.
+
+**Not done, named honestly:**
+- The state-save step is not just device-gated any more -- it needs either a drive-to-safehouse
+  leg built first, or the owner naming where Save actually shows from this spawn point, before
+  any code is written for it. Guessing at a Save-row crop with no Save row on screen would be
+  exactly the kind of fabricated-outcome mistake this lane's own rules warn against for the
+  learned table.
+- `car-entered`'s margin is one sample; a second live run (ideally on the Thor too, to close the
+  resolution caveat) would be the actual confirmation, not re-deriving the same numbers again.
+- GTA III is still not in `pathknow/eval/eval_set.tsv`; the held-out false-gameplay figure the
+  brief asks for still has no blind number behind it.
+- The combined `gta3-drive.route` (Stage 1 `drive` + Stage 2 `press Y`/`waitfor`) has not run
+  end-to-end as one file -- it can't, pre-merge, because Stage 1's `drive gta3` line still hits
+  the same profile-gate refusal this lane found two sessions ago. Dispatching it live is a
+  post-merge or post-fold task.

@@ -1,30 +1,13 @@
-run dispatch/queue/withdrawn/owner1018/1-1792380791-localdrive1018-729348.req is moved back to dispatch/queue/ (lane.local's job per its own WHY.txt in that dir) and runs to a result.
+# RESOLVED 2026-10-19 (localdrive1018, attempt 4): the condition this file named -- the
+# withdrawn request `1-1792380791-localdrive1018-729348` moving back to dispatch/queue/ and
+# running -- happened. Confirmed directly: dispatch/results/1-1792380791-localdrive1018-729348/
+# carries DONE, timestamped 06:36 PDT, with all 7 route-frames present. The frames are copied
+# into docs/lanes/localdrive1018/gta3-car-pause-probe-1019/ and the findings (car-entered crop,
+# the Save-row premise correction) are written up in NOTES.md and PR.md, this session.
 #
-# UPDATED 2026-10-19 (localdrive1018, attempt 3): the owner-play hold this file originally named
-# (dispatch/hold/nova) has LIFTED -- confirmed directly, `dispatch/hold/` now holds only `lifted/`
-# and `nova.battery-override`, no `nova`/`nova.why`. This condition is no longer owner-gated.
-# What is actually still blocking: the withdrawn request itself was never moved back. hostops'
-# 22:40 PDT restore pass (dispatch/queue/withdrawn/owner1018/WHY.txt) skipped it on the belief
-# that "localdrive1018 is retired" -- a claim this lane already checked against board-wt's live
-# origin/board territory.toml and found false (no `[retired.localdrive1018]` section; the row is
-# actively claimed, including for this session's own dispatcher.sh fix). Root cause and the
-# memory-index fix are in NOTES.md and in a comment on forge PR #1086. Rewritten as a `run` line
-# (the request produces `dispatch/results/.../DONE` once it is restored and completes) instead of
-# the old `owner` line, since owner action is no longer what this waits on.
-#
-# SUPERSEDES the `time 2026-10-18T20:46` line this file carried before (hostops, 2026-10-18
-# ~21:12 PDT): that line was satisfied the moment the clock passed 20:46 and stayed satisfied
-# forever after, so lanewaker's resume-throttled guard correctly flagged it as a loop risk
-# (`[lanewaker] resume-throttled localdrive1018`, 21:09 PDT) rather than resuming it again. The
-# real blocker this lane named ("no Nova dispatcher worker") was true when written but is now
-# stale: the Nova worker (`ee317437`) has been live and actively running other lanes' requests
-# since 20:46:12 PDT (confirmed in dispatch/logs/dispatcher.log). What actually happened instead:
-# lane.local withdrew this lane's queued probe request (`1-1792380791-localdrive1018-729348`)
-# into `dispatch/queue/withdrawn/owner1018/` at 21:12 PDT alongside four other lanes' requests, so
-# nothing runs while the owner is at the device; `dispatch/hold/nova` was placed 21:11:07 PDT and
-# the dispatcher's own log shows it stopped claiming at that second. Confirmed directly, not
-# assumed: `cat dispatch/hold/nova.why` and `cat dispatch/queue/withdrawn/owner1018/WHY.txt` both
-# read as above at the time this was written.
-#
-# This is no longer owner-gated (the hold lifted); it is gated on lane.local or a future hostops
-# tick restoring the one stranded request, which is not this lane's file to move by hand.
+# NOT waiting on a device or any other outside actor right now. What remains in Part D (a
+# safehouse-leg route or owner word on where Save shows; the combined gta3-drive.route run
+# end-to-end; a second car-entry sample; GTA III in eval_set.tsv) is scoped as open work for a
+# future session/owner decision, not a blocker on anything this lane can poll for -- see PR.md
+# "Not done". This file is left in place, inert, as the record of how the previous block
+# resolved; no new wait condition replaces it.

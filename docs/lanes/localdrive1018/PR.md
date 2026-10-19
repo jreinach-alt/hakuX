@@ -9,8 +9,8 @@ docs/testing/titles/pathclass_selftest.py, docs/testing/titles/drive-profiles/ge
 docs/testing/titles/drive-profiles/gta3.toml, docs/testing/titles/drive-profiles/gta3/,
 docs/testing/titles/pathknow/learned.py, docs/testing/titles/route.sh,
 docs/testing/titles/routes/gta3-drive.route, docs/testing/titles/routes/gta3-car-pause-probe.route,
-docs/testing/titles/routes/refs/gta3-car-pause-probe/, docs/testing/dispatcher.sh,
-docs/lanes/localdrive1018/**
+docs/testing/titles/routes/refs/gta3-car-pause-probe/, docs/testing/titles/routes/refs/gta3-drive/,
+docs/testing/dispatcher.sh, docs/lanes/localdrive1018/**
 Release note (none): offline test-harness/tooling under docs/testing/titles/, not emulator code; nothing
 a player sees.
 Prediction: none: analysis-only so far (no arm registered; the one device run this session made was a
@@ -111,19 +111,47 @@ file list inside `snapshot_scripts()` (two separate lists in that file that
 re-ran `97-dispatch-snapshot-drive.sh` and `97-dispatch-deploy.sh` directly (`SELFTEST_ONLY=`):
 0 failures on both, including the mutant checks. No other line in `dispatcher.sh` touched.
 
+## Done (D, car-entry, this session) -- and a correction to the brief's own premise
+
+A stranded probe request (`1-1792380791-localdrive1018-729348`, a plain press/wait/shot route
+with no `drive` step, so it could dispatch pre-merge) finally ran on the Nova and produced real
+car-entry and pause-menu frames (`docs/lanes/localdrive1018/gta3-car-pause-probe-1019/`).
+`classify.py table --profile gta3.toml` over all 7 found: (1) the pause menu is already
+correctly named `paused` by pathclass's existing head, no new crop needed; (2) `hud-heart`
+does NOT distinguish on-foot from in-car play -- the heart/weapon-slot icons are identical in
+both; (3) built and validated a separate route-level `waitfor` reference crop
+(`routes/refs/gta3-drive/car-entered.png`, the "Kuruma" vehicle-nameplate watermark GTA III
+draws after entry) -- `waitfor_match.py`'s own scorer gives 0.0 on itself, 17.2+ on every
+on-foot/menu/cutscene frame from the same run, threshold 10.0. One sample, stated plainly, not
+claimed as proven across runs or vehicles.
+
+**Correction, not a workaround**: the brief's walkthrough says "a save state (pause menu, Save
+is the default row)". The captured frame shows the actual default tab reads "New Game" /
+"Load Game" -- no Save option anywhere on screen from this spawn point. GTA III saves only at
+a safehouse; this scripted opening (prison escape, stolen car, overpass) is nowhere near one.
+Full numbers, the self-score debugging mistake caught before trusting the cross-frame numbers,
+and this correction: `NOTES.md`, "Resume 2026-10-19".
+
 ## Not done
 
-- **D, the rest** (car-entry detection, the pause-menu Save-row crop, the drive loop itself, a
-  GTA III `classifier_confidence` floor sweep, a `play_dim_unresponsive` state of its own, a true
-  held-out false-gameplay number) -- now blocked on something more specific than "no device", found
-  this session: the dispatcher refuses to run a `drive` profile that is not on `master` ("A 'drive'
-  profile must be in the serving snapshot ... or on the serving tree's master"), so this lane's own
-  `gta3-drive.route`/`gta3.toml` cannot be dispatched until this PR merges. The one route that CAN
-  be dispatched today (the existing, proven `gta-3.route`) never presses Y or opens the pause menu,
-  so it cannot produce a car-entry or Save-row frame no matter how many times it is re-run. See
-  `WAITING` for the full state. GTA III is also still not in `pathknow/eval/eval_set.tsv`'s held-out
-  set, so the <=2% figure the brief asks for still has no blind number behind it -- the closest
-  available evidence is this session's 0/46 false-`play` count on the one real run captured so far.
+- **The state-save step** needs more than a device now: either a drive-to-safehouse leg first,
+  or the owner naming where Save actually shows from this spawn point -- guessing at a Save row
+  that is not on screen would be exactly the fabricated-outcome mistake this lane's own learned
+  table is built to avoid.
+- **The combined `gta3-drive.route`** (Stage 1 `drive gta3`, Stage 2 `press Y`/`waitfor
+  car-entered`) has not run end-to-end as one file: Stage 1's `drive` line still hits the
+  dispatcher's profile-gate refusal pre-merge ("A 'drive' profile must be in the serving
+  snapshot ... or on the serving tree's master"); Stage 2 alone ran live via the separate probe
+  route. A post-merge/post-fold task, not a code gap.
+- `car-entered`'s margin is one sample (no second car-entry capture, no Thor capture to close
+  the Nova-resolution caveat the raw-pixel `waitfor` region carries).
+- GTA III is still not in `pathknow/eval/eval_set.tsv`'s held-out set, so the <=2% false-gameplay
+  figure the brief asks for still has no blind number behind it -- the closest available
+  evidence is the earlier session's 0/46 false-`play` count on one real continuous run, unchanged
+  this session.
+- A GTA III `classifier_confidence`/`_menu` floor sweep and a `play_dim_unresponsive` state of
+  its own: unchanged from before, still need more frame diversity than any single probe run
+  gives.
 - **E, for Part D**: did not wire the gta3 frames into `classify_selftest.py`'s `CASES`/`FOREIGN`
   tables -- that harness wants a continuous dispatch-run capture, not 9 non-continuous hand-picked
   stills, and forcing them in risked fitting the test to the frames rather than to the behavior (see
