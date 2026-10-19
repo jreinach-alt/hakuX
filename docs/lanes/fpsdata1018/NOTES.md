@@ -97,7 +97,7 @@ through to a mechanism instead of stopping at "the prediction failed, revert the
 lever's own idea (refuse a raw copy for formats/modes that need a true read) was sound, and the bug was an
 incomplete enumeration of which formats/modes qualify, not a flaw in the idea itself.
 
-## H4 census job #1 was void: no `--perflog`, so `NV2A_PERF_LOG` compiled the report out entirely
+## H4 census: both jobs came back void, and the second void is a host-wide harness bug, not mine
 
 `1-1792397157-lane.fpsdata1018-2224298` (Blinx 2, `HAKUX_GPUXFR=1`, 90s) came back `DONE`, but its `logcat.txt`
 has exactly one XFR-related line: the env var being read (`env: HAKUX_GPUXFR=1`). No `xemu-xfr` line anywhere.
@@ -105,11 +105,37 @@ Its `request.json` has `"perflog": ""` -- an empty string, meaning the job ran a
 `draw.c:5058` gates the entire reporting block behind `#if defined(__ANDROID__) && NV2A_PERF_LOG` (a
 *compile-time* macro, set only by the perflog build variant): with a release build, the counters above that
 line still run (`xfr_on()` reads the env var and the structs update), but nothing is ever printed, so the
-result has no `XFR rp`/`XFR rpc` line to read regardless of what the run did. This is a process gap, not a
-code gap: `request.sh --perflog` exists and does exactly what was needed; the first queuing of this job simply
-didn't pass it. Re-queued correctly: `1-1792399453-lane.fpsdata1018-2593046` (same route/title/seconds/env,
-`--perflog` added, `--ref d13ecf9109`). Queued under `--who lane.fpsdata1018`; went through the pilot gate with
-no `.ok` file needed (under the 30-minute threshold). Not yet `DONE` as of this writing.
+result has no `XFR rp`/`XFR rpc` line to read regardless of what the run did. That diagnosis is still correct
+as far as it goes, but it is not the reason the re-queue also came back empty -- see below.
+
+Re-queued with `--perflog` added: `1-1792399453-lane.fpsdata1018-2593046` (same route/title/seconds/env,
+`--ref d13ecf9109`). It also came back with no census output, for an unrelated reason that affected job #1
+too and that I missed the first time by only grepping `logcat.txt` for XFR lines instead of reading `run.log`:
+**both jobs' `run.log` show the route itself failing 5 seconds in**, before the title ever reaches gameplay:
+
+```
+ROUTE 01:48:17.653 drive generic (300s, mark)
+ROUTE 01:48:18.115 drive generic: Traceback (most recent call last):
+ROUTE 01:48:18.116 drive generic:   File "/home/justin/hakux-work/dispatch/bin/titles/drive.py", line 156, in <module>
+ROUTE 01:48:18.118 drive generic:     import learned  # noqa: E402  (unknown-screen memory, #433 Part C)
+ROUTE 01:48:18.120 drive generic:     ^^^^^^^^^^^^^^
+ROUTE 01:48:18.122 drive generic: ModuleNotFoundError: No module named 'learned'
+ROUTE 01:48:18.128 ROUTE FAIL drive generic
+route-died: route.sh exited 1 after 5s of 90s; no input follows, so the soak stops
+guest never appeared in 90s -- title did not boot
+```
+
+`gen-blinx2.route` (`docs/testing/titles/routes/gen-blinx2.route`) opens with `drive generic`, Blinx 2's only
+route. `learned.py` landed on master under `docs/testing/titles/pathknow/learned.py` (localdrive1018,
+`d7501a63a4`, before either of my jobs queued), but the live dispatcher tree's `dispatch/bin/titles/drive.py`
+imports it as a bare `import learned` with nothing on its import path to find it -- a deploy/sync gap between
+master and the running dispatcher, not a code bug in this lane's files, and not specific to Blinx 2: it voids
+every `drive generic` route on this host right now. `dispatch/bin` is not a git repo (no history to inspect or
+fix from here), and `docs/testing/titles/pathknow/` is not in this lane's Files:, so this is briefed rather than
+patched: posted as a PR comment on #1085 with the exact traceback and the two likely fixes (put
+`docs/testing/titles/pathknow` on `drive.py`'s `sys.path`, or deploy `learned.py` beside it). H4 (Blinx 2's
+render-pass census) stays unread until that lands; re-queuing a third time against the same route would just
+reproduce the identical `ModuleNotFoundError` a third time (same void, stop and report it, not retry).
 
 ## Step 0: Already-tried (G1)
 
