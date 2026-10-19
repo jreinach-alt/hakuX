@@ -43,12 +43,20 @@ legitimate pattern: a static glow/AO map, resampled every frame rather than redr
 tell a correct bake read every frame since from a bake that never produced real colour in the first
 place. `NOTES.md` section 11 has the full reading, the pixel-count table, and the shader source.
 
-A second follow-up, `1792394397-mkdawhite1018-1306972` (queued, unclaimed), re-arms the same dump
-15-20s before round-start instead of 170s in, to try to catch the bake itself. Its outcome decides
-Step 3's lever: the bake's own draw, or (if the bake write is itself already white, or still doesn't
-appear) the surface creation/pool-reuse path in `hw/xbox/nv2a/pgraph/vk/surface.c` (a freshly-created
-Vulkan image gets no explicit clear, and a pool-recycled one carries over a different surface's last
-content).
+A second follow-up, `1792394397-mkdawhite1018-1306972`, was meant to re-arm the same dump 15-20s
+before round-start instead of 170s in, to try to catch the bake itself -- but that request was queued
+without `--pull`, a mistake in how this lane built the request rather than a harness defect, so it
+ran a real 150s on the Nova and pulled nothing (`result.json`: `"pulled": []`). Re-queued, corrected,
+as `1792395921-mkdawhite1018-2024860` with `--pull 'framedump_*'` present; same title, device, ref,
+route and env otherwise. Running device time for this lane stands at 1500s (25 min) against the
+30-minute pilot cap, with no pilot grant on file -- still inside the "first 30 min" allowance, but
+close enough to it that a further rebuild mistake should not get a third immediate retry without
+re-reading the request before queuing it.
+
+Its outcome decides Step 3's lever: the bake's own draw, or (if the bake write is itself already
+white, or still doesn't appear) the surface creation/pool-reuse path in
+`hw/xbox/nv2a/pgraph/vk/surface.c` (a freshly-created Vulkan image gets no explicit clear, and a
+pool-recycled one carries over a different surface's last content).
 
 | Request | Failure | Fix |
 |---|---|---|
@@ -56,8 +64,9 @@ content).
 | 1792345978 (11:05) | the disc transferred and its sha matched; then `dev_push` required mode 660 on it, and the SD card's mount pins every file at 770 (`dispatcher.log` 29392, and the doctor's retry at 29395) | `dev_push`'s read-only mode, folded f473f6b4c4 (lane.devpushro1018) |
 | 1792377843 (re-queued, ~19:4x PDT) | none -- ran to completion | Step 1 result above |
 | 1792390708 (rtt readback) | none -- ran to completion | Step 2 result above (section 11) |
+| 1792394397 (rtt readback, after65) | queued without `--pull`; ran 150s, pulled nothing | re-queued as 1792395921 with `--pull` present |
 
-`[lane.mkdawhite1018] waiting:` on `1792394397-mkdawhite1018-1306972` -- whether the floor-glow
+`[lane.mkdawhite1018] waiting:` on `1792395921-mkdawhite1018-2024860` -- whether the floor-glow
 source surface's bake, if there is one, produces real colour or is already white, which pins Step 3's
 lever.
 

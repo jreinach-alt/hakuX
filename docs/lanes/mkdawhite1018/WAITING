@@ -1,10 +1,13 @@
-run 1792394397-mkdawhite1018-1306972
-# Waiting on dispatch request 1792394397-mkdawhite1018-1306972 (queued, unclaimed as of
-# 2026-10-19): a Nova run with XEMU_FRAME_DUMP=8,images,gd,rtt,rttmax16384,after65,cap256
-# on the mkda-arcade route, armed ~15-20s before the route's round-start mark instead of
-# 170s into steady-state play. The prior rtt run (1792390708) found the floor-glow source
+run 1792395921-mkdawhite1018-2024860
+# Waiting on dispatch request 1792395921-mkdawhite1018-2024860 (queued, unclaimed as of
+# 2026-10-19): a corrected re-queue of 1792394397, which ran 150s on the Nova but was built
+# without --pull and so pulled nothing (result.json: "pulled": []) -- a request-building
+# mistake in this lane, not a harness defect. This request carries --pull 'framedump_*' and
+# is otherwise identical: Nova, ref da6e8949dc, mkda-arcade route,
+# XEMU_FRAME_DUMP=8,images,gd,rtt,rttmax16384,after65,cap256, armed ~15-20s before the
+# route's round-start mark. The prior rtt run (1792390708) found the floor-glow source
 # surface (256x256, s2t direct-bind) already white at the very first draw that samples it,
 # but never written within its own (steady-state) capture window, so it could not tell a
 # correct bake read every frame since from a bake that never produced real colour. This run's
-# earlier window should span the arena-load bake, if there is one; NOTES.md section 11 has the
-# reasoning and what each outcome means for Step 3's lever.
+# earlier window should span the arena-load bake, if there is one; NOTES.md section 11/12 has
+# the reasoning and what each outcome means for Step 3's lever.

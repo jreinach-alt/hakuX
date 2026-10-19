@@ -576,3 +576,41 @@ floor-glow source surface is baked (and renders real colour) somewhere in the ar
 or whether the white already shows up at its first write (or never gets a write even in this
 wider window), which decides whether Step 3's lever is the bake's own draw or the surface
 creation/pool-reuse path in `surface.c`.
+
+## Resuming attempt 3 (second continuation): why the prior turn stopped where it did
+
+The prior turn ended the same way as the one before it: it queued `1792394397` and could not
+wait across turns for a headless session's own dispatch result, so it wrote `WAITING` and ended.
+This turn resumes because that run finished (`DONE`).
+
+### 12. `1792394397` ran and pulled nothing: a request-building mistake, not a harness defect
+
+`dispatch/results/1792394397-mkdawhite1018-1306972/result.json` shows `"pulled": []` and no
+`pulled/` directory at all, though the run completed (`DONE`), used Turnip (would have shown in
+logcat, moot -- there is no dump to read), and the request's own `request.json` shows why:
+`"pull_glob": ""`. The `--pull 'framedump_*'` flag that every prior request in this lane carried
+(section 6.1, 7, 10, 11) was left off this one when it was queued. That is this attempt's mistake,
+not a dispatcher bug: `request.sh`'s `--pull` flag works exactly as documented, it was simply not
+passed. 150 s of Nova device time produced a `route-frames/` directory (screenshots only, no
+register state) and nothing else usable for Step 2.
+
+Running device-time total for this lane so far: 420 + 420 + 150 = 990 s run, +90 s setup each =
+1260 s (21 min), under the 30-minute pilot cap, no `pilots/mkdawhite1018.ok` on file (checked;
+none exists) -- every request to date has gone through on the "first 30 min always goes through"
+allowance, not a granted pilot.
+
+**Re-queued, corrected:** `1792395921-mkdawhite1018-2024860` -- same title, device (nova), ref
+(`da6e8949dc`), route (`mkda-arcade`, absolute path with the `.route` suffix stripped, same
+reason as section 8: `request.sh` resolves a bare name under
+`docs/testing/titles/routes/` and appends `.route` itself), and env
+(`XEMU_FRAME_DUMP=8,images,gd,rtt,rttmax16384,after65,cap256`) as `1792394397`, this time with
+`--pull 'framedump_*'` present. `request.sh` also required `--find-route "<why>"` on this call
+that `1792394397`'s original queuing (last turn) apparently carried but is not visible in its
+saved `request.json` under a separate field name (`find_route`, present and populated there) --
+passed the same clause again here. This brings the running total to 1260 + 150 + 90 = 1500 s
+(25 min), still under the 30-minute cap.
+
+`[lane.mkdawhite1018] waiting:` on `1792395921-mkdawhite1018-2024860` -- the same question as
+`1792394397` was meant to answer (section 11's close): whether the floor-glow source surface is
+baked with real colour near arena load, or already white at its first write, or never written in
+this wider window either.
