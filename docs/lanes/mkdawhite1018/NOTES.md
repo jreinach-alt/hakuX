@@ -319,3 +319,14 @@ rather than at NV2A behaviour that upstream also lacks.
 - (open, for lane.local) Who takes the second `dev_push` fix (7.1: the read-only disc push that
   skips the 660 step on the SD card)? It is a harness file outside this lane's `Files:`. Every disc
   staged to the Nova fails until it lands, not only this title.
+
+## Addendum (hostops, jam duty, 2026-10-18 ~19:4x PDT)
+
+The 7.1 harness fix landed: lane.devpushro1018 added `dev_push`'s `ro` parameter
+(skips `dev_make_660` + the final mode check, keeps the sha256 check) and it
+folded to master as `f473f6b4c4` (18:47:41 PDT); `ensure_title_staged`'s disc-push
+branch (dispatcher.sh:1260) already calls `dev_push "$src" "$DEVICE_ISO_ROOT/$title" ro`.
+Confirmed live in the dispatcher's own tree (/home/justin/hakuX, HEAD == origin/master).
+Re-queued request 1792345978 unchanged as `1792377843-mkdawhite1018-4522138.req` in
+dispatch/queue/ (same ref da6e8949dc, same route, same env). Resuming the lane to
+pick it up.
