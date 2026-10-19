@@ -1154,3 +1154,70 @@ also names H2's actual next-ranked option, if anyone picks this back up: a **con
 sampled" gate) rather than a blanket one -- a bigger change than this attempt's budget, and not started here;
 ranked against the brief's remaining items (GTA III beyond R2, the RalliSport 2/Fable landed-lever read-back),
 not clearly higher-probability-times-win than either without its own mechanism writeup first.
+
+## Attempt 8, continued: C2 (Addendum 4) -- merge `lane/vtxstale1018`, build, G3 prediction for the driving scene
+
+`HAKUX_FBLOOP`'s own falsifier (above) re-promoted lever (c), draw/state cost scaling with volume, over any
+further pass-count lever, and named Addendum 4's C2 by file:line (`draw.c:6303-6354`, the per-rotation vertex-RAM
+"stale" memcpy) as the next, lower-effort-to-test, higher-probability step. Addendum 4 is explicit that the fix
+already exists, unfolded: `lane/vtxstale1018` (`4507b8f2fa`, #1049), never device-measured. Per Addendum 4's own
+instruction ("Merge or cherry-pick it, measure, fold"), merged it rather than re-deriving the same page-bitmap
+idea from scratch (G1).
+
+**Mechanism, unchanged from vtxstale1018's own writeup (not re-derived, cited):** each submit frame keeps its own
+copy of vertex RAM; an upload marks its pages stale in every *other* frame's bitmap, and rotating a frame in used
+to copy one lowest-to-highest byte span per frame from whichever frame last held the truth. Uploads are scattered
+across VRAM, so that span stretched across tens of MB around a few hundred KB of actual writes, and every rotation
+re-copied all of it. `vtxstale.h`'s replacement (`vtxstale_mark()`/`vtxstale_copy()`) tracks one bit per 4KB page
+instead and only copies the pages actually marked -- the same correctness contract (the receiving frame ends up
+byte-identical to the frame that held the truth), a smaller copy.
+
+**Merge:** `git merge origin/lane/vtxstale1018` onto this branch's HEAD (`401c075ef7`) produced one conflict, in
+`draw.c`'s frame-rotation block (`pgraph_vk_finish`), because this lane's own `HAKUX_FBLOOP` attempt (`6e15857f0e`)
+is untouched elsewhere in the file but vtxstale1018 rewrote the exact block this lane had NOT touched for timing:
+the `vertex_ram_stale_min`/`vertex_ram_stale_max` two-integer span this lane's own `[dipwin]` `stale`/`STALE_B`
+census (`DW_T0`/`DW_T1`/`DW_ADD` around the old `memcpy`) was timing is gone on vtxstale1018's side, replaced by
+`vtxstale_copy()`'s bitmap walk. Resolved by hand, keeping vtxstale1018's page-bitmap call (that is the fix being
+measured) but keeping this lane's own `DW_T0(dw_s0)` / `DW_T1(stale, dw_s0)` / `DW_ADD(STALE_B, copied)` wrapped
+around the new `vtxstale_copy()` call instead of the old `memcpy` -- `copied` (the function's actual return value,
+bytes copied) replaces the old `len` (the old span's fixed size) as the `STALE_B` byte count, so the same
+`[dipwin]` fields this lane already reads (`stale=`, the per-flip ms the copy takes; `STALE_B`, bytes copied) stay
+live and comparable before/after, with no need to build a new instrument. Verified post-merge: no remaining
+references anywhere in `hw/` to `vertex_ram_stale_min`/`vertex_ram_stale_max` (removed cleanly on both sides, grep
+empty) and no leftover conflict markers (`<<<<<<<`/`=======`/`>>>>>>>`) anywhere in `hw/`. Merge commit `326bfebadb`.
+
+**Build:** perflog build (`gradlew -p .../android assembleDebug -Pperflog=true`, detached, polled the real
+`org.gradle.wrapper.GradleWrapperMain` PID after an initial `setsid`-PID mistake was caught and corrected) --
+`BUILD SUCCESSFUL in 27s`, 11 tasks executed. 26 total `warning:`s, all the pre-existing `-Wshift-negative-value`
+`TARGET_PAGE_MASK` warnings already present before this merge (draw.c:9268/10207/10246); none new. APK copied to
+`captures/fpsnext1019/apks/326bfebadb-perflog.apk`
+(sha256 `b44593665c2947d6d6a48c94472c080d71f6c3399ba453f9d2cc11869cbcedb5`).
+
+### G3 prediction: C2 on GTA III's *driving* save-state scene (vtxstale1018's own prediction was selftest/on-foot only)
+
+vtxstale1018's own `PR.md` proves correctness (a 3,000-rotation selftest, 0 stale-byte mismatches) and cites a
+GTA III **on-foot** `[dipwin]` reading (`stale` ms/flip 2.19 "before", "pending" for "after") -- never the driving
+save-state scene this lane is judged on, and never actually completed even for on-foot. This lane's own bar is
+the in-car scene (RT held), so a fresh prediction is needed before any device time is spent, per G3 and per this
+lane's own precedent (every build so far wrote its prediction before the run).
+
+Baseline to compare against: the `g3` batch's own off-arms (S1, S2 -- `HAKUX_FBLOOP` off, pre-C2 code, same scene,
+same save state) already on disk, `captures/fpsnext1019/runs/g3-{S1,S2}/`. No new baseline device time needed;
+this is a one-arm run (C2 on, same HEAD otherwise) compared against data already in hand (G6-style: reuse existing
+reference data where the code under test is additive, not a re-run of the baseline).
+
+| leg | rule | falsified if |
+|---|---|---|
+| P1 mechanism (does the page-granular copy actually move less data / take less time than the old span copy, on this scene) | mean `STALE_B` bytes/flip in the new arm is well below the span-copy's implied bytes/flip (the old code copied `vertex_ram_stale_max - vertex_ram_stale_min`, i.e. close to the whole touched span; vtxstale1018's own selftest found real uploads scattered over tens of MB per span vs a few hundred KB actually touched, so expect at least a 2-3x byte reduction), AND mean `stale` ms/flip in the new arm is below the S1/S2 off-arm mean (no instrumented number currently exists for the *old* memcpy's ms/flip on this scene in isolation -- `dwcost.py`'s g3 table has no `stale` column for S1/S2 since this is C2's first measurement; the fallback falsifier is the full-frame one below) | `STALE_B`/flip is NOT meaningfully smaller than the old span would have been (byte count similar to or larger than the scene's touched-span estimate), or `stale` ms/flip does not drop: the page-bitmap granularity does not pay off on this title's upload pattern (e.g. if GTA III's driving-scene uploads happen to already cluster into one tight span per frame, there is nothing to save) |
+| P2 time/fps (the one that matters, per the owner's bar and this lane's own FBLOOP lesson: a mechanism win that does not reach ms/flip or fps is not a result) | drive fps (same `[RT+1,RT+24]`-style crash-excluded, motion-verified window as the sysmem/S2T_WIDEN comparisons) at or above the S1/S2 off-arm mean (23.05, FINDINGS.md's own FBLOOP row) by at least +1.0 fps, consistent with C2's own measured isolation estimate (3.7-4.2 ms/flip, Addendum 4) at a ~30 ms/flip baseline (~1.1-1.3 fps at this frame rate, so +1.0 is the conservative floor, not the audit's raw estimate) | fps is flat (within noise, <1.0 fps) or worse: the saved CPU copy time does not reach the player, the same failure mode `HAKUX_SWZKEEP` and `HAKUX_FBLOOP` both hit this lane (CPU savings re-spent on the GPU or a different stall) -- if this happens, read the GPU/idle phase split (`dwcost.py`) before calling it a wash, exactly as the SWZKEEP P2 writeup did |
+| P3 pixels (correctness: does the page-granular copy actually reproduce every byte the span copy did) | `m3-loaded.png`/full-frame diff (`imgcheck.py`) between the C2 arm and an off/S1-equivalent arm <= the off-vs-off noise floor already measured for this scene (0.1, from the FBLOOP P3 table) | diff above the noise floor: a page boundary is being missed (e.g. a write that straddles two pages, or a frame rotation ordering where a page is marked stale on the wrong frame) -- the 3,000-rotation selftest already makes this unlikely, but the selftest's access pattern is synthetic, not GTA III's real one, so it is not skipped |
+| P4 stability | no `DEVICE_LOST`/crash string in any arm's `logcat.txt`/`arm.log` | any crash: selftest coverage does not guarantee driver-level stability under a real title's actual access pattern |
+
+Falsifying P1 alone (mechanism) without P2 moving would mirror the `HAKUX_FBLOOP` outcome exactly (a clean
+mechanism confirmation that doesn't reach the player) and should be written up with the same rigor, not treated
+as a lesser result (G5).
+
+### Device run
+
+Re-took the Nova hold through `hold.sh` (tag `lane.fpsnext1019`) rather than trust any prior `.why`, per every
+addendum's repeated caution, and verified device/app state before touching it.
