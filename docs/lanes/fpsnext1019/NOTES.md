@@ -103,6 +103,28 @@ about. Not elided here because a reader comparing raw logcat without this note c
 landed default is doing exactly what fpsdata1018 claimed on RalliSport 2's actual driving gameplay, not just in
 a pixel-sanity capture. No further action needed on this lever; see FINDINGS.md for the table row.
 
+## Attempt 5, item 4 (Fable half): recipe written, not a lane-driven capture this attempt
+
+Fable's landed lever for this read-back is **not** `HAKUX_S2T_FB` (that one is GTA III's, #1049/lane.gta3car1018)
+-- checked against fpsdata1018's own FINDINGS.md rather than assumed: Fable's fix is the *same* switch as
+RalliSport 2's, `HAKUX_TEXSCAN2D` ("Same root cause as RalliSport 2 (H1)... Fix #1 covers both shapes"), and the
+counter to read is `[sdcall]`'s `tobuf` field (`SDC_TO_BUFFER` in `surface.c`), predicted `420/window -> 0`,
+`+3 to +8 fps`.
+
+No dispatcher route reaches Fable's gameplay (same gap named by fpsdata1018 and this lane's own attempt-5 item-1
+work). Attempt 5's Fable H2 reachability work drove the device by hand (`pad.sh`, cold boot, AutoSave) because
+at the time that was the only way to get a census at all. This write-up does not repeat that: driving the device
+directly, rather than through `docs/testing/request.sh`, is now explicitly out of bounds for this lane's own
+device access (the harness's lane rules name `request.sh`/`ab_run.sh` as the only sanctioned way in), and the
+brief's own wording for item 4 already asks for an **owner capture**, not a lane-driven one ("Hand the owner the
+recipe when a build is ready; he plays ten minutes and you analyze") -- unlike item 3's more open wording ("any
+dispatcher route... or the owner's gameplay"). So this half of item 4 is a recipe, not a run: written into
+`PR.md` (build to install -- `dispatch/builds/0bcd81c06c-perflog.apk`, confirmed no C/H source drift from this
+PR's HEAD via `git diff --stat 711315bbe7 HEAD -- '*.c' '*.h'`, empty -- ON arm via the in-app Settings ->
+Environment Variables field left empty, OFF arm with `HAKUX_TEXSCAN2D=0` added there and the app fully
+relaunched, ~10 minutes of ordinary gameplay each, full `adb logcat -v time` capture handed back for analysis).
+Nothing to analyze yet; this is the recipe, not the result.
+
 ## Step 0: Already-tried (G1), carried from fpsdata1018
 
 Rows 1-28 are fpsdata1018's table verbatim (`docs/lanes/fpsdata1018/NOTES.md` "Step 0"); `L/` = `docs/lanes/`.

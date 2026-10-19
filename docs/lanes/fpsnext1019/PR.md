@@ -65,8 +65,22 @@ shows zero `sdown` (deferred-download fence-wait) in every driving-phase window 
 (`HAKUX_TEXSCAN2D=0`) shows `sdown` in 63/63 driving windows and a 38.2fps mean, same route, only the env var
 differs -- confirmed on real data, nothing further to do on this lever. (Both arms still show `sdown` on
 pre-race menu/flyover screens; the claim is scoped to the driving phase, which is what the bar measures.) Fable's
-half of this read-back (`HAKUX_S2T_FB` mode 2 against `tobuf`) is not yet done. Detail in
-`docs/lanes/fpsnext1019/NOTES.md`; per-title table in `FINDINGS.md`.
+half of this read-back is **not yet done this attempt** -- Fable's landed fix is the same `HAKUX_TEXSCAN2D`
+switch (fpsdata1018's FINDINGS.md: "Same root cause as RalliSport 2 (H1)... Fix #1 covers both shapes"), not
+`HAKUX_S2T_FB`; the counter to read is `[sdcall]`'s `tobuf` field (`SDC_TO_BUFFER`), predicted `420/window -> 0`.
+No dispatcher route reaches Fable's gameplay, so per the brief's own item 4 wording ("hand the owner the recipe
+... he plays ten minutes and you analyze") this is an **owner capture**, not a lane-driven one:
+
+1. Install `dispatch/builds/0bcd81c06c-perflog.apk` (perflog build; no C/H source drift from this PR's HEAD, see
+   NOTES.md) over the current Fable install.
+2. **ON arm** (default, leave Settings -> Environment Variables empty of any `HAKUX_TEXSCAN2D` line): launch
+   Fable, start `adb logcat -v time > fable-on.txt` before or right at launch, play ~10 minutes of ordinary
+   gameplay (walking/exploring, not menus), confirm `GPU: PurpleVK` appears once near the start.
+3. **OFF arm**: in Settings -> Environment Variables, add a line `HAKUX_TEXSCAN2D=0` and save (applied on next
+   launch per the field's own description), fully close and relaunch Fable, capture `fable-off.txt` the same
+   way, another ~10 minutes of ordinary gameplay.
+4. Hand over both logcat files; analysis (`tobuf` sums, fps delta) happens from them, not on the device. Detail
+   in `docs/lanes/fpsnext1019/NOTES.md`; per-title table in `FINDINGS.md`.
 
 Release note (performance): GTA III driving scenes do fewer GPU render passes per frame (a texture copy the
 renderer was already built to avoid, but had never been turned on, now runs by default); measured as an fps
