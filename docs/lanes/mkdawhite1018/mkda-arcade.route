@@ -1,0 +1,74 @@
+# state: any   (no profile step; lane.mkdawhite1018, #1058)
+# Mortal Kombat: Deadly Alliance (4D57000C): boot -> Arcade -> a fight, blind.
+#
+# Recorded from three pathfind runs of the title on the Nova
+# (docs/lanes/pathfind/runs/sweep-4D57000C, rehold-4D57000C, deadly-alliance-1006
+# steps.jsonl). All three saw the same nine screens in the same order:
+#   logo (A) -> logo + copyright (A) -> storage status, no memory unit (START)
+#   -> logo (A) -> PRESS START title (START) -> main menu, ARCADE lit (A)
+#   -> character select, Shang Tsung under the cursor (A) -> stage card (START)
+#   -> ROUND 1.
+# In the 10-06 run the first logo was up 35 s after launch (the emulator
+# started 14:09:48, pathfind's clock at 14:10:17, step 1 at t=5.8) and the
+# round started about 84 s after launch. Each screen took a press 4-5 s apart
+# in the replays.
+#
+# A START after the stage card opens the pause panel with RESUME lit (sweep
+# step 10, rehold step 38), and A resumes. The play loop uses that to stay
+# self-healing: every cycle presses START then A, which resumes a fight, leaves
+# a title screen (START), picks ARCADE and the character (A), and accepts a
+# CONTINUE? prompt (A = yes, sweep frame 041). The fight costs ~2 s of pause a
+# cycle.
+wait 30
+shot boot30
+press A 150                 # logo 1
+wait 4.5
+shot s1
+press A 150                 # logo 2 + copyright
+wait 4.5
+shot s2
+press START 150             # storage status: continue without saving
+wait 4.5
+shot s3
+press A 150                 # logo 3
+wait 4.5
+shot s4
+press START 150             # PRESS START title
+wait 5
+shot s5
+press A 150                 # main menu: ARCADE
+wait 6
+shot s6
+press A 150                 # character select
+wait 9
+shot s7
+press START 150             # stage card
+wait 12
+shot s8
+press A 150                 # resumes a pause the START may have opened
+wait 3
+shot round
+mark gameplay
+repeat forever {
+    axis LX max
+    wait 0.8
+    axis LX mid
+    mash A 3 0.3
+    wait 0.4
+    mash X 2 0.3
+    wait 0.6
+    axis LX min
+    wait 0.6
+    axis LX mid
+    mash B 2 0.3
+    wait 0.6
+    axis LX max
+    wait 0.8
+    axis LX mid
+    mash Y 2 0.3
+    wait 3
+    press START 150         # self-heal: title -> menu; in a fight, pause
+    wait 1.5
+    press A 150             # RESUME / ARCADE / pick / CONTINUE
+    wait 1.5
+}

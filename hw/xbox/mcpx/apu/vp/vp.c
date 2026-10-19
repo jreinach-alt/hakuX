@@ -572,12 +572,35 @@ static void meter_frame(void)
     meter_window++;
 }
 
+/*
+ * Voice registers and SSL entries live in guest RAM, which is one region at
+ * guest physical 0 (hw/xbox/xbox.c). A voice reads them a few dozen times per
+ * 32-sample frame. Going through ldl_le_phys for each read cost about 37% of
+ * the voice workers' CPU in a voice-heavy race (NFS Most Wanted profile, 10-09:
+ * RCU read lock via TLS, address-space translate, and on stores the dirty and
+ * TB-invalidate bookkeeping). With about 120 voices that was enough to keep
+ * the VP frame near real time, and every hiccup starved the audio sink
+ * (RalliSport Challenge 2, docs/lanes/ralli2audio1018/NOTES.md, #433).
+ *
+ * Read straight from RAM, as the PRD and sample reads below already do, and
+ * fall back to the address space above it. Skip a store that would write the
+ * value already there: the envelope rewrites unchanged fields every frame.
+ */
+static uint64_t vp_ram_size; /* set in mcpx_apu_vp_init */
+
+static inline uint32_t voice_ldl(MCPXAPUState *d, hwaddr addr)
+{
+    if (likely(addr + 4 <= vp_ram_size)) {
+        return ldl_le_p(&d->ram_ptr[addr]);
+    }
+    return ldl_le_phys(&address_space_memory, addr);
+}
+
 static uint32_t voice_get_mask(MCPXAPUState *d, uint16_t voice_handle,
                                hwaddr offset, uint32_t mask)
 {
     hwaddr voice = d->regs[NV_PAPU_VPVADDR] + voice_handle * NV_PAVS_SIZE;
-    return (ldl_le_phys(&address_space_memory, voice + offset) & mask) >>
-           ctz32(mask);
+    return (voice_ldl(d, voice + offset) & mask) >> ctz32(mask);
 }
 
 static void voice_set_mask(MCPXAPUState *d, uint16_t voice_handle,
@@ -585,9 +608,11 @@ static void voice_set_mask(MCPXAPUState *d, uint16_t voice_handle,
 {
     hwaddr voice = d->regs[NV_PAPU_VPVADDR]
                     + voice_handle * NV_PAVS_SIZE;
-    uint32_t v = ldl_le_phys(&address_space_memory, voice + offset) & ~mask;
-    stl_le_phys(&address_space_memory, voice + offset,
-                v | ((val << ctz32(mask)) & mask));
+    uint32_t old = voice_ldl(d, voice + offset);
+    uint32_t v = (old & ~mask) | ((val << ctz32(mask)) & mask);
+    if (v != old) {
+        stl_le_phys(&address_space_memory, voice + offset, v);
+    }
 }
 
 static void voice_off(MCPXAPUState *d, uint16_t v)
@@ -1743,8 +1768,8 @@ static int voice_get_samples(MCPXAPUState *d, uint32_t v, float samples[][2],
         }
 
         hwaddr addr = d->regs[NV_PAPU_VPSSLADDR] + page * 8;
-        segment_offset = ldl_le_phys(&address_space_memory, addr);
-        segment_length = ldl_le_phys(&address_space_memory, addr + 4);
+        segment_offset = voice_ldl(d, addr);
+        segment_length = voice_ldl(d, addr + 4);
         seg_len = (segment_length >> 0) & 0xffff;
         seg_cs = (segment_length >> 16) & 3;
         seg_spb = (segment_length >> 18) & 0x1f;
@@ -3559,6 +3584,7 @@ void mcpx_apu_vp_init(MCPXAPUState *d)
     for (int i = 0; i < MCPX_HW_MAX_VOICES; i++) {
         qemu_spin_init(&d->vp.voice_spinlocks[i]);
     }
+    vp_ram_size = memory_region_size(d->ram);
 
     const char *voicelog = getenv("HAKUX_APU_VOICELOG");
     vl_on = voicelog && voicelog[0] == '1';
