@@ -6,10 +6,13 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Right now
 
-No lane session is running.
+| Lane | Model | Running for | Working on |
+|---|---|---|---|
+| `fpsdata1018` | claude-sonnet-5 | 5 min |  |
+| `ralli2audio1018` | claude-sonnet-5 | 5 min | ralli2audio1018: RalliSport Challenge 2 audio dropouts: the voice processor's guest-memory overhead, producer  |
 
 - **Handhelds:** 2 connected.
-  - Nova: held by `owner-play-1018e`
+  - Nova: free for the queue
   - Thor: held by `lane.local`
 - **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
@@ -119,7 +122,9 @@ No lane session is running.
 
 ## Work in progress
 
-No branch is being worked right now.
+| Branch | Topic | Tip | Last change |
+|---|---|---|---|
+| `lane/ralli2audio1018` | ralli2audio1018: RalliSport Challenge 2 audio dropouts: the voice processor's guest-memory overhead, producer timing, au | `286d0fc9d8` | 2026-10-18 21:09 |
 
 ## Recently landed on master
 
@@ -134,4 +139,4 @@ No branch is being worked right now.
 - 2026-10-18 dispatcher: fix the staged-disc push's /mnt/d path so adb.exe can open it
 - 2026-10-18 The compatibility page adds RalliSport Challenge and Mortal Kombat: Shaolin Monks to Playable (92 -> 94)
 
-_Updated 2026-10-18 21:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 21:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
