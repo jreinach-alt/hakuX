@@ -389,14 +389,65 @@ Attempt 2 (10-18, about 12:50 PDT):
   `target_page.h`, which it already raised.
 - It is not yet measured on a device.
 
-[lane.ralli2audio1018] waiting: the owner hold on the Nova (`hold.sh who
-nova` = lane.local, owner Fable session since 18:39Z). Once it is
-released:
+Attempt 2 ended still waiting: the owner hold on the Nova (`hold.sh who
+nova` = lane.local, owner Fable session since 18:39Z) had not been
+released at the time the session's turn budget ran out, so no step past
+"the fix is built" had a device to run on.
 
-1. Queue arm 1 from "Device plan" on this branch's head with request.sh.
-2. Check `GPU: PurpleVK` and that the route raced (frames: race clock,
-   LAP, minimap).
-3. Read `tools/timeline.py <logcat> --prod`, and test `vp=` and wall per
-   block against the prediction.
-4. Write the verdict to `pilots/lane.ralli2audio1018.ok`.
-5. Queue the two default runs for the bar.
+Attempt 3 (10-18, about 17:16 PDT):
+
+- Merged `origin/master` (2 commits: `homeroot1018`, unrelated to this
+  lane's files) before touching anything, per the startup hook.
+- `hold.sh who nova` now returns `free: nova` -- the owner's hold is
+  released. The board request at
+  `dispatch/board-requests/ralli2audio1018.md` already names `vp.c` and
+  `apu.c` for this lane and needed no changes; the live `territory.toml`
+  (board branch tip) names neither file for any lane, so both are open.
+  (Aside, not this lane's to fix: that `territory.toml` is at `wave = 94`,
+  2026-09-18 -- a `board: sync stale docs/testing copy with master` commit
+  on the board branch reverted it past a `wave = 262` state, the exact
+  silent-revert failure mode the file's own header warns about. Noted for
+  whichever lane owns the board tooling; it does not block this one since
+  neither contested file is named in either version.)
+- Queued the cold-cache pilot from "Device plan" step 1:
+  `request.sh --who lane.ralli2audio1018 --title "RalliSport Challenge 2
+  (Japan, Europe).iso" --route
+  ../../../lanes/ralli2audio1018/routes/ralli2audio1018-drive --seconds
+  870 --device nova --env HAKUX_PLC_WIPE=1 --no-expect "..." --issue 433`
+  (the route is resolved by a relative path from `docs/testing/titles/routes/`
+  back into this lane's own route file, since `resolve-route` only looks
+  under `routes_root()`, and copying the route into the shared `routes/`
+  tree is outside this lane's `Files:`). Ref resolved to `ec7e06c467`.
+  Queued as `1-1792368418-lane.ralli2audio1018-1108710`, pinned to nova.
+- It has sat in `queue/` (never claimed into `running/`) for the 28
+  minutes polled so far. `dispatch/bin/devices.sh list` and `adb devices
+  -l` both show only `bdc158a5` (the Thor) attached to this host -- the
+  Nova is not physically present, independent of `hold.sh`'s logical
+  state. This matches the brief's own device-holds note: the Thor's hold
+  text says the owner lifted it "while the Nova is offline ~5 h" for a
+  thermal test, starting about 12:00 PDT, which runs to about 17:00 PDT --
+  close to now (17:16-17:44 PDT polled) but evidently not yet back. The
+  Thor itself is "by hand only, no request.sh until the thermal run is
+  judged", so neither device currently accepts a queued request.
+- This is a real external wait, not a mistake to retry: the request is
+  already queued and will be claimed as soon as the Nova reconnects to
+  the dispatch host. No further action narrows it from inside this
+  session.
+
+[lane.ralli2audio1018] waiting: dispatch request
+`1-1792368418-lane.ralli2audio1018-1108710` (the cold-cache pilot on
+`ec7e06c467`, nova, 870s, `HAKUX_PLC_WIPE=1`), queued but unclaimed
+because the Nova is not yet physically reconnected to the dispatch host
+(Thor's hold note: offline for the thermal test since about 12:00 PDT,
+due back about 17:00 PDT). Once `adb devices -l`/`devices.sh list` shows
+the Nova again and the request's `results/<id>/DONE` appears:
+
+1. Read `tools/timeline.py results/<id>/logcat.txt --prod`, test `vp=`
+   mean and wall-per-block against the prediction in "The fix the pilot
+   points at" above.
+2. Write the verdict to `pilots/lane.ralli2audio1018.ok` with python3.
+3. If it holds, queue the two default runs for the bar (same route, same
+   race), each scored with `title_verdict.py --require confirmation` plus
+   `audio_starve_share`.
+4. Update `FINDINGS.md` and `PR.md` with the measured numbers, and move
+   `PR.md`'s `State:` to `ready`.
