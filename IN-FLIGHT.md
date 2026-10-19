@@ -123,6 +123,7 @@ No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-19 drive: local tools only, act-observe instead of wait-and-fail, learn what to press
 - 2026-10-19 mkdawhite1018: Mortal Kombat: Deadly Alliance arena floors and walls draw flat white (#1058)
 - 2026-10-18 GTA III dip frame: race-free render-pass-break counters, timed fence/copy/bind costs, and the in-car fen split
 - 2026-10-18 ralli2audio1018: RalliSport Challenge 2 audio dropouts: the voice processor's guest-memory overhead, producer timing, audio thread priority
@@ -132,4 +133,4 @@ No branch is being worked right now.
 - 2026-10-18 gta3car1018: GTA III in the car -- the render passes are a feedback-loop copy per draw (#1049)
 - 2026-10-18 dispatcher: dev_push gets a read-only mode for the Nova's SD-card disc pushes
 
-_Updated 2026-10-19 07:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-19 07:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
