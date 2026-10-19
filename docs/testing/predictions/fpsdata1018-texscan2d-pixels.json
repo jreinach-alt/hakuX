@@ -1,10 +1,10 @@
 {
-  "registered_utc": "2026-10-19T07:47:52Z",
+  "registered_utc": "2026-10-19T08:42:16Z",
   "who": "lane.fpsdata1018",
   "issue": "433",
-  "prediction": "#433 texscan 2D (lane.fpsdata1018), pixel leg, re-registered on the fix for the FAIL this same leg returned on 38c8d53ba5. A = 245ddc4964 (master's texture.c, pre-#433). B = 3b50f167ba, which carries 38c8d53ba5 (texscan extended cube-only -> 2D) PLUS the correctness fix: SurfaceBinding.image_scale (set from pg->surface_scale_factor at create_surface_image time) and a refusal in texscan_plan's active-surface scan when a candidate's image_scale != 1. 38c8d53ba5 alone let a surface whose real VkImage was sized under a since-changed surface_scale_factor serve as a texscan copy source at its logical (unscaled) extent -- a crop of the oversized grid, not a resolve -- which is what moved Antialiasing_tests/CPUWriteIgnoresSurfaceConfig off exact and paired-swapped several Texture_shadow_comparator variants. The fix's predicted effect: every capture that moved on 38c8d53ba5's arm returns to bit-exact against A (the scaled-surface case now refuses texscan and falls through to the pre-existing, already-correct SURFACE_DOWN path), while the unscaled-surface copies this leg exists to measure (texscan1010's cube suites plus the new 2D ones) still move exactly as 38c8d53ba5 predicted: same or inside the run-to-run band. Read from B's logcat, not predicted: '[texscan] on 2d=1'. A moved capture -- in either direction from 38c8d53ba5's FAIL set, or any new one -- refutes this fix and blocks the change until explained region by region.",
+  "prediction": "#433 texscan 2D (lane.fpsdata1018), pixel leg, re-registered on b46f4cb8d3 for the Texture_shadow_comparator FAIL 3b50f167ba returned. A = 245ddc4964 (master's texture.c, pre-#433, unchanged). B = b46f4cb8d3, which carries 38c8d53ba5 (texscan extended cube-only -> 2D), the image_scale AA-regression fix (3b50f167ba), and this commit's !f.depth exclusion in texscan_shape_ok(). Mechanism: 3b50f167ba's arm FAILed 23/1038 Texture_shadow_comparator checks -- both arms already non-exact against their own goldens (a pre-existing, order-independent 'missing-state' defect per docs/investigations/cross-test-contamination.md), but texscan2d's multi-level path was intercepting shadow-comparator depth-as-texture formats (BasicColorFormatInfo.depth, which psh.c's state->shadow_map[i] = f.depth routes through the hardware comparator instead of a plain fetch) that previously fell through to the pre-existing SURFACE_DOWN path -- changing which wrong answer came out. b46f4cb8d3 refuses texscan for any format where f.depth, the same way it already refuses compressed/converted formats, so those captures take the same path as A again. Predicted effect: every Texture_shadow_comparator capture that moved between A and 3b50f167ba's arm returns to bit-exact against A; texscan1010's cube suites plus the 2D suites this leg exists to measure still move exactly as before (same or inside the run-to-run band). Read from B's logcat, not predicted: '[texscan] on 2d=1'. A moved capture -- in either direction, or any new one -- refutes this fix and blocks the change until explained region by region.",
   "a_ref": "245ddc4964",
-  "b_ref": "3b50f167ba",
+  "b_ref": "b46f4cb8d3",
   "must_not_move": [
     "Blend_surface/*",
     "DMA_corruption_around_surfaces/*",
@@ -88,7 +88,6 @@
     ],
     "only_tests": [],
     "source": "/home/justin/hakux-work/dispatch/results/1-1792389196-arms-fpsdata1018-base-3521751/request.json",
-    "source_request": "1-1792389196-arms-fpsdata1018-base-3521751",
-    "disc_id_seen": "35-suites:2c63c615:3D_primitive,Antialiasing_tests,Blend_su"
+    "source_request": "1-1792389196-arms-fpsdata1018-base-3521751"
   }
 }
