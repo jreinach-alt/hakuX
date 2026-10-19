@@ -8,8 +8,8 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `fpsnext1019` | claude-sonnet-5 | 1h 8m | fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433) |
-| `nova-tiers1019` | claude-sonnet-5 | 43 min | Nova priority tiers that actually hold: screening yields to FPS and release-fix work |
+| `fpsnext1019` | claude-sonnet-5 | 1h 23m | fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433) |
+| `nova-tiers1019` | claude-sonnet-5 | 58 min | Nova priority tiers that actually hold: screening yields to FPS and release-fix work |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -127,7 +127,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/fpsnext1019` | fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433) | `293ed24401` | 2026-10-19 09:16 |
+| `lane/fpsnext1019` | fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433) | `f93f9732e7` | 2026-10-19 09:59 |
 | `lane/nova-tiers1019` | Nova priority tiers that actually hold: screening yields to FPS and release-fix work | `dea4c616a7` | 2026-10-19 09:13 |
 
 ## Recently landed on master
@@ -138,4 +138,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-19 mkdawhite1018: Mortal Kombat: Deadly Alliance arena floors and walls draw flat white (#1058)
 - 2026-10-18 GTA III dip frame: race-free render-pass-break counters, timed fence/copy/bind costs, and the in-car fen split
 
-_Updated 2026-10-19 09:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-19 10:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
