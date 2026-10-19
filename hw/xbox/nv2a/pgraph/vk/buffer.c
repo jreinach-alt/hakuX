@@ -480,8 +480,6 @@ bool pgraph_vk_init_buffers(NV2AState *d, Error **errp)
         };
         fs->vertex_ram_flush_min = VK_WHOLE_SIZE;
         fs->vertex_ram_flush_max = 0;
-        fs->vertex_ram_stale_min = VK_WHOLE_SIZE;
-        fs->vertex_ram_stale_max = 0;
         fs->vertex_ram_initialized = false;
 
         char name[64];
@@ -524,6 +522,13 @@ bool pgraph_vk_init_buffers(NV2AState *d, Error **errp)
             goto fail;
         }
         bitmap_clear(fs->uploaded_bitmap, 0, r->bitmap_size);
+
+        fs->vertex_ram_stale = bitmap_new(r->bitmap_size);
+        if (!fs->vertex_ram_stale) {
+            error_setg(errp, "Failed to allocate per-frame stale bitmap");
+            goto fail;
+        }
+        bitmap_clear(fs->vertex_ram_stale, 0, r->bitmap_size);
     }
     VK_LOG_ERROR("buffer_init: per-frame staging created (%d frames, "
                  "idx=%zuMB vtx=%zuMB uni=%zuMB stg=%zuMB per-frame)",
@@ -552,6 +557,8 @@ fail:
         }
         g_free(fs->uploaded_bitmap);
         fs->uploaded_bitmap = NULL;
+        g_free(fs->vertex_ram_stale);
+        fs->vertex_ram_stale = NULL;
     }
     for (int i = 0; i < BUFFER_COUNT; i++) {
         if (r->storage_buffers[i].mapped) {
@@ -585,6 +592,8 @@ void pgraph_vk_finalize_buffers(NV2AState *d)
         }
         g_free(fs->uploaded_bitmap);
         fs->uploaded_bitmap = NULL;
+        g_free(fs->vertex_ram_stale);
+        fs->vertex_ram_stale = NULL;
     }
 
     for (int i = 0; i < BUFFER_COUNT; i++) {

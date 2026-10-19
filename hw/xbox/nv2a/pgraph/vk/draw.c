@@ -23,6 +23,7 @@
 #include "qemu/processor.h"
 #include "qemu/timer.h"
 #include "renderer.h"
+#include "vtxstale.h"
 #include "system/physmem.h"
 #include "ui/xemu-settings.h"
 #include "hw/xbox/nv2a/pgraph/prim_rewrite.h"
@@ -6317,9 +6318,9 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
 
                 /*
                  * The outgoing frame's copy is the newest. Bring the
-                 * incoming frame's copy up to date over everything that
+                 * incoming frame's copy up to date over every page that
                  * was uploaded while it was not current; that can span
-                 * several frames, so the range is kept on the receiving
+                 * several frames, so the pages are kept on the receiving
                  * frame rather than on the frame that took the upload
                  * (issue #39: with three frames, a vertex buffer uploaded
                  * once never reached the third copy, and every draw from
@@ -6332,25 +6333,26 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
                     next_fs->vertex_ram_flush_min = 0;
                     next_fs->vertex_ram_flush_max = total;
                     next_fs->vertex_ram_initialized = true;
-                } else if (next_fs->vertex_ram_stale_min <
-                           next_fs->vertex_ram_stale_max) {
-                    size_t off = next_fs->vertex_ram_stale_min;
-                    size_t len = next_fs->vertex_ram_stale_max - off;
+                    bitmap_clear(next_fs->vertex_ram_stale, 0,
+                                 r->bitmap_size);
+                } else {
+                    size_t lo, hi;
 #if NV2A_PERF_LOG
                     DW_T0(dw_s0);
 #endif
-                    memcpy(next_fs->vertex_ram.mapped + off,
-                           cur_fs->vertex_ram.mapped + off, len);
+                    size_t copied = vtxstale_copy(
+                        next_fs->vertex_ram.mapped, cur_fs->vertex_ram.mapped,
+                        next_fs->vertex_ram.buffer_size,
+                        next_fs->vertex_ram_stale, r->bitmap_size, &lo, &hi);
 #if NV2A_PERF_LOG
                     DW_T1(stale, dw_s0);
-                    DW_ADD(STALE_B, len);
+                    DW_ADD(STALE_B, copied);
 #endif
-                    next_fs->vertex_ram_flush_min = off;
-                    next_fs->vertex_ram_flush_max = off + len;
+                    if (copied) {
+                        next_fs->vertex_ram_flush_min = lo;
+                        next_fs->vertex_ram_flush_max = hi;
+                    }
                 }
-
-                next_fs->vertex_ram_stale_min = VK_WHOLE_SIZE;
-                next_fs->vertex_ram_stale_max = 0;
             }
 
             r->current_frame = next_frame;
