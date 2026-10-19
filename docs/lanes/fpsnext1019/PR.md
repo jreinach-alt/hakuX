@@ -3,7 +3,7 @@
 State: ready
 
 Lane: fpsnext1019            Issue: #433
-Base: master @ 2e6d29d4f8 (fpsdata1018's fold landed on master; merged in)
+Base: master @ 913e1524ff (fpsdata1018, foldjam1018, compat1019b and nova-tiers1019's folds landed on master; merged in)
 Files: docs/lanes/fpsnext1019/NOTES.md, docs/lanes/fpsnext1019/PR.md, docs/lanes/fpsnext1019/FINDINGS.md, hw/xbox/nv2a/pgraph/vk/texture.c, hw/xbox/nv2a/pgraph/vk/surface.c
 Prediction: none: ab_compare.py's golden-capture registration does not fit a GTA III driving-scene fps claim (no
   golden exists for it). The falsifiable prediction that mattered (NOTES.md, "one guard dominates wrej[], likely
@@ -33,13 +33,30 @@ do **not** -- render passes/flip rose to 148.4 (worse than shipped's 130.2) and 
 other arm measured), even though R2's own copy-elimination still engaged (`cs2t-ended/flip` 0). Conclusion: if
 sysmem is ever shipped as a per-title default, it should not be paired with R2's default-on without a further,
 separate test. Blinx 2:
-root-caused (not fixed) why the generic drive route never reaches gameplay -- the dispatcher's `EXPLORE_LADDER`
-excludes `START` without a built profile, and Blinx 2 has none; deferred in favor of GTA III, which was directly
-actionable. Detail in `docs/lanes/fpsnext1019/NOTES.md`; per-title table in `FINDINGS.md`.
+root-caused why the generic dispatcher drive route never reaches gameplay (`EXPLORE_LADDER` excludes `START`
+without a built profile), then bypassed it: the owner's island save state is already on the Nova debug package
+(slot 5) and loads through the same pause-menu protocol GTA III uses, so Blinx 2 gameplay needed no profile work
+at all. Beyond R2, GTA III's in-car scene still ends up to 140 of ~150 render passes/flip on a sample of one
+128x128 colour target; built two opt-in, falsifiable-predicted (G3) levers to test the two candidate mechanisms:
+`HAKUX_S2T_DEAD` (GTA III -- keep the node's image when no combiner reads the sampled texel) and `HAKUX_SWZKEEP`
+(Blinx 2 -- keep a swizzle-only re-marked binding bound instead of evicting+re-shelving it, the cause of a 256x256
+depth surface being evicted and downloaded twice a flip). Both ran their full device palindromes this attempt.
+`HAKUX_S2T_DEAD`'s own mechanism-deciding prediction (P0) is **falsified**: zero dead texels in 631,040
+feedback-sample events across three full runs -- the sampled texel is real feedback on this scene, not a fetch
+nothing reads, so the lever cannot engage (and measurably doesn't: on-vs-off pixel diff 0.1). The remedy for GTA
+III's remaining passes is a feedback-loop attachment or in-pass self-dependency, not this lever. `HAKUX_SWZKEEP`'s
+mechanism prediction (P1) **holds cleanly** (the targeted eviction/download/fence-wait pattern drops to zero on
+arms, confirmed four independent ways), but its fps (P2, +1.0 measured vs +3.2 predicted -- the saved CPU wait
+reappears as more GPU render time or a different idle stall) and pixel (P3, a visible elongated double-shadow
+artifact on both on arms, ~2.5x the off-vs-off noise floor) predictions do not -- **`HAKUX_SWZKEEP` does not
+ship.** Both switches are opt-in/default-off, so neither needs further gating; both results are real, instrument-
+and pixel-backed negatives, not "needs more data." Detail in `docs/lanes/fpsnext1019/NOTES.md`; per-title table in
+`FINDINGS.md`.
 
 Release note (performance): GTA III driving scenes do fewer GPU render passes per frame (a texture copy the
 renderer was already built to avoid, but had never been turned on, now runs by default); measured as an fps
 increase on one of three device trials, flat on the other two once a one-time shader-recompile cost on the first
-trial is accounted for.
+trial is accounted for. The two opt-in diagnostic switches added this attempt (`HAKUX_S2T_DEAD`, `HAKUX_SWZKEEP`)
+default off and are not shipped behaviour changes.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
