@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 314
-updated_utc = '2026-10-19T16:31:53Z'
+wave = 315
+updated_utc = '2026-10-19T16:37:49Z'
 
 [lane.alwaystelemetry]
 issues = ["433"]
@@ -3192,3 +3192,9 @@ issues = ["433"]
 standing = false
 files = ["docs/lanes/compat1019b/**", "docs/testing/compat_notes.tsv", "docs/testing/compat_page.py", "docs/testing/compat_page_selftest.py", "docs/compatibility.csv", "docs/COMPATIBILITY.md", "README.md", "docs/testing/titles/targets.toml"]
 note = "CLAIMED (hostops, jam duty, 2026-10-19 09:31 PDT): foldqueue.log 09:16:53 PDT refused this lane's ready fold (699b55c527) with 'no [lane.compat1019b] row on origin/board' -- the lane ran and folded its three PES5/Wild Rings/KotT Playable promotions (#433) with no territory row ever written for it, same missing-row shape as fpsdata1018/fpsnext1019 above. Files taken verbatim from the brief's own Files: line (briefs/compat1019b.md); the lane's actual diff vs its merge-base touches only docs/COMPATIBILITY.md, docs/compatibility.csv, docs/testing/compat_notes.tsv and its own docs/lanes/compat1019b/** (confirmed via `git diff $(git merge-base origin/master origin/lane/compat1019b) origin/lane/compat1019b --stat`: 5 files, all within this grant), so the remaining brief-listed paths (compat_page.py, compat_page_selftest.py, README.md, targets.toml) are pre-granted but untouched. Checked for collision before writing: compat_page.py/compat_page_selftest.py/compatibility.csv/COMPATIBILITY.md/README.md/compat_notes.tsv appear in no other row (grep of this file); docs/testing/titles/targets.toml matched only [free]'s bare docs/testing/titles/** glob (untouched by this grant, same carve-out pattern as pathfind/localdrive1018 above). No device held (docs-only lane per its own brief: 'No device time needed: docs only')."
+
+[lane.nova-tiers1019]
+issues = ["433"]
+standing = false
+files = ["docs/testing/jobs/hold.sh", "docs/testing/jobs/selftest.d/99-hold-tiers.sh", "AGENTS.md", "docs/lanes/nova-tiers1019/**"]
+note = "CLAIMED (hostops, jam duty, 2026-10-19 09:34 PDT): row written for a lane ALREADY RUNNING since 09:01:54 PDT with none (SessionStart fleet FAIL: 'lane(s) are RUNNING with no territory row -- nova-tiers1019'; left one tick at 09:11 PDT per the preamble's own 0-min rule, but 33 min in with no board request filed and the lane's own brief making claiming its files Step 1, so written directly this tick rather than waiting longer). Brief briefs/nova-tiers1019.md, issue #433 (owner 2026-10-19: hold-tier priorities so Nova screening yields to FPS/release work). Files taken verbatim from the lane's own PR.md Files: line (docs/lanes/nova-tiers1019/PR.md, committed dea4c616a7 'claim files, draft PR'), which is narrower than the brief's speculative list -- the lane's NOTES.md already found title1006.sh and overnight1018.py were never committed to the repo (closest match was an uncommitted scratch file under the now-folded pathfind lane's worktree) and reported brief item 4 blocked rather than fabricating files to claim. Checked for collision before writing (tomllib scan of every row's files/released): no other live row holds AGENTS.md or docs/testing/jobs/hold.sh (every prior holder -- docsfresh1012, soakvideo1011, profilegate1011, ghlive1010, harnessfix1006, localforge, pilotgate, holdcap1018, and more -- already released both back to [free] or to this file's comment history); the new selftest fragment path is unclaimed. No device held (lane proves its hold-tier logic offline against fake queue/hold dirs per its own brief: 'No device time needed')."
