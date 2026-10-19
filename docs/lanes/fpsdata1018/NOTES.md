@@ -23,7 +23,93 @@ perflog 72af9cb92c, Nova, PurpleVK) and land fixes.
   before merging). Read back both arms of the queued RalliSport 2 device A/B (section "Device A/B, read back").
   Investigated H3 (Blinx 2's `Surf` wait) down to a dead end that is already proven dead on another title
   (`stall_reports_only`/`HAKUX_STALLFIN=reports`, row 23) -- recorded before building anything, so it is not
-  repeated. Continuing to H2 (Fable zeta churn) next.
+  repeated. Continued to the already-queued arms result for Fix #1's texscan2d pixel prediction (FAILed:
+  `Texture_shadow_comparator`), root-caused and fixed it (`b46f4cb8d3`), then found the arms job had
+  *also* auto-run and FAILed the S2T_FB mode-2 default's own pixel prediction on a second, independent
+  mechanism (`DOT_PRODUCT`), root-caused and fixed that too (`b6064d61cc`). Both re-registered on the fix
+  commits and pushed; see "Pixel FAIL #1" and "Pixel FAIL #2" below. Re-queued the Blinx 2 H4 GPUXFR
+  census with `--perflog` after finding the first attempt at it ran without that flag and so produced no
+  `xemu-xfr` output at all (`NV2A_PERF_LOG` gates the whole report, draw.c:5058) -- void, not a result.
+
+## Pixel FAIL #1: texscan2d's arms run FAILed on Texture_shadow_comparator (G3 falsifier, explained and fixed)
+
+The texscan2d must-not-move prediction (`fpsdata1018-texscan2d-pixels.json`) predated this session; its arms
+pair (`1-1792396705-...-base-2158864` / `...-fix-2158904`, both already `DONE` on disk when this session
+started) had not been read back. `ab_compare.py --expect` on them: **VERDICT: FAIL -- 23 of 1038 checks
+violated**, entirely within `Texture_shadow_comparator` (per-suite: caps 288, better 11, worse 12, same 265).
+
+Checked `scores1.tsv` directly for one failing capture (`2F16_10.00-20.00_15.0000_GE`): both arms already read
+`exact=False` against their own goldens (320 vs 400 differing px) -- this is not a previously-correct capture
+this lane broke, it is a pre-existing, order-independent "missing-state" defect
+(`docs/investigations/cross-test-contamination.md` classifies `Texture_shadow_comparator` as wrong-alone, not
+contamination) changing *which* wrong answer comes out. G3's falsifier clause does not distinguish "broke a
+correct answer" from "changed a wrong one" -- either blocks the change until explained region by region, so
+this still had to be traced to a mechanism, not waved off as "already broken anyway".
+
+Traced: `texscan_shape_ok()` (texture.c ~2129) already refuses compressed and "converted" formats because a raw
+GPU copy cannot stand in for a source that needs value conversion on the way into a texture. It was missing the
+same exclusion for NV2A's shadow-comparator depth-as-texture formats. `BasicColorFormatInfo.depth`
+(`pgraph/texture.h:47-51`, set `true` only for the four `DEPTH_Y16_FIXED/FLOAT`, `X8_Y24_FIXED/FLOAT` rows in
+`kelvin_color_format_info_map`, `pgraph/texture.c` ~83-91) marks exactly these formats, and `psh.c:584`
+(`state->shadow_map[i] = f.depth`) uses it to route that texture stage through the GLSL hardware
+shadow-comparator unit instead of a plain fetch -- a different, more specific, substitution requirement than
+"converted", which `pgraph_texture_format_is_converted()` does not cover (it is a hardcoded switch with no
+DEPTH_* case and never reads `.depth`). The old pre-#433 code only ever ran the single-level direct-bind path
+(`state.levels == 1` gate, texture.c ~3845) against these formats; Fix #1's new multi-level per-slot texscan
+path was intercepting multi-level shadow-comparator textures that previously fell through to the SDL-download
+path instead -- exactly why only this suite, and only in the fix arm, diverges.
+
+**Fix** (`b46f4cb8d3`): added `!f.depth` to `texscan_shape_ok()`'s conjunction, same tier as the
+compressed/converted exclusions. Typechecked clean (rc=0, same 5 pre-existing warnings, no new ones).
+**Re-registered** `fpsdata1018-texscan2d-pixels.json` with `a_ref=245ddc4964` (unchanged), `b_ref=b46f4cb8d3`
+(this fix); predicts every `Texture_shadow_comparator` capture that moved against `3b50f167ba` returns to
+bit-exact against A. Committed (`d13ecf9109`) and pushed for the arms job to pick up; not yet read back.
+
+## Pixel FAIL #2: S2T_FB mode-2's own arms run FAILed too -- a second, independent mechanism (DOT_PRODUCT)
+
+The arms job auto-queued and finished a pair against the *other* pending prediction
+(`fpsdata1018-s2tfb2-pixels.json`, `1-1792398523-...-base-2419064` / `...-fix-2419118`) while this session was
+mid-turn. Read back: **VERDICT: FAIL -- 24 of 472 checks violated**, and critically NOT confined to
+`Texture_shadow_comparator` this time -- `Antialiasing_tests/CPUWriteIgnoresSurfaceConfig` moved **0 -> 45056
+px**, a capture with no shadow-comparator involvement at all. This refutes the "mode 2 never changes a pixel"
+safety argument outright (the prediction's own text: "any movement anywhere falsifies the stage-reads safety
+argument, not just this title's use of it") -- a correctness bug, not inherited pre-existing noise.
+
+Traced: `s2t_fb_stage_reads()` (texture.c ~3018) classified `PS_TEXTUREMODES_DOTPRODUCT` (0x11) as a mode that
+"does not read its texture", grouped with NONE (0x00), PASS_THROUGH (0x04), CLIP_PLANE (0x05). Checked each in
+`pgraph/glsl/psh.c`: NONE and CLIP_PLANE emit a constant texel with no read (`psh.c:3326`, `:3441-3443`);
+PASS_THROUGH is documented (`psh.c` ~442-445) as needing no texture at all ("it still has shader logic to emit"
+but no sample). DOT_PRODUCT is none of these: `dotmap_src()` (`psh.c:1245-1253`) reads "the input texture's own
+sample" as the dot-product input, and `mode_reads_dotmap()` (`psh.c:1221-1236`) explicitly lists
+`PS_TEXTUREMODES_DOTPRODUCT` as a dotmap-reading mode. A DOT_PRODUCT-mode stage sampling the current colour
+target was told by `s2t_fb_keep()` that it could keep a stale copy across draws within a run; it can't, because
+the mode genuinely consumes the texel content (as a bump-map/dot input), unlike the other three.
+
+**Fix** (`b6064d61cc`): dropped `prog == 0x11` from `s2t_fb_stage_reads()`'s return expression, with a comment
+citing the `psh.c` evidence; updated the function-level comment block above `s2t_fb_mode()` to match.
+Typechecked clean (same 5 pre-existing warnings, no new ones). **Re-registered**
+`fpsdata1018-s2tfb2-pixels.json` with `a_ref=41c613c22a` (unchanged), `b_ref=b6064d61cc` (this fix); predicts
+every capture that moved against `fa4cca9241` returns to bit-exact against A. Committed (`00c0b7da48`) and
+pushed; not yet read back.
+
+Both FAILs were found and fixed in the same session specifically *because* G3's falsifier clause was followed
+through to a mechanism instead of stopping at "the prediction failed, revert the lever" -- in both cases the
+lever's own idea (refuse a raw copy for formats/modes that need a true read) was sound, and the bug was an
+incomplete enumeration of which formats/modes qualify, not a flaw in the idea itself.
+
+## H4 census job #1 was void: no `--perflog`, so `NV2A_PERF_LOG` compiled the report out entirely
+
+`1-1792397157-lane.fpsdata1018-2224298` (Blinx 2, `HAKUX_GPUXFR=1`, 90s) came back `DONE`, but its `logcat.txt`
+has exactly one XFR-related line: the env var being read (`env: HAKUX_GPUXFR=1`). No `xemu-xfr` line anywhere.
+Its `request.json` has `"perflog": ""` -- an empty string, meaning the job ran a normal (non-perflog) build.
+`draw.c:5058` gates the entire reporting block behind `#if defined(__ANDROID__) && NV2A_PERF_LOG` (a
+*compile-time* macro, set only by the perflog build variant): with a release build, the counters above that
+line still run (`xfr_on()` reads the env var and the structs update), but nothing is ever printed, so the
+result has no `XFR rp`/`XFR rpc` line to read regardless of what the run did. This is a process gap, not a
+code gap: `request.sh --perflog` exists and does exactly what was needed; the first queuing of this job simply
+didn't pass it. Re-queued correctly: `1-1792399453-lane.fpsdata1018-2593046` (same route/title/seconds/env,
+`--perflog` added, `--ref d13ecf9109`). Queued under `--who lane.fpsdata1018`; went through the pilot gate with
+no `.ok` file needed (under the 30-minute threshold). Not yet `DONE` as of this writing.
 
 ## Step 0: Already-tried (G1)
 
