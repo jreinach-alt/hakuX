@@ -1085,8 +1085,8 @@ note = "STARTED lane.local 2026-10-18 15:20 PDT (Sonnet via usage-mode cap; harn
 [lane.foldjam1018]
 issues = ["433"]
 standing = false
-files = ["docs/lanes/foldjam1018/**", "docs/investigations/foldjam1018.md", "docs/testing/check_territory.py", "docs/testing/jobs/lane.sh", "docs/testing/jobs/selftest.d/98-foldjam1018.sh", "docs/testing/jobs/selftest.d/98-foldjam1018-territory.sh"]
-note = "STARTED (lane.local, owner order 2026-10-18 ~20:45 PDT): fix the fold-path jam of 10-18 (master red unnoticed 20 h, blacklist never retried after a master fix, one-path territory refusals found only in the fold log, no owner-order fold path). Brief briefs/foldjam1018.md. Exact strings only, none held by another live row (checked); offline_fold.py/foldqueue.sh/driver_tick.py live outside the repo and ship as patches under docs/lanes/foldjam1018/patches/. hold.sh (holdcap1018) and battery_admit.py (toolsmith) are NOT in this row: item E there is a spec only."
+files = ["docs/lanes/foldjam1018/**", "docs/investigations/foldjam1018.md", "docs/testing/check_territory.py", "docs/testing/jobs/selftest.d/98-foldjam1018.sh", "docs/testing/jobs/selftest.d/98-foldjam1018-territory.sh"]
+note = "STARTED (lane.local, owner order 2026-10-18 ~20:45 PDT): fix the fold-path jam of 10-18 (master red unnoticed 20 h, blacklist never retried after a master fix, one-path territory refusals found only in the fold log, no owner-order fold path). Brief briefs/foldjam1018.md. Exact strings only, none held by another live row (checked); offline_fold.py/foldqueue.sh/driver_tick.py live outside the repo and ship as patches under docs/lanes/foldjam1018/patches/. hold.sh (holdcap1018), battery_admit.py (toolsmith) and docs/testing/lane.sh (sparsewt1017) are NOT in this row: item E there is a spec only."
 
 [free]
 # GRANTED (hostops, jam duty, 2026-10-18 08:4x PDT) docs/testing/compat_notes.tsv, docs/compatibility.csv, docs/COMPATIBILITY.md, docs/testing/titles/targets.toml -> [lane.compat1018b] (its board row omitted them though its own commits edit them; foldqueue FAILED 08:36 PDT on compat_page.py/compat_page_selftest.py, a related gap also fixed on that row -- not double-claimed here, moved out of [free] in the same push).
@@ -2941,7 +2941,7 @@ note = "STARTED lane.local 2026-10-17 ~09:30 PDT (Sonnet, docs only): owner 10-1
 [lane.sparsewt1017]
 issues = ["433"]
 standing = false
-files = ["docs/testing/lane.sh", "docs/testing/jobs/selftest.d/99-lane-sparse-worktree.sh", "docs/lanes/sparsewt1017/**"]
+files = ["docs/testing/jobs/selftest.d/99-lane-sparse-worktree.sh", "docs/lanes/sparsewt1017/**"]
 note = "STARTED lane.local 2026-10-17 ~10:30 PDT (Sonnet): C: nearly full (owner 10-17: 'if C fills up you take down the whole WSL environment'). Every lane worktree carried ~1.9 GB of tracked docs/lanes/pathfind/runs; lane.sh now creates trees sparse (that subtree excluded) so a lane tree is ~0.4 GB. Brief: briefs/sparsewt1017.md."
 
 [retired.haloshadow1017]
