@@ -3103,7 +3103,21 @@ static void s2t_fb_record(PGRAPHState *pg, int texture_idx,
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
 
-    if (s2t_fb_state <= 0 || surface != r->color_binding) {
+    /*
+     * #433 arms FAIL on b6064d61cc's own re-registered prediction: 21 of 472
+     * Texture_shadow_comparator checks moved pixels, same suite and same
+     * "both arms already off their own golden" class as texscan2d's
+     * exclusion above (texscan_shape_ok's !f.depth, docs/investigations/
+     * cross-test-contamination.md). snode->key.state.color_format is the
+     * texture descriptor's own declared format -- DEPTH_Y16_FIXED/FLOAT,
+     * X8_Y24_FIXED/FLOAT send the sample through the comparator unit
+     * (psh.c's shadow_map[i]) instead of a plain fetch. Never cache a copy
+     * of a surface read through that unit: nothing measured says reusing a
+     * stale copy is equivalent to a fresh one for this format's source, any
+     * more than it is for texscan2d's GPU copy.
+     */
+    if (s2t_fb_state <= 0 || surface != r->color_binding ||
+        pgraph_get_color_format_info(snode->key.state.color_format).depth) {
         return;
     }
     s2t_fb_memo[texture_idx].node = snode;
