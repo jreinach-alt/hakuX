@@ -49,7 +49,7 @@ on average in the SAME scene, or a measured per-pass GPU ms drop that accounts f
   straight into the P0 census run named in the addendum: build first, then GTA III P0 (off arms only, per the
   prediction's own note that P0 does not depend on the switch), then the on/off palindrome; Blinx 2's
   `HAKUX_SWZKEEP` palindrome after that if device time allows.
-- **Attempt 5 (2026-10-19 ~15:00 PDT, resumed per addendum 4)**: attempt 4 ended on the 300-turn cap after
+- **Attempt 5 (2026-10-19 ~12:55 PDT, resumed per addendum 4)**: attempt 4 ended on the 300-turn cap after
   landing both predictions' device results (`HAKUX_S2T_DEAD` P0 falsified, `HAKUX_SWZKEEP` P1 holds/P2+P3
   falsified, neither ships) and writing up Fable H2's `[edl]` census (P0 confirmed, P1 falsified at
   `clrskip`/`dl`=0.504, conditional skip not started). Of the ranked open items, only item 4 (RalliSport 2 /
@@ -63,6 +63,15 @@ on average in the SAME scene, or a measured per-pass GPU ms drop that accounts f
   fold already landed). Device: `dumpsys window | grep mCurrentFocus` and `dumpsys power | grep mWakefulness`
   both showed the Nova idle/awake, no other process using it. Ran RalliSport 2's read-back this attempt (below);
   Fable's half of item 4 still open for the next attempt.
+- **Attempt 6 (2026-10-19 ~13:45 PDT, resumed per lane.local's 14:00 addendum)**: attempt 5 did not finish the brief
+  because it stopped at `State: ready` a third time. It ended `ok` at 13:31 PDT after 140 turns, with the RalliSport 2
+  read-back done and the Fable recipe written, and it left the GTA III feedback-loop remedy as "next attempt's scope"
+  even though the remedy was ranked first and the Nova was free. G7 and Addendum 2 both say a ready PR is a fold
+  point and work continues; attempt 5 treated it as an end. Its tested work folded as `656bcd1fe9`. Start checks:
+  merged origin/master (`e1be4adbdd` masterred-verdict1019 and `656bcd1fe9`, this lane's own fold), no conflict,
+  branch diff against master empty. `hold.sh who nova` -> `free: nova` at 13:48 and 14:03 PDT. Order for this
+  attempt, per the addendum: (1) build and device-verify the GTA III in-pass feedback barrier (below, G3 first),
+  (2) Blinx 2 gameplay budget capture + H4 census, (3) Fable gameplay capture.
 
 ## Attempt 5, item 4: RalliSport 2 read-back -- `HAKUX_TEXSCAN2D` confirmed on real driving (sdown 100%->0%, fps 38.2->59.0 mean)
 
@@ -164,6 +173,66 @@ self-read. Feasibility: **confirmed, not a dead end.** Not started: the actual d
 extensions to target, where the single 128x128 target's bind-as-texture call needs to become a same-pass
 self-read instead of `copy_surface_to_texture`'s copy-and-restart) and the G3 falsifiable prediction for it
 (pixel safety first, matching every prior lever's own sequencing) -- a full attempt's scope, next.
+
+## Attempt 6, item 1: GTA III in-pass feedback barrier (`HAKUX_FBLOOP`)
+
+**Mechanism (G2), read from the driver's source, not assumed.** PurpleVK 26.3-devel is Turnip on Mesa main. The
+source read is Mesa main's `src/freedreno/vulkan/tu_cmd_buffer.cc` (`tu_barrier`, `vk2tu_access`,
+`tu_flush_for_stage`) and `tu_pass.cc`. Today, each sample of the 128x128 colour target @0x038aa080 while it is the
+target being drawn goes through `bind_surface_as_texture()` (texture.c). That ends the render pass
+(`pgraph_vk_begin_nondraw_commands`), records COLOR_ATTACHMENT_WRITE -> SHADER_READ outside the pass, and the next
+draw opens a new pass. That is one pass per sample: 40-140 a flip on the in-car scene (g1, g2 above). The
+hold-window fit is ms/flip = 30.89 + 0.1309 x rp/flip.
+
+Turnip's handling of a barrier recorded **inside** a render pass:
+- If either stage mask holds a stage outside framebuffer space (vertex, here), `tu_barrier` sets the pass's
+  `disable_gmem` ("Non-framebuffer-space barrier"). The whole pass then renders in sysmem: the attachment lives in
+  memory, not in tile memory.
+- Inside a pass, `vk2tu_access` maps the access masks with gmem=false. COLOR_ATTACHMENT_WRITE becomes a CCU colour
+  flush, and SHADER_READ becomes a UCHE/CCHE invalidate. Both go into the pass's flush bits and are emitted before
+  the next draw.
+- `tu_flush_for_stage` with a source stage at or after the destination adds a wait-for-idle.
+- Self-dependencies in `VkSubpassDependency` are ignored, so the render pass does not need one to make this legal
+  to Turnip. Adding one would also change render-pass compatibility, so `create_render_pass` is unchanged.
+
+The result is the same flush, invalidate and wait that the break plus the outside barrier gave, but with no pass end
+and no pass begin. The Vulkan spec allows an in-pass barrier only between framebuffer-space stages, by region,
+under a matching self-dependency, and a by-region dependency does not cover a fetch at another pixel. So the
+barrier is a Turnip-only construct: the switch checks the driver name (`PurpleVK` or `turnip`) and is off on
+anything else.
+
+**Built** (`draw.c` `pgraph_vk_fbloop_barrier()`, `texture.c` `bind_surface_as_texture()`):
+- When the sampled surface is `r->color_binding` and a pass is open, the barrier
+  (src COLOR_ATTACHMENT_OUTPUT|VERTEX_SHADER, dst FRAGMENT_SHADER) goes into the open pass and the function returns.
+- A pass that ends after such a barrier repeats it outside, in case the sampling draw lands in the next pass.
+- `HAKUX_FBLOOP=1` turns it on. `=2` alternates off/on per `[dipwin]` window (60 flips), so both sides of the
+  comparison see the same stretch of road. Unset or `0` is off, and off is the default.
+- Census on every perflog build: `[dipwin]` gains `fbs=` (samples of the target being drawn), `fbl=` (those
+  barriered in-pass) and `fbon=` (the window's phase).
+- `[fbloop] on mode=N (driver)` is logged once.
+
+APK `<sha>-perflog.apk` (debug, `-Pperflog=true`), warm worktree build, both files recompiled with no new warnings.
+
+### G3 prediction for HAKUX_FBLOOP (written before any device run)
+
+Batch `g3`, one APK, the owner's in-car save state (pause-menu load), the lane's `batch.sh`/`arm.sh` under the
+lane's Nova hold. Arms: W (warm-up, off, discarded), S1 off, F1 `HAKUX_FBLOOP=1`, F2 `=1`, S2 off, M1 `=2`. Every arm
+adds `HAKUX_FRAMETRACE=1` and keeps widen at its default (on). An arm is void without `GPU: PurpleVK` and `op=load
+... ok=1`, and the F/M arms are void without `[fbloop] on`. Scene descriptor: `fbs`/flip. It is counted the same
+way with the switch on or off, so an arm-vs-arm comparison is only same-scene when the arms' `fbs`/flip agree
+within 30%.
+
+| leg | rule | falsified if |
+|---|---|---|
+| P0 engagement | F arms and M1's on windows: sum `fbl` / sum `fbs` >= 0.9; S arms and M1's off windows: `fbl` = 0 | `fbl`/`fbs` < 0.9: most samples arrive with no pass open, so the break that costs the pass is not this call (`nd=` names it) |
+| P1 passes | M1, adjacent on/off window pairs: rp/flip(on) <= rp/flip(off) - 0.8 x `fbl`/flip(on). `bind_surface_as_texture`'s `nd=` offset falls >= 90% in on windows | P0 holds and rp/flip does not fall: something after the bind still ends the pass |
+| P2 time | M1 pairs: mean of ms/flip(off) - ms/flip(on) >= 0.5 x 0.1309 x mean of rp/flip(off) - rp/flip(on), and > 0 in >= 70% of pairs. F arms: crash-excluded, motion-verified drive window >= 27.0 fps each; F mean - S mean >= +3.0 fps when `fbs`/flip agree | P1 holds and the ms drop < 0.25 x the fit's: the per-sample cost is the drain (the wait-for-idle and flushes this barrier keeps), not the pass. The next remedy then removes the drain (GMEM by-region, or the feedback-loop layout), not the pass |
+| P3 pixels | `m3-loaded.png`, F1 and F2 vs S1: diff <= 3.0 and <= S1-vs-S2 + 1.0 | a larger diff: the in-pass sample read stale data (the pass stayed in GMEM, or the flush is not what the source says) |
+| P4 stability | F and M arms: no `DEVICE_LOST`, no app death before the window ends, the same crash-exclusion rate as S | a GPU fault: Turnip does not take this construct the way its source reads |
+
+The open risk is P2. The fit's 131 µs a pass is wall clock and does not split into pass overhead (CPU recording,
+pass begin and end, tile load and store) and the drain each sample's barrier forces. This switch removes the
+first and keeps the second. P2's falsifier is written so that either result names the next step.
 
 ## Step 0: Already-tried (G1), carried from fpsdata1018
 

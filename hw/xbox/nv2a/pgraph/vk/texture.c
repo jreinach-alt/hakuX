@@ -58,6 +58,8 @@ void pgraph_vk_xfr_surf(const SurfaceBinding *s, int ev);
 #define XFR_SURF_READ 1
 #define XFR_SURF_UPLOAD 2
 #define XFR_SURF_GONE 3
+/* HAKUX_FBLOOP (#433): the sample's barrier inside the open pass; draw.c */
+bool pgraph_vk_fbloop_barrier(PGRAPHState *pg);
 
 /*
  * #474: wall time of each step of pgraph_vk_bind_textures(), NV2A_PERF_LOG
@@ -1171,6 +1173,12 @@ static void bind_surface_as_texture(PGRAPHState *pg, SurfaceBinding *surface,
     TXW_END(FLQ);
 
     nv2a_profile_inc_counter(NV2A_PROF_SURF_TO_TEX);
+
+    /* HAKUX_FBLOOP: the target being drawn, sampled with the pass open */
+    if (surface == r->color_binding && pgraph_vk_fbloop_barrier(pg)) {
+        texture->draw_time = surface->draw_time;
+        return;
+    }
 
     // End render pass to flush tile writes, then barrier for shader reads
     TXW_BEGIN(ND);

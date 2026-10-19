@@ -1210,6 +1210,9 @@ static void opt_stats_log_and_reset(void)
  *                   bsnb bsbd bsmd   vk/surface.c's binding gate: no binding /
  *                                    surface buffer dirty / guest memory dirty
  *                 brk minus their sum is ends no cause was counted for.
+ *   fbs= fbl=     samples of the colour target being drawn / those whose
+ *                 barrier HAKUX_FBLOOP put in the pass; fbon= its phase over
+ *                 the window (fbloop_mode())
  *   <name>=n/ms   calls and time. The x-marked timers below leave out any
  *                 pgraph_vk_finish nested in them, which fin= has already.
  *   nd=+off:n     caller offsets from the library's load base; symbolise with
@@ -1257,6 +1260,8 @@ enum {
     DW_UBO,         /* full-path descriptor updates that take a new UBO set */
     DW_RP,
     DW_BRK,
+    DW_FBS,         /* samples of the colour target being drawn */
+    DW_FBL,         /* HAKUX_FBLOOP: those whose barrier went into the pass */
     DW__N
 };
 
@@ -1316,6 +1321,8 @@ void pgraph_vk_dipwin_surface_break(bool no_binding, bool buffer_dirty)
         DW_INC(bsmd);
     }
 }
+
+static int fbloop_window(void);
 
 static void dw_put(char **p, char *end, const char *fmt, ...)
     G_GNUC_PRINTF(3, 4);
@@ -1379,6 +1386,8 @@ static void dipwin_flip(void)
     dw_put(&p, end, " full=%" PRIu64 " ubo=%" PRIu64 " vcopyK=%" PRIu64
            " staleK=%" PRIu64, v[DW_FULL], v[DW_UBO], v[DW_VCOPY_B] >> 10,
            v[DW_STALE_B] >> 10);
+    dw_put(&p, end, " fbs=%" PRIu64 " fbl=%" PRIu64 " fbon=%d", v[DW_FBS],
+           v[DW_FBL], fbloop_window());
 #define DW_T(n) \
     dw_put(&p, end, " " #n "=%" PRIu64 "/%.2f", v[DW_##n], \
            v[DW_##n##_NS] / 1e6);
@@ -1430,6 +1439,111 @@ static void dipwin_flip(void)
 #endif
 }
 #endif /* NV2A_PERF_LOG */
+
+/*
+ * HAKUX_FBLOOP (#433, lane.fpsnext1019): a draw that samples the colour
+ * target it is drawing into. bind_surface_as_texture() makes the pass's
+ * writes visible to the sample with a barrier, and recording that barrier
+ * outside a render pass ends the pass: on GTA III's in-car scene one 128x128
+ * target is sampled this way 40-140 times a flip, a render pass each
+ * (fpsnext1019 NOTES, g1 and g2).
+ *
+ * On, the barrier goes into the open pass and the pass goes on. Vulkan
+ * allows a barrier in a pass only between framebuffer-space stages, by
+ * region, under a matching self-dependency, and a by-region dependency does
+ * not cover a texel fetched at another pixel. So this is for Turnip
+ * (PurpleVK) alone, whose tu_barrier() takes an in-pass barrier with a stage
+ * outside framebuffer space -- the vertex stage in the source scope here --
+ * as a full one: the pass renders in sysmem, so the attachment is in memory,
+ * and the next draw waits for idle after a colour-cache flush and a UCHE
+ * invalidate, which is what the break and the barrier after it did. Turnip
+ * ignores self-dependencies, so the render passes declare none. Other
+ * drivers keep the break.
+ *
+ * A pass that ends after such a barrier repeats it outside, in case the
+ * draw that samples lands in the next pass.
+ *
+ * "1": on. "2": off and on in turn per [dipwin] window, so both sides of a
+ * comparison see the same scene (perflog builds; without windows it stays
+ * off). Unset or "0": off.
+ */
+static int fbloop_state = -1;
+static bool fbloop_phase;   /* mode 2: this window's half */
+static bool fbloop_open;    /* the open pass holds such a barrier */
+
+/* instance.c's "driverName (driverInfo)"; Turnip's name is "turnip Mesa
+ * driver", PurpleVK's "PurpleVK public driver" */
+extern char g_vulkan_driver_info[256];
+
+static int fbloop_mode(void)
+{
+    if (fbloop_state < 0) {
+        const char *e = getenv("HAKUX_FBLOOP");
+        int m = e && (e[0] == '1' || e[0] == '2') ? e[0] - '0' : 0;
+        bool turnip = strstr(g_vulkan_driver_info, "PurpleVK") ||
+                      strstr(g_vulkan_driver_info, "turnip");
+#ifdef __ANDROID__
+        if (m) {
+            __android_log_print(ANDROID_LOG_INFO, "hakuX",
+                                "[fbloop] %s mode=%d (%s)",
+                                turnip ? "on" : "off, not Turnip", m,
+                                g_vulkan_driver_info);
+        }
+#endif
+        fbloop_state = turnip ? m : 0;
+    }
+    return fbloop_state;
+}
+
+#if NV2A_PERF_LOG
+/* dipwin_flip(), closing a window: the phase it ran under; mode 2 turns */
+static int fbloop_window(void)
+{
+    int mode = fbloop_mode();
+    bool on = mode == 1 || (mode == 2 && fbloop_phase);
+    if (mode == 2) {
+        fbloop_phase = !fbloop_phase;
+    }
+    return on;
+}
+#endif
+
+static void fbloop_barrier(VkCommandBuffer cmd, VkPipelineStageFlags src)
+{
+    VkMemoryBarrier barrier = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+        .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+    };
+    vkCmdPipelineBarrier(cmd, src, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
+                         1, &barrier, 0, NULL, 0, NULL);
+}
+
+/* bind_surface_as_texture(), for a sample of the colour target being drawn
+ * once the queued draws are recorded: true when the barrier went into the
+ * open pass, false when the caller is to end it and barrier as before.
+ * Declared here and in texture.c, as pgraph_vk_xfr_surf() is. */
+bool pgraph_vk_fbloop_barrier(PGRAPHState *pg);
+bool pgraph_vk_fbloop_barrier(PGRAPHState *pg)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    int mode = fbloop_mode();
+
+#if NV2A_PERF_LOG
+    DW_INC(FBS);
+#endif
+    if (!r->in_render_pass || !mode || (mode == 2 && !fbloop_phase)) {
+        return false;
+    }
+    fbloop_barrier(r->command_buffer,
+                   VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+                       VK_PIPELINE_STAGE_VERTEX_SHADER_BIT);
+    fbloop_open = true;
+#if NV2A_PERF_LOG
+    DW_INC(FBL);
+#endif
+    return true;
+}
 
 void xemu_set_fast_fences(bool enable)
 {
@@ -4480,6 +4594,12 @@ void end_render_pass(PGRAPHVkState *r)
         }
         vkCmdEndRenderPass(r->command_buffer);
         r->in_render_pass = false;
+        if (fbloop_open) {
+            /* HAKUX_FBLOOP: the sample's draw may be in the next pass */
+            fbloop_barrier(r->command_buffer,
+                           VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+            fbloop_open = false;
+        }
         xfr_census_end(r);
         xfr_rp_outer(r, true);
     }
