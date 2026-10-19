@@ -931,6 +931,24 @@ Hard-won operational facts, each of which cost real time:
 | Emulator `stderr` reaches logcat under tag `hakuX-stderr` | nv2a prints the offending value before aborting. Read the log before reaching for a disassembler. |
 | The Debug Capture button is not the only frame dump any more | `adb shell 'echo 30 > /sdcard/Android/data/com.jreinach.hakux.debug/files/frame_dump.on'` arms a per-draw dump mid-run, with **no** per-draw `pgraph_vk_finish`. See below. |
 
+### Loading a scene without driving the device
+
+`request.sh --scene <name>` loads a named scene from `docs/testing/scenes.tsv`
+(name, title id, state file, slot, default hold); `--load-state
+<slot-or-file>` and `--hold-trigger rt:<seconds>` take the same scene apart
+into its two parts for a one-off. Either way the dispatcher puts the state
+where the app's auto-load reads it, loads it, and waits for `[savestate]
+op=load slot=<N> ok=1` in logcat before the run continues -- nobody drives the
+pause menu by hand to reach a scene. A hold trigger held after the load is
+logged with device-clock down/up times for scoring.
+
+A state file is schema-bound to the build that saved it. A load that is
+refused, times out, or is followed by any `[savestate] op=save` line makes
+the result VOID with the reason, never a silent run from the title screen.
+The state file and the `savestate_auto_load` pref are restored after every
+run, pass or VOID; `--load-state` at queue time refuses a slot or file that
+does not exist, before anything is dispatched.
+
 ### Arming a frame dump without a button
 
 The Debug Capture button (`nativeDumpDiagFrames`) calls

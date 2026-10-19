@@ -468,6 +468,18 @@ _device_epoch() {
     done
     return 1
 }
+# _device_clock: HH:MM:SS.mmm on the device clock, matching the format
+# score2.py's rt-down argument expects (captures/fpsnext1019/scripts/arm.sh's
+# own DT0/DTR1) -- NOT the epoch integer _device_epoch returns above, and not
+# the host clock (it steps back ~31s periodically; hub-devices.md).
+_device_clock() {
+    local t try
+    for try in 1 2 3; do
+        t=$(timeout "$ADB_QUICK_TIMEOUT" adb -s "$SERIAL" shell 'date +%H:%M:%S.%N' 2>/dev/null | tr -d '\r\n' | cut -c1-12)
+        [ -n "$t" ] && { printf '%s' "$t"; return 0; }
+    done
+    return 1
+}
 VIDEO_PID=""
 VIDEO_RDIR=""
 _soak_video_meta() {   # <rdir> <seconds> <after> <mark_wall|""> <skip reason|"">
@@ -894,6 +906,294 @@ restore_hdd_pref() {
     set_hdd_pref "$orig" >/dev/null || return 1
     rm -f "$marker"
     log "  hddPath restored to ${orig:-(unset)}"
+}
+
+# LOAD A SAVE STATE WITHOUT DRIVING THE PAUSE MENU (#433, lane.savestate-req1019).
+#
+# request.sh --load-state/--scene names a slot (0-9, 10=auto) and, for a host
+# file, a .hxs to push into it. hxs_newest_loadable() (android native) picks
+# by the FILE'S OWN saved_at metadata, not by push time or mtime -- so the
+# only way to force auto-load to pick a given slot is to make every other
+# slot file in states/<title_id>/ absent from the directory for the run, by
+# parking it (rename to NAME.hld), never by overwriting or deleting it. The
+# target slot's own prior contents are likewise parked, not clobbered, so
+# restore_scene_pref can put everything back byte for byte -- same contract
+# as restore_hdd_pref, extended from one pref value to a set of files.
+#
+# savestate_auto_load is a boolean SharedPreference, same prefs file as
+# hddPath (shared_prefs/x1box_prefs.xml, internal storage: needs run-as).
+# The state files themselves live under x1box_dir(), external storage, app-
+# specific but shell-accessible -- dev_push/dev_pull/dev_sha256 already reach
+# them with plain `adb shell`, no run-as (confirmed by reading those
+# functions; the save-state dir is not shared_prefs).
+scene_state_dir() { echo "$(x1box_dir)/states/$1"; }   # <title_id hex>
+
+hxs_slot_name() {   # <slot 0-9|10|auto>
+    case "$1" in
+        10|auto) echo auto.hxs;;
+        [0-9]) echo "slot$1.hxs";;
+        *) echo "";;
+    esac
+}
+
+scene_pref_marker() { echo "$D/.scene_pref.${DEVICE_LABEL:-$SERIAL}"; }
+scene_files_marker() { echo "$D/.scene_files.${DEVICE_LABEL:-$SERIAL}"; }
+
+# savestate_pref_edit get|set <file> [0|1]: same one-key-kept shape as
+# hdd_pref_edit, for the savestate_auto_load boolean instead of hddPath.
+savestate_pref_edit() {
+    python3 - "$@" <<'PYSS'
+import re, sys
+mode, path = sys.argv[1], sys.argv[2]
+s = open(path, errors="replace").read()
+if mode == "get":
+    m = re.search(r'<boolean name="savestate_auto_load" value="(true|false)"', s)
+    sys.stdout.write(m.group(1) if m else "false")
+    sys.exit(0)
+want = "true" if sys.argv[3] == "1" else "false"
+if "</map>" not in s:
+    sys.exit("prefs file has no </map>; refusing to write")
+key = r'(<boolean name="savestate_auto_load" value=")(?:true|false)("\s*/>)'
+if re.search(key, s):
+    s = re.sub(key, lambda m: m.group(1) + want + m.group(2), s, count=1)
+else:
+    s = s.replace("</map>", '    <boolean name="savestate_auto_load" value="%s" />\n</map>' % want)
+open(path, "w").write(s)
+PYSS
+}
+
+# set_savestate_pref <0|1> [marker]; echoes the previous value (true/false).
+# Same snapshot-before/write/verify-readback shape as set_hdd_pref.
+set_savestate_pref() {
+    local want="$1" marker="${2:-}" pkg tmp was back want_s
+    pkg="${PKG:-com.jreinach.hakux.debug}"
+    tmp="$D/.prefs.${DEVICE_LABEL:-$SERIAL}.ss.xml"
+    adb_call "$ADB_QUICK_TIMEOUT" "am force-stop (savestate pref)" shell am force-stop "$pkg" >/dev/null 2>&1
+    adb_call "$ADB_QUICK_TIMEOUT" "run-as cat x1box_prefs.xml (savestate)" \
+        shell "run-as $pkg cat shared_prefs/x1box_prefs.xml" 2>/dev/null | tr -d '\r' > "$tmp"
+    if [ -s "${ADB_HUNG_FILE:-}" ] || [ ! -s "$tmp" ]; then
+        log "  SAVESTATE PREF: cannot read x1box_prefs.xml"; return 1
+    fi
+    was=$(savestate_pref_edit get "$tmp")
+    if [ -n "$marker" ] && [ ! -f "$marker" ]; then
+        printf '%s' "$was" > "$marker" || { log "  SAVESTATE PREF: cannot write $marker"; return 1; }
+    fi
+    savestate_pref_edit set "$tmp" "$want" || return 1
+    adb_call "$ADB_QUICK_TIMEOUT" "run-as write x1box_prefs.xml (savestate)" --in "$tmp" \
+        shell "run-as $pkg sh -c 'cat > shared_prefs/x1box_prefs.xml'" >/dev/null 2>&1
+    adb_call "$ADB_QUICK_TIMEOUT" "run-as read back x1box_prefs.xml (savestate)" \
+        shell "run-as $pkg cat shared_prefs/x1box_prefs.xml" 2>/dev/null | tr -d '\r' > "$tmp.back"
+    back=$(savestate_pref_edit get "$tmp.back")
+    want_s=$([ "$want" = 1 ] && echo true || echo false)
+    if [ "$back" != "$want_s" ]; then
+        log "  SAVESTATE PREF: wrote auto_load=$want_s but read back '$back'"; return 1
+    fi
+    printf '%s' "$was"
+}
+
+restore_savestate_pref() {
+    local marker; marker="$(scene_pref_marker)"
+    [ -f "$marker" ] || return 0
+    local orig want
+    orig=$(cat "$marker")
+    want=0; [ "$orig" = true ] && want=1
+    set_savestate_pref "$want" >/dev/null || return 1
+    rm -f "$marker"
+    log "  savestate_auto_load restored to $orig"
+}
+
+# set_scene_pref <req> <rdir> <ttid>: isolate load_slot (request.sh
+# --load-state/--scene) on the device -- park every other states/<ttid>/*.hxs
+# file, push a host file into the target slot if one was named (backing up
+# whatever was already there, sha256-tracked, never overwritten in place),
+# and turn savestate_auto_load on for this run only. A no-op when the
+# request named no load_slot. Everything needed to reverse this is written
+# to scene_files_marker() before any adb mutation after it, so a worker that
+# dies partway still leaves restore_scene_pref something to work from.
+set_scene_pref() {   # <req> <rdir> <ttid>
+    local req="$1" ttid="$3" load_slot want load_file sdir marker list park f pushed=0 backup="" backup_sha=""
+    load_slot=$(jq_get "$req" load_slot "")
+    [ -n "$load_slot" ] || return 0
+    marker="$(scene_files_marker)"
+    if [ -f "$marker" ]; then
+        log "  SCENE: a stale scene marker from an earlier run; restoring it first"
+        restore_scene_pref
+    fi
+    want="$(hxs_slot_name "$load_slot")"
+    [ -n "$want" ] || { log "  SCENE: bad load_slot '$load_slot'"; return 1; }
+    load_file=$(jq_get "$req" load_state_file "")
+    sdir="$(scene_state_dir "$ttid")"
+
+    list=$(adb_call "$ADB_QUICK_TIMEOUT" "ls $sdir" shell "ls '$sdir' 2>/dev/null")
+    if [ -s "${ADB_HUNG_FILE:-}" ]; then
+        log "  SCENE: adb hung listing $sdir"; return 1
+    fi
+    park=$(printf '%s\n' "$list" | tr -d '\r' | grep -E '^(slot[0-9]|auto|undo-save)\.hxs$' | grep -v -x "$want" || true)
+
+    if [ -n "$load_file" ]; then
+        if [ "$(dev_bytes "$sdir/$want")" != -1 ]; then
+            backup="$want.orig.hld"
+            adb_call "$ADB_QUICK_TIMEOUT" "backup $want" shell "cp '$sdir/$want' '$sdir/$backup'" >/dev/null 2>&1 \
+                || { log "  SCENE: could not back up $want before pushing a state into it"; return 1; }
+            backup_sha=$(dev_sha256 "$sdir/$backup")
+        fi
+        dev_push "$load_file" "$sdir/$want" || { log "  SCENE: push of $load_file -> $sdir/$want failed"; return 1; }
+        pushed=1
+    fi
+
+    local parked=()
+    while IFS= read -r f; do
+        [ -n "$f" ] || continue
+        adb_call "$ADB_QUICK_TIMEOUT" "park $f" shell "mv '$sdir/$f' '$sdir/$f.hld'" >/dev/null 2>&1 && parked+=("$f")
+    done <<<"$park"
+
+    python3 -c 'import json,sys
+json.dump(dict(dir=sys.argv[1], want=sys.argv[2],
+               parked=[p for p in sys.argv[3].split(",") if p],
+               pushed=bool(int(sys.argv[4])), backup=sys.argv[5], backup_sha=sys.argv[6]),
+          open(sys.argv[7], "w"))' \
+        "$sdir" "$want" "$(IFS=,; echo "${parked[*]-}")" "$pushed" "$backup" "$backup_sha" "$marker"
+
+    if ! set_savestate_pref 1 "$(scene_pref_marker)" >/dev/null; then
+        log "  SCENE: could not set savestate_auto_load=1"; restore_scene_pref; return 1
+    fi
+    log "  SCENE: slot $load_slot ($want), parked ${#parked[@]} other slot file(s)${load_file:+, pushed $load_file}"
+}
+
+# restore_scene_pref: put back whatever set_scene_pref moved aside or
+# overwrote, and the savestate_auto_load pref -- unconditionally, on every
+# exit from a scene request, success or refusal, exactly like
+# restore_hdd_pref. A pushed state's backup is sha256-verified before its
+# marker is trusted away.
+restore_scene_pref() {
+    local marker; marker="$(scene_files_marker)"
+    [ -f "$marker" ] || { restore_savestate_pref; return $?; }
+    local sdir want pushed backup backup_sha rc=0
+    sdir=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["dir"])' "$marker")
+    want=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["want"])' "$marker")
+    pushed=$(python3 -c 'import json,sys; print(int(json.load(open(sys.argv[1]))["pushed"]))' "$marker")
+    backup=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("backup") or "")' "$marker")
+    backup_sha=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("backup_sha") or "")' "$marker")
+    if [ "$pushed" = 1 ]; then
+        if [ -n "$backup" ]; then
+            adb_call "$ADB_QUICK_TIMEOUT" "restore $want" shell "mv '$sdir/$backup' '$sdir/$want'" >/dev/null 2>&1 || rc=1
+            if [ -n "$backup_sha" ] && [ "$(dev_sha256 "$sdir/$want")" != "$backup_sha" ]; then
+                log "  SCENE: restored $want but its sha256 does not match the backup taken before the push"
+                rc=1
+            fi
+        else
+            adb_call "$ADB_QUICK_TIMEOUT" "drop pushed $want (had none before)" shell "rm -f '$sdir/$want'" >/dev/null 2>&1 || rc=1
+        fi
+    fi
+    while IFS= read -r f; do
+        [ -n "$f" ] || continue
+        adb_call "$ADB_QUICK_TIMEOUT" "unpark $f" shell "mv '$sdir/$f.hld' '$sdir/$f'" >/dev/null 2>&1 || rc=1
+    done < <(python3 -c 'import json,sys; print("\n".join(json.load(open(sys.argv[1])).get("parked") or []))' "$marker")
+    rm -f "$marker"
+    restore_savestate_pref || rc=1
+    if [ "$rc" = 0 ]; then
+        log "  SCENE: restored (slots unparked, pref put back)"
+    else
+        log "  SCENE: restore had at least one failure; see the lines above"
+    fi
+    return $rc
+}
+
+SCENE_WATCH_PID=""
+# start_scene_watch <rdir> <req>: runs whenever the request named a
+# load_slot, whether or not it also named a hold trigger -- this is what
+# enforces "no op=load within 30s is loud, never a silent run" (#433) in
+# real time, polling the live logcat while the soak is still running. Only
+# once a load is seen and ok=1, and only when hold_trigger named an axis,
+# it also presses and holds that axis for the window, logging
+# <AXIS>_DOWN/<AXIS>_RELEASED device-clock timestamps in score2.py's own
+# input format (captures/fpsnext1019/scripts/arm.sh's DT0/DTR1 -- NOT
+# _device_epoch's integer seconds) so an arm script can score the window
+# exactly as it would a by-hand run.
+start_scene_watch() {   # <rdir> <req>
+    local rdir="$1" req="$2" load_slot
+    SCENE_WATCH_PID=""
+    load_slot=$(jq_get "$req" load_slot "")
+    [ -n "$load_slot" ] || return 0
+    (
+        local log="$rdir/logcat.txt" trig axis secs waited=0 line="" clk
+        local timeout="${SCENE_LOAD_TIMEOUT:-30}"
+        trig=$(jq_get "$req" hold_trigger "")
+        : > "$rdir/rt_hold.log"
+        while [ "$waited" -lt "$timeout" ]; do
+            line=$(grep -a -m1 '\[savestate\] op=load' "$log" 2>/dev/null)
+            [ -n "$line" ] && break
+            sleep 1; waited=$((waited+1))
+        done
+        if [ -z "$line" ]; then
+            echo "LOAD_TIMEOUT waited=${waited}s" >> "$rdir/rt_hold.log"
+            exit 0
+        fi
+        if printf '%s' "$line" | grep -q 'ok=1'; then
+            echo "LOAD_OK $line" >> "$rdir/rt_hold.log"
+        else
+            echo "LOAD_REFUSED $line" >> "$rdir/rt_hold.log"
+            exit 0
+        fi
+        [ -n "$trig" ] || exit 0
+        axis="${trig%%:*}"; secs="${trig##*:}"
+        SERIAL="$SERIAL" bash "$HERE/perf/pad.sh" axis "${axis^^}" max >/dev/null 2>&1
+        clk="$(_device_clock)"
+        echo "${axis^^}_DOWN $clk" >> "$rdir/rt_hold.log"
+        sleep "$secs"
+        SERIAL="$SERIAL" bash "$HERE/perf/pad.sh" axis "${axis^^}" min >/dev/null 2>&1
+        clk="$(_device_clock)"
+        echo "${axis^^}_RELEASED $clk" >> "$rdir/rt_hold.log"
+    ) &
+    SCENE_WATCH_PID=$!
+}
+stop_scene_watch() {
+    [ -n "${SCENE_WATCH_PID:-}" ] || return 0
+    kill "$SCENE_WATCH_PID" 2>/dev/null
+    wait "$SCENE_WATCH_PID" 2>/dev/null
+    SCENE_WATCH_PID=""
+}
+
+# scene_verdict <rdir> <req> <apk sha>: read AFTER the soak has finished, off
+# the complete logcat and rt_hold.log -- writes <rdir>/scene.json and, on a
+# void, prints the reason. VOID conditions (#433, loud never silent): no
+# op=load within 30s (start_scene_watch's own LOAD_TIMEOUT), a refused load
+# (ok=0 / LOAD_REFUSED), or any op=save line anywhere in the run. Names which
+# build (apk sha) the state loaded, or was refused, under.
+scene_verdict() {   # <rdir> <req> <apk sha>
+    local rdir="$1" req="$2" apksha="$3" load_slot
+    load_slot=$(jq_get "$req" load_slot "")
+    [ -n "$load_slot" ] || return 0
+    python3 - "$rdir" "$load_slot" "$apksha" <<'PYVOID'
+import json, os, re, sys
+rdir, slot, apksha = sys.argv[1], sys.argv[2], sys.argv[3]
+watch_path = os.path.join(rdir, "rt_hold.log")
+watch_text = open(watch_path, errors="replace").read() if os.path.exists(watch_path) else ""
+log_path = os.path.join(rdir, "logcat.txt")
+try:
+    log_text = open(log_path, errors="replace").read()
+except OSError:
+    log_text = ""
+void = None
+save_m = re.search(r"\[savestate\] op=save\b.*", log_text)
+if save_m:
+    void = "a [savestate] op=save line appeared mid-run: %s" % save_m.group(0).strip()[:200]
+elif "LOAD_TIMEOUT" in watch_text:
+    void = "no [savestate] op=load line within 30s (slot %s, apk %s)" % (slot, apksha or "?")
+elif "LOAD_REFUSED" in watch_text:
+    rline = next((l for l in watch_text.splitlines() if l.startswith("LOAD_REFUSED")), "")
+    void = ("the save state refused to load (slot %s, apk %s): %s"
+            % (slot, apksha or "?", rline[len("LOAD_REFUSED "):].strip()))
+elif "LOAD_OK" not in watch_text:
+    void = "no load window was ever observed (slot %s, apk %s); see rt_hold.log" % (slot, apksha or "?")
+rt_down = next((l.split(" ", 1)[1] for l in watch_text.splitlines() if "_DOWN " in l), "")
+rt_released = next((l.split(" ", 1)[1] for l in watch_text.splitlines() if "_RELEASED " in l), "")
+json.dump(dict(load_slot=slot, apk_sha=apksha, void=void, rt_down=rt_down, rt_released=rt_released,
+               rt_hold_log=watch_text.strip().splitlines()),
+          open(os.path.join(rdir, "scene.json"), "w"), indent=2)
+if void:
+    print(void)
+PYVOID
 }
 
 # A BUILD FROM BEFORE LIBFOLDERS MUST STILL FIND ITS GAMES FOLDER.
@@ -2301,6 +2601,14 @@ p=sys.argv[1]; b=json.load(open(p)); b["t_device"]=time.time(); json.dump(b,open
         log "  HDD PREF RESTORE FAILED"
         mv "$req" "$rdir/request.json"; return 0
     fi
+    # Same reasoning as restore_hdd_pref just above, for a scene's parked
+    # slot files and savestate_auto_load: a dead earlier run must not leave
+    # the device isolated on someone else's slot (#433).
+    if ! restore_scene_pref; then
+        adb_error "could not restore a scene's save-state slots after an earlier run; see dispatcher.log" > "$rdir/ERROR"
+        log "  SCENE RESTORE FAILED"
+        mv "$req" "$rdir/request.json"; return 0
+    fi
 
     # THE MASTER RESTORE ENDS HERE. device_build.py queues it after a run off
     # master: no title and no suites. Its build, install and env reset above are
@@ -2375,6 +2683,16 @@ PYEOF
         ttid=$(jq_get "$req" title_id "")
         [ -n "$ttid" ] || ttid=$(python3 "$TITLESTATE" tid-for-iso "$title" 2>/dev/null)
 
+        # --load-state/--scene (#433): isolate the named slot on the device
+        # before anything else touches it, so every refusal path below has
+        # something to restore_scene_pref back from.
+        if ! set_scene_pref "$req" "$rdir" "$ttid"; then
+            adb_error "could not set up the requested save-state slot; see dispatcher.log" > "$rdir/ERROR"
+            log "  SCENE SETUP FAILED"
+            restore_scene_pref
+            mv "$req" "$rdir/request.json"; return 0
+        fi
+
         # dispatchdoctor1017 Section 1b: a request with no route (or only
         # the generic survey) gets one attached here, before tstate/tsave
         # are read, so a route this call attaches is seen by everything
@@ -2383,6 +2701,7 @@ PYEOF
             echo "refused before the soak: $(cat "$rdir/route.refused" 2>/dev/null)" > "$rdir/ERROR"
             log "  ROUTE ATTACH REFUSED: $(cat "$rdir/route.refused" 2>/dev/null)"
             restore_hdd_pref
+            restore_scene_pref
             mv "$req" "$rdir/request.json"; return 0
         fi
 
@@ -2398,6 +2717,7 @@ PYEOF
             log "  PROFILE GATE REFUSED: $(cat "$rdir/profile.refused" 2>/dev/null)"
             printf 'refused before the soak: no profile: %s\n' "$(cat "$rdir/profile.refused" 2>/dev/null)" > "$rdir/ERROR"
             restore_hdd_pref
+            restore_scene_pref
             mv "$req" "$rdir/request.json"; return 0
         fi
 
@@ -2415,11 +2735,13 @@ except Exception: print("")' "$rdir/profile-backup.json" 2>/dev/null)
             echo "refused before the soak: the titles disk cannot carry what the route assumes: $(cat "$rdir/hdd.refused" 2>/dev/null)${pbsearched:+ (profile backup search looked at: $pbsearched)}" > "$rdir/ERROR"
             log "  TITLES DISK REFUSED"
             restore_hdd_pref
+            restore_scene_pref
             mv "$req" "$rdir/request.json"; return 0
         elif [ "$trc" != 0 ]; then
             adb_error "could not prepare the titles disk; see dispatcher.log" > "$rdir/ERROR"
             log "  TITLES DISK SETUP FAILED"
             restore_hdd_pref
+            restore_scene_pref
             mv "$req" "$rdir/request.json"; maybe_run_doctor "$id" "$rdir"; return 0
         fi
         verify_profile_on_device "$ttid" "$tstate" "$rdir"; trc=$?
@@ -2427,6 +2749,7 @@ except Exception: print("")' "$rdir/profile-backup.json" 2>/dev/null)
             echo "refused before the soak: $(cat "$rdir/hdd.refused" 2>/dev/null)" > "$rdir/ERROR"
             log "  PROFILE VERIFY REFUSED"
             restore_hdd_pref
+            restore_scene_pref
             mv "$req" "$rdir/request.json"; return 0
         fi
         # The route's text travels in the request (request.sh --route); the
@@ -2436,10 +2759,12 @@ except Exception: print("")' "$rdir/profile-backup.json" 2>/dev/null)
             echo "refused before the soak: ${refmsg:-a route_refs entry failed validation}" > "$rdir/ERROR"
             log "  ROUTE REFS REFUSED: ${refmsg:-?}"
             restore_hdd_pref
+            restore_scene_pref
             mv "$req" "$rdir/request.json"; return 0
         }
         start_frame_capture "$rdir" "$frames_every" "$seconds"
         start_soak_video "$rdir" "$video_seconds" "$video_after" "$([ -s "$rdir/route.txt" ] && echo 1 || echo 0)" "$seconds"
+        start_scene_watch "$rdir" "$req"
         SERIAL="$SERIAL" CAPTURE_LOG="$rdir/logcat.txt" \
             PULL_GLOB="$pull_glob" PULL_DEST="$rdir/pulled" \
             AUDIO_CAPTURE_MB="$audio_capture" \
@@ -2450,12 +2775,18 @@ except Exception: print("")' "$rdir/profile-backup.json" 2>/dev/null)
         # screencap loop running against the next request's title.
         stop_frame_capture
         stop_soak_video
+        stop_scene_watch
         titles_disk_after "$id" "$rdir"
+        local scene_void; scene_void=$(scene_verdict "$rdir" "$req" "$sha")
+        restore_scene_pref || log "  WARNING: scene slots not restored; the next request retries"
+        [ -z "$scene_void" ] || log "  SCENE VOID: $scene_void"
         local lines; lines=$(wc -l < "$rdir/logcat.txt" 2>/dev/null || echo 0)
         python3 - "$rdir" "$sha" "$title" "$seconds" "$requester" "$purpose" "$ref" "$lines" "$req_env" "$frames_every" <<'PYEOF'
 import json, os, sys
 (rdir, sha, title, seconds, who, purpose, ref, lines, req_env,
  frames_every) = sys.argv[1:11]
+scene_path = os.path.join(rdir, "scene.json")
+scene = json.load(open(scene_path)) if os.path.exists(scene_path) else None
 _fdir = os.path.join(rdir, "frames")
 _frames = sorted(f for f in os.listdir(_fdir)) if os.path.isdir(_fdir) else []
 pulled = []
@@ -2594,7 +2925,15 @@ json.dump(dict(apk_sha=sha, kind="soak", title=title, seconds=int(seconds),
                video=_video(rdir),
                # What admitted it (battery_admit.py): battery_start, need,
                # rate. None when the run predates admission or it was off.
-               battery=_battery(rdir)),
+               battery=_battery(rdir),
+               # --load-state/--scene (#433): None when the request named no
+               # scene. void is loud and specific (no op=load within 30s, a
+               # refused state, or a mid-run op=save) -- never a silent run
+               # from the title screen; a reader that only checks `void` at
+               # the top level catches a scene request exactly like any
+               # other voided run.
+               scene=scene,
+               void=(scene or {}).get("void") if scene else None),
           open(os.path.join(rdir, "result.json"), "w"), indent=2)
 print("soak done:", title, lines, "log lines")
 PYEOF
