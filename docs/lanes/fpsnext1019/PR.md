@@ -27,7 +27,12 @@ SYSMEM/GMEM contest at zero new device time: `score2.py`'s "drive" window turned
 span, and the shipped-baseline arm (S1) actually crashes into a wall inside it (~RT+25); re-scoring all three
 attempt-1 arms on a crash-excluded, motion-verified, equal-length window (`movescore.py` + `dwseries.py`) shows
 sysmem clearly beats shipped (24.2 vs 21.3 fps, fewer render passes and S2C copies/flip) and gmem does not -- not
-yet landed (it is a Turnip env var, needs a per-title default mechanism, not a code change here). Blinx 2:
+yet landed (it is a Turnip env var, needs a per-title default mechanism, not a code change here). Tested whether
+sysmem and the now-default-on `HAKUX_S2T_WIDEN` stack: one clean, crash-checked run on the same window shows they
+do **not** -- render passes/flip rose to 148.4 (worse than shipped's 130.2) and fps fell to ~20 (worse than every
+other arm measured), even though R2's own copy-elimination still engaged (`cs2t-ended/flip` 0). Conclusion: if
+sysmem is ever shipped as a per-title default, it should not be paired with R2's default-on without a further,
+separate test. Blinx 2:
 root-caused (not fixed) why the generic drive route never reaches gameplay -- the dispatcher's `EXPLORE_LADDER`
 excludes `START` without a built profile, and Blinx 2 has none; deferred in favor of GTA III, which was directly
 actionable. Detail in `docs/lanes/fpsnext1019/NOTES.md`; per-title table in `FINDINGS.md`.

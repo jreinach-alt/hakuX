@@ -401,7 +401,8 @@ possibly capped (flagged earlier, `phseries.py`'s own docstring).
 | # | Lever | Status | Why |
 |---|---|---|---|
 | b | `copy_surface_to_texture` / R2 (`HAKUX_S2T_WIDEN`) | **landed this attempt** (commit `3058a55767`) | see item 3 |
-| a | Per-title SYSMEM/GMEM render mode | **resolved: promote.** `TU_DEBUG=sysmem` measured +3fps over shipped on a crash-excluded, motion-verified, equal-length window, fewer render passes and fewer S2C copies/flip, same direction in two independent instruments (`dwseries.py`, `movescore.py`) | not yet landed -- it is a Turnip env var, not a code change in this tree; the still-open question is how to apply it (per-title default in the launcher/config, not a global env var an owner build ships with) |
+| a | Per-title SYSMEM/GMEM render mode, **alone** (no R2) | **resolved: promote.** `TU_DEBUG=sysmem` measured +3fps over shipped on a crash-excluded, motion-verified, equal-length window, fewer render passes and fewer S2C copies/flip, same direction in two independent instruments (`dwseries.py`, `movescore.py`) | not yet landed -- it is a Turnip env var, not a code change in this tree; the still-open question is how to apply it (per-title default in the launcher/config, not a global env var an owner build ships with) |
+| a+b | sysmem **stacked with** `HAKUX_S2T_WIDEN` (R2, default-on) | **tested, falsified, do not stack** (item 5) | one run: rp/flip 148.4 (worse than shipped's 130.2), fps 19.9-20.6 (worse than every item-4 arm including shipped); `cs2t-ended/flip` stayed 0 (R2 itself still engages), so the cost is elsewhere in sysmem's pass accounting under this combination, not root-caused further this attempt |
 | c | Draw/state redundancy per pass | 2 (unchanged) | not yet measured this attempt |
 | e | vCPU translation / TB lookup | 3 (unchanged) | not yet measured this attempt |
 
@@ -427,3 +428,31 @@ with `TU_DEBUG=sysmem` added to the env on top of `HAKUX_FRAMETRACE=1`: taken un
 pre-authorised GTA III save-state protocol, scored on the same crash-excluded `[RT+1, RT+24]` window as item 4 for
 a fair comparison. Device time budget check before taking the hold: ~1270s (~21.2 min) spent on items 1 and 3 this
 attempt; one more run of this size (park 30s + hold 60s + setup ~90s, ~3 min wall) stays under the 30 min pilot cap.
+
+Run **b8-C1**, same APK (sha `ccadbf8ab6c2`, no reinstall -- warm shader cache, same as b7-D2), `GPU: PurpleVK-public`
+confirmed, savestate load confirmed (`op=load slot=5 ok=1`). RT_DOWN device `09:56:26.553`. Scored on `[RT+1, RT+24]`:
+
+```
+movescore.py: C1   RT+1..24  n=7  20.4s  mean 20.6 fps  >=28.5 19.9%  <22 68.2%  worst 104.2 ms
+dwseries.py:  span 480 flips, 50.3 ms/flip (19.9 fps), rp/flip 148.4, cs2t-ended/flip 0.0
+```
+
+Checked for a crash inside this run's own window before trusting the number (same check item 4 did for S1): frames
+at RT+6/18/28 (ffmpeg, in-game clock visible on the FPS-counter overlay this build ships) show continuous driving
+the whole way -- in-game clock 06:19 -> 06:30 -> 06:39, different streets each time, car always moving, no stop or
+crash. This run is clean; the number is real.
+
+**The G3 prediction is falsified.** Predicted rp/flip at or below sysmem-alone's floor (~70/flip, item 4); measured
+**148.4/flip -- higher than shipped baseline itself** (130.2/flip, item 4's S1). Predicted fps unchanged-or-better
+than sysmem alone (24.2, item 4's Y1); measured **20.6-19.9 fps, worse than every arm in item 4's table**,
+including shipped (20.8-21.3). `cs2t-ended/flip` did stay at 0 (R2's mechanism engaged correctly, same as every
+other default-on run) -- so the two levers are not fighting over the same copy; sysmem's forced render-mode is
+doing something to pass count/count-per-flip that costs more than R2's pass-elimination saves. Not root-caused
+further this attempt (would need `HAKUX_GPUXFR`'s per-pass load/store census under this combination, a new
+instrument run, not a re-read) -- but the result itself is usable now: **do not ship the two together.** If lever
+(a) (sysmem) is ever applied as a per-title default, it should not be paired with `HAKUX_S2T_WIDEN`'s default-on
+without this combination being re-tested; as measured, sysmem alone (item 4) is the better lever on its own, not
+sysmem-plus-widen.
+
+Device time this item: b8 wall ~158s (2.6 min), on top of item 3's ~1270s -- **~1428s (~23.8 min)** of this
+attempt's Nova time, under the 30 min pilot cap. Hold released after b8.
