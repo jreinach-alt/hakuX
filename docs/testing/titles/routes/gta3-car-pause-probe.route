@@ -1,0 +1,71 @@
+# state: any   (golden 9153c63300da promoted 2026-10-11; lane.savestate433)
+# Grand Theft Auto III (5454000E): PROBE ONLY, never scored. localdrive1018
+# (#433) Part D still needs real car-entry and pause-menu frames to build
+# the gta3.toml crops for those two states -- gta-3.route (the title's one
+# proven route) never presses Y or opens the pause menu, so it cannot
+# produce them no matter how many times it is re-run (see
+# docs/lanes/localdrive1018/NOTES.md, "Still not done"). This route is a
+# plain press/axis/wait/shot script, same primitives gta-3.route already
+# uses, with NO `drive` step -- it does not touch the unmerged gta3.toml/
+# drive.py profile gate, so it can be dispatched today, before this PR
+# merges.
+#
+# Preamble (boot -> on-foot play) is gta-3.route's own, copied verbatim so
+# this reuses its already-proven timing instead of re-deriving it; the
+# `fist-hud` reference crop is copied unchanged from routes/refs/gta-3/
+# into this route's own refs dir (ref_path keys by route stem).
+#
+# Then: Y enters the car (brief step 4, confirmed by the owner's own
+# hands-on walkthrough today); wait and shot. START opens the pause menu
+# (gtawedge1012's route.sh comment on gta-3.route already established
+# START toggles this title's pause on/off); wait and shot -- Save should
+# be the default highlighted row (owner's words), captured here, not
+# navigated to or pressed (no A on this menu: this run must not create or
+# overwrite a save). START again closes the pause menu back to play; wait
+# and shot, to also confirm Y/START left the player safely back in
+# control rather than stuck on a dialog.
+#
+# No `mark`: this is not a scored play-share window (title_verdict.py),
+# only `shot` frames for building drive-profiles/gta3.toml's remaining
+# crops offline.
+#
+# RESULT (2026-10-19, nova run 1-1792380791-localdrive1018-729348, restored
+# after a stranded-withdrawal detour -- see NOTES.md): run completed, all 7
+# shots captured. CORRECTING the "Save should be the default highlighted
+# row" line above against the actual frame (route-frames/063430-pause-menu.png,
+# kept in docs/lanes/localdrive1018/gta3-car-pause-probe-1019/): the pause
+# menu's default tab shows "New Game" / "Load Game", NOT a Save option --
+# `START: Resume Game` is the only save-adjacent text on screen. GTA III's
+# save mechanic is gated on being at a safehouse (a floppy-disk map icon),
+# not available from the pause menu at an arbitrary location; this run never
+# drove anywhere near one. The owner's walkthrough was evidently describing
+# a different moment (at or near a safehouse) than where this scripted
+# opening sequence leaves the player. Flagging rather than guessing at a
+# fix: Part D's "state-save step" needs either a drive-to-safehouse leg
+# first, or the owner's own confirmation of which pause-menu tab/screen
+# actually shows Save from this spawn point. Not done here.
+wait 55
+repeat 4 {
+    press A 300
+    wait 5
+}
+shot introskip
+repeat 12 {
+    press A 300
+    wait 5
+}
+shot pregameplay
+waitfor fist-hud 60 1020,88,140,130 20
+shot onfoot
+wait 1
+press Y 300
+wait 3
+shot car-entered
+wait 1
+press START 300
+wait 2
+shot pause-menu
+wait 2
+press START 300
+wait 2
+shot resumed

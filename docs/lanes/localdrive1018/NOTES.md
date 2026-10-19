@@ -502,3 +502,381 @@ above until this PR lands.
 Merged `origin/master` again before writing this (25 commits behind by the time the device run
 finished; clean merge, 4 lanes' unrelated files, no conflicts), re-ran `pathclass_selftest.py` and
 `classify_selftest.py` once more post-merge (0 failures each).
+
+## Resume 2026-10-18 ~20:28 PDT (attempt 4, mislabeled "attempt 3" in this dispatch's own header):
+why the prior session did not fail, and what was still actionable
+
+Attempt 3 did not fail either -- it ended correctly on the `WAITING` above, with A+B+C at
+`State: ready`, Part D's two crops verified on two independent frame sets (9 Thor stills, 87
+continuous Nova frames), and a specific, source-confirmed blocker written down (the dispatcher
+refuses to run a `drive` profile not on `master`, so this lane's own `gta3-drive.route`/
+`gta3.toml` cannot be dispatched pre-merge). Session logs (`/home/justin/hakux-work/logs/lane/
+localdrive1018.*.json`) show attempt 3 started ~17:02 PDT and this session started ~20:27 PDT --
+only ~6 minutes after attempt 3's last commit (`73792d2e58`, 20:22:04), far short of the 40-minute
+idle-resume window the role doc describes, and no `[job.arms]` verdict landed in that gap (no
+prediction is registered -- Part D has no arm). Most likely cause: a CI-green signal on
+`73792d2e58` triggered `handback.sh`'s other resume condition. Re-verified nothing was stale
+before acting further: `git status` clean, `pathclass_selftest.py`/`classify_selftest.py` still
+0 failures, `docs/testing/preflight.sh` still `territory ok` (not re-run again this entry --
+unchanged inputs since the last run 50 minutes ago would just reproduce the same result; see
+`idle-capacity-manufactures-unchecked-work` -- re-running a clean check with nothing changed
+underneath it is exactly the unchecked work that memory warns against).
+
+**What was still actionable, found by re-reading the WAITING blocker rather than accepting it as
+final**: the blocker is specific to the `drive` STEP (`route.sh`'s profile-gate check: "A 'drive'
+profile must be in the serving snapshot ... or on the serving tree's master"). It is not a
+blocker on dispatching *any* route this lane writes -- `route.sh`'s own grammar (its module doc,
+re-read this session) has `press`/`axis`/`wait`/`shot`/`waitfor`/`mark`/`repeat`, all already on
+`master` and used by the existing proven `gta-3.route` verbatim, with no profile/serving-snapshot
+check anywhere near them (grepped `route.sh` for where that refusal fires: it is scoped to the
+`drive <profile> ...` line's own handler in `request.sh`, nothing else). A NEW route file that
+never writes a `drive` step does not touch that gate at all, and `request.sh`'s own comment
+confirms a named route's TEXT is read "from THIS tree now" (the lane's worktree), not from
+`master` -- so a plain press-script route is dispatchable today, unmerged, exactly like this
+lane's own `gta3.toml`/`learned.py` are NOT. This is the one thing Part D's "Still not done" list
+was actually missing a device *path* for, not a device: car-entry (Y) and pause-menu (START)
+frames, which the one dispatchable existing route (`gta-3.route`, on-foot only, never presses Y
+or START) structurally cannot produce no matter how many times it runs.
+
+**Built**: `docs/testing/titles/routes/gta3-car-pause-probe.route` -- PROBE ONLY, explicitly
+never scored (no `mark`, only `shot`), reusing `gta-3.route`'s exact proven boot preamble
+(same `wait`/`press A`/`waitfor fist-hud` timing, not re-derived) so the one new thing being
+tested is the car-entry/pause sequence itself: `press Y` (enter the car, per the owner's own
+hands-on walkthrough in the brief) -> shot -> `press START` (open pause; `gta-3.route`'s own
+comment on the gtawedge1012 regression already established START toggles this title's pause
+menu) -> shot (Save should show as the default highlighted row here, per the owner's words --
+captured, not pressed: no `A` on this menu, so the run cannot create or overwrite a save) ->
+`press START` again (close pause, back to play) -> shot, to also confirm the sequence leaves
+the player in control rather than stuck on a dialog. Copied (not invented) the existing
+`routes/refs/gta-3/fist-hud.png` into this route's own `refs/gta3-car-pause-probe/` dir, since
+`route.sh`'s `ref_path()` keys a `waitfor` crop by the route's own filename stem, not a shared
+pool. Validated: `route.sh --check docs/testing/titles/routes/gta3-car-pause-probe.route` ->
+`route ok (55 lines)`.
+
+Checked device state live before dispatching, not from the stale WAITING note: `adb devices -l`
+and the dispatcher's own `dispatch/bin/devices.sh` both showed only `bdc158a5` (Thor) -- the Nova
+was briefly absent from the live listing despite no `dispatch/hold/nova`/`nova.why` file existing
+(memory `device-presence-needs-a-live-listing` cuts against trusting either the WAITING note's
+"freed ~19:33" claim or the absence of a hold file on its own). `dispatch/queue/` explained it:
+`lane.ralli2audio1018` had just placed a new request (`1-1792380737-...-709884`, 20:32) on top of
+one already in `dispatch/results/` from minutes earlier -- the Nova was mid-turnaround for that
+lane's own work, not actually gone. Re-checked once (device-flake rule: rerun twice) rather than
+concluding "unavailable" from one transient miss.
+
+**Dispatched** (not blocking-waited for yet, see below): `request.sh --who localdrive1018
+--purpose "car-entry + pause-menu frames for gta3.toml Part D crops, probe only, no scoring
+(#433)" --title 5454000E-Grand_Theft_Auto_III.xiso.iso --device nova --route
+gta3-car-pause-probe --seconds 240 --no-expect "evidence-gathering probe for offline
+crop-building, not an A/B arm"` -> queued **`1-1792380791-localdrive1018-729348`**, pinned to
+nova, release-priority (#433 is labelled 0.5), behind `lane.ralli2audio1018`'s own request in the
+same tier (FIFO, no action needed, same as this lane's first dispatch sitting behind two of that
+lane's requests earlier today). Device-time accounting for this requester today: 300s (the
+earlier `gta-3.route` survey) + this run's 240s + 90s setup = 630s = 10.5 min of the unconditional
+first-30-minutes pilot allowance: no `pilots/localdrive1018.ok` exists or is needed yet.
+
+This is committed and pushed BEFORE waiting on that result, per the lane rule (commit before
+every wait). The actual wait, and its outcome, are the next entry below -- or, if the queue has
+not reached it within one bounded foreground check, the `WAITING` file names this request id
+instead of re-describing the same merge-gate blocker, which is now only half the story.
+
+**One bounded foreground wait (8 min, 20 s polls of `dispatch/results/` and `dispatch/running/`,
+no chained sleeps after it) -- did not land.** Neither my request nor `lane.ralli2audio1018`'s
+own (queued one minute ahead of mine, same device, same tier) moved at all in that window:
+`dispatch/queue/` is byte-identical before and after, `dispatch/running/` stayed empty the whole
+time, and no new entry appeared under `dispatch/results/`. Checked why rather than waiting
+longer on a guess: `pgrep -af "dispatcher.sh worker"` shows exactly one worker process running on
+this host, `dispatcher.sh worker bdc158a5` (the Thor) -- **there is no worker process for the
+Nova (`ee317437`) at all right now**, despite the Nova itself being live on the bus (confirmed
+again: `dispatch/bin/devices.sh` now lists it) and having no hold file. A queued request with no
+worker servicing its device cannot run no matter how long it sits, and this matches the earlier
+transient "Nova missing from devices.sh" observation at 20:32 -- not a flake, the mid-run blip
+was probably this worker dying or never having been (re)started after the Nova came back off the
+owner's hold earlier this session.
+
+This is a dispatcher/hostops gap, not a `localdrive1018` one, and not something this lane fixes
+directly: the role rules this lane runs under say device access goes through `request.sh`/
+`ab_run.sh` only, never the device or its worker process directly, and restarting a dispatcher
+worker is infra the harness's own jam-duty role (lane.local's inbox instructions: "a device idle
+while work is queued ... -> find why and restart the runner") is positioned to do, with the
+authority and context this lane does not have. Named here instead of guessed around.
+
+## Resume 2026-10-18 ~20:49 PDT (attempt 5, labelled "attempt 3" in this dispatch's header):
+why attempt 4 did not finish, and the two things that changed underneath it
+
+Attempt 4 did not fail -- it ended correctly on `WAITING` (commit `6771d8e2cf`), naming a specific,
+source-confirmed infra gap (no `dispatcher.sh worker ee317437` process for the Nova, so the queued
+probe request `1-1792380791-localdrive1018-729348` could not run no matter how long it sat) and
+handing that off to jam duty rather than guessing around it, per this role's own rule that device
+workers are hostops's to restart, not a lane's. That is a finished-session outcome, not a failure.
+
+Two things have changed since, checked live rather than trusted from the note: (1) **master now
+has a fold of this lane's own PR** -- `git log HEAD..origin/master` shows `72af9cb92c "fold:
+lane/localdrive1018 ... drive: local tools only, act-observe instead of wait-and-fail, learn what
+to press"`, folded from this branch's state as of `73792d2e58` (A+B+C+D-partial, the state PR.md
+currently describes). This branch's two newest commits (`7a7b330470` the probe route, `6771d8e2cf`
+the WAITING note) postdate that fold snapshot and are not in it -- they are this lane's live
+increment on top of already-folded work, not yet folded themselves. No action needed from this
+fact alone (the board/fold job owns when to pick up the rest); noted so a future resume does not
+mistake "master has a `fold: lane/localdrive1018` commit" for "this lane is done" -- two commits'
+worth of work (the probe route + the still-pending device evidence it exists to gather) are still
+open on this branch. (2) **the Nova worker is back**: `pgrep -af "dispatcher.sh worker"` now shows
+TWO processes, `bdc158a5` (Thor, pid 670426) and `ee317437` (Nova, pid 987498) -- jam duty (or a
+hostops tick) restarted it since attempt 4's check, confirming the diagnosis was right and this was
+exactly the kind of gap that role is positioned to fix. `dispatch/hold/` no longer has a `nova` or
+`nova.why` file (unchanged from attempt 4); it does now have `lifted` (a dir) and
+`nova.battery-override` (owner, 2026-10-18 18:40 PDT, "Nova may be dispatched from 10%", expires
+06:38 PDT -- per memory `nova-battery-floor-5-owner-1018`, not something this lane needs to act on,
+just context for why the Nova is usable at whatever charge it is at right now).
+
+My probe request is still in `dispatch/queue/` (`1-1792380791-localdrive1018-729348.req`,
+unchanged, `ref 73792d2e58` -- still valid, that commit is on both this branch and `origin/master`
+now), one slot behind `lane.ralli2audio1018`'s own 870 s request (`1-1792380737-...-709884`,
+queued 20:32:18 PDT, same device, same `priority: study` tier, FIFO -- not release-priority like
+mine, but queued one minute earlier so it goes first), which `dispatch/running/` shows as the
+device's current job. No action to take here beyond waiting for FIFO to reach mine: this is a
+normal queue turnaround, not the attempt-4 infra gap (that gap was "no worker process exists";
+this is "a worker exists and is busy," the ordinary case `request.sh` is built for).
+
+**Two bounded foreground waits (8 min each, 20 s polls, no chained sleeps) -- the queue moved, but
+mine is now further back, not closer.** `lane.ralli2audio1018`'s 870 s job finished and landed in
+`dispatch/results/` between the two waits (its `run.log`/`logcat.txt` stopped growing at 21:00:07
+PDT; `dispatch/running/` went empty). My request did not move into `running/` next, though --
+checked why rather than waiting a third time on the same guess: `dispatch/queue/` picked up four
+NEW requests while I was waiting, all targeting `nova`, all tier **`blocker`** (confirmed by
+reading each `.req`'s `priority` field directly, not inferring from the filename's leading digit):
+`0-1792381848-fpsdiag1018-1094601` (900 s), `0-1792381850-fpsdiag1018-1095573` (700 s),
+`0-1792382334-hakux-0b-1285228` (360 s), `0-1792382337-hakux-0b-1285509` (360 s) -- 2320 s (~39
+min) of higher-than-mine-priority work, queued after mine but ranked ahead of it. `priority:
+study` (this probe) is below `priority: blocker` in the dispatcher's own ordering (the filename's
+leading `0-`/`1-` is exactly that rank, written by `request.sh` at enqueue time, confirmed by the
+four new `.req` files all reading `blocker` and all carrying a `0-` prefix while mine, `study`,
+carries a `1-`) -- this is the dispatcher working as designed, not a flake or a second infra gap:
+a release-priority (#433 is 0.5) probe correctly yields to four `blocker`-tier requests from two
+other lanes. Nothing to fix or report here; the Nova worker itself (`ee317437`, pid 987498) is
+still alive and running, confirmed again this entry.
+
+At ~39 minutes of now-queued `blocker` work ahead of a 240 s+90 s request, polling further in this
+session would mean sitting through most or all of it with nothing else to show -- exactly the
+"don't poll until the turn cap cuts you off" case this role's rules warn against. Nothing else in
+this lane's scope is actionable offline right now: A+B+C are `State: ready` and already folded
+into `master` (see above); D's remaining pieces (car-entry/pause-menu crops, the GTA III
+`play_dim_unresponsive` state, the held-out eval-set row, the confidence-floor sweep) all need
+either this probe's frames or a device slot this lane does not have standing to jump ahead for.
+Ending this session on `WAITING` for the queue to clear, named below and in a PR comment on
+forge PR #1082 (http://127.0.0.1:3330/jreinach-alt/hakuX/pulls/1082) once this is pushed.
+
+**WAITING**: on `dispatch/queue/1-1792380791-localdrive1018-729348.req` to reach
+`dispatch/running/` then `dispatch/results/` on the Nova. Resolves when either (a) the four
+`blocker`-tier requests ahead of it drain naturally (~39 min of device time as of 21:08 PDT, FIFO
+within tier), or (b) a future session checks `dispatch/results/` for `729348` directly. No code
+change is pending on this; the next session's first move is reading that result and continuing
+Part D's car-entry/pause-menu crop work from whatever frames it contains.
+
+## Resume 2026-10-19 (attempt labelled 3 in this dispatch's header): why attempt 5 did not
+finish, and the hostops addendum's one-line fix
+
+Attempt 5 (commit `db880005f0`) did not fail -- the Nova probe request got withdrawn by
+lane.local into `dispatch/queue/withdrawn/owner1018/` under an owner-play hold (`dispatch/
+hold/nova`, owner checking RalliSport by hand), which is genuinely owner-gated, not a loop or a
+flake, and the WAITING file already correctly says so as an `owner` line. That device wait is
+still open and this session does not touch it.
+
+What changed is that the hostops/jam-duty role (not this lane) separately root-caused a FOLD
+failure on this PR (`docs/lanes/localdrive1018/PR.md`'s addendum section, added directly to the
+brief at 01:13 and 06:13 PDT): `drive.py` line 154-156 does `sys.path.insert(0, .../pathknow);
+import learned`, but `docs/testing/dispatcher.sh`'s `SCRIPT_DEPS` string never listed
+`titles/pathknow/learned.py`, so `snapshot_scripts` never ships that module into a dispatched
+worker's snapshot, and the fold selftest's own `97-dispatch-snapshot-drive.sh` check (which
+exists precisely to catch this class of omission) correctly failed with `ModuleNotFoundError:
+No module named 'learned'` on every retry against two different master shas. hostops widened
+this lane's territory row onto `docs/testing/dispatcher.sh` for exactly this one line (confirmed
+directly in `board-wt`'s `territory.toml`, commit `af684bff11`: the row's `files` list now
+includes `"docs/testing/dispatcher.sh"`, and its note names the SCRIPT_DEPS line explicitly) and
+resumed this lane to apply it -- this is the actionable item for this session, separate from the
+still-open device wait above.
+
+Applied, but not exactly as the addendum described -- checked the actual code before trusting
+the one-line claim, and it was incomplete, not wrong. `SCRIPT_DEPS` (line 89-95) is read ONLY by
+`src_hash()` (the re-exec trigger); the file the worker actually copies from is a SEPARATE
+literal `for f in ...; do` list inside `snapshot_scripts()` itself (line 165-172), and the
+module's own comment at line 81 ("the two sets must be the same set") plus
+`97-dispatch-deploy.sh`'s own check (parses both lists and asserts equality, `bad "src_hash and
+snapshot_scripts disagree"` otherwise) confirm this is deliberate, checked duplication, not an
+oversight to route around. Adding the entry to `SCRIPT_DEPS` alone would have (a) left
+`learned.py` still unshipped -- the actual bug `97-dispatch-snapshot-drive.sh`'s `drive.py
+imports from the snapshot` check catches -- and (b) broken `97-dispatch-deploy.sh`'s equality
+check on top of that.
+
+Added `titles/pathknow/learned.py` to BOTH lists: `SCRIPT_DEPS` (line 89-95) and the literal
+list in `snapshot_scripts()` (line 165-172), same pattern as the existing `titles/classify.py
+titles/waitfor_match.py titles/pathclass.py` entries in each. Verified by parsing both lists
+with a small script (sorted-set equality) before running anything: equal, no drift. `bash -n`
+clean. Ran `SELFTEST_ONLY="97-dispatch-snapshot-drive.sh"` and `SELFTEST_ONLY="97-dispatch-
+deploy.sh"` directly against `docs/testing/jobs/selftest.sh` (the harness's own per-fragment
+verify mode, not the multi-hour full run) -- 27 passed/0 failed and 49 passed/0 failed
+respectively, including every mutant check (`drop titles/pathclass.py from SCRIPT_DEPS`, `drop
+head.npz from SNAPSHOT_GLOBS`, `no startup snapshot`, etc. all still red as they must be) and
+the specific case that was failing: `drive.py imports from the snapshot (classify,
+waitfor_match, the profile loader)` now `ok`. Re-ran `pathclass_selftest.py`/
+`classify_selftest.py` (0 failures, unchanged) and `docs/testing/preflight.sh` (`territory ok`,
+full pass) after the merge+fix. Updated `PR.md`'s `Files:` line to add
+`docs/testing/dispatcher.sh` and added a short section there naming the fix. No other line in
+`dispatcher.sh` touched -- `SNAPSHOT_GLOBS` and everything else is unchanged, per the widened
+row's own scope.
+
+**Checked the still-open device WAITING while here, found a second recurrence of the same false
+alarm attempt 3 already chased down once today.** `dispatch/hold/nova`/`nova.why` are gone now
+(owner-play hold lifted), but `dispatch/queue/withdrawn/owner1018/1-1792380791-localdrive1018-
+729348.req` is still sitting withdrawn, not restored. Its `WHY.txt` (hostops, 22:40 PDT 10-18,
+~3h after attempt 3's correction) explains why: it cites "lane.localdrive1018 is retired (one-
+fps-lane-fpsdiag-1018 memory: 'localdrive1018 retired')" and tells the next actor to re-issue the
+work under `gta3car1018` instead of restoring this lane's request. This is the exact claim
+attempt 3 already checked against `board-wt`'s canonical `origin/board` history and found false
+(no `[retired.localdrive1018]` section exists; the row has been actively claimed and widened the
+whole time, most recently for this very commit's fix). The underlying memory file
+(`one-fps-lane-fpsdiag-1018.md`, in this harness's auto-memory store) already carries a
+correction appended at ~19:20 PDT saying not to trust the retirement claim -- but the memory
+INDEX line summarizing that file still read bare "localdrive1018 retired" with no mention of the
+correction, which is almost certainly why the 22:40 PDT session re-cited it instead of reading
+the file's own body. Fixed the index line this session so a future read doesn't repeat this a
+third time.
+
+Not fixed by this lane: the withdrawn request itself. `WHY.txt` names moving it back to
+`dispatch/queue/` as lane.local's job, and this lane's own rules are to reach dispatch only
+through `request.sh`/`ab_run.sh`, never by hand-editing queue files. Posted the finding as a PR
+comment on forge PR #1086 (the current open PR for this branch -- #1082 closed, #1080 merged,
+both superseded) so lane.local or a future hostops tick restores it instead of re-issuing fresh
+work under `gta3car1018` on a false premise. Not treating this as this session's own WAITING --
+the device-side wait was never this resume's task (the dispatcher.sh fix was), and nothing here
+blocks pushing or marking this commit's work done.
+
+## Resume 2026-10-19 ~06:45 PDT (attempt labelled 4): the stranded probe ran, with real
+car-entry and pause-menu evidence -- and a correction to the brief's own premise
+
+The prior session did not fail: it ended correctly on a `run` line (`WAITING` for
+`1-1792380791-localdrive1018-729348` to reach `dispatch/results/`), having already fixed what
+it could (the dispatcher.sh fold gap) and flagged what it could not (the stranded withdrawn
+request, not this lane's file to move). Checked live rather than re-describing that WAITING:
+`dispatch/results/1-1792380791-localdrive1018-729348/DONE` now exists (06:36 PDT) --
+hostops/jam-duty restored the request from `dispatch/queue/withdrawn/owner1018/` at 06:36 PDT,
+explicitly re-confirming the false-retirement finding a second time
+(`dispatch/queue/withdrawn/owner1018/WHY.txt`, new entry: cites both board-wt's live territory
+row and this lane's own prior correction). It ran clean on the Nova and produced all 7
+requested shots (`route-frames/`): `introskip`, `pregameplay`, `fist-hud`, `onfoot`,
+`car-entered`, `pause-menu`, `resumed`. Copied into
+`docs/lanes/localdrive1018/gta3-car-pause-probe-1019/` (committed, real evidence, not
+synthetic -- same convention as the earlier `gta3-frames-1018/` Thor stills).
+
+**These frames are Nova captures (1280x960), not Thor (1920x1080)** -- `PIL`-measured size on
+all 7, confirmed. This matters for anything measured in raw pixel coordinates (the `waitfor`
+mechanism below): a region calibrated here is Nova-resolution-specific, same open caveat the
+existing `fist-hud` crop (gta-3.route, not this lane's) already carries unverified on the Thor.
+
+**Ran `classify.py table --profile gta3.toml` over all 7 real frames** (the actual
+`classify_frame` pipeline, not a hand score):
+
+    frame          state      source                      changed  letterbox hud-heart
+    introskip      cutscene   crop:letterbox-top                      0.0        -
+    pregameplay    unknown    hud:hud-heart+after-cutscene  0.576     44.3      2.1
+    fist-hud       stalled    hud:hud-heart+static          0.011     44.5      2.1
+    onfoot         stalled    hud:hud-heart+static          0.013     44.6      2.0
+    car-entered    play       hud:hud-heart+motion          0.391     55.3      3.0
+    pause-menu     paused     pathclass:pause               0.480     16.0      62.2
+    resumed        unknown    hud:hud-heart+after-paused    0.538     42.9      2.5
+
+Three findings, each checked against the real tool rather than assumed:
+
+1. **The pause menu is already correctly classified as `paused` with ZERO new code.**
+   `pathclass`'s own trained head recognizes GTA III's pause/load screen as `pause`
+   (score not shown by `table` for a non-crop pathclass call, but the `source` column says
+   `pathclass:pause` plainly) -- no gta3-specific crop was needed for this, contradicting
+   this lane's own earlier assumption (Part D's original writeup) that pause detection was
+   an open problem for this title. One title's worth of evidence, not a held-out claim, but
+   a real positive result worth not re-deriving.
+2. **`hud-heart` does NOT distinguish on-foot `play` from in-car `play`.** `car-entered`
+   scores 3.0 on the heart crop, inside the same near-zero band as on-foot (`fist-hud`/`onfoot`
+   score 2.0-2.1) -- because the health heart (and the fist/weapon-slot icon next to it) stay
+   on screen identically whether the player is on foot or driving in this build. This directly
+   answers the brief's own open question ("no on-foot weapon box" as the car/on-foot signal):
+   that signal does not exist in this HUD. The brief's requirement ("a drive scene is scored
+   only if `play` AND the player is in a car") needs a SEPARATE signal from `hud-heart`, not a
+   refinement of it.
+3. **Found that separate signal and built it, but it is route-level, not a classify.py state**
+   (`classify.py`'s `STATES` tuple -- checked directly, `load_profile` rejects any crop whose
+   `state` isn't in it -- has no `car`/`driving` entry, and adding one is the kind of shared,
+   cross-title change this lane is not taking on for one title's evidence, same reasoning Part
+   D already applied to `after_title`). Instead: GTA III draws a vehicle-nameplate watermark
+   ("Kuruma", this car's name) across the car body for a few seconds after entry -- a
+   `route.sh` `waitfor` reference crop (the SAME mechanism `gta-3.route`'s existing `fist-hud`
+   step already uses, independent of `classify.py`'s state machine entirely), not a profile
+   crop. Built `routes/refs/gta3-drive/car-entered.png` from the real `car-entered.png` frame,
+   region `780,740,400,90` (raw pixels, located by eye then confirmed with a color threshold
+   that the visible "Kuruma" text sits there) -- scored with `waitfor_match.py`'s own
+   `region_score()` function against all 7 frames from this run (not a hand-rolled diff):
+
+       car-entered   0.000   (itself)
+       onfoot       17.241
+       fist-hud     17.351
+       pregameplay  17.351
+       pause-menu   31.133
+       resumed      31.683
+       introskip    44.606
+
+   Threshold 10.0 sits with a clean margin below the nearest cluster (17.2, on-foot) and well
+   below everything else. Caveats stated plainly, not glossed over: this is ONE sample (no
+   second car-entry capture exists to confirm the margin holds on a re-run), the watermark
+   names THIS specific vehicle model so a run where a different car spawns at this scripted
+   spot may not match at all, and the region is Nova-resolution-only per the caveat above. A
+   genuine first debugging mistake worth recording: my first attempt at `region_score()`
+   scored `(x, y, w, h)` as if it were `(x1, y1, x2, y2)` -- `region_score`'s own box is
+   `(x, y, w, h)`, cropping `(x, y, x+w, y+h)` -- which produced an out-of-bounds crop and a
+   nonsense self-score of 44.7 instead of 0.0 for the frame the ref was cut from; caught by
+   checking the self-match score before trusting any of the cross-frame numbers, not by
+   assuming the first run was right.
+
+**Correcting the brief's own premise, not working around it.** The brief's walkthrough says
+"a save state (pause menu, Save is the default row)". The captured `pause-menu.png` frame
+shows the actual default tab reads **"New Game" / "Load Game"**, with `START: Resume Game` as
+the only save-adjacent text anywhere on screen -- no Save option is visible from this pause
+state at all. GTA III's save mechanic is gated on being at a safehouse (a floppy-disk map
+icon), not available from the pause menu at an arbitrary location, and this scripted opening
+sequence (prison escape, stolen car, highway overpass) is nowhere near one. The owner's
+hands-on description most likely referred to a different, later moment in the game (at or
+near a safehouse), not this spawn point. This is the same class of correction as
+`correct-the-premise-where-it-is-read` -- written here, in the route file's own RESULT note,
+and in PR.md, not silently routed around by inventing a Save row that is not on screen.
+
+**Built, verified, committed:**
+- `routes/refs/gta3-drive/car-entered.png` (the reference crop above).
+- `routes/gta3-drive.route` "STAGE 2": `drive gta3 300 find` (Stage 1, unchanged) followed by
+  `press Y` / `wait` / `waitfor car-entered 10 780,740,400,90 10` -- the Y-entry sequence
+  itself already ran live (as part of the probe route below) and worked in one capture; this
+  stage composes it with Stage 1 for a future live run, not newly tested as a combined file
+  (the `drive` step inside it still can't dispatch pre-merge -- see "Not done" below).
+  `route.sh --check` passes (44 lines).
+- `routes/gta3-car-pause-probe.route`: appended a RESULT section recording the run, the
+  Save-row correction, and a pointer to the kept frames -- the probe's original comment
+  claims (copied from the brief) are left intact above it so the correction is visible against
+  what it corrects, not edited away. `route.sh --check` still passes (71 lines).
+- `docs/lanes/localdrive1018/gta3-car-pause-probe-1019/` -- all 7 frames, committed as real
+  evidence (not the pathknow TRAIN/TEST pool: GTA III is not in `eval_set.tsv`'s held-out list,
+  confirmed again this session, so these are not yet wired into either; see "Not done").
+
+Re-ran `pathclass_selftest.py` and `classify_selftest.py` after every edit (0 failures each,
+unchanged from the last green run) and `docs/testing/preflight.sh` (`territory ok`, full pass)
+after this session's edits. `bash -n route.sh` clean.
+
+**Not done, named honestly:**
+- The state-save step is not just device-gated any more -- it needs either a drive-to-safehouse
+  leg built first, or the owner naming where Save actually shows from this spawn point, before
+  any code is written for it. Guessing at a Save-row crop with no Save row on screen would be
+  exactly the kind of fabricated-outcome mistake this lane's own rules warn against for the
+  learned table.
+- `car-entered`'s margin is one sample; a second live run (ideally on the Thor too, to close the
+  resolution caveat) would be the actual confirmation, not re-deriving the same numbers again.
+- GTA III is still not in `pathknow/eval/eval_set.tsv`; the held-out false-gameplay figure the
+  brief asks for still has no blind number behind it.
+- The combined `gta3-drive.route` (Stage 1 `drive` + Stage 2 `press Y`/`waitfor`) has not run
+  end-to-end as one file -- it can't, pre-merge, because Stage 1's `drive gta3` line still hits
+  the same profile-gate refusal this lane found two sessions ago. Dispatching it live is a
+  post-merge or post-fold task.

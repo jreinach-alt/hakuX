@@ -12,8 +12,33 @@
 # pause-menu Save-row crop, the held-out false-gameplay number) need and did not have before
 # this run -- see docs/lanes/localdrive1018/NOTES.md "Part D".
 #
-# NOT YET HERE: entering the car (Y), the state-save step, and the drive loop itself -- the
-# brief's own text for all three. They need this step's real result first (does the ladder
-# actually reach play, and where is the car relative to the player on a real capture) rather
-# than being guessed from 9 hand-picked stills.
+# STAGE 2 (added 2026-10-19, off a separate probe run -- see below): car entry. `Y` is not
+# gated behind `drive`/the profile-gate check (no `drive` step touches it), so this much was
+# dispatchable and run pre-merge via a standalone probe route
+# (routes/gta3-car-pause-probe.route, result 1-1792380791-localdrive1018-729348, nova,
+# 2026-10-19): Y, from on-foot next to the car, puts the player in the driver's seat within
+# one capture. `car-entered` below is a real reference crop (the "Kuruma" vehicle-nameplate
+# watermark GTA III draws briefly over the car after entry), built from that run's own
+# `car-entered.png` frame and scored with waitfor_match.py's own scoring function against
+# every other frame that run captured: 0.0 on itself, 17.2-17.4 on the on-foot/pregameplay
+# frames, 31.1-31.7 on the pause-menu/resumed frames, 44.6 on the cutscene frame -- comfortably
+# separated at threshold 10.0. Caveats, stated plainly: this is ONE sample (no second car-entry
+# capture exists to confirm the margin generalizes), the watermark names this specific vehicle
+# ("Kuruma") so a run where a different car spawns at this spot may not match at all, and the
+# region (780,740,400,90, raw pixel coords) was measured on a Nova (1280x960) capture only --
+# unverified on the Thor's different pillarboxed geometry, same open caveat `fist-hud` already
+# carries from gta-3.route. Full numbers and the frames themselves:
+# docs/lanes/localdrive1018/gta3-car-pause-probe-1019/, NOTES.md "Resume 2026-10-19".
+#
+# NOT YET HERE: the state-save step and the drive loop itself. The save step is blocked on
+# more than a device now -- the same probe run found the pause menu's default tab shows
+# "New Game"/"Load Game", not a Save row, at this spawn point (GTA III saves only at a
+# safehouse); see routes/gta3-car-pause-probe.route's own RESULT note and NOTES.md for the
+# correction to the brief's "Save is the default row" premise. Driving to a safehouse first,
+# or the owner naming where Save actually shows from here, is needed before this step can be
+# built, not just a device slot.
 drive gta3 300 find
+wait 1
+press Y 300
+wait 3
+waitfor car-entered 10 780,740,400,90 10
