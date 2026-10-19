@@ -2985,18 +2985,21 @@ static bool s2t_share_on(void)
  * copy instead of taking another. "1": every such sample; the run's draws read
  * the target as it stood at the run's first sample instead of after the draw
  * before. "2": only a sample on a stage whose shader program does not read its
- * texture (NONE, PASS_THROUGH, CLIP_PLANE, DOT_PRODUCT), where what the copy
- * holds changes no pixel. A run ends at the flip, when a bind_textures pass
- * sees another colour target, and for a slot, when the slot binds anything
- * else. A sample of the surface while it is not the colour target copies as
- * before, so a read after the run sees every draw. Plain colour copies only.
+ * texture (NONE, PASS_THROUGH, CLIP_PLANE -- see s2t_fb_stage_reads(), whose
+ * first cut over-included DOT_PRODUCT and FAILed the pixel prediction
+ * below), where what the copy holds changes no pixel. A run ends at the
+ * flip, when a bind_textures pass sees another colour target, and for a
+ * slot, when the slot binds anything else. A sample of the surface while it
+ * is not the colour target copies as before, so a read after the run sees
+ * every draw. Plain colour copies only.
  *
  * #433 (lane.fpsdata1018): mode 2 never changes a pixel (s2t_fb_keep only
  * answers true for a stage that provably does not read its texture), so it
  * is now the default; "0" still turns the whole switch off and "1" still
  * asks for the staleness-risking any-stage mode. See NOTES.md for the
  * evidence this default is built on (gta3car1018's S1 run) and its limits
- * (one trial, confounded by unscripted driving traffic).
+ * (one trial, confounded by unscripted driving traffic), and for the
+ * DOT_PRODUCT fix the arms job's pixel-prediction FAIL led to.
  */
 static int s2t_fb_state = -1;
 
@@ -3021,8 +3024,20 @@ static bool s2t_fb_stage_reads(PGRAPHState *pg, int texture_idx)
         (pgraph_vk_reg_r(pg, NV_PGRAPH_SHADERPROG) >> (texture_idx * 5)) &
         0x1F;
 
-    /* NONE, PASS_THROUGH, CLIP_PLANE, DOT_PRODUCT (pgraph/psh_regs.h) */
-    return !(prog == 0x00 || prog == 0x04 || prog == 0x05 || prog == 0x11);
+    /*
+     * NONE (0x00) and CLIP_PLANE (0x05) emit a constant with no texel read
+     * (psh.c:3326, :3441-3443); PASS_THROUGH (0x04) is documented there
+     * (~line 442) as needing no texture at all. DOT_PRODUCT (0x11) is NOT
+     * one of these: psh.c's dotmap_src() (~line 1245) reads the stage's own
+     * sampled texel as the dot-product input ("the input texture's own
+     * sample"), and mode_reads_dotmap() lists DOTPRODUCT as a mode that
+     * reads it. #433 arms FAIL on fa4cca9241: 24/472 checks, including
+     * Antialiasing_tests/CPUWriteIgnoresSurfaceConfig (0 -> 45056 px) --
+     * this stage was wrongly told it could keep a stale copy. Dropping
+     * DOT_PRODUCT from this set falls it back to a fresh copy per sample,
+     * same as mode 2's other stages that do read.
+     */
+    return !(prog == 0x00 || prog == 0x04 || prog == 0x05);
 }
 
 /* Per slot, the copy of the colour target it took in this run */
