@@ -8,14 +8,14 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `localdrive1018` | claude-sonnet-5 | 6 min | drive: local tools only, act-observe instead of wait-and-fail, learn what to press |
-| `pagesfix1018` | claude-sonnet-5 | 23 min |  |
-| `ralli2audio1018` | claude-sonnet-5 | 16 min | ralli2audio1018: RalliSport Challenge 2 audio dropouts: the voice processor's guest-memory overhead, producer  |
+| `localdrive1018` | claude-sonnet-5 | 21 min | drive: local tools only, act-observe instead of wait-and-fail, learn what to press |
+| `pagesfix1018` | claude-sonnet-5 | 38 min |  |
+| `ralli2audio1018` | claude-sonnet-5 | 31 min | ralli2audio1018: RalliSport Challenge 2 audio dropouts: the voice processor's guest-memory overhead, producer  |
 
-- **Handhelds:** 0 connected.
-  - Nova: held by `2026-10-19T02:21:20Z`
+- **Handhelds:** 2 connected.
+  - Nova: free for the queue
   - Thor: held by `lane.local`
-- **Device queue:** 1 waiting, 1 running.
+- **Device queue:** 3 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -125,8 +125,8 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/localdrive1018` | drive: local tools only, act-observe instead of wait-and-fail, learn what to press | `db744abbe1` | 2026-10-18 19:16 |
-| `lane/ralli2audio1018` | ralli2audio1018: RalliSport Challenge 2 audio dropouts: the voice processor's guest-memory overhead, producer timing, au | `93ff5874e5` | 2026-10-18 19:13 |
+| `lane/localdrive1018` | drive: local tools only, act-observe instead of wait-and-fail, learn what to press | `35477b3858` | 2026-10-18 19:36 |
+| `lane/ralli2audio1018` | ralli2audio1018: RalliSport Challenge 2 audio dropouts: the voice processor's guest-memory overhead, producer timing, au | `4dfe7f0600` | 2026-10-18 19:44 |
 
 ## Recently landed on master
 
@@ -143,4 +143,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-18 haloring1017: Halo CE main-menu ring: the static inside surface is the stock driver
 - 2026-10-18 GTA III: where the 46 ms parked frame goes once every copy is removed
 
-_Updated 2026-10-18 19:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 19:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
