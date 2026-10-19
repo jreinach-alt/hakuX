@@ -1,6 +1,6 @@
 # fpsnext1019: GTA III in-pass feedback barrier (HAKUX_FBLOOP, opt-in), Blinx 2 and Fable gameplay captures (#433)
 
-State: draft
+State: ready
 
 Lane: fpsnext1019            Issue: #433
 Base: master @ 656bcd1fe9
@@ -22,7 +22,13 @@ without the pass end and begin. The construct is outside what the Vulkan spec al
 checks the driver and stays off on anything but Turnip. `HAKUX_FBLOOP=2` alternates off and on per 60-flip window
 for same-scene comparison. Perflog builds report `fbs=`, `fbl=` and `fbon=` on each `[dipwin]` line.
 
-Device results: pending (batch `g3`: off, on, on, off, alternating).
+Device results: batch `g3` scored against P0-P4 (NOTES.md "Attempt 8"). Mechanism (P0), passes (P1), pixels (P3)
+and stability (P4) all confirmed/pass clean -- but P2 (time/fps) is falsified in the wrong direction: drive fps
+F-arm mean 19.95 vs S-arm mean 23.05 (predicted +3.0, measured -3.1), M1's own on/off palindrome mean ms/flip
+delta -2.29 ms (predicted a gain). **Does not ship** (stays opt-in, default off): a regression across all 5 arms
+shows ms/flip tracks total draws/flip better than render-pass count, and FBLOOP's barrier costs a fixed
++1.3-1.6 ms/flip of its own (the sysmem-forcing drain) on top of whatever draw volume already costs -- removing
+the pass break bought nothing because the drain it replaced was no cheaper. See FINDINGS.md for the summary row.
 
 Release note (none): opt-in HAKUX_FBLOOP switch for GTA III's feedback sample, off by default.
 

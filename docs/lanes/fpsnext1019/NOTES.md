@@ -72,6 +72,112 @@ on average in the SAME scene, or a measured per-pass GPU ms drop that accounts f
   branch diff against master empty. `hold.sh who nova` -> `free: nova` at 13:48 and 14:03 PDT. Order for this
   attempt, per the addendum: (1) build and device-verify the GTA III in-pass feedback barrier (below, G3 first),
   (2) Blinx 2 gameplay budget capture + H4 census, (3) Fable gameplay capture.
+- **Attempt 7 (2026-10-19 14:49 PDT)**: attempt 6 ended on the 300-turn cap (`terminal_reason max_turns`, log
+  `fpsnext1019.20261019T204838Z.json`, 14:33 PDT) six minutes after its device batch finished. It built
+  `HAKUX_FBLOOP` (`6e15857f0e`), wrote the G3 table, took the Nova hold at 14:11 and ran batch `g3` to the end
+  (`captures/fpsnext1019/g3.nohup.log`: W S1 F1 F2 S2 M1, `RESTORE_OK`, `BATCH_DONE 14:27:26`). It ran out of turns
+  while writing the scoring scripts (`fbpairs.py`, `fbfit.py`), so g3 was never scored against P0-P4 and PR.md
+  still says "Device results: pending". Nothing needs re-running. Start checks: origin/master 0 commits ahead,
+  `hold.sh who nova` -> free (devwatch lifted the stale hold after the unit stopped). This attempt scores g3 first,
+  then moves to Blinx 2 and Fable gameplay.
+- **Attempt 8 (2026-10-19 ~15:48 PDT, resumed per hostops Addendum 8)**: attempt 7 did not finish because it was
+  killed by an external SIGTERM at ~15:01 PDT (`systemctl --user` shows `Stopping`/`Stopped` for the unit, no
+  MAXTURNS or crash), about 12 minutes into writing up the `g3` batch score -- not a dead end, nothing lost: the
+  `g3` device batch itself had already finished at 14:27:26 PDT, before this stopped attempt even started, and the
+  uncommitted `NOTES.md` edit plus the scoring scripts (`fbpairs.py`, `fbfit.py`, `dwcost.py`) and their output
+  (`g3-dwcost.md`) all survived in the worktree/scratch area untouched. hostops reset the attempt counter (the
+  refund rule for an externally-killed attempt that burned none of its own turns) before resuming; this is attempt
+  1 of that fresh budget. Start checks: `origin/master` 0 commits ahead of this branch's base; `hold.sh who nova`
+  -> free (no stray hold); confirmed via `ps`/`systemctl` that nothing of this lane's is actually running on the
+  Nova. Picked up exactly where the uncommitted plan left off: score `g3` against P0-P4 (below), decide the next
+  GTA III lever, and only then move to Blinx 2/Fable if device time remains -- except Blinx 2's H4 census is
+  already done (attempt 3) and its only built remedy (`HAKUX_SWZKEEP`) already failed its own prediction (attempt
+  4), so "Blinx 2 gameplay capture + H4 census" in the addendum's wording is stale; nothing new to do there without
+  a new mechanism idea, which ranks below finishing GTA III's live thread.
+
+## Attempt 8: `HAKUX_FBLOOP` (`g3` batch) scored against P0-P4 -- mechanism confirmed, time/fps falsified, a new lead
+
+All five arms (`g3-S1`, `g3-F1`, `g3-F2`, `g3-S2`, `g3-M1`) read with `fbpairs.py` (per-window `fbs`/`fbl`/`rp`/`ms`
+plus the `nd=` break-site breakdown) and `fbfit.py` (least-squares fit of `ms`/`fen`/`stalled`/`rotfen` against
+`fbs`, `full` and `on` across all in-car windows); `imgcheck.py` full-frame diff of each arm's `m3-loaded.png`;
+`arm.log`/`logcat.txt` grepped for `DEVICE_LOST`/`FATAL`/`AndroidRuntime`/`crash` (none in any arm).
+
+**P0, engagement -- confirmed cleanly.** Every on-window (F1, F2, and M1's `fbon=1` windows) reads `fbl`/`fbs` =
+**1.000** (F1 65.9/65.9, F2 53.0/53.1, M1-on 55.6/55.6 flip-mean); every off-window (S1, S2, M1's `fbon=0`) reads
+`fbl` = **0** exactly. `[fbloop] on mode=N (driver)` confirmed once per on-arm's `arm.log`. The switch engages on
+every sample it targets and none it doesn't, on both sides.
+
+**P1, passes -- holds.** Render passes/flip fall by 84-89% wherever the switch is on, matching `fbl`/flip almost
+exactly (the barrier removes one pass per sample it covers):
+
+| arm | widen/shipped baseline | fbon | rp/flip | fbs/flip | fbl/flip |
+|---|---|---|---|---|---|
+| S1 | off | 0 | 56.4 | 47.4 | 0.0 |
+| F1 | on | 1 | 9.0 | 65.9 | 65.9 |
+| F2 | on | 1 | 8.9 | 53.1 | 53.0 |
+| S2 | off | 0 | 83.3 | 74.4 | 0.0 |
+| M1 (55 adjacent pairs) | alternating | -- | off 62.5 / on 9.1 | 53.5 / 55.6 | 0.0 / 55.6 |
+
+M1's own pair rule (`drp >= 0.8 x fbl/flip(on)`): mean `rp/flip(off)-rp/flip(on)` = 54.5 against a bar of
+`0.8 x 55.6` = 44.5 -- holds on the mean, and in 41/55 (75%) of individual pairs. The mechanism (`bind_surface_as_
+texture`'s own barrier replacing the break) is doing exactly what it was built to do.
+
+**P2, time/fps -- falsified, not a near-miss.** The predicted win (>=27.0 fps on each F arm's motion-verified drive
+window, F mean >= S mean + 3.0) is the opposite of what happened:
+
+| arm | drive fps (`g3.nohup.log`, score2) |
+|---|---|
+| S1 (off) | 21.7 |
+| F1 (on) | 19.1 |
+| F2 (on) | 20.8 |
+| S2 (off) | 24.4 |
+
+F mean (19.95) is **~3.1 fps worse** than S mean (23.05), the reverse of the predicted direction. M1's own
+palindrome agrees: mean `ms/flip(off) - ms/flip(on)` = **-2.29 ms** (on is slower), and ms dropped only in 24/55
+(44%) of pairs -- nowhere near the required >0 in >=70%. The fit's own prediction for an 84-89% pass cut (0.1309 x
+~55 passes ≈ 7.1 ms) did not show up as a gain at all; the measured delta is negative.
+
+**Why, from `fbfit.py` (147 in-car windows, all five arms):** `ms/flip` fits `full` (total draws/flip taking the
+full pre-draw path) far better than it fits `fbs` (feedback samples/flip) -- r² 0.80 vs 0.70 -- and once both are
+in the model, `fbs`'s own coefficient collapses to ~0 (0.0037, later -0.0012) while `full`'s stays essentially
+unchanged (0.046-0.047 ms per draw). Adding `on` (FBLOOP enabled) to that same model gives it a **positive**
+coefficient of **+1.31 ms/flip** on `ms`, and +1.5 to +1.6 ms/flip on `fen`/`stalled`/`rotfen` specifically --
+turning the barrier on costs a fixed ~1.3-1.6 ms/flip *in addition to* whatever `full` already explains, it does
+not subtract from it. This is exactly the prediction's own named falsifier mechanism: *"the per-sample cost is the
+drain (the wait-for-idle and flushes this barrier keeps), not the pass."* Turnip's in-pass barrier still forces
+`disable_gmem` (sysmem for the whole pass), a CCU colour flush, a UCHE/CCHE invalidate and a wait-for-idle on every
+covered sample -- the same work the break-and-resume used to pay, so removing the break bought nothing and the
+drain itself still costs more per flip than the saved pass overhead, exactly symmetric with removing a different
+drain in row 23 (`HAKUX_STALLFIN`) costing more than it saved for the opposite reason (lost CPU/GPU overlap).
+
+**P3, pixels -- passes cleanly.** Full-frame `imgcheck.py` diff of `m3-loaded.png` (same save-state, before RT):
+S1-vs-S2 (off-vs-off noise floor) = 0.1, S1-vs-F1 = 0.1, S1-vs-F2 = 0.1 -- all identical, far under the 1.1 bound
+(noise floor + 1.0). The barrier reads back the same bytes it always did; no stale/undefined sysmem content shows
+up in this capture.
+
+**P4, stability -- passes.** No `DEVICE_LOST`, `FATAL`, `AndroidRuntime` or other crash string in any of the five
+arms' `logcat.txt`/`arm.log`; every arm completed its full window and restored cleanly (`RESTORE_OK`, `BATCH_DONE`
+in `g3.nohup.log`).
+
+**Verdict: `HAKUX_FBLOOP` does not ship.** 3 of 5 legs pass (P0, P1, P3, P4 -- mechanism, pixels and stability are
+all clean) but the one leg that matters, P2, is falsified in the wrong direction: eliminating 85%+ of the in-car
+render passes costs net time instead of saving it, because Turnip's in-pass barrier pays the same sysmem-forcing
+drain the pass break already paid, with no pass-teardown saved in return. Left in the tree, opt-in, default off
+(same disposition as `HAKUX_S2T_DEAD` and `HAKUX_SWZKEEP`): the code and census are correct and informative, the
+switch itself should not ship. G3 did its job again -- a clean, instrument-backed negative, not a shrug (G5).
+
+**The new lead, not speculative:** `fbfit.py`'s regression is the first evidence in this lane's whole history that
+ms/flip tracks **total draw volume per flip** (`full`, r²=0.80) better than it tracks render-pass count (`fbs`/`rp`,
+r²=0.70) -- every lever tried so far (R2/widen, S2T_FB, sysmem, FBLOOP) attacked pass count or copies, and all of
+them moved rp/flip a lot while moving fps far less. This re-promotes lever (c) ("draw/state redundancy per pass",
+previously ranked last) and lines up exactly with the Addendum 4 code audit's **C2** (vertex-RAM stale memcpy,
+`draw.c:6303-6354`, 3.7-4.2 ms/flip measured in isolation on GTA III *on foot*) and **C6** (per-draw pipeline
+key/descriptor CPU cost, 5.8 ms/flip measured) -- both are costs that scale with draws issued, not passes or
+copies. C2's fix already exists, unfolded, pixel-proven by its own selftest (`lane/vtxstale1018`, commit
+`4507b8f2fa`/`2173daadf2`, PR #1049, still draft, never device-measured on *driving*, only on-foot) -- the
+higher-probability, lower-effort-to-test next step per G4 is to bring that fix into this branch and measure it on
+the owner's in-car driving scene, which is this lane's own bar, before reaching for C6's bigger, unread-code
+change. Device time this item: 0 (all scoring was done against already-captured `g3` logs, no new run).
 
 ## Attempt 5, item 4: RalliSport 2 read-back -- `HAKUX_TEXSCAN2D` confirmed on real driving (sdown 100%->0%, fps 38.2->59.0 mean)
 
