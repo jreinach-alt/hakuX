@@ -8,20 +8,23 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `fpsnext1019` | claude-sonnet-5 | 9 min | fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433) |
+| `fpsnext1019` | claude-sonnet-5 | 23 min | fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lane.local`
-- **Device queue:** 1 waiting, 0 running.
+- **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
 
-**94 titles are confirmed Playable** (0 today). Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
+**97 titles are confirmed Playable** (3 today). Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
 
 | Confirmed | Title | Result |
 |---|---|---|
+| 2026-10-19 | Knights of the Temple II | Playable, 10-minute run, median 29.97 fps |
+| 2026-10-19 | The Wild Rings | Playable, 10-minute run, median 53.29 fps |
+| 2026-10-19 | Pro Evolution Soccer 5 (Europe) | Playable, 10-minute run, median 59.94 fps |
 | 2026-10-18 | Mortal Kombat: Shaolin Monks | Playable, 10-minute run, median 45.91 fps |
 | 2026-10-18 | RalliSport Challenge | Playable, 10-minute run |
 | 2026-10-18 | Lemony Snicket's A Series of Unfortunate Events (USA) | Playable, 10-minute run, median 59.88 fps |
@@ -117,7 +120,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 | 2026-09-29 | KOF: Maximum Impact – Maniax | Playable, 10-minute run on the Nova |
 | 2026-09-26 | Alien Hominid | Playable, 10-minute run on the Thor |
 
-70 of these still await the owner's flicker check.
+73 of these still await the owner's flicker check.
 
 ## Work in progress
 
@@ -137,4 +140,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-18 fpsdiag1018: one FPS lane for GTA III, Blinx 2, Fable -- known/not/could-be and a diagnostic tool (#433)
 - 2026-10-18 gta3car1018: GTA III in the car -- the render passes are a feedback-loop copy per draw (#1049)
 
-_Updated 2026-10-19 08:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-19 09:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
