@@ -900,6 +900,17 @@ name); a caller staging records in a private `DISPATCH_DIR` sets
 > instinct is exactly what the hold exists to refuse. The owner is holding a
 > physically broken device; a run is not a small favour to ask.
 
+**A hold carries a tier.** `jobs/hold.sh take|wait` accept `--tier
+blocker|fps|sweep` (or env `HOLD_TIER`); no tier given is `fps`. `blocker` is
+a release defect that needs on-device time to fix; `fps` is everything else
+that should run promptly; `sweep` is idle-time screening of new titles, and
+yields to both of the others. A `--tier sweep` take or wait refuses while a
+higher-tier request is queued or already running for that device, so
+screening never sits ahead of work the device is actually needed for. A
+chain already holding a device at `--tier sweep` calls `jobs/hold.sh
+yield-check <label> <tag>` between steps to ask whether it should let go now;
+a sweep hold also releases itself after 30 minutes if nothing ever asks.
+
 
 Debug builds are debuggable, so `run-as` can read and write app private data —
 which means the setup wizard can be skipped by writing `x1box_prefs.xml`

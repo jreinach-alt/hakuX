@@ -2,11 +2,14 @@
 #
 # Take and release a device hold. A hold is removed only by its taker.
 #
-#   hold.sh take    <label> <tag> <why...>               exit 0 taken, 3 held by someone else, 4 refused: non-release build (nova), 6 refused: owner-play capture would not start (hold not left behind)
+#   hold.sh take    <label> [--tier blocker|fps|sweep] <tag> <why...>
+#                                                       exit 0 taken, 3 held by someone else, 4 refused: non-release build (nova), 6 refused: owner-play capture would not start (hold not left behind), 8 refused: sweep tier beaten by queued/running 0-/1- work for this label
 #   hold.sh release <label> <tag>                        exit 0 released, 3 not yours (nothing removed)
 #   hold.sh who     <label>                              exit 0 held (prints holder), 1 free
-#   hold.sh wait    <label> <tag> <timeout_s> <why...>   take, retrying every 15 s; exit 3 on timeout
+#   hold.sh wait    <label> [--tier blocker|fps|sweep] <tag> <timeout_s> <why...>
+#                                                       take, retrying every 15 s; exit 3 on timeout. At --tier sweep, never takes while 0-*/1-* work is queued or running for this label -- keeps retrying instead.
 #   hold.sh wait-idle <label> <timeout_s>                exit 0 idle, 3 still busy at timeout, 1 no hold, 5 idle but an owner-play capture died
+#   hold.sh yield-check <label> <tag>                    exit 0 keep going, 7 yield now: a 0-* request is queued or running for <label>, or a 1-* one has been queued at least HOLD_YIELD_S (60) s
 #
 # TO USE A DEVICE YOURSELF:  hold.sh take <label> <tag> <why> && hold.sh wait-idle <label> 900
 # and touch the device only if that exits 0. Release the hold on every exit path.
@@ -112,6 +115,31 @@
 # check below already uses, for the same reason: a stale number is not proof
 # of anything alive, and PID reuse after a reboot would otherwise lie.
 #
+# TIERS (#433, 10-19). A hold also carries a tier: blocker (a release defect
+# that needs on-device time), fps (today's default -- also the FPS-focus
+# chain's own tier), or sweep (idle-time screening of new titles, the
+# lowest). --tier on take/wait sets it; env HOLD_TIER is the fallback; no
+# tier at all is fps, so a caller nobody has updated keeps its old priority
+# instead of silently dropping to the bottom. Recorded in <label>.tier,
+# written by take's winner and removed by release, same rules as <label>.why.
+#
+# A SWEEP TAKE NEVER BEATS QUEUED WORK. take and wait at --tier sweep refuse
+# (exit 8; wait keeps polling instead of exiting) while a `0-*` (blocker) or
+# `1-*` (release/fps) request for this device label -- queued in
+# dispatch/queue/, or already running -- exists. "For this label" is
+# affinity.py's own answer, the same eligibility dispatcher.sh's serve_one
+# asks, not a guess from the id string: an unpinned request counts too,
+# since it could land on this label as easily as a pinned one.
+#
+# COOPERATIVE YIELD. A chain already holding a device at --tier sweep calls
+# `hold.sh yield-check <label> <tag>` between steps, never mid-capture (an
+# in-flight capture finishes first): exit 7 means release now and re-wait at
+# --tier sweep; exit 0 means keep going. A sweep hold also expires on its
+# own after HOLD_SWEEP_MAX_S (1800 s default) -- nothing runs on a timer to
+# release it, so the next contending take notices the stale tier file and
+# clears it rather than waiting forever on a chain that died without
+# releasing.
+#
 # DISPATCH_DIR resolves as dispatcher.sh and request.sh resolve it.
 set -u
 
@@ -121,7 +149,7 @@ D="${DISPATCH_DIR:-/home/justin/hakux-work/dispatch}"
 HOLD_WAIT_INTERVAL="${HOLD_WAIT_INTERVAL:-15}"
 HOLD_IDLE_INTERVAL="${HOLD_IDLE_INTERVAL:-5}"
 
-usage() { sed -n '3,24p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
+usage() { sed -n '3,27p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
 
 valid() { [[ "$2" =~ ^[A-Za-z0-9._:-]+$ ]] || { echo "hold.sh: bad $1 '$2' (want [A-Za-z0-9._:-]+)" >&2; exit 2; }; }
 
@@ -337,20 +365,52 @@ if op == "idle":
     sys.exit(0)
 
 tag = sys.argv[4]
+tier_path = path + ".tier"
 if op == "take":
-    reason = sys.argv[5]
+    tier = sys.argv[5]
+    reason = sys.argv[6]
     os.makedirs(hdir, exist_ok=True)
+    def try_create():
+        return os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
     try:
-        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
+        fd = try_create()
     except FileExistsError:
-        print(holder() or "held: %s (released while reading)" % label, file=sys.stderr)
-        sys.exit(3)
+        # A sweep hold expires on its own after HOLD_SWEEP_MAX_S (1800 s
+        # default, #433 10-19): nothing runs on a timer to release it, so
+        # the next contending take is what notices a stale one and clears
+        # it, rather than a dead screening chain holding the device forever.
+        expired = False
+        if (read(tier_path) or "").strip() == "sweep":
+            try:
+                age = time.time() - os.path.getmtime(path)
+            except OSError:
+                age = 0.0
+            max_s = float(os.environ.get("HOLD_SWEEP_MAX_S", "1800"))
+            if age >= max_s:
+                for p in (path, why, tier_path):
+                    try:
+                        os.remove(p)
+                    except FileNotFoundError:
+                        pass
+                expired = True
+        if not expired:
+            print(holder() or "held: %s (released while reading)" % label, file=sys.stderr)
+            sys.exit(3)
+        try:
+            fd = try_create()
+        except FileExistsError:
+            print(holder() or "held: %s (released while reading)" % label, file=sys.stderr)
+            sys.exit(3)
     with os.fdopen(fd, "w") as f:
         f.write(tag + "\n")
     tmp = "%s.%d.tmp" % (why, os.getpid())
     with open(tmp, "w") as f:
         f.write("%s %s: %s\n" % (time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), tag, reason))
     os.replace(tmp, why)
+    ttmp = "%s.%d.tmp" % (tier_path, os.getpid())
+    with open(ttmp, "w") as f:
+        f.write(tier + "\n")
+    os.replace(ttmp, tier_path)
     print("taken: %s by %s" % (label, tag))
     sys.exit(0)
 
@@ -366,8 +426,13 @@ if op == "release":
     # .why first: a .why without a hold is harmless, a hold without its .why
     # is a hold nobody can explain. Between the compare and the unlink no
     # other taker can create the file (it exists); only a hand `rm` could.
+    # .tier follows the same rule, for the same reason.
     try:
         os.remove(why)
+    except FileNotFoundError:
+        pass
+    try:
+        os.remove(tier_path)
     except FileNotFoundError:
         pass
     os.remove(path)
@@ -413,6 +478,77 @@ build_gate() {   # $1 label ; 0 pass, 4 refused (named on stderr)
     return "$rc"
 }
 
+# sweep_blocker <label>  ->  the first 0-*/1-* request id (queued in
+# dispatch/queue/, or already running) that is FOR this device label, on
+# stdout; nothing and exit 1 if none. "For this label" is affinity.py's own
+# answer -- the same eligibility dispatcher.sh's serve_one asks -- not a
+# guess from the id string: an unpinned 0-/1- request counts too, since it
+# could land on this label as easily as a pinned one. A request already
+# running is checked against its running/<id>.owner, where it actually
+# landed, not affinity.py's answer for a request already claimed.
+sweep_blocker() {
+    local label="$1" f id owner want
+    for f in "$D"/running/*.req; do
+        [ -f "$f" ] || continue
+        id=$(basename "$f" .req)
+        case "$id" in 0-*|1-*) ;; *) continue ;; esac
+        owner=$(cat "$D/running/$id.owner" 2>/dev/null)
+        [ "$owner" = "$label" ] && { printf '%s\n' "$id"; return 0; }
+    done
+    for f in "$D"/queue/*.req; do
+        [ -f "$f" ] || continue
+        id=$(basename "$f" .req)
+        case "$id" in 0-*|1-*) ;; *) continue ;; esac
+        want=$(python3 "$HERE/../affinity.py" "$D" "$f" 2>/dev/null)
+        if [ -z "$want" ] || [ "$want" = "$label" ]; then
+            printf '%s\n' "$id"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# yield_signal <label>  ->  the blocking request id and exit 0 when a sweep
+# hold on <label> should release NOW: any 0-* request queued or running for
+# it, or a 1-* one that has sat in queue/ (not yet running) at least
+# HOLD_YIELD_S (60) seconds. Nothing and exit 1 otherwise. Shares
+# sweep_blocker's running/ check (a 0-/1- already running is always urgent);
+# the queue/ half re-checks age, so a 1- that just landed does not yield a
+# sweep hold that was about to finish its own step anyway.
+yield_signal() {
+    local label="$1" f id epoch now owner want
+    now=$(date +%s)
+    for f in "$D"/running/*.req; do
+        [ -f "$f" ] || continue
+        id=$(basename "$f" .req)
+        case "$id" in 0-*|1-*) ;; *) continue ;; esac
+        owner=$(cat "$D/running/$id.owner" 2>/dev/null)
+        [ "$owner" = "$label" ] && { printf '%s\n' "$id"; return 0; }
+    done
+    for f in "$D"/queue/*.req; do
+        [ -f "$f" ] || continue
+        id=$(basename "$f" .req)
+        case "$id" in
+            0-*) epoch="${id#0-}"; epoch="${epoch%%-*}" ;;
+            1-*) epoch="${id#1-}"; epoch="${epoch%%-*}" ;;
+            *) continue ;;
+        esac
+        want=$(python3 "$HERE/../affinity.py" "$D" "$f" 2>/dev/null)
+        { [ -z "$want" ] || [ "$want" = "$label" ]; } || continue
+        case "$id" in
+            0-*) printf '%s\n' "$id"; return 0 ;;
+            1-*)
+                [[ "$epoch" =~ ^[0-9]+$ ]] || continue
+                if [ $(( now - epoch )) -ge "${HOLD_YIELD_S:-60}" ]; then
+                    printf '%s\n' "$id"
+                    return 0
+                fi
+                ;;
+        esac
+    done
+    return 1
+}
+
 # After a successful take: say so on stderr if the device is not idle yet. The
 # exit code and stdout are take's own; this only puts the second half in front
 # of a caller who reads one line and starts (session 61 read "taken:").
@@ -427,6 +563,28 @@ notice_idle() {
 [ $# -ge 2 ] || usage
 op=$1 label=$2
 valid label "$label"
+shift 2
+# --tier blocker|fps|sweep, take/wait only; env HOLD_TIER is the fallback;
+# absent is fps (today's priority), not sweep -- a caller nobody has
+# updated must not silently drop to the bottom. Consumed here, positionally,
+# so every case body below still sees exactly the $3/$4/... shape it always
+# has: $1=op $2=label, tag/timeout/why unchanged.
+TIER="${HOLD_TIER:-}"
+case "$op" in
+    take|wait)
+        if [ "${1:-}" = "--tier" ]; then
+            [ $# -ge 2 ] || usage
+            TIER=$2
+            shift 2
+        fi
+        ;;
+esac
+case "$TIER" in
+    ''|blocker|fps|sweep) ;;
+    *) echo "hold.sh: bad --tier '$TIER' (want blocker|fps|sweep)" >&2; exit 2 ;;
+esac
+[ -n "$TIER" ] || TIER=fps
+set -- "$op" "$label" "$@"
 case "$op" in
     who)
         [ $# -eq 2 ] || usage
@@ -439,7 +597,11 @@ case "$op" in
         [ $# -ge 4 ] || usage
         valid tag "$3"
         build_gate "$label" || exit $?
-        hold_py take "$label" "$3" "${*:4}" || exit $?
+        if [ "$TIER" = sweep ] && blocker=$(sweep_blocker "$label"); then
+            echo "hold.sh: refusing sweep take on $label: $blocker is queued or running for it" >&2
+            exit 8
+        fi
+        hold_py take "$label" "$3" "$TIER" "${*:4}" || exit $?
         if owner_play "$3"; then
             if ! cap_line=$(capture_ensure "$label"); then
                 echo "NO CAPTURE: $cap_line" >&2
@@ -486,6 +648,14 @@ case "$op" in
         hold_py release "$label" "$3"; rc=$?
         [ "$rc" -eq 0 ] && owner_play "$3" && capture_release "$label"
         exit "$rc" ;;
+    yield-check)
+        [ $# -eq 3 ] || usage
+        valid tag "$3"
+        if blocker=$(yield_signal "$label"); then
+            echo "hold.sh: yield: $blocker is queued for $label" >&2
+            exit 7
+        fi
+        exit 0 ;;
     wait)
         [ $# -ge 5 ] || usage
         valid tag "$3"
@@ -568,9 +738,13 @@ case "$op" in
             sleep "$interval"
         done
         while :; do
-            hold_py take "$label" "$3" "${*:5}" 2>/dev/null && { notice_idle; exit 0; }
-            rc=$?
-            [ "$rc" -eq 3 ] || exit "$rc"
+            if [ "$TIER" = sweep ] && blocker=$(sweep_blocker "$label"); then
+                echo "waiting for $label: $blocker (0-/1- tier) is queued or running; a sweep hold will not preempt it" >&2
+            else
+                hold_py take "$label" "$3" "$TIER" "${*:5}" 2>/dev/null && { notice_idle; exit 0; }
+                rc=$?
+                [ "$rc" -eq 3 ] || exit "$rc"
+            fi
             if [ "$(date +%s)" -ge "$deadline" ]; then
                 hold_py who "$label" >&2
                 echo "hold.sh: timed out after $4 s waiting for $label" >&2
