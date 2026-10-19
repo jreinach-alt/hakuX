@@ -136,7 +136,12 @@ def main():
                             % (f, lanes[0], " and ".join(lanes[1:])))
     for f in (d.get("free") or {}).get("files", []):
         if f in owner:
-            problems.append("%s is listed FREE but claimed by %s" % (f, owner[f]))
+            # 10-18 foldjam1018 (#433, item C): a widening lane that hits this had no next step named --
+            # it read the overlap and had to work out for itself that [free] is what's stale, not its own
+            # claim. Say the fix, not just the fact: release it from [free] in the SAME commit that adds it
+            # to the lane's row, so the two edits land together and no other check sees the file as both.
+            problems.append("%s is listed FREE but claimed by %s -- release it from [free] in the same "
+                             "commit that adds it to [lane.%s]'s files" % (f, owner[f], owner[f]))
 
     # Issues split from a common parent must not be concurrent. Only the pairs
     # this campaign has actually confused are listed; a guess here would be
