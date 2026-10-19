@@ -6,12 +6,15 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Right now
 
-No lane session is running.
+| Lane | Model | Running for | Working on |
+|---|---|---|---|
+| `gta3instr1018` | claude-sonnet-5 | 5 min | GTA III dip frame: race-free render-pass-break counters and timed vertex-copy, shader-bind and fence-wait cost |
+| `mkdawhite1018` | claude-sonnet-5 | 5 min | mkdawhite1018: Mortal Kombat: Deadly Alliance arena floors and walls draw flat white (#1058) |
 
 - **Handhelds:** 2 connected.
-  - Nova: free for the queue
+  - Nova: held by `2026-10-19T06:12:12Z`
   - Thor: held by `lane.local`
-- **Device queue:** 8 waiting, 1 running.
+- **Device queue:** 6 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -119,19 +122,19 @@ No lane session is running.
 
 ## Work in progress
 
-No branch is being worked right now.
+| Branch | Topic | Tip | Last change |
+|---|---|---|---|
+| `lane/gta3instr1018` | GTA III dip frame: race-free render-pass-break counters and timed vertex-copy, shader-bind and fence-wait costs | `8953b7636f` | 2026-10-18 12:55 |
+| `lane/mkdawhite1018` | mkdawhite1018: Mortal Kombat: Deadly Alliance arena floors and walls draw flat white (#1058) | `24fc4738c5` | 2026-10-18 19:50 |
 
 ## Recently landed on master
 
+- 2026-10-18 ralli2audio1018: RalliSport Challenge 2 audio dropouts: the voice processor's guest-memory overhead, producer timing, audio thread priority
+- 2026-10-18 pagesfix1018: fix the stale `check --pages` falsifier fixture
 - 2026-10-18 drive: local tools only, act-observe instead of wait-and-fail, learn what to press
 - 2026-10-18 fpsdiag1018: one FPS lane for GTA III, Blinx 2, Fable -- known/not/could-be and a diagnostic tool (#433)
 - 2026-10-18 gta3car1018: GTA III in the car -- the render passes are a feedback-loop copy per draw (#1049)
 - 2026-10-18 dispatcher: dev_push gets a read-only mode for the Nova's SD-card disc pushes
 - 2026-10-18 home branch root: move chart.svg/chart2.svg/COPYING.LIB under docs (#433)
-- 2026-10-18 holdcap1018: an owner-play hold starts a host logcat capture
-- 2026-10-18 README Highlights: drop GTA III/VC from the Playable list, name TimeSplitters 2, Mortal Kombat: Shaolin Monks and Burnout Revenge, and add two fix bullets
-- 2026-10-18 perflog1016: a pause-menu switch for the perflog telemetry tier, and a "Mark this moment" button (#433)
-- 2026-10-18 dispatcher: fix the staged-disc push's /mnt/d path so adb.exe can open it
-- 2026-10-18 The compatibility page adds RalliSport Challenge and Mortal Kombat: Shaolin Monks to Playable (92 -> 94)
 
-_Updated 2026-10-18 23:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 23:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
