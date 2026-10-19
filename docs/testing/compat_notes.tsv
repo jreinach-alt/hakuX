@@ -93,6 +93,9 @@ playable	45410011	Cel Damage	?	none	nova	29.9	0.9815	1082.1	2026-10-07
 playable	4947001C	Micro Machines (Europe)	Europe	filename	nova	59.94	1.0	672.9	2026-10-14	
 playable	4156001F	Lemony Snicket's A Series of Unfortunate Events (USA)	USA	filename	nova	59.88	1.0	606.8	2026-10-11	
 playable	4D53000F	RalliSport Challenge	?	none	nova	59.58	0.9166	295	2026-10-18	Car flicker (#804) fixed.
+playable	4B4E0030	Pro Evolution Soccer 5 (Europe)	Europe	filename	nova	59.94	1.0	659.9	2026-10-18	
+playable	4D530048	The Wild Rings	?	none	nova	53.29	1.0	454.1	2026-10-18	
+playable	544D0013	Knights of the Temple II	?	none	nova	29.97	1.0	438.3	2026-10-14	
 below_bar	5454000E	Grand Theft Auto III	?	none	nova				2026-10-12	Plays, but drops into the teens while driving in the city (below the 30 fps bar); tracked as #1049.
 below_bar	5454000F	Grand Theft Auto: Vice City	?	none	nova				2026-10-12	Plays, but drops into the teens while driving in the city (below the 30 fps bar); tracked as #1049.
 below_bar	41430004	Turok Evolution	USA	archive	Nova	29.85	0.8351		2026-10-07	
