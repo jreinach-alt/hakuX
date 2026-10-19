@@ -1220,4 +1220,109 @@ as a lesser result (G5).
 ### Device run
 
 Re-took the Nova hold through `hold.sh` (tag `lane.fpsnext1019`) rather than trust any prior `.why`, per every
-addendum's repeated caution, and verified device/app state before touching it.
+addendum's repeated caution, and verified device/app state before touching it: `hold.sh who nova` read `free`
+before taking it, `adb -s ee317437 shell dumpsys power`/`dumpsys window`/`dumpsys battery` showed the device
+asleep, no foreground app, battery 80% -- an idle, clean state, not a stale hold inherited from anything else.
+`hold.sh take nova lane.fpsnext1019 ...` reported held-but-busy (the dispatcher had not yet seen the hold), so
+waited on `hold.sh wait-idle nova 120` (exit 0) before touching the device, per the hold-is-not-idle rule.
+
+Ran batch `vtx1` (`batch.sh`, the same tool/protocol every prior device arm in this lane has used -- pause-menu
+slot-5 load with a screenshot check before every tap, RT held 60 s, never hand-driven adb) with two arms on the
+new `326bfebadb-perflog.apk` build, both plain `HAKUX_FRAMETRACE=1` (C2/vtxstale1018 is not behind an env switch
+-- it unconditionally replaces the old span memcpy, so no "on" flag exists to set): `captures/fpsnext1019/vtx1.
+nohup.log`, `RESTORE_OK`, `BATCH_DONE 16:11:21`.
+
+### Score against P1-P4
+
+**The raw `score2.txt` "drive" window is contaminated for these two arms** -- checked before trusting it, the same
+way Attempt 2 item 4 found S1's crash. Sampled `rec.mp4` frames at RT+2/8/10/12/14/16/18/20/23/24/25 for both C1
+and C2 (`runs/vtx1-C{1,2}/chk-*.png`): both drive cleanly through about RT+12 (C1) / RT+18 (C2), then each
+collides -- C1 scrapes a wall from ~RT+14 and is smoking, side-on, wheels spinning against a shopfront by RT+24
+(same "pinned" failure mode as S1's own crash, just starting earlier); C2 clips a pedestrian around RT+20 and
+scrapes a wall/awning through RT+23. Neither is a clean "driving" window end to end, so the full `[RT+1,RT+24]`
+span used for the sysmem/S2T_WIDEN comparisons is not valid here without re-deriving a shorter common span.
+
+Found the longest crash-free span common to all four arms being compared (`g3-S1`, `g3-S2` as the pre-merge
+baseline; `vtx1-C1`, `vtx1-C2` as the post-merge arms): **`[RT+1, RT+12]`**, verified clean on both C1 and C2 by
+the frame samples above, and already inside S1/Y1/M1's previously-verified `[RT+1,RT+24]` clean span from Attempt
+2 (so it is clean for the baseline arms too, not re-checked from scratch). Scored all four with `movescore.py` and
+`dwseries.py` on this matched span:
+
+| Arm | movescore fps (RT+1..12) | dwseries ms/flip | dwseries fps | rp/flip |
+|---|---|---|---|---|
+| S1 (pre-merge) | 20.9 | 47.8 | 20.9 | 105.9 |
+| S2 (pre-merge) | 16.8 | 62.7 | 16.0 | 189.6 |
+| C1 (post-merge) | 20.9 | 53.0 | 18.9 | 139.3 |
+| C2 (post-merge) | 17.4 | 60.4 | 16.6 | 182.8 |
+
+S mean 18.45 fps, C mean 17.75 fps -- **flat to slightly worse, not the required +1.0 floor.** rp/flip varies more
+between arms of the *same* code (S1 106 vs S2 190; C1 139 vs C2 183) than between S and C means, the same
+route-randomness noise Attempt 2 already named for RT-held autonomous driving (no steering input, so which streets
+and how much traffic the car meets is not controlled run to run) -- a 2-arm-per-side comparison cannot fully
+separate that from a real regression, but it does mean the matched-window fps result alone is not strong evidence
+either way. The per-field breakdown below is.
+
+**P1, mechanism -- confirmed, cleanly, and matches the audit's own estimate.** `dwcost.py` across full runs (not
+window-limited; its own `fbs/flip>=5` filter already selects in-car windows), `stale` ms/flip:
+
+| | S1 | S2 | C1 | C2 |
+|---|---|---|---|---|
+| `stale` ms/flip | 3.60 | 3.88 | 0.05 | 0.05 |
+
+A **3.55-3.83 ms/flip drop**, matching Addendum 4's isolated estimate (3.7-4.2 ms/flip) almost exactly, and
+consistent to two decimal places across both C arms regardless of their different routes/traffic -- this is a
+real, repeatable mechanism win, not route noise. The page-bitmap copy does what it was built to do.
+
+**P2, time/fps -- falsified, and the same `dwcost.py` table shows where the saved time went.** Full-run means
+(`ms` = total ms/flip):
+
+| field | S1 | S2 | C1 | C2 |
+|---|---|---|---|---|
+| `ms` (total) | 46.55 | 48.30 | 51.00 | 50.79 |
+| `full` (draws/flip) | 967 | 987 | 1002 | 1048 |
+| `rp` (passes/flip) | 101.7 | 136.3 | 131.8 | 147.9 |
+| `rotfen` (rotation fence) | 10.30 | 12.08 | 17.63 | 17.10 |
+| `fin_stalled` | 10.00 | 12.18 | 16.32 | 16.06 |
+
+Total `ms`/flip did not drop -- it rose (S mean 47.4 -> C mean 50.9, **+3.5 ms/flip**), the opposite of the
+mechanism's own saving. `full`/`rp` (draw volume, pass count) are both somewhat higher on the C arms too, which
+could be route variance alone (same caveat as the fps table above) -- but `rotfen` and `fin_stalled` rose by
+**+5.2 to +7.3 ms/flip** on *both* C arms over *both* S arms, a consistent, same-direction jump much larger than
+the `full`/`rp` deltas and far larger than the 3.6-3.9 ms the mechanism itself saved. This is the third time this
+session a CPU-side saving has not reached the player and shown up instead as a bigger same-session GPU-bound wait
+(`HAKUX_FBLOOP`'s in-pass-barrier drain, above; `HAKUX_SWZKEEP`'s re-spent GPU/idle time, Attempt 3; now this): a
+faster stale-copy lets the CPU reach the frame's `vkWaitForFences`/rotation-fence point sooner, which does not
+make the GPU finish sooner -- it just means more of the frame's fixed GPU-bound time now shows up as "waiting on
+the fence" (`rotfen`/`fin_stalled`) instead of being hidden behind the copy. Same mechanism row 23's `HAKUX_STALLFIN`
+finding already named (lost CPU/GPU overlap), now confirmed a third time on a third, unrelated CPU-side cost.
+
+**P3, pixels -- passes, borderline on one arm.** Full-frame `imgcheck.py` diff of `m3-loaded.png` (pre-RT, same
+save state): S1-vs-S2 (noise floor) = 0.2; S1-vs-C2 = 0.2 (matches the floor exactly); S1-vs-C1 = 1.2, S2-vs-C1 =
+1.2, C1-vs-C2 = 1.2 -- C1's own loaded-state screenshot differs from every other arm's (including C2's, same code)
+by 1.2, exactly at the "noise floor + 1.0" bound used for FBLOOP's P3, not over it. Since C2 (identical code to
+C1) matches the baseline exactly, this reads as a one-off screenshot-timing artifact on C1 (e.g. one extra HUD
+tick caught before the shot), not a pixel defect introduced by the fix -- passes, but noted as a closer call than
+FBLOOP's clean 0.1-vs-0.1 result rather than silently rounding it to "clean."
+
+**P4, stability -- passes.** No `DEVICE_LOST`/`FATAL`/`AndroidRuntime` string in either arm's `logcat.txt`/`arm.log`.
+
+**Verdict: C2 (the `lane/vtxstale1018` merge) is mechanistically correct and already landed in this branch's tree
+(no switch to flip -- it unconditionally replaces the old span copy), but it does not move GTA III's driving scene
+toward the owner's bar.** P1 passes cleanly and matches the audit's estimate almost exactly; P3 and P4 pass; P2,
+the leg that decides whether this is a result worth reporting as a win, is falsified in the same direction and by
+the same mechanism as `HAKUX_FBLOOP` and `HAKUX_SWZKEEP` before it this session. Not reverting the merge -- it is
+strictly correct per its own 3,000-rotation selftest, and a smaller copy is never a worse thing to ship even when
+it isn't the frame's bottleneck -- but it is not a fps result and FINDINGS.md says so.
+
+**This is the third strike on a blind CPU-side cost this session (FBLOOP's barrier, SWZKEEP's eviction, now C2's
+memcpy), and all three show the same shape: a real, confirmed, often large CPU-side saving that the GPU-bound
+`rotfen`/`fin_stalled` wait absorbs instead of delivering to the player.** Per G2 (mechanism before remedy) and G4
+(rank by probability x reach), continuing down Addendum 4's remaining numbered list blindly is now the *wrong*
+next step -- C1 (release pgraph/pfifo locks around `vkWaitForFences`) is itself another CPU-side item racing the
+same fence this attempt just showed absorbs CPU savings, and is likely to hit the identical wall for the identical
+reason without first knowing what the GPU is doing during that wait. The evidence-backed next question is: what
+dominates GTA III's in-car GPU time during `rotfen`/`fin_stalled` (a genuine GPU-side profiling question -- Turnip/
+perfetto GPU counters, or a per-pass GPU-ms breakdown of the busiest passes, not another CPU microopt) -- not yet
+started this attempt; ranked above C1/C3/C4/C6 for any future attempt on this title until that question is
+answered, per the owner's own 10-18 instruction against reaching for cheap/quick fixes before the thing that fits
+the measured cause.
