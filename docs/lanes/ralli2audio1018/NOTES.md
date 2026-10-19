@@ -1123,3 +1123,54 @@ found the hold gone.
   precedent for the same shape.
 - Did not touch `dispatch/hold/*` files; did not cancel or re-touch the
   pilot's own already-completed request.
+- Merged `origin/master` (this checkout was 18 commits behind; the SessionStart
+  hook flagged it). Clean merge, no conflicts; the incoming commits (gta3car1018,
+  gta3instr1018, a titledb1014 fixture, nv2a_index.json) do not touch
+  `docs/lanes/ralli2audio1018/**` or `hw/xbox/mcpx/apu/**`. Pushed
+  (`93ff5874e5..4dfe7f0600`).
+- **Bar run 1** (`1-1792377509-lane.ralli2audio1018-3558236`, default cache,
+  ref `4dfe7f0600`, 19:38-19:54 PDT): `title_verdict.py --require confirmation`
+  -- `FAIL(fps: 86.2% of gameplay at >= 30 fps (bar 90%))`, `gameplay=657.7s`,
+  `fps_ok=0.8618`, `audio_short=0.0`, `hitches=0/0.0pm`, `worst_ms=165.5`.
+  Audio and hitch bars are not just met, they are perfect for this run (cache
+  warm this time, so no compile bursts); fps_ok misses the 0.90 bar.
+- **Bar run 2** (`1-1792377543-lane.ralli2audio1018-3569502`, default cache,
+  queued immediately behind bar run 1, ran 19:54-20:10 PDT):
+  `title_verdict.py` returns `FAIL(window unmeasured: ...)` (a route-frame
+  sampling gap, 1 of the needed 3 post-mark samples -- not an audio or fps
+  fault) with `gameplay=629.8s audio_short=0.0 hitches=0/0.0pm`; its own
+  `fps_ok=1.0` is not trustworthy given the same void-shaped gap, so I read
+  `gfps=` directly from the logcat instead (`hakuX-perf(`, brief-format tag,
+  same miss `tools/timeline.py`'s fix addresses -- a plain substring search
+  for `hakuX-perf: gfps=` also finds nothing on a dispatcher result).
+- **The fps shortfall is a thermal confound from this attempt's own
+  scheduling, not the fix**: bucketing `gfps=` into 30 s windows, *both*
+  bar runs hold a clean ~59 fps for the first 150-210 s, then drop to a
+  25-50 fps band for the remainder (bar 1: 59->43 at 180-210s then 25-54
+  for the rest; bar 2: 59->38 at 210-240s then 30-54 for the rest) --
+  the same shape twice. `thermal.jsonl`'s `tz` samples (not the cooling-device
+  `cool` counters, which read a flat 0 "current state" throughout and are not
+  the signal) show why: bar run 1 starts at a cool 39-55C baseline and climbs
+  past 90C by t=200s, exactly where its fps cliff is; bar run 2 *starts*
+  already at 50-94C (t=0-38s) because it was queued immediately behind bar
+  run 1 with no cooldown, and its cliff lands a little later for the same
+  reason -- less fresh thermal budget left either way. This attempt queued
+  three 870 s soaks back to back (the cold-cache pilot, then bar 1, then bar
+  2) with no gap for the device to cool, which this lane did not check for
+  before queuing the second bar run. `run.log`'s own end-of-run clock-range
+  summary (`cpu3 1651-2707 of 2707, gpu 401-615 of 680`) is identical on both
+  runs, which looks like a since-boot cumulative range rather than a
+  per-run one -- not reliable evidence either way, which is why this reads
+  the per-sample `tz` thermal zones and the per-second `gfps=` instead.
+  `vp.c`/`apu.c` touch only the APU's CPU-side voice-register reads; nothing
+  in this fix runs on the render path, so a render-side fps cliff reproduced
+  identically in shape across two runs is not something this change could
+  cause either way.
+- Queued a third bar run, `1-1792379494-lane.ralli2audio1018-219355`, behind
+  `mkdawhite1018`'s already-queued 420 s request (plus a 60 s
+  `dispatch.restore` job) so the Nova gets a real gap of a different, shorter
+  workload before this lane's next 870 s soak -- not a certain fix for the
+  thermal confound, but the cheapest next check: if the fps cliff still lands
+  at the same ~180-210 s mark despite that gap, the confound explanation is
+  wrong and needs more digging; if it does not, the gap was enough.
+- Updated `WAITING` to the new request id.
