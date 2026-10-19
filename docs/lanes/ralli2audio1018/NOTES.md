@@ -611,3 +611,74 @@ overdue and the Nova is still absent from `adb devices -l`. Once
    `audio_starve_share`.
 4. Update `FINDINGS.md` and `PR.md` with the measured numbers, and move
    `PR.md`'s `State:` to `ready`.
+
+Attempt 8 (10-18, about 18:10 PDT) -- why attempt 7 did not finish: same
+external wait as attempts 3-7 (the Nova physically absent from the
+dispatch host since the 12:06:56 PDT dispatcher restart); attempt 7 ended
+correctly on `waiting:`, which is a finished session, not a stall.
+
+- Read this file and `git log` first, per the resume brief.
+- Re-checked every input once more: `dispatch/hold/` has only `thor` and
+  `thor.why`, no `nova` file (hold stays logically free, unchanged since
+  attempt 3). `adb devices -l` and `devices.sh list` both still show only
+  `bdc158a5` (thor). `dispatch/logs/dispatcher.log` is byte-for-byte
+  unchanged from attempt 7's read: its last line and its mtime are both
+  still 12:06:56 PDT, now 6h03m with no dispatcher activity at all (not
+  just no Nova worker -- the log has not moved since that restart).
+  `dispatch/running/` is empty; `dispatch/results/` has no new entry for
+  this lane's request id; the queued `.req` file itself is unchanged
+  (same 3801 bytes, same 17:06 mtime).
+- `dispatch/hold/thor.why` is unchanged text (lane.local, thermal test,
+  "due back about 17:00 PDT"); current time 18:10 PDT is now 1h10m past
+  that estimate, up from 1h06m at attempt 7 -- the overrun is growing by
+  about the wall-clock between attempts, not resolving.
+- Weighed the retry-limit rule (same cause twice means stop and report,
+  not a third mechanical retry): on inspection it does not fit here. That
+  rule targets a lane re-running the same *action* and hitting the same
+  *failure* (e.g. six scripted drive attempts that each void the same
+  way) -- work this lane could choose to stop doing. Here the lane has
+  taken no repeated action to stop: one request was queued once, at
+  attempt 3, and every attempt since has only read dispatcher state
+  without re-queuing, re-running, or touching either device, exactly as
+  the brief's device-holds note requires ("a hold is not a reason to
+  idle" is answered by the offline work already done, not by polling
+  harder). The thing recurring is the resume, not a lane-chosen retry;
+  the lane's own contract says this is the correct shape ("a resume for a
+  wait does not count against your attempts") and that ending on
+  `waiting:` is itself the finished outcome, repeated until the signal
+  resolves.
+- What *is* new this attempt, worth surfacing rather than re-stating: the
+  dispatcher log's silence is now long enough (6h+, spanning the Thor
+  hold's entire stated window and beyond) that "the Nova is mid-thermal-
+  test" is a weaker explanation than it was at attempt 3. The Thor hold
+  is specifically about the Thor, not the Nova -- nothing in it explains
+  why the Nova itself has not reconnected to the dispatch host for six
+  hours, nor whether anyone has checked. This is the one thing a resume
+  of this lane cannot resolve by reading more files: it needs someone
+  with hands on the hardware (or on `hub-devices.md`'s owner) to check
+  whether the Nova is simply off, or stuck, or waiting on a USB
+  reconnect, independent of whether the Thor thermal test itself is
+  still running.
+- Branch state unchanged: Work 1-3, the `vp.c` fix, `FINDINGS.md` and
+  `PR.md` were already complete entering this attempt; nothing new to
+  build or measure offline exists until the queued request runs. Did not
+  re-queue, cancel, or touch either device.
+
+[lane.ralli2audio1018] waiting: dispatch request
+`1-1792368418-lane.ralli2audio1018-1108710` (the cold-cache pilot on
+`ec7e06c467`, nova, 870s, `HAKUX_PLC_WIPE=1`), queued but unclaimed
+because the Nova is not yet physically reconnected to the dispatch host.
+Unchanged since attempt 3: `dispatch/hold/` names only `thor`, no `nova`;
+`adb devices -l`/`devices.sh list` show only the Thor (`bdc158a5`);
+`dispatch/logs/dispatcher.log` has not advanced since the 12:06:56 PDT
+restart (now 6h03m). New this attempt: the Thor's "due back about 17:00
+PDT" estimate is now 1h10m overdue and growing, and that window no longer
+covers the gap -- six hours of dispatcher silence on the Nova is no
+longer explained by "mid-thermal-test" alone. This is the point worth a
+person's attention: whether the Nova is simply off, stuck, or waiting on
+a physical reconnect is not answerable by reading logs from inside this
+session. Once `adb devices -l`/`devices.sh list` shows the Nova again and
+the request's `results/<id>/DONE` appears, steps 1-4 above (read the
+`vp=` producer timing, write the pilot verdict, queue the two bar runs,
+update `FINDINGS.md`/`PR.md` and flip `PR.md` to `ready`) are what is
+left.
