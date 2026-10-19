@@ -8,17 +8,17 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `fpsdata1018` | claude-sonnet-5 | 1 min | fpsdata1018: FPS dip causes in the 4-title owner capture, and fixes (#433) |
+| `fpsdata1018` | claude-sonnet-5 | 16 min | fpsdata1018: FPS dip causes in the 4-title owner capture, and fixes (#433) |
 
 - **Handhelds:** 2 connected.
-  - Nova: free for the queue
+  - Nova: held by `2026-10-19T06:58:36Z`
   - Thor: held by `lane.local`
-- **Device queue:** 3 waiting, 1 running.
+- **Device queue:** 0 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
 
-**94 titles are confirmed Playable** (5 today). Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
+**94 titles are confirmed Playable** (0 today). Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
 
 | Confirmed | Title | Result |
 |---|---|---|
@@ -127,6 +127,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Recently landed on master
 
+- 2026-10-18 GTA III dip frame: race-free render-pass-break counters, timed fence/copy/bind costs, and the in-car fen split
 - 2026-10-18 ralli2audio1018: RalliSport Challenge 2 audio dropouts: the voice processor's guest-memory overhead, producer timing, audio thread priority
 - 2026-10-18 pagesfix1018: fix the stale `check --pages` falsifier fixture
 - 2026-10-18 drive: local tools only, act-observe instead of wait-and-fail, learn what to press
@@ -135,4 +136,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-18 dispatcher: dev_push gets a read-only mode for the Nova's SD-card disc pushes
 - 2026-10-18 home branch root: move chart.svg/chart2.svg/COPYING.LIB under docs (#433)
 
-_Updated 2026-10-18 23:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-19 00:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
