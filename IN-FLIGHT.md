@@ -8,9 +8,10 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `savestate-req1019` | claude-sonnet-5 | 44 min | savestate-req1019: load a save state through request.sh -- no hand-driving to reach a scene (#433) |
+| `fpsnext1019` | claude-sonnet-5 | 6 min | fpsnext1019: GTA III in-pass feedback barrier (HAKUX_FBLOOP, opt-in), Blinx 2 and Fable gameplay captures (#43 |
+| `savestate-req1019` | claude-sonnet-5 | 59 min | savestate-req1019: load a save state through request.sh -- no hand-driving to reach a scene (#433) |
 
-- **Handhelds:** 2 connected.
+- **Handhelds:** 0 connected.
   - Nova: free for the queue
   - Thor: held by `lane.local`
 - **Device queue:** 0 waiting, 0 running.
@@ -126,6 +127,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
+| `lane/fpsnext1019` | fpsnext1019: GTA III in-pass feedback barrier (HAKUX_FBLOOP, opt-in), Blinx 2 and Fable gameplay captures (#433) | `401c075ef7` | 2026-10-19 15:57 |
 | `lane/savestate-req1019` | savestate-req1019: load a save state through request.sh -- no hand-driving to reach a scene (#433) | `789fbfe36e` | 2026-10-19 15:03 |
 
 ## Recently landed on master
@@ -141,4 +143,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-19 drive: local tools only, act-observe instead of wait-and-fail, learn what to press
 - 2026-10-19 mkdawhite1018: Mortal Kombat: Deadly Alliance arena floors and walls draw flat white (#1058)
 
-_Updated 2026-10-19 15:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-19 16:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
