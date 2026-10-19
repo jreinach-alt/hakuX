@@ -5,8 +5,8 @@ State: draft
 Lane: fpsdata1018            Issue: #433
 Base: master @ 72af9cb92c
 Files: hw/xbox/nv2a/pgraph/vk/texture.c, hw/xbox/nv2a/pgraph/vk/surface.c, hw/xbox/nv2a/pgraph/vk/renderer.h, docs/lanes/fpsdata1018/NOTES.md, docs/lanes/fpsdata1018/PR.md, docs/lanes/fpsdata1018/typecheck.py, docs/lanes/fpsdata1018/routes/fpsdata1018-ralli2-drive.route, docs/testing/predictions/fpsdata1018-texscan2d-pixels.json, docs/testing/predictions/fpsdata1018-s2tfb2-pixels.json, docs/testing/perf/fpsdiag/fpsdiag.py, docs/testing/jobs/selftest.d/99-fpsdiag.sh
-Prediction: docs/testing/predictions/fpsdata1018-texscan2d-pixels.json @ 2aed2cea325ead44a673f008d5155ac193891f2fa6fa1d773cb485608818437e
-Prediction: docs/testing/predictions/fpsdata1018-s2tfb2-pixels.json @ 2666753999a5c2ecabfeeb211c32979ea7867698e40c07d47c716463613d2063
+Prediction: docs/testing/predictions/fpsdata1018-texscan2d-pixels.json @ c689d167b09d2d0493cf5a2b5a8a613a6f22d3bee8110780b0752e069587f0e4
+Prediction: docs/testing/predictions/fpsdata1018-s2tfb2-pixels.json @ 88ad82540966c87bd47256c67f159d70545b71667c6690ff58a1d4ee69eb1a7f
 Needs device: yes    Needs NDK: yes
 
 Reads the owner's 2026-10-18 capture of RalliSport 2, GTA III, Fable and Blinx 2 (master perflog 72af9cb92c) for
@@ -39,8 +39,12 @@ a render target created while the antialiasing/supersampling scale factor was no
 GPU-side copy after the scale factor changed back to 1, and the copy read a crop of its oversized backing image
 instead of a resolved one. `SurfaceBinding` now remembers the scale factor its image was actually created under,
 and the copy route declines a render target whose image does not match the current, unscaled grid (falling back
-to the pre-existing download path, which already handles this correctly). Pixel prediction re-registered against
-this fix; its arms result will post to this PR.
+to the pre-existing download path, which already handles this correctly).
+
+**Fixed a second pixel regression found by the same prediction, in a different format.** The copy route also
+missed NV2A's shadow-comparator depth-as-texture formats: a texture read through the comparator unit needs the
+same value-preserving treatment already given to compressed and converted formats, not a raw copy. Excluded.
+Both prediction fixes are re-registered against their own commits; their arms results will post to this PR.
 
 **GTA III's in-car dip: the surface-sampled-as-its-own-texture copy loop now keeps a run's copy by default.**
 `HAKUX_S2T_FB` (built earlier, off by default) lets a slot reuse this run's cached copy of a colour target it
@@ -52,6 +56,13 @@ is now the default (`=0` opts out, `=1` keeps the unsafe any-stage mode as opt-i
 with light-traffic moments reaching 30 fps; it stopped short of proving the size of the win because its second
 repeat aborted on an adb glitch. This fix does not reach 30 fps on its own in heavy traffic (the fence wait and
 stalled finishes still scale with pass count); it is this lever's contribution, not the whole dip.
+
+**Fixed a correctness bug this lever's own pixel prediction caught.** The lever above classified one
+texture-shader combiner mode (the one that computes a dot product from the texture's own texel, used for bump
+mapping) as one that "does not read its texture" -- it does, so a stage in that mode could be handed a stale
+copy. Excluded it from the set that may keep a cached copy; the other three modes in that set emit a constant or
+need no texture at all, confirmed by reading the shader generator directly, not by inference from this lever's
+own code. Pixel prediction re-registered against the fix.
 
 **Owner capture recipe to confirm the fps size of this one** (no reproducible device route exists for GTA III's
 specific in-car save state through the dispatcher's own --save registry, and this lane's device verification
