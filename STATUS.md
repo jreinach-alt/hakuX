@@ -1,12 +1,12 @@
 # hakuX status
 
-_updated 2026-10-18 22:54 PDT_
+_updated 2026-10-18 23:27 PDT_
 
-0.6: Measured 263 / 300 · Playable 94 / 110.
+0.6: Measured 264 / 300 · Playable 94 / 110.
 
 ## How close is 0.6?
 
-Measured **263** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓▓▓░`
+Measured **264** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓▓▓░`
 
 Playable **94** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓▓▓░`
 
@@ -21,12 +21,12 @@ Playable **94** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓▓▓░`
 | 0.6 | 300 | 2026-10-21 | 110 | 2026-10-21 |
 | 0.7 | 425 | 2026-10-29 | 185 | 2026-10-31 |
 | 0.8 | 575 | 2026-11-08 | 300 | 2026-11-16 |
-| 0.9 | 725 | 2026-11-19 | 480 | 2026-12-11 |
-| 1.0 | 876 | 2026-11-29 | 789 | 2027-01-24 |
+| 0.9 | 725 | 2026-11-18 | 480 | 2026-12-11 |
+| 1.0 | 876 | 2026-11-28 | 789 | 2027-01-24 |
 
 Measured: titles with a frame rate reading taken during gameplay, on either handheld. Playable: titles rated Playable. The charts place each title on the date it first qualified, and the projected dates in the table assume the last 7 days' pace continues.
 
-Ships when both are met. At the last 48 h rate: about 2026-11-24.
+Ships when both are met. At the last 48 h rate: about 2026-11-11.
 
 Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/Nova handhelds.
 
@@ -257,6 +257,7 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | **Pilot Down Behind Enemy Lines Europe** | 🔵 Measured, not rated yet | **23.3**<br>Nova, Oct 7 |
 | **Plus Plumb 2** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 13 |
 | **Prince of Persia: The Sands of Time** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 13 |
+| **Pro Evolution Soccer 5 Europe** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 18 |
 | **Project Gotham Racing 2** | 🔵 Measured, not rated yet | **55.7**<br>Thor, Sep 29 |
 | **Psychonauts** | 🔵 Measured, not rated yet | **22.0**<br>Thor, Sep 30 |
 | **RalliSport Challenge 2** | 🔵 Measured, not rated yet | **44.7**<br>Nova, Oct 18 |
@@ -662,5 +663,5 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 
 </details>
 
-620 titles: 94 Playable, 8 below 30 fps, 15 crash or hang, 147 measured but not rated yet, 356 not tested yet.
+621 titles: 94 Playable, 8 below 30 fps, 15 crash or hang, 148 measured but not rated yet, 356 not tested yet.
 
