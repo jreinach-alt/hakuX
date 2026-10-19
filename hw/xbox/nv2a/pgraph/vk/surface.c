@@ -3546,6 +3546,40 @@ static struct {
  * surface_handoff_partner), and ones that fell back to the download. */
 static unsigned long surface_handoffs, surface_handoff_fallbacks;
 
+/*
+ * #433, HAKUX_SWZKEEP=1 (off by default): a binding the guest re-marks
+ * linear <-> swizzled at the same address, format, pitch and size stays bound
+ * (update_surface_part's swizzle rescue) instead of being evicted.
+ *
+ * Without it the eviction records a download of the binding and shelves it,
+ * and get_shelved_surface, which does not compare swizzle, hands the same
+ * struct and VkImage straight back as the replacement, clean: the GPU keeps
+ * the pixels it had, and the download only puts them in VRAM in the old
+ * layout. Blinx 2 does this to a 256x256 Z twice a flip ([evict372] m10
+ * Z ln -> sz, [edl] other=120 per 60 flips, unshelve 120, stale 0), and the
+ * first surface_update after the flip waits on the GPU for those downloads,
+ * ~22 ms a flip (lane.fpsnext1019 NOTES). Kept, the binding stays draw-dirty
+ * with its watch live, so a CPU access, a texture that cannot take the image
+ * or a later eviction still downloads it, in the layout the guest declares.
+ * Only where VRAM holds nothing newer (no CPU write, no pending upload or
+ * download) and a watch sees CPU accesses (TCG), as the handoff requires.
+ * Cumulative count on a [swzkeep] line beside [evict372].
+ */
+static int swzkeep_state = -1;
+static unsigned long swzkeep_count;
+
+static bool swzkeep_on(void)
+{
+    if (swzkeep_state < 0) {
+        const char *e = getenv("HAKUX_SWZKEEP");
+        swzkeep_state = e && e[0] == '1';
+        if (swzkeep_state) {
+            SURF92_LOG("[swzkeep] on");
+        }
+    }
+    return swzkeep_state;
+}
+
 static void evict372_side(EvictSide *e, SurfaceBinding const *s)
 {
     /* Compared with memcmp, so the padding is zeroed first. */
@@ -3619,6 +3653,9 @@ static void evict372_log(void)
                "fallbacks=%lu",
                masks, g_evict372.pair_overflow, surface_handoffs,
                surface_handoff_fallbacks);
+    if (swzkeep_on()) {
+        SURF92_LOG("[swzkeep] kept=%lu", swzkeep_count);
+    }
     for (int i = 0; i < EVICT_PAIRS && g_evict372.pair[i].n; i++) {
         EvictSide const *f = &g_evict372.pair[i].from;
         EvictSide const *t = &g_evict372.pair[i].to;
@@ -5723,8 +5760,16 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                 // destined to be cleared and (2) a fully cleared linear surface
                 // to be marked swizzled. Strictly match size to avoid
                 // pathological cases.
-                bool rescued = (pg->clearing || surface->cleared) &&
-                    check_surface_compatibility(surface, &target, true);
+                bool strict = check_surface_compatibility(surface, &target,
+                                                          true);
+                bool rescued = (pg->clearing || surface->cleared) && strict;
+                /* HAKUX_SWZKEEP: what the eviction would hand back anyway. */
+                if (!rescued && strict && swzkeep_on() && tcg_enabled() &&
+                    !mem_dirty && !surface->upload_pending &&
+                    !surface->download_pending) {
+                    rescued = true;
+                    swzkeep_count++;
+                }
                 is_compatible &= rescued;
                 evict_why |= rescued ? 0 : EVICT_WHY_SWIZZLE;
                 if (is_compatible) {
