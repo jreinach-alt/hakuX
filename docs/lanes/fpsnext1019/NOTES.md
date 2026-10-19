@@ -745,3 +745,122 @@ built for (P3). It is already opt-in and default-off, so nothing further is need
 further work on this lever is planned unless a future finding explains why the GPU/stall cost appeared and shows
 how to avoid it without the VRAM staleness. Both predictions (G3) did their job: three of the four legs across the
 two levers were falsified, and each falsifier named a concrete, truthful next step instead of a vague "inconclusive."
+
+## Attempt 5, item 1: Fable H2 -- reachability (no usable save state), the eviction window already in the owner's
+capture, and the G3 prediction for `[edl]`
+
+Brief item 3's instrument (`[edl]`, fpsdata1018, landed on master already: see `hw/xbox/nv2a/pgraph/vk/surface.c`
+`EDL_MARK`/`EDL_RESOLVE`/`edl_dl`/`edl_clrskip`/`edl_upload`/`edl_other`) has never been run against a real Fable
+capture. fpsdata1018's own NOTES.md says why it stopped there: "Fable has no route or save state to its gameplay
+scene." Checked that claim before relying on it (G1, do not re-derive a stale premise):
+
+- Fable's 4 on-device save states (`slot0`/`slot1`/`slot2`/`undo-save`, the owner's own 2026-10-18 21:31 session)
+  are all **schema-incompatible** on the current perflog build -- the in-game "Load from slot" list shows every
+  populated row greyed out, `reason="saved by a version with different machine state"`. Confirmed in source, not
+  just the UI: `SaveStateSlots.kt`'s `loadable` flag and `hxs.c`'s `schema` fingerprint check (`xemu_savevm_schema_
+  fingerprint()`), which refuses a load only when the serialized vmstate struct layout differs between builds, not
+  merely because the commit differs. These states are not a reachability shortcut here; ruled out, not reused.
+- No generic dispatcher route reaches Fable's gameplay scene either (same gap class fpsdata1018 named).
+- But the owner's existing capture (`/home/justin/hakux-work/captures/fps-owner-1018/fable.txt`, 2026-10-18
+  21:28:25-21:32:00, title 4D5300D1, `GPU: PurpleVK`) already contains the answer to "is H2 rare or common": its
+  `hakuX-stall: evict[dl:N ...]` census line is near-zero through the loading screen (~21:29:40), ramps 21:29:51-
+  21:30:01, then holds **~300-460 per ~60-frame window continuously from 21:30:06 to the capture's end at
+  21:31:39** (the save). H2's eviction-download pattern is not a special location -- it is the steady state of
+  ordinary Fable gameplay once the player has control. A simple fresh-boot walk-and-turn should reproduce it with
+  no route or save state needed.
+
+**Reachability, this attempt:** launched Fable cold (`HX_ISO=/storage/E6C6-D7AA/Games/XBox/4D5300D1-Fable_The_Lost_
+Chapters.xiso.iso`, confirmed PID, `GPU: PurpleVK-public Adreno (TM) 740`), confirmed the pause-menu overlay and
+its existing `p7-menu.png`/`p8-slots.png` references are title-agnostic (visually matched Fable's own pause menu,
+Load-state button bounds the same as `arm.sh`'s hardcoded 384,234,896,334 box -- no new reference assets needed),
+backed out of the (unusable) slot list without loading or saving, then drove the real opening sequence with
+`pad.sh` (never raw `keyevent` once inside actual game input, per its own warning that `keyevent` reads as a
+non-gamepad exit signal there; `keyevent`/`tap` stay correct for the emulator's own pause-overlay, a system layer):
+START at the profile-name entry screen, A to accept "Default", through the loading screen ("Charity Shop" tip)
+and the opening narration ("Deep in the forest of Albion lay the small town of Oakvale..."), to the first in-
+engine tutorial prompt ("Talk to the people marked on your MAP with a GREEN DOT... Press A to talk"), confirmed by
+screenshot with the player character standing in Oakvale under direct control (FPS:20, narr5.png). Dismissed the
+prompt with `pad.sh press A`.
+
+(Operational note: the first detached logcat capture, started before the narration finished, stalled silently at
+12:15:55 PDT with no process visible under `ps aux | grep logcat` in this sandboxed shell and the capture file
+not growing for 4+ minutes -- caught by checking line count before trusting the capture, not by a clean exit
+code. Restarted (`setsid nohup ... &` + `disown`, one command per call) and confirmed growing again before
+proceeding. The movement capture below uses only the second, verified-live capture.)
+
+### G3 prediction for the Fable H2 `[edl]` capture (written before the movement that produces it)
+
+Target: walk-and-turn via `pad.sh` for ~60-90s from the current in-control position (Oakvale, tutorial-prompt
+dismissed), under the live `h2-logcat.txt` capture, matching the owner capture's steady-state window (`evict[dl:
+300-460]`/~60-frame window). Read `[edl]`'s `dl`/`clrskip`/`upload`/`other` sums once the movement window closes.
+
+Per brief Addendum 2's own wording ("build the eviction-download skip only if `clrskip` is 6/6"): the lever is a
+full, unconditional skip (treat every evicted-and-downloaded zeta/colour binding in this pattern as unread, never
+pay the download), so it is only safe to build if the downloaded content is *never* read back -- a partial ratio
+does not make an unconditional skip safe, it makes it wrong on the fraction that is read.
+
+| leg | rule | falsified if |
+|---|---|---|
+| P0 reproduction | `edl_dl` > 0 over the movement window, with `dl` in the same order of magnitude as the owner capture's steady-state (~300-460/60-frame window) | `edl_dl` stays 0 or far below that: the scripted walk-and-turn does not reproduce H2 and a different route/longer window is needed before any decision can be made |
+| P1 decides the lever (this is the actual test Addendum 2 asked for) | `edl_clrskip` / `edl_dl` == 1.0 (6/6, every eviction's download is provably unread before any consumer touches the replacement binding) | ratio < 1.0: at least one evicted download is real feedback (`edl_upload` or `edl_other` nonzero) -- an unconditional skip would drop a real read, so the lever is **not built** this attempt; H2 would need a conditional (per-binding) lever instead, a bigger change, ranked against the brief's remaining items rather than assumed |
+
+P1 is the single number this attempt turns on, exactly as item 2 asked. No pixel or fps leg is predicted yet
+because there is nothing to measure pixels or fps against until P1 says a lever exists to build.
+
+### Capture and verdict: P0 reproduces, P1 is falsified -- `HAKUX_S2T_DEAD`-style skip is not built for H2
+
+**Reachability note (operational, not a finding):** the installed APK at the start of this item's device time
+turned out to be a plain debug build, not a perflog build (`versionName=0.5.0-1019-913e1524ff`, no `-perflog`
+suffix) -- `opt_stats_log_and_reset()`'s whole body, `evict[dl:...]` included, is `#if NV2A_PERF_LOG` and compiles
+to nothing without it (`debug.h:222`, `-Pperflog=true`), so a first 75s movement window against that build read
+zero `evict[dl:]`/`[edl]` lines even though `[drawrec]` kept printing (a different, always-compiled counter) --
+not a scene or mechanism finding, a build-selection miss, caught by checking the function body rather than
+trusting "the app is running and logging something." Installed the most recent perflog build with no source
+drift from HEAD (`711315bbe7-perflog.apk`; `git diff --stat 711315bbe7 HEAD -- '*.c' '*.h'` empty), relaunched.
+The reinstall force-stopped Fable, but the virtual Xbox HDD (`hdd-owner-1018.img`, already the active hddPath)
+had an **AutoSave** from the earlier recon session's own progress -- Default profile, Region: Oakvale -- so
+"Continue Game" -> "Load Game" -> AutoSave reached the same opening narration/cutscene chain again (no shortcut
+past it; the AutoSave point is itself right at the very start) but needed no fresh profile creation. Skipped the
+in-engine father/daughter cutscene (`Y, Skip Scene`) to reach player control faster, dismissed the tutorial
+prompt (`pad.sh press A`), confirmed `GPU: PurpleVK-public Adreno (TM) 740` for the new PID (25524) before
+treating anything from it as real.
+
+**Movement window:** marked device-clock start (12:29:05.770) and end (12:30:40.701, ~95s), `pad.sh`-driven walk
+(LY forward, LX swept sine-wave for turns, same pattern as the Blinx 2 arm script's circling) through Oakvale's
+tutorial area past several houses and an NPC, confirmed by screenshot (HUD/map/health bar active, character mid-
+stride near a house door, an NPC beside it) that this was genuine movement, not a static idle frame. Archived the
+raw logcat and the confirming screenshot: `captures/fpsnext1019/runs/fable-h2/{logcat.txt,after-move.png,window.txt}`.
+
+**P0, reproduction** -- confirmed, and stronger than the owner's capture: `evict[dl:]` in-window reads 507-767 per
+~3.4s/60-flip tick (owner capture: 300-460), ramping up over the first ~3 windows then holding steady (739-767)
+for the rest of the window. H2's eviction-download pattern is reliably reproducible from a cold boot with no
+route or save state, exactly as the owner capture's mining predicted.
+
+**P1, the actual decision** (`[edl]` lines in the same window, 27 ticks after the 3-tick ramp-up/warm-up is
+naturally included -- summed, not cherry-picked):
+
+| field | sum over 27 windows |
+|---|---|
+| `dl` (evicted bindings whose download fired) | 3,171 |
+| `clrskip` (provably never read -- covering clear dropped the pending upload first) | 1,597 |
+| `upload` (replacement binding uploaded -- the download fed a real read) | 1,574 |
+| `other` (ambiguous) | 0 |
+
+`clrskip`/`dl` = **0.504**, not 1.0 (6/6). Every single one of the 27 windows carries a nonzero, consistently-
+sized `upload` count (`upload` sits at exactly 60 in every post-ramp-up window -- a fixed-size batch of bindings
+whose replacement is genuinely read, almost certainly the per-frame zeta-clear-then-read cycle the H2 mechanism
+section already named) alongside a roughly-matched `clrskip`. **P1 is falsified clearly, not a near-miss:** close
+to half of every window's evicted-and-downloaded content is real feedback a later stage reads. Per the G3
+prediction's own falsifier and per Addendum 2's own wording, an unconditional skip is not safe to build on this
+ratio -- it would silently drop the ~50% of downloads that are real reads, the exact failure mode a "clrskip
+6/6" bar was chosen to rule out before writing any code.
+
+**Verdict: the `HAKUX_S2T_DEAD`-style unconditional download-skip is not built for Fable H2 this attempt.** The
+mechanism itself (deferred-download-on-eviction, same `[edl]` instrument fpsdata1018 built and never ran) is
+confirmed real and reproducible -- this is not a "could not test it" result, it is a clean, instrument-backed
+negative exactly like `HAKUX_S2T_DEAD`'s own P0 on GTA III (G5: a decided question, not a shrug). The 50/50 split
+also names H2's actual next-ranked option, if anyone picks this back up: a **conditional**, per-binding skip
+(something like `HAKUX_SWZKEEP`'s keep-bound mechanism, or a per-binding "was this eviction's replacement ever
+sampled" gate) rather than a blanket one -- a bigger change than this attempt's budget, and not started here;
+ranked against the brief's remaining items (GTA III beyond R2, the RalliSport 2/Fable landed-lever read-back),
+not clearly higher-probability-times-win than either without its own mechanism writeup first.
