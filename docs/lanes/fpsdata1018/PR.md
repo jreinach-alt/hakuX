@@ -6,7 +6,7 @@ Lane: fpsdata1018            Issue: #433
 Base: master @ 72af9cb92c
 Files: hw/xbox/nv2a/pgraph/vk/texture.c, hw/xbox/nv2a/pgraph/vk/surface.c, hw/xbox/nv2a/pgraph/vk/renderer.h, docs/lanes/fpsdata1018/NOTES.md, docs/lanes/fpsdata1018/PR.md, docs/lanes/fpsdata1018/FINDINGS.md, docs/lanes/fpsdata1018/typecheck.py, docs/lanes/fpsdata1018/routes/fpsdata1018-ralli2-drive.route, docs/testing/predictions/fpsdata1018-texscan2d-pixels.json, docs/testing/predictions/fpsdata1018-s2tfb2-pixels.json, docs/testing/perf/fpsdiag/fpsdiag.py, docs/testing/jobs/selftest.d/99-fpsdiag.sh
 Prediction: docs/testing/predictions/fpsdata1018-texscan2d-pixels.json @ 19f09787277ab9f3e79c32f0574b73a0837585c5a7d7b259a6b6944d51725334
-Prediction: docs/testing/predictions/fpsdata1018-s2tfb2-pixels.json @ 0ddea0f6472d35377e679473d870c589b237306eb19ccea2fd97c3e80f8edfbc
+Prediction: docs/testing/predictions/fpsdata1018-s2tfb2-pixels.json @ 095ad2d3ea15762744ae3c7587cbfada403b47f8f46af06da10c2169eef0ead1
 Needs device: yes    Needs NDK: yes
 
 Reads the owner's 2026-10-18 capture of RalliSport 2, GTA III, Fable and Blinx 2 (master perflog 72af9cb92c) for
@@ -65,6 +65,13 @@ need no texture at all, confirmed by reading the shader generator directly, not 
 own code. The copy cache also gained the same depth-as-texture exclusion the surface-to-texture copy above
 already needed, for the same reason -- a stage reading a surface through NV2A's hardware shadow-comparator
 unit cannot be handed a raw copy taken by either route. Pixel prediction re-registered against both fixes.
+
+**Fixed a third correctness bug the same pixel prediction caught, same underlying class as the first
+regression above.** The copy this lever keeps across draws is sized by the surface's scale factor at the
+moment it was taken; a CPU-write surface reconfiguration (no draw) can change that scale factor without
+bumping the draw-time counter this cache used as its only staleness check, so a stage could be handed a copy
+taken at the wrong scale. The cache now also remembers the scale factor at copy time and declines to reuse a
+copy once it no longer matches. Pixel prediction re-registered a fourth time against this fix.
 
 **A pixel test suite in both predictions' checks turned out to disagree with itself.** Three repeat device
 runs of the same unchanged build showed `Texture_shadow_comparator` moving on about 1 in 12 of its own captures
