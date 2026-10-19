@@ -9,6 +9,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
 | `foldjam1018` | claude-sonnet-5 | 4 min |  |
+| `localdrive1018` | claude-sonnet-5 | 0 min | drive: local tools only, act-observe instead of wait-and-fail, learn what to press |
 | `pagesfix1018` | claude-sonnet-5 | 1h 42m |  |
 
 - **Handhelds:** 2 connected.
@@ -122,7 +123,9 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Work in progress
 
-No branch is being worked right now.
+| Branch | Topic | Tip | Last change |
+|---|---|---|---|
+| `lane/localdrive1018` | drive: local tools only, act-observe instead of wait-and-fail, learn what to press | `6771d8e2cf` | 2026-10-18 20:44 |
 
 ## Recently landed on master
 
