@@ -958,3 +958,70 @@ the 21 minutes since) must clear before the queued request
    `audio_starve_share`.
 4. Update `FINDINGS.md` and `PR.md` with the measured numbers, and move
    `PR.md`'s `State:` to `ready`.
+
+Attempt 13 (10-18, about 19:08 PDT) -- why attempt 12 did not finish: same
+external wait attempts 10-12 all named (the `nova` logical hold plus the
+battery level below the per-run admission floor); attempt 12 ended
+correctly on `waiting:`, and noted that a fourth identical read would be
+worth flagging as a pattern. This attempt is that fourth read, and finds
+no change in either condition.
+
+- Read this file and `git log` first, per the resume brief. `git status
+  --short` is clean; HEAD is attempt 12's commit `acb2dd5491`.
+- `docs/testing/jobs/hold.sh who nova`: still `held: nova by
+  lanelocal-offline`, byte-identical reason text and timestamp
+  (`2026-10-19T01:42:56Z`) to attempts 10-12. `who thor`: still `held:
+  thor by lane.local`, same thermal-test text, unchanged.
+- `dispatch/.battery_level.nova`: still `11`, same sample epoch
+  `1792374169` = 18:42:49 PDT that attempts 10-12 already read. Current
+  time 19:08 PDT, so that sample is now 26 minutes stale with no fresher
+  file written -- the charge has not visibly moved since 18:42, not just
+  since the last attempt. `dispatch/hold/nova.battery-override` is
+  unchanged (floor 5, expires 06:38 PDT).
+- `dispatch/logs/dispatcher.log` tail: newest lines are still the two
+  18:47:44 `HELD by .../dispatch/hold/{nova,thor}` entries already in
+  attempts 11-12's record; nothing appended in the ~20 minutes since.
+- `dispatch/queue/` still holds the same three `.req` files (two
+  foldqueue, this lane's pilot `1-1792368418-lane.ralli2audio1018-
+  1108710`, unchanged mtime/size `Oct 18 17:06`, 3801 bytes).
+  `dispatch/running/` is empty. `dispatch/results/` has no new entry for
+  this request id; the only `ralli2audio1018` result present
+  (`...-2335205`) predates this pilot.
+- Branch state unchanged: Work 1-4, `FINDINGS.md`, `PR.md`
+  (`State: draft`) were already complete entering this attempt; nothing
+  new to build or measure offline exists until the queued request runs.
+  Did not re-queue, cancel, touch either device, or write to any
+  dispatch/hold file.
+- This is now the fourth consecutive attempt (10-13) to find this exact
+  pair of conditions unchanged. As attempt 12 flagged, the stop rule
+  ("same failure twice for one cause means stop and report") is about a
+  lane retrying its own remedy, not about re-verifying an external wait
+  on each forced resume -- there is still no alternative offline step,
+  and the resume cadence is the harness's, not this lane's choice. The
+  pattern itself (over an hour now with zero movement on either the hold
+  or the battery sample) is worth a human's attention regardless: the
+  battery reading has not been refreshed since 18:42:49, which suggests
+  either the Nova is not polling its battery (it may be fully offline per
+  the `lanelocal-offline` hold's own text) or the sample file is stale
+  for some other reason -- not something this session can distinguish by
+  reading more files.
+
+[lane.ralli2audio1018] waiting: unchanged from attempts 10-12 -- both (a)
+the `nova` logical hold (`lanelocal-offline`, "release when the owner
+says it is back", unchanged since 18:42:56 PDT) and (b) the Nova battery
+level (`dispatch/.battery_level.nova` flat at 11%, sample now 26 min
+stale at 18:42:49 PDT, need 15.3% under the active battery-override
+floor) must clear before the queued request
+`1-1792368418-lane.ralli2audio1018-1108710` can run. Once
+`docs/testing/jobs/hold.sh who nova` reports free, the battery clears
+15.3%, and the request's `results/<id>/DONE` appears:
+
+1. Read `tools/timeline.py results/<id>/logcat.txt --prod`, test `vp=`
+   mean and wall-per-block against the prediction in "The fix the pilot
+   points at" above.
+2. Write the verdict to `pilots/lane.ralli2audio1018.ok` with python3.
+3. If it holds, queue the two default runs for the bar (same route, same
+   race), each scored with `title_verdict.py --require confirmation` plus
+   `audio_starve_share`.
+4. Update `FINDINGS.md` and `PR.md` with the measured numbers, and move
+   `PR.md`'s `State:` to `ready`.
