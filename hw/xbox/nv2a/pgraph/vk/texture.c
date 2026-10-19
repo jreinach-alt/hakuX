@@ -2137,6 +2137,21 @@ static bool texscan_shape_ok(PGRAPHState *pg, const TextureShape *st)
            pg->surface_scale_factor == 1 &&
            !pgraph_is_texture_format_compressed(pg, st->color_format) &&
            !pgraph_texture_format_is_converted(st->color_format) &&
+           /*
+            * f.depth (the DEPTH_Y16_FIXED/FLOAT, X8_Y24_FIXED/FLOAT formats)
+            * marks the shadow-comparator stages: psh.c's state->shadow_map[i]
+            * = f.depth sends these through the comparator unit instead of a
+            * plain texture fetch. #433 arms FAIL on 3b50f167ba: 23 of 1038
+            * Texture_shadow_comparator checks moved pixels (both arms already
+            * off their own goldens -- a pre-existing, order-independent
+            * defect per docs/investigations/cross-test-contamination.md's
+            * "missing-state" classification -- but this lane's change must
+            * not be the reason the wrong answer changes shape). Refuse, same
+            * as the compressed/converted exclusions above: nothing measured
+            * says a raw GPU copy is equivalent to this format's source for
+            * the comparator, any more than it is for a converted one.
+            */
+           !f.depth &&
            !pgraph_vk_texture_replace_is_enabled();
 }
 
