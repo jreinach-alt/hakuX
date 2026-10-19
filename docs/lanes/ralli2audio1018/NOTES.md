@@ -1371,10 +1371,25 @@ is that work.
   a device reproduction (none was possible, Nova held throughout). The
   PR body's prediction/selftest/Files lines are unchanged; added a line
   pointing at the new `FINDINGS.md` sections and the one open device check.
-- Did not queue the A/B check named above: the Nova is still on the
-  owner's hold, and the brief is explicit that device work waits for the
-  hold to clear, not that this lane should queue speculatively against a
-  held device. Nothing else needs a device to resolve -- there is no
-  dispatch id to wait on, the open item is an owner decision ("the owner
-  decides" per the brief) about whether to spend device time on the named
-  A/B check, not a running request this lane can poll.
+- Checked the hold again before finishing: `docs/testing/jobs/hold.sh who
+  nova` now reads `free` -- the owner's hold lifted partway through this
+  session (`dispatch/hold/lifted/nova.lanelocal-offline-lifted-owner-1018-20261019T021232Z`).
+  Looked at the white-panel screenshot itself
+  (`captures/ralli-white-1018/screen-205455.png`) before deciding whether
+  to queue the named A/B: lap 1, race time 02:14.600, a Hyundai
+  white/green/red rally livery, and the white areas sit where that
+  livery's own paint is white -- from one frame with no reference
+  screenshot of the same car/pose on a clean build, genuinely ambiguous
+  whether this is the defect or the paint job. Combined with not knowing
+  which part of the race the owner was in when they saw it, queuing a
+  soak now would be a blind repeat with an unknown trigger and nothing to
+  diff against -- low probability of deciding anything, which is the
+  wrong order per the lane role's own ranking guidance (a cheap-looking
+  device run goes first only when it decides something). Did not queue
+  it; recorded this reasoning and what a higher-value next step looks
+  like (get the scene from whoever saw it, or build a screenshot-diffing
+  soak that would catch this automatically) in `FINDINGS.md`. Nothing
+  else needs a device to resolve -- there is no dispatch id to wait on,
+  and the open item is an owner decision ("the owner decides" per the
+  brief) about whether to invest in the above, not a running request this
+  lane can poll.

@@ -242,10 +242,29 @@ plausible alternative with supporting code, not a reproduction. The
 single decisive check, if more certainty is wanted before folding: an A/B
 of `723ea67e77` vs. `origin/master` on the same RalliSport Challenge
 save/scene, several passes through the same stretch, screenshot diff
-against the console-calibrated golden if one exists for this title. That
-needs the Nova; it is not queued while the owner's hold
-(`owner-play-1018e`) is in force. Queuing it is the next step once the
-hold clears, for whoever picks this up next.
+against the console-calibrated golden if one exists for this title.
+
+Looked at the screenshot itself
+(`/home/justin/hakux-work/captures/ralli-white-1018/screen-205455.png`):
+lap 1, race time 02:14.600, a dirt rally stage, the car a
+white/green/red Hyundai livery. The white areas (roof, most of the rear
+deck/spoiler) sit where that manufacturer livery is itself largely white
+-- from this one frame alone, with no reference screenshot of the same
+car/pose on a clean build to diff against, it is genuinely ambiguous
+whether this is a missing-texture defect or the livery's own paint
+scheme. That ambiguity, on top of not knowing which part of the race the
+owner was in when they noticed it, is why this is named as the decisive
+check rather than run speculatively: `hold.sh who nova` now reads `free`
+(the owner's hold lifted during this session, timestamp
+`...lanelocal-offline-lifted-owner-1018-20261019T021232Z` in
+`dispatch/hold/lifted/`), so the device is available, but queuing a soak
+to hope for a repeat of a one-off with an unknown trigger and no golden
+to diff against is a low-probability, low-information spend -- not the
+same thing as the check being unavailable. The useful next step with
+device time is not a blind repeat: it is getting the scene/moment from
+whoever saw it (or from a wider screenshot-diffing soak built to catch
+any solid-white region automatically across a full route, which does not
+exist yet), then running the named A/B against that specific moment.
 
 ## New telemetry on master (10-18 21:21-21:23 PDT, no fix): compared against this branch's producer model
 
