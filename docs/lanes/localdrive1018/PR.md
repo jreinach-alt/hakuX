@@ -9,7 +9,8 @@ docs/testing/titles/pathclass_selftest.py, docs/testing/titles/drive-profiles/ge
 docs/testing/titles/drive-profiles/gta3.toml, docs/testing/titles/drive-profiles/gta3/,
 docs/testing/titles/pathknow/learned.py, docs/testing/titles/route.sh,
 docs/testing/titles/routes/gta3-drive.route, docs/testing/titles/routes/gta3-car-pause-probe.route,
-docs/testing/titles/routes/refs/gta3-car-pause-probe/, docs/lanes/localdrive1018/**
+docs/testing/titles/routes/refs/gta3-car-pause-probe/, docs/testing/dispatcher.sh,
+docs/lanes/localdrive1018/**
 Release note (none): offline test-harness/tooling under docs/testing/titles/, not emulator code; nothing
 a player sees.
 Prediction: none: analysis-only so far (no arm registered; the one device run this session made was a
@@ -96,6 +97,19 @@ Full writeup, the Already-tried table, and the open questions: `docs/lanes/local
   `routes/gta3-drive.route` ("Stage 1", one step, honestly scoped: only this step has run against a
   live device) and fixed `route.sh`'s stale `drive`-step doc, which still described the pre-Part-B
   "fails on an unnamed screen" behavior. Full numbers: `NOTES.md`, "Continuation" entry.
+
+## Fold fix (hostops addendum, this session)
+
+A fold attempt on an earlier state of this PR failed `97-dispatch-snapshot-drive.sh`'s
+`drive.py imports from the snapshot` check with `ModuleNotFoundError: No module named
+'learned'`: `drive.py` imports `pathknow/learned.py` (Part C), but `docs/testing/dispatcher.sh`'s
+`SCRIPT_DEPS` and `snapshot_scripts()` never listed it, so a dispatched worker's snapshot never
+carried it. hostops widened this lane's territory onto `docs/testing/dispatcher.sh` for exactly
+this one addition. Added `titles/pathknow/learned.py` to both `SCRIPT_DEPS` and the literal
+file list inside `snapshot_scripts()` (two separate lists in that file that
+`97-dispatch-deploy.sh` asserts must stay equal) -- verified both now parse to the same set, and
+re-ran `97-dispatch-snapshot-drive.sh` and `97-dispatch-deploy.sh` directly (`SELFTEST_ONLY=`):
+0 failures on both, including the mutant checks. No other line in `dispatcher.sh` touched.
 
 ## Not done
 

@@ -695,11 +695,31 @@ includes `"docs/testing/dispatcher.sh"`, and its note names the SCRIPT_DEPS line
 resumed this lane to apply it -- this is the actionable item for this session, separate from the
 still-open device wait above.
 
-Applied: added `titles/pathknow/learned.py` to `SCRIPT_DEPS` in `docs/testing/dispatcher.sh`,
-same pattern as the existing `titles/classify.py titles/waitfor_match.py titles/pathclass.py`
-entries, no other line touched (confirmed by diff: one token added). Re-ran
-`pathclass_selftest.py`/`classify_selftest.py` (0 failures, unchanged) and
-`docs/testing/jobs/selftest.d/97-dispatch-snapshot-drive.sh` directly to confirm the specific
-case that was failing now passes. Updated `PR.md`'s `Files:` line to add
-`docs/testing/dispatcher.sh`. This stays scoped to the one addition the widened row's note
-names; `SNAPSHOT_GLOBS` and the rest of `dispatcher.sh` are untouched.
+Applied, but not exactly as the addendum described -- checked the actual code before trusting
+the one-line claim, and it was incomplete, not wrong. `SCRIPT_DEPS` (line 89-95) is read ONLY by
+`src_hash()` (the re-exec trigger); the file the worker actually copies from is a SEPARATE
+literal `for f in ...; do` list inside `snapshot_scripts()` itself (line 165-172), and the
+module's own comment at line 81 ("the two sets must be the same set") plus
+`97-dispatch-deploy.sh`'s own check (parses both lists and asserts equality, `bad "src_hash and
+snapshot_scripts disagree"` otherwise) confirm this is deliberate, checked duplication, not an
+oversight to route around. Adding the entry to `SCRIPT_DEPS` alone would have (a) left
+`learned.py` still unshipped -- the actual bug `97-dispatch-snapshot-drive.sh`'s `drive.py
+imports from the snapshot` check catches -- and (b) broken `97-dispatch-deploy.sh`'s equality
+check on top of that.
+
+Added `titles/pathknow/learned.py` to BOTH lists: `SCRIPT_DEPS` (line 89-95) and the literal
+list in `snapshot_scripts()` (line 165-172), same pattern as the existing `titles/classify.py
+titles/waitfor_match.py titles/pathclass.py` entries in each. Verified by parsing both lists
+with a small script (sorted-set equality) before running anything: equal, no drift. `bash -n`
+clean. Ran `SELFTEST_ONLY="97-dispatch-snapshot-drive.sh"` and `SELFTEST_ONLY="97-dispatch-
+deploy.sh"` directly against `docs/testing/jobs/selftest.sh` (the harness's own per-fragment
+verify mode, not the multi-hour full run) -- 27 passed/0 failed and 49 passed/0 failed
+respectively, including every mutant check (`drop titles/pathclass.py from SCRIPT_DEPS`, `drop
+head.npz from SNAPSHOT_GLOBS`, `no startup snapshot`, etc. all still red as they must be) and
+the specific case that was failing: `drive.py imports from the snapshot (classify,
+waitfor_match, the profile loader)` now `ok`. Re-ran `pathclass_selftest.py`/
+`classify_selftest.py` (0 failures, unchanged) and `docs/testing/preflight.sh` (`territory ok`,
+full pass) after the merge+fix. Updated `PR.md`'s `Files:` line to add
+`docs/testing/dispatcher.sh` and added a short section there naming the fix. No other line in
+`dispatcher.sh` touched -- `SNAPSHOT_GLOBS` and everything else is unchanged, per the widened
+row's own scope.

@@ -90,7 +90,8 @@ SCRIPT_DEPS="dispatcher.sh devices.sh soak_title.sh run_disc.sh score_sweep.py \
 affinity.py captures.py make_test_iso.py extract_results.py sweep_queue.sh \
 make_isolation_discs.py vsh_score.py thermal_state.py titles/route.sh perf/pad.sh \
 battery_admit.py titles/titlestate.py titles/saves.py titles/drive.py \
-titles/classify.py titles/waitfor_match.py titles/pathclass.py jobs/device_build.py \
+titles/classify.py titles/waitfor_match.py titles/pathclass.py titles/pathknow/learned.py \
+jobs/device_build.py \
 jobs/models.py jobs/models.toml dispatch_doctor.sh jobs/window.sh jobs/models.sh \
 jobs/allowed-tools.doctor jobs/roles/dispatchdoctor.md"
 # DATA A SHIPPED SCRIPT PICKS AT RUN TIME, shipped by glob, never by name.
@@ -166,7 +167,8 @@ snapshot_scripts() {
              sweep_queue.sh make_isolation_discs.py vsh_score.py thermal_state.py \
              titles/route.sh perf/pad.sh battery_admit.py titles/titlestate.py \
              titles/saves.py titles/drive.py titles/classify.py titles/waitfor_match.py \
-             titles/pathclass.py jobs/device_build.py jobs/models.py jobs/models.toml \
+             titles/pathclass.py titles/pathknow/learned.py jobs/device_build.py \
+             jobs/models.py jobs/models.toml \
              dispatch_doctor.sh jobs/window.sh jobs/models.sh jobs/allowed-tools.doctor \
              jobs/roles/dispatchdoctor.md; do
         snapshot_one "$f"
