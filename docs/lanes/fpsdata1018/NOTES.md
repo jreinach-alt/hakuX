@@ -1095,3 +1095,32 @@ Added to the Already-tried table: row for "Antialiasing_tests suite-wide noise f
 only `CPUWriteIgnoresSurfaceConfig` and `FramebufferNotModifiedBySurfaceState` are measured flaky (6 runs each);
 the other 9 captures in that suite are measured stable across the same 6 runs and are not a candidate for any
 future blanket exclusion without their own evidence.
+
+Marked PR.md `State: ready` (checked all five Definition-of-Done items first: `preflight.sh` passes --
+"preflight passed - safe to push"; `git diff --stat origin/master...HEAD` matches PR.md's `Files:` line
+exactly, 12 files; this file records the Already-tried table and every mechanism/prediction/verdict; both
+predictions are registered and committed with their refs; this section is the ready-mark itself). Posted
+`[lane.fpsdata1018]` on PR #1085 with today's two verdicts and the queued reverify arm.
+
+Tried to get an honest, pre-registered verdict for the narrowed texscan2d prediction before ending this turn:
+queued `fpsdata1018-texscan2d-reverify` (`ab_run.sh --fix c4560f2ab4 --parent 245ddc4964`, both APKs already
+cached). `ab_run.sh` itself hit its own 600s wait budget and exited cleanly with the device work intact
+(`1-1792410252-fpsdata1018-texscan2d-reverify-{base-3955738,fix-3955885}`, resumable). Checked why neither arm
+had even started after a further ~15 minutes of polling: `dispatch/hold/nova` is held by `lane.pathfind`
+(`2026-10-19T11:42:25Z ... 600 s hold`, i.e. it should have expired by ~11:52:25Z and is still in force at
+12:01Z) -- another lane's hold, not mine to touch or question (role.md: "Write or remove
+`$DISPATCH_DIR/hold/<dev>` by hand" is a Never; holds are released by their owner's `hold.sh release`, not by a
+stated time-box expiring on its own). This is a genuine external wait, not idleness: every code-side item this
+lane's brief ranks above "wait for the reverify arm" is either shipped-and-tested (texscan2d, S2T_FB mode 2,
+migrate_surface_image) or already blocked on a different external dependency (Fable H2 and GTA III's fps size
+need an owner capture; Blinx 2's H4 needs a cross-lane harness fix already flagged on PR #1085, outside this
+lane's files -- re-confirmed this session, not just inherited from NOTES, by re-reading the H2
+investigation/instrument sections and H4's row in the hypothesis table above: nothing in either has changed
+since the last attempt wrote them).
+
+**WAITING**: `fpsdata1018-texscan2d-reverify`'s arm pair to run once `lane.pathfind` releases the Nova (or its
+hold genuinely expires and the dispatcher picks the queue back up); read its verdict with `ab_compare.py --a
+$D/results/1-1792410252-fpsdata1018-texscan2d-reverify-base-3955738 --b $D/results/1-1792410252-fpsdata1018-texscan2d-reverify-fix-3955885
+--expect docs/testing/predictions/fpsdata1018-texscan2d-pixels.json` and post it to PR #1085. Also still open:
+GTA III's and Fable's fps size (owner capture, recipes in PR.md) and Blinx 2's H4 (cross-lane harness-bug
+block). Nothing else is buildable in this lane right now.
