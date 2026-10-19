@@ -8,8 +8,8 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `devpushro1018` | claude-sonnet-5 | 1h 39m |  |
-| `ralli2audio1018` | claude-sonnet-5 | 43 min | ralli2audio1018: RalliSport Challenge 2 audio dropouts: the voice processor's guest-memory overhead, producer  |
+| `devpushro1018` | claude-sonnet-5 | 1h 54m |  |
+| `ralli2audio1018` | claude-sonnet-5 | 0 min | ralli2audio1018: RalliSport Challenge 2 audio dropouts: the voice processor's guest-memory overhead, producer  |
 
 - **Handhelds:** 1 connected.
   - Nova: free for the queue
@@ -124,7 +124,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/ralli2audio1018` | ralli2audio1018: RalliSport Challenge 2 audio dropouts: the voice processor's guest-memory overhead, producer timing, au | `2fd8f50bee` | 2026-10-18 13:30 |
+| `lane/ralli2audio1018` | ralli2audio1018: RalliSport Challenge 2 audio dropouts: the voice processor's guest-memory overhead, producer timing, au | `15023b1548` | 2026-10-18 17:55 |
 
 ## Recently landed on master
 
@@ -141,4 +141,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-18 Fable and Blinx 2: decompose the gameplay dips, find what the frame spends its time on
 - 2026-10-18 pathfind: a screen-reading agent that drives a title from boot into gameplay
 
-_Updated 2026-10-18 17:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 18:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
