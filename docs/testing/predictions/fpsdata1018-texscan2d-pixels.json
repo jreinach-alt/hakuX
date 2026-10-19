@@ -1,10 +1,10 @@
 {
-  "registered_utc": "2026-10-19T09:56:54Z",
+  "registered_utc": "2026-10-19T10:58:37Z",
   "who": "lane.fpsdata1018",
   "issue": "433",
-  "prediction": "#433 texscan 2D (lane.fpsdata1018), pixel leg, re-registered a second time on the same b46f4cb8d3 (no code change) to narrow what this prediction claims. A = 245ddc4964 (master's texture.c, pre-#433, unchanged). B = b46f4cb8d3, which carries 38c8d53ba5 (texscan extended cube-only -> 2D), the image_scale AA-regression fix (3b50f167ba), and this commit's !f.depth exclusion in texscan_shape_ok() (added because 3b50f167ba's arm FAILed 23/1038 Texture_shadow_comparator checks -- texscan2d's multi-level path was intercepting shadow-comparator depth-as-texture formats that previously fell through to the SURFACE_DOWN path). The first re-registration also listed Texture_shadow_comparator/* in must_not_move and it FAILed again post-fix (17/1038, read back docs/lanes/fpsdata1018/NOTES.md 'Noise floor measured'): a 3-way same-ref sweep of 245ddc4964 with zero code change (sweep_agreement.py across 1-1792389196-...-3521751/1-1792396705-...-2158864/1-1792400325-...-2706810) disagrees on 89/1038 captures, 100% in Texture_shadow_comparator and zero elsewhere, including the exact same 480->400 transition on 2F16_10.00-20.00_15.0000_GT that this fix's own FAIL list showed. This suite cannot be told apart from its own noise by a single-run arm, so it is dropped from must_not_move below; the !f.depth mechanism is kept as the correct fix for the raw-copy-vs-comparator-read mismatch it targets, but this prediction no longer claims a single run of this suite as evidence either way. Predicted effect: every suite below (every suite except Texture_shadow_comparator) is unaffected by this fix, same as always. Read from B's logcat, not predicted: '[texscan] on 2d=1'. A moved capture in any suite below refutes this fix and blocks the change until explained region by region.",
+  "prediction": "#433 texscan 2D (lane.fpsdata1018), pixel leg, re-registered a third time on c4560f2ab4, a different fix than the two prior re-registrations (which only changed b_ref's prose, not the code): migrate_surface_image() (surface.c) now copies image_scale from the old binding to the new one when a shelved or invalid surface's VkImage is reused, instead of leaving it zeroed forever. A = 245ddc4964 (master's texture.c/surface.c, pre-#433, unchanged). B = c4560f2ab4, which carries everything b46f4cb8d3 already had (texscan2d itself, the image_scale AA-regression fix, the !f.depth shadow-comparator exclusion) plus this commit. Why this will work: a migrated surface's image is the SAME VkImage the old binding's image_scale already correctly described (create_surface_image is the only place that ever sets it); migrating the handle without migrating the field that describes it left every reused surface permanently refused by texscan_plan's image_scale != 1 check (0 != 1 is always true), safely under-using the fast path rather than corrupting it. This turn's own investigation (NOTES.md 'Pixel scare resolved') also found and ruled out a device flake on this exact a_ref/b_ref pair (CPUWriteIgnoresSurfaceConfig moved 0 -> 45,056 on one of four existing runs on bit-identical builds, 3 of 4 agreeing clean) before concluding this fix was worth building; that flake is unrelated to this commit (it reproduced on b46f4cb8d3, before this fix existed) and is not what this prediction tests. Predicted effect: every suite below is unaffected -- this fix only changes which surfaces BECOME eligible for a route that was already proven pixel-safe for eligible surfaces (Fix #1's own prediction); it does not change what the route does once a surface is eligible. Texture_shadow_comparator stays dropped from must_not_move per the measured ~8.6% noise floor (NOTES.md 'Noise floor measured'). A moved capture in any suite below refutes this fix and blocks the change until explained region by region.",
   "a_ref": "245ddc4964",
-  "b_ref": "b46f4cb8d3",
+  "b_ref": "c4560f2ab4",
   "must_not_move": [
     "Blend_surface/*",
     "DMA_corruption_around_surfaces/*",
@@ -86,7 +86,6 @@
       "Texture_render_target::RenderTextureLoop"
     ],
     "only_tests": [],
-    "source": "/home/justin/hakux-work/dispatch/results/1-1792389196-arms-fpsdata1018-base-3521751/request.json",
-    "source_request": "1-1792389196-arms-fpsdata1018-base-3521751"
+    "source": "stated on the --register command line"
   }
 }
