@@ -14,6 +14,37 @@ hold. So attempt 1 got a partial pilot and no arm. That pilot is enough to
 name the mechanism (section "Pilot" below). Attempt 2 builds the fix it
 points at and waits for the hold to be released before any arm.
 
+## Why attempt 3 did not finish
+
+Attempt 3 did the right thing and still ran out of turns on an external
+wait: it merged `master`, confirmed the board request already named both
+files it needed (none contested), queued the cold-cache pilot (device
+plan step 1) once `hold.sh who nova` turned up `free: nova`, then polled
+for 28 minutes and found the Nova absent from `adb devices -l` the whole
+time -- a logical hold release is not a physical reconnect. It ended on a
+correct `waiting:` for the queued request to be claimed. Nothing about
+that wait was a mistake to retry from inside a session with no way to
+sleep past it.
+
+## Why attempt 4 did not finish past the same wait
+
+Re-checked at the top of this attempt (17:50 PDT, about 50 min after the
+Thor hold's own ~17:00 PDT estimate for the Nova's return): `hold.sh who
+nova` still says `free: nova` (no logical hold), but `devices.sh list` and
+`adb devices -l` both show only the Thor (`bdc158a5`); no Nova worker is
+running under `hakux-dispatcher.service` either. The queued request
+`1-1792368418-lane.ralli2audio1018-1108710` is still sitting in
+`dispatch/queue/`, unclaimed, behind nothing of this lane's own making --
+two unrelated `foldqueue` nova requests from 15:58 are queued ahead of it,
+and the priority-0 `dispatch.restore` cleanup from the attempt-1 pilot
+(queued since 11:42) is also still unclaimed. All of them wait on the same
+fact: the Nova is not physically present on this host. That is still true
+now; this attempt changes nothing about it and does not re-queue or touch
+either device. Work 1-3 (offline analysis) and the `vp.c` fix were already
+complete entering this attempt; nothing new is available to do against
+`hw/xbox/mcpx/apu/**` until a device run tests the prediction already
+registered in "The fix the pilot points at".
+
 ## Step 0: already tried (read before doing anything)
 
 | Source | What was tried | Measured | Concluded / do not repeat |
@@ -434,13 +465,33 @@ Attempt 3 (10-18, about 17:16 PDT):
   the dispatch host. No further action narrows it from inside this
   session.
 
+Attempt 4 (10-18, about 17:50 PDT):
+
+- Read this file and `git log` first, per the resume brief; wrote "Why
+  attempt 3 did not finish" above.
+- Re-checked every input to the wait: `hold.sh who nova` still `free:
+  nova`; `devices.sh list` and `adb devices -l` still show only the Thor
+  (`bdc158a5`); `systemctl --user status` shows a dispatcher worker for
+  `bdc158a5` only, none for a Nova serial; `dispatch/queue/` still holds
+  the same request, plus two `foldqueue` nova requests queued at 15:58
+  and the attempt-1 `dispatch.restore` cleanup queued since 11:42, all
+  unclaimed for the same reason. No new fact changes the wait from
+  attempt 3's.
+- Did not re-queue, cancel, or touch either device. Did not invent new
+  offline work: Work 1-3 and the `vp.c` fix were already complete and
+  committed entering this attempt, and the remaining steps (read the
+  arm's `prod:` lines, write the pilot verdict, queue the two bar runs,
+  update `FINDINGS.md`/`PR.md`, flip `PR.md` to `ready`) all need the
+  queued request to run first.
+
 [lane.ralli2audio1018] waiting: dispatch request
 `1-1792368418-lane.ralli2audio1018-1108710` (the cold-cache pilot on
 `ec7e06c467`, nova, 870s, `HAKUX_PLC_WIPE=1`), queued but unclaimed
 because the Nova is not yet physically reconnected to the dispatch host
 (Thor's hold note: offline for the thermal test since about 12:00 PDT,
-due back about 17:00 PDT). Once `adb devices -l`/`devices.sh list` shows
-the Nova again and the request's `results/<id>/DONE` appears:
+due back about 17:00 PDT; still absent as of 17:50 PDT, attempt 4's
+check). Once `adb devices -l`/`devices.sh list` shows the Nova again and
+the request's `results/<id>/DONE` appears:
 
 1. Read `tools/timeline.py results/<id>/logcat.txt --prod`, test `vp=`
    mean and wall-per-block against the prediction in "The fix the pilot
