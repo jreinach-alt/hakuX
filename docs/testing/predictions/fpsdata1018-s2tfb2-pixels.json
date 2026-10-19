@@ -1,16 +1,15 @@
 {
-  "registered_utc": "2026-10-19T08:47:41Z",
+  "registered_utc": "2026-10-19T09:56:54Z",
   "who": "lane.fpsdata1018",
   "issue": "433",
-  "prediction": "#433: HAKUX_S2T_FB defaults to mode 2 (texture.c s2t_fb_mode()), re-registered on b6064d61cc after the first cut FAILed. A = 41c613c22a (default still off). B = b6064d61cc, which carries fa4cca9241 (default -> mode 2) PLUS this commit's fix: s2t_fb_stage_reads() dropped PS_TEXTUREMODES_DOTPRODUCT (0x11) from its 'does not read' set. fa4cca9241 alone FAILed 24/472 checks (Antialiasing_tests/CPUWriteIgnoresSurfaceConfig 0->45056 px, plus 23 Texture_shadow_comparator captures) because a DOT_PRODUCT-mode stage sampling the current colour target was told it could keep a stale copy -- psh.c's dotmap_src() proves that mode reads the stage's own texel (the dot-product input), unlike NONE/PASS_THROUGH/CLIP_PLANE, which emit constants or need no texture at all. With DOT_PRODUCT removed from the set, every stage mode 2 now keeps a cached copy for is one that psh.c itself never reads a texel from, so the same stage-reads argument the first cut made (now actually true of every included mode) predicts zero differing captures between A and B. Read from B's logcat, not predicted: '[s2tfb] on mode=2 (stages that do not read)'. A moved capture anywhere refutes this fix and blocks the change until explained region by region.",
+  "prediction": "#433: HAKUX_S2T_FB defaults to mode 2 (texture.c s2t_fb_mode()), re-registered a third time on b50667ac35 (carries b6064d61cc's DOT_PRODUCT fix PLUS this commit's fix) and narrowed to drop a suite a single-run arm cannot falsify. A = 41c613c22a (default still off). B = b50667ac35. b6064d61cc alone (DOT_PRODUCT excluded from s2t_fb_stage_reads()'s 'does not read' set) FAILed its own re-registration 21/472, entirely Texture_shadow_comparator again: traced to s2t_fb_record() caching a raw copy of shadow-comparator depth-as-texture surfaces (DEPTH_Y16_FIXED/FLOAT, X8_Y24_FIXED/FLOAT) across more than one draw, the same format class texscan_shape_ok() already excludes for the identical reason (a raw GPU copy is not proven equivalent to a read through NV2A's hardware shadow-comparator unit). This commit adds the matching exclusion to s2t_fb_record() via pgraph_get_color_format_info(snode->key.state.color_format).depth. Before re-registering that as a pixel-safety claim, a 3-way same-ref sweep of 245ddc4964 (sweep_agreement.py, zero code change, docs/lanes/fpsdata1018/NOTES.md 'Noise floor measured') found Texture_shadow_comparator disagrees with itself on 89/1038 captures with nothing changed -- including the identical 480->400 transition this lever's own FAIL list showed on 2F16_10.00-20.00_15.0000_GT, also present in the unrelated texscan2d FAIL. This suite cannot be told apart from its own noise by a single run, so it is dropped from must_not_move below; the fix is kept as correct on the code reading, but this prediction only claims the suites below, which a single-run arm can actually test. Read from B's logcat, not predicted: '[s2tfb] on mode=2 (stages that do not read)'. A moved capture in any suite below refutes this fix and blocks the change until explained region by region.",
   "a_ref": "41c613c22a",
-  "b_ref": "b6064d61cc",
+  "b_ref": "b50667ac35",
   "must_not_move": [
     "Antialiasing_tests/*",
     "Blend_surface/*",
     "DMA_corruption_around_surfaces/*",
     "Texture_render_target/*",
-    "Texture_shadow_comparator/*",
     "Texture_format/*",
     "Surface_*"
   ],
