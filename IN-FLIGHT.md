@@ -6,12 +6,16 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Right now
 
-No lane session is running.
+| Lane | Model | Running for | Working on |
+|---|---|---|---|
+| `localdrive1018` | claude-sonnet-5 | 6 min | drive: local tools only, act-observe instead of wait-and-fail, learn what to press |
+| `pagesfix1018` | claude-sonnet-5 | 8 min |  |
+| `ralli2audio1018` | claude-sonnet-5 | 1 min | ralli2audio1018: RalliSport Challenge 2 audio dropouts: the voice processor's guest-memory overhead, producer  |
 
 - **Handhelds:** 2 connected.
-  - Nova: held by `lanelocal-offline`
+  - Nova: free for the queue
   - Thor: held by `lane.local`
-- **Device queue:** 3 waiting, 0 running.
+- **Device queue:** 2 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -119,7 +123,10 @@ No lane session is running.
 
 ## Work in progress
 
-No branch is being worked right now.
+| Branch | Topic | Tip | Last change |
+|---|---|---|---|
+| `lane/localdrive1018` | drive: local tools only, act-observe instead of wait-and-fail, learn what to press | `08d56ec697` | 2026-10-18 17:26 |
+| `lane/ralli2audio1018` | ralli2audio1018: RalliSport Challenge 2 audio dropouts: the voice processor's guest-memory overhead, producer timing, au | `93ff5874e5` | 2026-10-18 19:13 |
 
 ## Recently landed on master
 
@@ -136,4 +143,4 @@ No branch is being worked right now.
 - 2026-10-18 GTA III: where the 46 ms parked frame goes once every copy is removed
 - 2026-10-18 Fable and Blinx 2: decompose the gameplay dips, find what the frame spends its time on
 
-_Updated 2026-10-18 19:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 19:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
