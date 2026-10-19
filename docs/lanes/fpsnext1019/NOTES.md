@@ -35,6 +35,20 @@ on average in the SAME scene, or a measured per-pass GPU ms drop that accounts f
   26114724 bytes, same size as the release slot1), and lane.xbox's `arm2b.sh` loaded it through the pause menu
   on 10-18 (`captures/lanexbox-fps1018/runs/bc-A`: 21.6 fps idle, 24.1 fps circling, `G 41.0`). So Blinx 2 gets
   its gameplay budget capture and H4 census from that state, under this lane's hold, before any profile work.
+- **Attempt 4 (2026-10-19 ~12:00 PDT, resumed per addendum 3)**: attempt 3 ended on the 300-turn cap
+  (`stop_reason max_turns`, logs `fpsnext1019.20261019T175209Z.json`) mid-build, not stuck: `HAKUX_SWZKEEP`
+  (Blinx 2) and `HAKUX_S2T_DEAD` (GTA III) are both built, opt-in, and each has a full G3 prediction table
+  written before any device run against it, per G3 -- nothing to redo on the diagnosis side. It did not finish
+  because it ran out of turns writing the second prediction (`HAKUX_S2T_DEAD`'s) before queuing either device
+  run. Start-of-attempt checks: `origin/master` was 3 commits ahead (`nova-tiers1019`'s fold, hold.sh priority
+  tiers), merged clean (no emulator-code conflict, this lane's `texture.c`/`surface.c` changes are untouched by
+  that fold). `hold.sh who nova` -> `free: nova` (devwatch's correct auto-lift after attempt 3's unit stopped,
+  per the addendum; nothing of this lane's running under the old hold). No perflog APK exists yet for this
+  attempt's HEAD (`HAKUX_S2T_DEAD`'s commit, `711315bbe7`, now merged with nova-tiers1019) -- the last on-device
+  build was `3058a55767-perflog.apk`, which predates both `HAKUX_SWZKEEP` and `HAKUX_S2T_DEAD`. Continuing
+  straight into the P0 census run named in the addendum: build first, then GTA III P0 (off arms only, per the
+  prediction's own note that P0 does not depend on the switch), then the on/off palindrome; Blinx 2's
+  `HAKUX_SWZKEEP` palindrome after that if device time allows.
 
 ## Step 0: Already-tried (G1), carried from fpsdata1018
 
