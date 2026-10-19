@@ -1,6 +1,6 @@
 # hakuX status
 
-_updated 2026-10-18 19:07 PDT_
+_updated 2026-10-18 19:41 PDT_
 
 0.6: Measured 263 / 300 · Playable 94 / 110.
 
@@ -259,7 +259,7 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | **Prince of Persia: The Sands of Time** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 13 |
 | **Project Gotham Racing 2** | 🔵 Measured, not rated yet | **55.7**<br>Thor, Sep 29 |
 | **Psychonauts** | 🔵 Measured, not rated yet | **22.0**<br>Thor, Sep 30 |
-| **RalliSport Challenge 2** | 🔵 Measured, not rated yet | **49.8**<br>Nova, Oct 18 |
+| **RalliSport Challenge 2** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 18 |
 | **Rent a Hero No 1 Japan** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 7 |
 | **Ricky Ponting International Cricket 2005 Australia** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 15 |
 | **Rugby League 2 Europe** | 🔵 Measured, not rated yet | **55.1**<br>Nova, Oct 15 |
