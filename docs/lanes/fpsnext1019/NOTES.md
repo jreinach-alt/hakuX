@@ -211,7 +211,7 @@ anything else.
   barriered in-pass) and `fbon=` (the window's phase).
 - `[fbloop] on mode=N (driver)` is logged once.
 
-APK `<sha>-perflog.apk` (debug, `-Pperflog=true`), warm worktree build, both files recompiled with no new warnings.
+APK `6e15857f0e-perflog.apk` (debug, `-Pperflog=true`), warm worktree build, both files recompiled with no new warnings.
 
 ### G3 prediction for HAKUX_FBLOOP (written before any device run)
 
