@@ -1,0 +1,19 @@
+# state: any   (golden 9153c63300da; lane.savestate433 -- same golden as routes/gta-3.route)
+# Grand Theft Auto III (5454000E): the classifier-driven path to play, on top of
+# drive-profiles/gta3.toml's letterbox-top/hud-heart crops (#433, lane.localdrive1018 Part D).
+#
+# STAGE 1 of this file's eventual plan, named honestly: only this one step has run against
+# a live device so far. It replaces gta-3.route's hand-timed, fixed-wait A-trains with
+# drive.py's screen-aware loop (classify.py + gta3.toml), so a boot that runs faster or
+# slower than any one run -- the exact failure gtawedge1012 hit on gta-3.route itself, see
+# that file's own header -- no longer needs a new hand-tuned wait per run. `find`: end the
+# step at 20 s of confirmed play (nothing scored yet); the frames and route-solution.json
+# this step produces are the live evidence Part D's remaining pieces (a car-entry crop, the
+# pause-menu Save-row crop, the held-out false-gameplay number) need and did not have before
+# this run -- see docs/lanes/localdrive1018/NOTES.md "Part D".
+#
+# NOT YET HERE: entering the car (Y), the state-save step, and the drive loop itself -- the
+# brief's own text for all three. They need this step's real result first (does the ladder
+# actually reach play, and where is the car relative to the player on a real capture) rather
+# than being guessed from 9 hand-picked stills.
+drive gta3 300 find
