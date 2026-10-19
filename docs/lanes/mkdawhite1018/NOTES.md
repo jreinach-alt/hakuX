@@ -1,0 +1,950 @@
+# lane.mkdawhite1018 -- NOTES (#1058)
+
+Mortal Kombat: Deadly Alliance (4D57000C): arena floors and walls draw flat white.
+
+Status (10-19, attempt 3, done): **Steps 1-3 answered; PR.md State: ready.** Step 1: confirmed on
+Turnip again, on four more runs. Step 2: the defect is scoped to specific arena floor/wall
+materials ("Stone courtyard", "Hall with carved heads", "Kuatan Palace" reproduce white; Kenshi's
+fortress interior and the ice temple render correctly), found by reading the free `route-frames`
+screenshots every run already held, at zero added device cost -- section 19 has the full table.
+Step 3: no code fix (the one register-level dump this lane got landed on a correct arena by the
+blind route's luck, so it could not be used to root-cause anything); the lever for a fix lane is
+named as a targeting problem (deterministic arena selection, not another blind dump) in
+`FINDINGS.md`. **Why attempt 3 took three sessions:** the first two continuations spent their
+device-time budget chasing the stage-card/flythrough timing (sections 13-18) before the run that
+finally landed in gameplay (`1792403678`); this session read that run's dump, then found the
+arena-scope answer was sitting unread in six prior runs' own screenshots the whole time.
+
+Status (10-18 11:10 PDT, attempt 2): **blocked on the harness at Step 1 again, on a second
+defect** (section 7.1). The re-queued run `1792345978-mkdawhite1018-1601447` failed at 11:05
+with `title not on device`. The first fix works: the disc now transfers and its sha matches.
+`dev_push` then requires the copy to be mode 660, a rule written for the read-write titles disk.
+The disc sits on the SD card, whose mount pins its mode at 770, so the check fails. The doctor's
+retry failed the same way, so by the stop rule I am not re-queuing. The lever, a read-only disc
+push in `ensure_title_staged`, is in 7.1. Once it is deployed, re-queue `1792345978` unchanged.
+Nothing about the white floors has been measured since 10-06.
+
+**Why attempt 1 did not finish:** it was blocked on the harness, not on this lane's work, and it
+ended with a WAITING marker on that block. The disc push (section 6) could not run until the
+`dev_push` fix landed. lane.dispatchpush1018 made the fix, it folded to master (127cf0f2c1),
+and the host dispatcher's copy carries it (`dispatch/bin/dispatcher.sh:1050`,
+`wsrc=$(wslpath -w "$src")`). Attempt 2 merged master and re-queued.
+
+Status (10-18, after Step 0): **blocked on the harness at Step 1** (section 6). The Nova run
+never started. The dispatcher's disc push hands Windows `adb.exe` a `/mnt/d/...` path, and
+`adb.exe` cannot open one, so every staged-disc push has failed since the fast path landed on
+10-17. The desktop fallback is closed by the 40 GB C: guard (C: has 30 GB). Nothing about the
+white floors has been measured since 10-06.
+
+Step 0 is done: the Already-tried table and searches are in section 3, and the sighting frames
+are re-read in section 1. One correction to the brief: **the 10-06 sighting ran on Turnip, not
+on the stock driver** (section 2). That makes an emulator defect the likely cause.
+
+## 1. The sighting, re-read
+
+| Run | Where | Build | Frames |
+|---|---|---|---|
+| sweep-4D57000C (10-05) | `jobs-wt/docs/lanes/pathfind/runs/sweep-4D57000C/` | tool 9dff62f2fa, `com.jreinach.hakux.debug` (hdd.json:9) | 033-101 hold |
+| deadly-alliance-1006 | `wt/pathfind/docs/lanes/pathfind/runs/deadly-alliance-1006/` | HEAD 4b0f82702e, `.debug` | 020-159 hold |
+
+Four arenas appear across the two runs. All four show the same split:
+
+- **Drawn correctly:** both fighters, blood decals on the floor, the HUD, the sky, and the distant
+  backdrop (buildings, banners, statues and mountains far from the camera).
+- **White:** the arena floor and the walls and pillars near the camera. They are flat white, or
+  white with a faint monochrome pattern, with no base-texture colour.
+
+| Arena (opponent) | Frames | What is white | What is not |
+|---|---|---|---|
+| Hall with carved heads (Bo Rai Cho) | 1006 020-040 | floor (faint pattern visible), lower walls, near pillar faces | heads, archway, sky |
+| Stone courtyard, red banners (Johnny Cage) | 1006 046-058; sweep 033, 037 | floor and the foreground pillars, all fully flat white (033) | wall, banners, braziers, mountains behind |
+| Temple court (Kung Lao) | 1006 066-078; sweep 049-101 | floor: a grey-on-white swirl, no colour (081) | buildings, statue, trees behind |
+| Platform in the clouds (Kenshi) | 1006 084-159 | outer floor ring, walls, pillars (099, 105, 117) | **the central floor disc and its strips are textured** (135, 111, 123), sky |
+
+Frame 135 is the most useful single frame. One floor holds both a textured disc and a white
+ring, so the defect is per material or per draw, not per arena or per frame. Every fight frame
+in both runs is affected. Loading screens (043, 081) and the character select (062) are not.
+
+The banking review called these frames "real, varied, moving play" (pathfind/OUTBOX.md:1186,
+pathfind/NOTES.md:1553-1557). It judged that progress was made, not how the frames rendered.
+
+## 2. Which driver drew the sighting
+
+The brief assumes the sighting predates the 10-17 Turnip change and so ran on the stock driver.
+The run's own logcat says otherwise:
+
+- `deadly-alliance-1006/screen-logcat.txt:7`: `[gpl569] ext=1 lib=1 fast=1 interp=1 requested=3 mode=3`
+  (pid 25260, 10-06 14:09:48). Line 2 says `ubershader: ON (#569)`, and line 3 says
+  `render_mode: auto (default) title=4D57000C`.
+- On the stock Adreno driver the same line reads `ext=0 ... mode=0`: haloshadow1017/NOTES.md:28
+  (`[gpl569] ext=0` beside `Driver: Qualcomm ... Adreno Vulkan Driver`). instance.c:1243-1309
+  forces mode 0 when the driver lacks graphics-pipeline-library, and only Turnip has that
+  extension on these devices.
+- Both runs used `com.jreinach.hakux.debug` (sweep hdd.json:9). That package has loaded
+  `vulkan.purple.so` since 09-11 (bindpose1017/NOTES.md:4-5; pathfind/OUTBOX.md:689, a 10-05
+  crash with `vulkan.purple.so` in the stack).
+
+The sweep run has no logcat in its tree. The 1006 run has a `[gpl569] mode=3` line but no
+literal `GPU: PurpleVK` line, because that log line postdates the run. So the driver question is
+settled by inference, not by the brief's required line. Step 1 settles it directly.
+
+## 3. Already tried
+
+The searches are listed in section 3.1. A subagent did the first sweep. I re-checked each row's
+code citation against this tree (base eb46eb2548).
+
+| approach | where (commit, lane, NOTES line) | verdict | what it means here |
+|---|---|---|---|
+| Stale UBO offsets after a shader change | bf85fade76 ("vk: fix white textures from stale UBO offsets"), vk/shaders.c ~717 | fixed 03-08, on master | The only earlier "white textures" fix. A regression would whiten every textured draw, not some floors. Re-check in the dump only. |
+| Vertex-RAM hazard (GTA SA white sky) | 3036cfb22f; gtasagpu1011/NOTES.md:166-180, 357-381; vk/vertex.c:49-89; default-on ccb2749973 | fixed, default on (after the sighting) | That white was a hole of stale pixels brightened by a post pass: hard-edged, unlit, and only in some frames (15 of 30). Here every fight frame is affected and the white is shaded. Different look, but the 10-18 build carries the fix, and Step 1 will show it. |
+| Texture past VRAM binds the dummy | de06bd39e3 (10-13); vk/texture.c:3486-3518 | on master, after the sighting | The dummy (16x16 R8 0xFF, R to all channels, opaque-white border; vk/texture.c:3181-3312) samples (1,1,1,1). That gives exactly "white with lighting on top", but this path did not exist on 10-06. Grep the new run's logcat for `dummy texture bound`. |
+| Undecodable texture (format gap, 1D, offset past DMA) | fe418afedf; pgraph/texture.c:175-211; vk/texture.c:4657-4666; glsl/psh.c:447-453 | on master | The dummy is bound but the stage is set to NONE, so the stage reads **black**. A format gap alone cannot make white. |
+| LRU failure / retired view with no binding | vk/texture.c:4766-4769, 5074-5079; remote/NOTES.md:1647, 1895 | on master | White until the next rebuild, so transient. Not "every frame". |
+| Pad-alpha / component map | 4946433d87, 07a9a2d1be, a8f2454a47, 1df8d2492a, a34d28c4b6, 77bd2977cc; vk/texture.c:2426, 3744-3807 | fixed | Alpha only; cannot whiten RGB. |
+| s2t layout, pitch and view | 2c94b7ed70 (#274), c807592d02, 4fba887182, 997c8d0b30, 344a87bdd1 | fixed | Stale or garbled texels, not uniform white. Only relevant if the floor samples a render target. |
+| HAKUX_S2T* switches | DRAIN vk/texture.c:1942 (489ebfe8d7, off), SHELF :1996 (18fb351588, on), WIDEN :2777 (off), SHARE :2797 (off), TEXSCAN :1913 (off), CVT vk/surface.c:6379 (on, 7f6b99db87) | dated 10-13..10-18 | All postdate the sighting, so the 10-18 run takes different s2t code than 10-06. |
+| Texel expansion and format decode | f009555537 (#59), f81d0fa448, f0676dc9df, 183ed86aa6, 12305c487c (#285) | fixed | Wrong colours, not white. |
+| Palette (P8) | 71e5f2477e, 1fa242bd00, b9aef0c57c | fixed | Garbled colours. An all-0xFF palette or a palette read before upload would be white. Check in the dump if a floor is P8. |
+| Border colour | 959d2db5de, ee208a0bb9, caae5e7906, 5edcbb2e23 (in-shader border, 09-10); 55c1ce5ac6 (x1box clamp-to-edge, not ours); c63cdc18de, 497bac61c9 | fixed; nothing for MK | Out-of-range coordinates with a white border colour draw white. Check TEXADDRESS and BORDERCOLOR in the dump. |
+| Swizzle | 3f3fe35bcc, e4fb7c245a (#109), 63c631cb5d (#87) | fixed | Scrambled texels, not white. |
+| Stock driver as the root cause | bindpose1017/NOTES.md:3-9; haloshadow1017/NOTES.md:3, 177-185, 515 | both closed as stock | Does not carry over: section 2 shows this sighting ran with `mode=3` (Turnip). |
+| Blend tests' white swatch | f888414fd2 | Adreno blend chain | Blend tests, not textures. |
+| Pathfind MK:DA and Armageddon | 84a77cc1ad, 0d88d28927; pathfind/NOTES.md:1259-1275; OUTBOX.md:769, 937, 939, 959, 965, 1067; fastpaths1010/NOTES.md:390; owner reversal compat1017b/NOTES.md:23, 38-48 | timing only | No rendering work on either title. Nobody looked at Armageddon's arenas, which are a candidate second title. |
+| #1058 itself | bc4c9db10a, a310fe825d (board); acb12840b7 (this lane's PR.md) | open, first lane | Nothing tried. |
+
+No commit, lane or NOTES file mentions Mortal Kombat or 4D57000C rendering. No code under
+hw/xbox/nv2a is specific to the title.
+
+### 3.1 What was searched
+
+- `git log --all` with `--grep` (case-insensitive): `white`, `untextured`, `border`,
+  `component.?map`, `pad.?alpha`, `S2T`, `s2t`, `palette`, `swizzle`, `texture format`,
+  `dummy texture`, `Deadly Alliance`, `4D57000C`, `Mortal Kombat`. "Untextured" found only
+  perspective-bit commits (932747042c, 2c25f7195e), which are not relevant.
+- `git log --all -S` on hw/xbox/nv2a: `HAKUX_S2T`, `pad_alpha`, `dummy`, `borderColor`.
+- Tracker (`git show origin/board:nv2a_issues.toml`): #1058 (6528-6537) and its neighbours
+  #1043 (stock bind pose), #1049 (GTA III fps) and #1045 (boot static). None of them touches
+  white surfaces.
+- Lanes: haloshadow1017 (NOTES 1-140, the method and section 9; tools chain.py, texids.py,
+  deskrun.py, deskbuild.sh), bindpose1017 NOTES and PR.md, pathfind NOTES and OUTBOX (MK DA
+  and Armageddon), belowbar1005 (every file: fps and the #804 occlusion wait, nothing on
+  textures), gtasagpu1011 (the white sky), dmasurf277:66 (white there was correct), haloship1017
+  (desk_route.py; NOTES 170-209, the HAKUX_PAD_FILE fix 1d1f39671b).
+- docs/investigations/sweeps/sweep-texture.md: :443 describes the dummy, its line numbers stale.
+  :98-99 and :1082-1086 list the format-table gaps. :882 notes the abort on a zero-bpp format.
+- Code:
+  - the dummy texture: vk/texture.c:3181-3312, created at :5229;
+  - the decodability rule: pgraph/texture.c:175-211;
+  - the format-table gaps (kelvin_color_format_info_map, pgraph/texture.c:47-103): 0x08-0x0A,
+    0x0D, 0x14-0x16, 0x18, 0x21-0x23, 0x26, 0x2A, 0x2B, 0x2D, 0x34, 0x37-0x39, 0x3D, 0x3E.
+
+## 4. Working hypotheses (to be decided by the dump, not argued here)
+
+A floor that is white but still shaded by lighting, decals and shadows, beside a textured disc
+on the same floor, fits four things:
+
+1. a stage the combiner uses that samples the dummy texture;
+2. a white border colour with coordinates outside [0,1], e.g. a texgen or texture-matrix stage
+   whose coordinates come out wrong;
+3. a source texture or palette that really holds 0xFF;
+4. a combiner or final-combiner term that saturates. A fog or specular term would make the near
+   geometry white and leave the far backdrop clean, which is what arena 2 shows.
+
+A format gap gives black (section 3), so it is out unless the dump shows otherwise.
+
+## 5. Plan
+
+- Step 1: one Nova run of the 10-18 build on a recorded route into an arcade fight, with a
+  `rtt gd` frame dump of a fight frame. The logcat's `GPU: PurpleVK` line is read before anything
+  else.
+- Step 2: read the dump for the floor draws (chain.py, texids.py). The desktop build on lavapipe
+  is the fallback reference renderer.
+
+## 6. Step 1: the Nova run that never started (10-18)
+
+### 6.1 What was queued
+
+Request `1792337550-mkdawhite1018-3995143`:
+
+- Nova, ref da6e8949dc, 420 s.
+- Route `mkda-arcade`: the recorded route in this directory, `mkda-arcade.route`, embedded in the
+  request at queue time. Its header says how it was recorded.
+- `XEMU_FRAME_DUMP=8,images,gd,after170,cap256`, `--pull 'framedump_*'`, frames every 30 s.
+
+The route is blind, built from the nine screens all three pathfind runs saw. It is not a `gen-*`
+route, so it needs no model key.
+
+The dispatcher claimed it at 08:32:41 and wrote an ERROR before the soak:
+
+```
+staging: found /mnt/d/hakux-staging/sweep/4D57000C-Mortal_Kombat_Deadly_Alliance.xiso.iso but the push
+to /storage/E6C6-D7AA/Games/XBox/4D57000C-Mortal_Kombat_Deadly_Alliance.xiso.iso failed (dispatcher.log);
+title not on device
+```
+
+- The Nova held this disc at that exact path on 10-06: deadly-alliance-1006/run.log:1. It went
+  off the device with the 10-08 archive.
+- dispatcher.log:29292 is the claim's push failing. dispatcher.log:29294 is the doctor's
+  `push-iso` failing the same way, 54 s later.
+- The doctor then gave up (doctor.md: "the block is on the device/transport side").
+- That is the same void twice, so this lane has not re-queued (the stop rule).
+
+### 6.2 Why the push fails
+
+It is not the device and it is not this title:
+
+- **Halo hit it first.** haloring1017's request `1792328946-haloring1017-2104088` failed
+  identically at 06:17 (dispatcher.log:29078) on `/mnt/d/hakux-staging/xiso/4D530004-...`.
+- **No staging push has ever succeeded.** dispatcher.log runs from 09-12 to today and has no
+  `stage: pushed` line in it.
+- **The source path is the cause.** `ensure_title_staged` (dispatcher.sh:1211-1252, added
+  6fa12571d1 on 10-17) calls `dev_push "$src" ...` with `src` from a staging root. Every
+  staging root is under `/mnt/d`. `dev_push` (dispatcher.sh:1043-1051, from fa2e37531b) passes
+  the path to `adb push` unchanged.
+- **That breaks the documented rule.** `adb` here is `/usr/local/bin/adb -> /mnt/c/platform-tools/adb.exe`.
+  AGENTS.md:827-828 says: "adb is the Windows `adb.exe`. Give it the Windows path,
+  `adb push "$(wslpath -w "$f")" <device path>`; it cannot stat `/mnt/d/...`."
+- **The earlier copy-in still works because of where its file lives.** `dev_push` was written
+  for `titles.qcow2`, whose source is under `/home`. `adb.exe` resolves a `/home/...` argument
+  against the root of its working directory's share, `\\wsl.localhost\Ubuntu\`, and that
+  resolution works for `/home`.
+- **The repo copy has the same line:** docs/testing/dispatcher.sh:1046.
+
+A Windows process run from this worktree, with no device involved, shows the difference:
+
+| Path handed to a Windows process | Result |
+|---|---|
+| `\\wsl.localhost\Ubuntu\home\justin\hakux-work\dispatch\logs\dispatcher.log` (control) | `True` |
+| `\\wsl.localhost\Ubuntu\mnt\d\hakux-staging\sweep\4D57000C-...xiso.iso` (what `/mnt/d/...` becomes) | `Access is denied` |
+| `D:\hakux-staging\sweep\4D57000C-...xiso.iso` (`wslpath -w`) | `True` |
+
+**The lever:** in `dev_push`, hand `adb` the Windows path when the source is on a Windows drive.
+One way is `adb_call 600 "push $dst" push "$(wslpath -w "$src")" "$dst.new"`. `wslpath -w`
+also turns a `/home` path into the same `\\wsl.localhost\...` form that already works, so
+`titles.qcow2` is unaffected. That is a harness change, outside this lane's files. The
+selftest that passed the fast path (jobs/selftest.d/99-iso-roots.sh) cannot see this, because
+it does not run the real `adb.exe`.
+
+### 6.3 The other routes are closed too
+
+- **Desktop, lavapipe.** deskrun.py:11, 32 refuses under 40 GB free on C:, because a crashing
+  xemu writes a ~7.8 GB dump to C:'s wsl-crashes directory, and `ulimit -c 0` does not stop it.
+  C: has 30 GB free (`df`, 10-18). I have not overridden the guard.
+- **MK: Armageddon as a same-engine stand-in.** It is not on the Nova either: it was archived
+  to `/mnt/d/hakux-staging/nova-archive-1008/` on 10-08. It would need the same push.
+- **The 10-06 logcat as evidence.** deadly-alliance-1006/screen-logcat.txt holds 21,071 lines
+  of telemetry, and none of them mention a dummy texture, an unsupported format, a palette, a
+  border or a cube map. It cannot separate the four hypotheses in section 4.
+
+### 6.4 What unblocks Step 1 (any one)
+
+1. The `dev_push` fix above, deployed to the host dispatcher. Then re-queue
+   `1792337550-mkdawhite1018-3995143` unchanged; its request.json is in the result dir.
+2. The disc pushed to `/storage/E6C6-D7AA/Games/XBox/4D57000C-Mortal_Kombat_Deadly_Alliance.xiso.iso`
+   by whoever may touch the Nova, which this lane may not.
+3. C: back above 40 GB free, for the desktop lavapipe run (Step 2 directly, without a Turnip
+   frame).
+
+The run takes 420 s plus setup. The route reaches a round at about 84 s, and the dump starts
+at 170 s.
+
+## 7. Step 1, attempt 2 (10-18)
+
+Request `1792345978-mkdawhite1018-1601447`, queued 10:55 PDT. It has the same fields as
+`1792337550`: Nova pin, ref da6e8949dc, 420 s, route `mkda-arcade`,
+`XEMU_FRAME_DUMP=8,images,gd,after170,cap256`, `--pull 'framedump_*'`, and frames every 30 s.
+
+The dispatcher claimed it at 11:03:41 and it ended in ERROR at 11:05:18 with the same symptom as attempt 1, `title not on device`, from a
+**different cause**.
+
+### 7.1 The second push defect: the titles-disk mode rule applied to a disc on the SD card
+
+dispatcher.log, this request:
+
+```
+29387: 10-18 11:03:41 request 1792345978-mkdawhite1018-1601447 from mkdawhite1018: ...
+29392: 10-18 11:05:14   /storage/E6C6-D7AA/Games/XBox/4D57000C-Mortal_Kombat_Deadly_Alliance.xiso.iso.new: mode 770 after chmod 660; the app could not open it read-write
+29393: 10-18 11:05:18   stage: found /mnt/d/hakux-staging/sweep/4D57000C-...xiso.iso but the push to /storage/E6C6-D7AA/Games/XBox/4D57000C-...xiso.iso failed (dispatcher.log)
+29395: 10-18 11:06:51   /storage/E6C6-D7AA/Games/XBox/4D57000C-Mortal_Kombat_Deadly_Alliance.xiso.iso.new: mode 770 after chmod 660; the app could not open it read-write
+29396: 10-18 11:06:52   stage: found ... but the push ... failed (dispatcher.log)   <- the doctor's push-iso retry
+```
+
+- **The dispatchpush1018 fix works.** The push completed, and `dev_push`'s sha check passed:
+  `dev_make_660` runs only after that check (:1052-1053), and no `the device's copy does not match`
+  line was logged.
+- **The failure is `dev_make_660`.** `dev_push` (dispatcher.sh:1043-1056) checks the copy, then
+  calls `dev_make_660 "$dst.new"` (:1053). Its last line also requires
+  `dev_mode "$dst" = 660` (:1055). Both come from the titles disk's rule, "THE DISK MUST BE
+  MODE 660" (:801-812). That disk lives in the app's internal x1box directory, and xemu opens it
+  read-write.
+- **A disc on the SD card cannot meet that rule, and does not need to.** `DEVICE_ISO_ROOT` is
+  `/storage/E6C6-D7AA/Games/XBox`, the card. Android synthesizes the card's file modes from the
+  mount, so `chmod 660` has no effect and the mode reads back 770: the log line says exactly
+  that. The app opens a disc read-only. On 10-06 it booted this same disc from this same path
+  (pathfind `runs/deadly-alliance-1006/result.json:5`, `"iso": "/storage/E6C6-D7AA/Games/XBox/4D57000C-..."`).
+- **Both failures are one call site.** The claim and the doctor's `fix push-iso`
+  (dispatch_doctor.sh:181-189) both reach `dev_push` through `ensure_title_staged`
+  (dispatcher.sh:1249). Every title missing from the Nova is blocked, not only this one.
+- **Why the selftests passed:** `99-dev-push-wslpath.sh` and the three fixtures dispatchpush1018
+  fixed use a fake `adb` whose chmod works. No fixture models a mount that ignores chmod.
+
+**The lever** (harness, outside this lane's files): give `dev_push` a read-only mode for the
+disc push, which skips the 660 step and the final mode check but keeps the sha check:
+
+```
+dev_push() {
+    local src="$1" dst="$2" ro="${3:-}" want wsrc
+    ...
+    [ -n "$ro" ] || dev_make_660 "$dst.new" || { dev_push_drop "$dst"; return 1; }
+    adb_call ... "mv -f '$dst.new' '$dst'" ... || { dev_push_drop "$dst"; return 1; }
+    [ "$(dev_sha256 "$dst")" = "$want" ] && { [ -n "$ro" ] || [ "$(dev_mode "$dst")" = 660 ]; }
+}
+# ensure_title_staged, :1249:
+    if dev_push "$src" "$DEVICE_ISO_ROOT/$title" ro; then
+```
+
+The selftest fragment for it: a fake `adb` whose `chmod` is a no-op and whose `stat` reports 770.
+The disc push must succeed under it, and the titles-disk push must still fail. The titles disk
+and the hdd-guard push (:1669, :1802) keep the 660 rule unchanged.
+
+This cause has failed twice (the claim, then the doctor's retry 93 s later), so by the stop rule
+this lane does not re-queue until the fix is deployed. Then re-queue `1792345978` unchanged
+(request.json in its result dir).
+
+### 7.2 What remains open
+
+Nothing about the white floors has been measured on the 10-18 build. The desktop route is still
+closed: C: has 21 GB free (`df -h /mnt/c`, 11:09 PDT) against deskrun.py's 40 GB guard. Sections 1-4
+stand as written. The Step 2 reading is prepared: the `gd` dump's per-stage records carry
+`fmt`, `off`, `addr` (TEXADDRESS), `ctl0`, `fil`, `bv` (`z` means the dummy texture was bound),
+`gh`/`th` and `key` (the schema comment at renderer.c:1856-1901; the writer at :3539).
+`gdread.py DUMP draw F N` decodes the combiner stages and final combiner and prints each enabled
+texture stage (gdread.py:224-255), and `chain.py DUMP shader HASH psh` prints the fragment GLSL. Hypotheses 1 (dummy)
+and 2 (border) are one field each in that record.
+
+Upstream xemu's compatibility page lists this title with no reported issues (tested on 0.8.113,
+xemu.app/titles/4d57000c). That is a user report, not a measurement, but it points at fork code
+rather than at NV2A behaviour that upstream also lacks.
+
+## Questions
+
+- (answered) Who takes the `dev_push` fix (6.2)? lane.dispatchpush1018 did; it folded as 127cf0f2c1.
+- (open, for lane.local) Who takes the second `dev_push` fix (7.1: the read-only disc push that
+  skips the 660 step on the SD card)? It is a harness file outside this lane's `Files:`. Every disc
+  staged to the Nova fails until it lands, not only this title.
+
+## Addendum (hostops, jam duty, 2026-10-18 ~19:4x PDT)
+
+The 7.1 harness fix landed: lane.devpushro1018 added `dev_push`'s `ro` parameter
+(skips `dev_make_660` + the final mode check, keeps the sha256 check) and it
+folded to master as `f473f6b4c4` (18:47:41 PDT); `ensure_title_staged`'s disc-push
+branch (dispatcher.sh:1260) already calls `dev_push "$src" "$DEVICE_ISO_ROOT/$title" ro`.
+Confirmed live in the dispatcher's own tree (/home/justin/hakuX, HEAD == origin/master).
+Re-queued request 1792345978 unchanged as `1792377843-mkdawhite1018-4522138.req` in
+dispatch/queue/ (same ref da6e8949dc, same route, same env). Resuming the lane to
+pick it up.
+
+## Attempt 3 (2026-10-18, continuing from the addendum above)
+
+Attempt 2 did not conclude; it stopped the moment the addendum above was written, waiting
+on `1792377843-mkdawhite1018-4522138` with nothing measured yet. This attempt picks that run
+up and reads it.
+
+### 8. Step 1 result: the defect reproduces on Turnip
+
+`1792377843-mkdawhite1018-4522138` finished (`DONE`, `dispatch/results/0-1792377843-mkdawhite1018-4522138/`).
+`request.json`: `ref da6e8949dc`, title `4D57000C`, `seconds 420`, `device nova`,
+`env XEMU_FRAME_DUMP=8,images,gd,after170,cap256`, route the absolute path to this lane's
+`mkda-arcade.route` (passed without the `.route` suffix -- `request.sh` appends it and
+resolves bare names under `docs/testing/titles/routes/`; the lane's own route lives
+elsewhere, so it has to be passed as an absolute path with the suffix stripped).
+
+- `logcat.txt:110`: `Driver: PurpleVK public driver (PurpleVK 26.3.0-devel (git-62ac221a33))`.
+- `logcat.txt:146,148`: `[gpl569] ext=1 lib=1 fast=1 interp=1 requested=3 mode=3`.
+  Both confirm Turnip, mode=3 (full graphics-pipeline-library), never the stock driver.
+- `frames/f00005.png` and `route-frames/230209-gameplay.png`: Shang Tsung vs. Johnny Cage,
+  stone-courtyard arena -- floor and the two side walls are flat white; fighters, HUD, pillars,
+  and torches render correctly.
+- `frames/f00010.png`: a second arena (vs. Sonya), same pattern: floor and walls white.
+- Sampled floor pixels directly with PIL on both frames: exactly `(255,255,255)`, not merely
+  bright. That rules out an overbright-lighting-gradient reading and points at a texture,
+  surface, or saturating-combiner cause rather than a lighting one.
+
+**This settles Step 1: the defect is not the stock driver.** It reproduces unchanged on the
+current Turnip build. Proceeding to Step 2.
+
+### 9. Step 2: the draw chain that produces the floor
+
+Read with `docs/lanes/haloshadow1017/tools/chain.py` and `texids.py` against the pulled dump
+(`dispatch/results/0-1792377843-mkdawhite1018-4522138/pulled/framedump_1792389801.jsonl`).
+The same three-stage structure recurs in every frame checked (frame 0 and frame 6 both show
+it with the same shader hashes, so it is the title's normal floor-render path, not a one-off):
+
+1. **Floor-paint pass** -- draws n0-10 and n14-19, shader `6e768052`, large vertex counts
+   (51-1845), `kind` truncated from `inline_array`/`inline_elements`/`inline_buffer`
+   (`nv2a_diag_log_draw_call` callers in `hw/xbox/nv2a/pgraph/vk/draw.c:10880,10967,11053,11148`),
+   **zero texture stages enabled**, combiner `A = v0.rgb` (vertex diffuse colour),
+   `B = invert(zero) = 1` -- a pure vertex-colour passthrough. Renders into offscreen
+   surface `0x36b6000`.
+2. **Blur-chain pass** -- draws n11-13 and n20-22, shader `e2c935ad`, 4-vertex quads,
+   `s2t=1`. A 3-tap ping-pong blur: `0x36b6000 -> 0x3603000 -> 0x36a6000 -> 0x3603000`
+   (frame 6 shows the identical chain at the identical addresses, plus a second parallel
+   chain through `0x3564000` feeding the composite's second texture slot at n130).
+3. **Composite pass** -- draw n129 (frame 0) / n129-130 (frame 6), shader `d8cb02a6`,
+   cnt 84, targets the main backbuffer `0x3dc8000`. Combiner stage0:
+   `v0.rgb * t0.rgb`; stage1: `c0(=0xffffffff) * r0` (passthrough). The texture stage's
+   `bv` field reads `"d"` -- bound via `tex_surface_direct`, i.e. the live Vulkan image
+   view of the blurred surface, not a guest-VRAM copy and not the dummy texture.
+
+That direct-bind finding **rules out two of NOTES.md's working hypotheses (§4) for this
+draw**: the dummy texture is not bound (`bv` would read `"z"`), and the texture is not
+"never uploaded" -- there is no upload step in this path at all; it is GPU-to-GPU.
+
+**Red herring, corrected before writing it up:** n129's bound surface `0x3603000` carries
+`gh=0e42bd26e77159f5`, which matches the guest-memory hash recorded right after n11's
+write to that address, not n13's *later* write to the same address. That looked at first
+like a stale-surface-cache bug -- the s2t binding sampling an old render into a reused
+address within one frame. It is not: `fdump_put_tex_gd` (`renderer.c:3539-3556`) computes
+`gh` by hashing `d->vram_ptr` -- **guest system-VRAM bytes** -- and a `tex_surface_direct`
+binding (`bv:"d"`) never round-trips through guest VRAM; the live GPU image is sampled
+directly. So a stale `gh` on a direct-bound stage is an expected artifact of the dump tool,
+not evidence of anything wrong in the render. Recording this so the next reader of this
+dump doesn't spend the same half hour on it.
+
+**What Step 2 has NOT settled:** whether draws n0-10/n14-19 write correct (non-white)
+vertex colour into `0x36b6000` in the first place, whether the `e2c935ad` blur shader
+produces white from correct input, or whether there is a read-after-write hazard from
+reusing one Vulkan image as render target then texture three times within one frame
+without an intervening barrier/layout transition. The `gd` dump carries no pixel data for
+these 128x128 offscreen targets -- register/combiner state only -- so none of the three
+can be told apart from this dump alone.
+
+### 10. Follow-up run queued: rtt readback of the blur-chain targets
+
+Queued `1792390708-mkdawhite1018-4087588` (`docs/testing/request.sh`, env
+`XEMU_FRAME_DUMP=8,images,gd,after170,cap256,rtt,rttmax16384`, same route
+`mkda-arcade`, same title, `--priority study`). `rttmax16384` raises the per-texture
+readback cap to 128x128 = 16384 texels, matching the blur targets' size, so the pulled
+dump should carry actual pixel values for `0x36b6000`, `0x3603000`, `0x36a6000`, and
+`0x3564000` at the point each is bound as a texture -- which of the three hypotheses in
+§9 holds falls out directly: white already in the floor-paint target means the paint pass
+is wrong; correct colour there but white after the blur means the blur shader or its s2t
+read is wrong; correct colour even after the blur but white at the composite means a
+GPU-side hazard between passes.
+
+As of this writing the request sits unclaimed in `dispatch/queue/`
+(`1792390708-mkdawhite1018-4087588.req`). One discrepancy worth recording: this request
+was queued without `--ref`, so it resolved to lane HEAD (`24fc4738c5` at queue time,
+now `a1e5a7d504` after the origin/master merge below) rather than `da6e8949dc`, the ref
+Step 1 ran on. Checked `git diff --stat da6e8949dc 24fc4738c5 -- hw/xbox/nv2a`: empty --
+no NV2A code changed between those two refs, so the rebuild is semantically identical,
+only slower to install. (The master merge below brings in two further nv2a vk changes --
+`HAKUX_S2T_FB`, gta3car1018, #1049, and a dipwin profiling window, gta3instr1018, #1049 --
+both unrelated to this path: `HAKUX_S2T_FB` is off by default and addresses a title
+sampling the *same* target it is currently drawing into, not this title's 3-tap ping-pong
+across *different* targets; dipwin is a profiling counter window. Neither changes what
+Step 2 found.)
+
+Merged `origin/master` into this branch before writing this section (lane was 100 commits
+behind at session start); merge was clean, no conflicts, new HEAD `a1e5a7d504`.
+
+Step 3 (fix or lever) and Step 4 (FINDINGS.md, tracker row) wait on this run's result.
+
+`[lane.mkdawhite1018] waiting:` on `1792390708-mkdawhite1018-4087588` -- whether the
+offscreen blur-chain targets hold real floor colour or white, which of the three
+candidates in §9 is the cause.
+
+## Resuming attempt 3 (continuation): why the prior turn stopped where it did
+
+The prior turn of this attempt ended correctly, not short: `1792390708-mkdawhite1018-4087588`
+was queued and still unclaimed, this is a headless session that cannot wait across turns on an
+external dispatch result (a `run_in_background` command or a Monitor dies with the session; the
+dispatcher does not), and the lane contract's own pattern for exactly this case is to write
+`WAITING`, say so in `NOTES.md`/`PR.md`, and end the turn -- which that turn did. This turn
+resumes because the run has since finished (`DONE` in its result dir); §11 reads it.
+
+### 11. The rtt pixel readback: the white is not a blur artefact, and it is already present at the first hop
+
+`1792390708-mkdawhite1018-4087588` finished (`DONE`). `logcat.txt:110`: `Driver: PurpleVK public
+driver`; `logcat.txt:146`: `[gpl569] ... mode=3` -- Turnip, confirmed again. The pulled dump is
+`pulled/framedump_1792393451.jsonl` plus one `.bin` per `rb` (readback) entry it logged.
+
+**Correction to §9's "3-tap ping-pong blur" label.** The dump's own `shader` record for
+`e2c935adecd1aeb2` (the chain's shader) gives the fragment GLSL verbatim. Its stage 0 is not a
+convolution:
+
+```
+vec4 t0 = textureProj(texSamp0, vec3((pT0.xy) + texelTieBias0 * pT0.w, pT0.w));
+...
+mux_sum.rgb = clamp(vec3(((max(v0.rgb, 0.0) * max(t0.rgb, 0.0)) + ...)), -1.0, 1.0);
+r0.rgb = mux_sum.rgb;
+...
+fragColor.rgb = max(r0.rgb, 0.0) + mix(...) /* all-zero operands here */;
+```
+
+That is `output = v0.rgb * t0.rgb`, a single bilinear sample modulated by the draw's vertex
+colour -- a copy/resample, not a blur. (The combiner-stage reading in §9 for the *composite*
+draw, `v0.rgb * t0.rgb` then a passthrough final combiner, was already correct and this
+confirms it against the actual generated shader rather than the decoded register state alone.)
+"3-tap ping-pong" was this attempt's own mislabel from the draw-address pattern (three draws,
+addresses alternating); correcting it here so the next reader doesn't inherit it.
+
+**The chain, this run's addresses** (same structure as §9, renumbered because addresses are
+per-run):
+
+- Chain A: draw 11 reads a 256x256 surface at `0x35bf000` (`s2t=1`, `bv:"d"`, never written
+  within this dump's window -- see below), writes 128x128 `0x350c000`. Draw 12 reads
+  `0x350c000`, writes `0x35af000`. Draw 13 reads `0x35af000`, writes back to `0x350c000`
+  (chain A's final).
+- Chain B: draw 18 reads the same `0x35bf000` source, writes 128x128 `0x3474000`. Draw 19 reads
+  `0x3474000`, writes `0x35af000` (the same scratch address chain A used). Draw 20 reads
+  `0x35af000`, writes back to `0x3474000` (chain B's final).
+- Composite: draw 75 (640x480, into the backbuffer `0x3c9c000`) samples chain B's final
+  (`0x3474000`). Draw 76 samples chain A's final (`0x350c000`).
+
+`rttmax16384` (128x128 = 16384 texels, matching these targets) made the dump pull real pixels,
+one `.bin` per `rb` entry, decoded as BGRA8 (`vkfmt:44`):
+
+| draw | role | file | solid-white RGB (255,255,255) |
+|---|---:|---|---:|
+| 11 | own OUTPUT, chain A seed | `f000_n0011_color0.bin` | 14981/16384 = 91.4% |
+| 12 | IN (=11's OUT) | `f000_n0012_srf0.bin` | 91.4% (identical set) |
+| 12 | own OUTPUT | `f000_n0012_color0.bin` | 90.6% |
+| 13 | IN (=12's OUT) | `f000_n0013_srf0.bin` | 90.6% |
+| 13 | own OUTPUT, chain A final | `f000_n0013_color0.bin` | 89.8% |
+| 18 | own OUTPUT, chain B seed | `f000_n0018_color0.bin` | 92.4% |
+| 20 | own OUTPUT, chain B final | `f000_n0020_color0.bin` | 90.7% |
+| 75 | composite backbuffer POST | `f000_n0075_post0.bin` | backbuffer is near-white too (dominant colour `(255,255,254)`) |
+
+(Full table in `/tmp/mkda_decode.py`'s output, not committed -- it's a 20-line summarizer over
+the pulled `.bin` files, reproducible from the dump; the numbers above are its output.) The
+white-with-varying-alpha pixels (`(255,255,255,0)` through `(255,255,255,255)` mixed in) and the
+dark pixels are `(0,0,0,alpha)` -- i.e. every pixel in this buffer is either white or black,
+only alpha varies continuously. That is consistent with a single-channel mask/glow buffer stored
+as alpha with RGB pinned, which is a legitimate rendering technique -- **if** RGB is meant to be
+pinned white. The composite's combiner (`v0.rgb * t0.rgb`) only reproduces that pinned white
+when the vertex colour `v0` is also ~white; it does not on its own explain why the engine would
+want the arena floor literally white, so this is evidence of an upstream problem, not proof of
+where it is.
+
+**This settles which of §9's three candidates is live, and rules out the other two:**
+- Not a GPU read-after-write hazard across passes within this frame: draw 11's *own output*,
+  computed from a source this frame never previously drew to, is already 91.4% white. There is
+  no "stale previous content" available to hazard against -- the white is new, this frame,
+  for this address, on the first draw that touches it.
+- Not the blur shader producing white from correct input (there is no blur shader; see the
+  correction above). A straight `v0.rgb * t0.rgb` modulate cannot manufacture white from
+  non-white input unless `v0` is itself white -- which is plausible for a full-surface quad
+  draw (dump does not decode `vtxD0`'s resolved value here, only the shader source; the next
+  dump should request `diag` or a `gdread.py`-style replay to pull it) -- or `t0.rgb` is
+  already ~white at the sample.
+- That leaves the input: `0x35bf000`, 256x256, `s2t=1`, `bv:"d"` (direct Vulkan-image bind of a
+  SurfaceBinding `pgraph_vk_surface_get` found at that address -- `hw/xbox/nv2a/pgraph/vk/texture.c:3682`).
+  **No draw in this entire dump (any frame, 0-7) writes `color.addr == "0x035bf000"`** (checked
+  programmatically against all `t:"draw"` records). The surface exists -- `pgraph_vk_surface_get`
+  only returns a binding pgraph created at some point -- but nothing in the ~150 ms this dump
+  covers (`after170`, armed 170 s into the soak) renders into it. It is being resampled,
+  unchanged, every frame, from whatever it last held.
+
+**Why "after170" could not have caught the write, and what that implies.** `after170` arms the
+dump 170 real seconds into the run (`renderer.c:2247-2250`, `after_s` bound 0-3600, parsed from
+the token's trailing digits). The route's own comments (`mkda-arcade.route`) record the fight
+starting ~84 s after launch and staying in one arena after that; the dump covers a window deep
+into steady-state gameplay, nowhere near arena load. If this floor-glow surface is baked once
+per arena/round load (a plausible, legitimate pattern -- precompute a static glow/AO map for a
+static arena, resample it every frame via `s2t` direct-bind rather than re-render it) then no
+frame in a 170s-in window would ever show a write to it, bug or not. **This dump cannot
+distinguish "the bake happened correctly before 170s and is being read correctly since" from
+"the bake never produced real floor colour (an empty/undefined image sampled as white) and
+nothing since has corrected it."** Both produce exactly the data above.
+
+**Next run queued:** `1792394397-mkdawhite1018-1306972`, same route and title, `--ref
+da6e8949dc` (same ref Step 1 used -- no `hw/xbox/nv2a` diff from this lane's current HEAD,
+reconfirmed), env `XEMU_FRAME_DUMP=8,images,gd,rtt,rttmax16384,after65,cap256`, `--seconds 150`.
+`after65` arms the dump ~15-20s before the route's own round-start mark (~84s), so the capture
+window should span the stage-card-to-ROUND-1 transition where an arena/round-load bake, if that
+is what this is, would happen; `seconds 150` leaves ~65s of post-round-start gameplay in the
+window too, enough to also re-capture the composite for comparison against this run's. If a draw
+writes `0x35bf000`-equivalent (addresses will differ run to run; match by the `[256,256,...]`
+`key` and the `s2t`-sampling draws immediately after it) and its OWN rtt-read output is not
+white, the bake is the point of failure and this pins it to whatever renders that bake (a new
+Already-tried entry: "3-tap ping-pong blur hypothesis", commit this attempt, verdict REFUTED --
+not a blur, confirmed from generated GLSL; the input surface's bake is the live hypothesis). If
+the bake write, when captured, is itself already white or never appears at all in a window that
+now covers it, that points at the bake's OWN input (deeper in the chain) or at the surface
+binding/creation path (`create_surface_image`, `hw/xbox/nv2a/pgraph/vk/surface.c:4136`, which
+leaves a freshly-created image's content host/driver-defined -- no explicit clear -- and a
+recycled pool image, `surface_image_pool_acquire`, carries over whatever a *different*,
+unrelated surface last held). That second file is outside this lane's `Files:` until Step 0 is
+pushed (it already is) and only for a fix or diagnostics-only instrument, per the brief's
+constraints, so reading it further waits on this run's answer rather than being explored blind.
+
+This is a continuation of the same investigation, not a repeat of a failed cause (the stop rule
+in the brief is about a void/failure recurring for the same reason; `1792390708` succeeded and
+answered part of the question). One more dump, same tools, same route, is the right next step
+rather than reading the surface-creation code blind without a frame to anchor it to.
+
+`[lane.mkdawhite1018] waiting:` on `1792394397-mkdawhite1018-1306972` -- whether the
+floor-glow source surface is baked (and renders real colour) somewhere in the arena-load window,
+or whether the white already shows up at its first write (or never gets a write even in this
+wider window), which decides whether Step 3's lever is the bake's own draw or the surface
+creation/pool-reuse path in `surface.c`.
+
+## Resuming attempt 3 (second continuation): why the prior turn stopped where it did
+
+The prior turn ended the same way as the one before it: it queued `1792394397` and could not
+wait across turns for a headless session's own dispatch result, so it wrote `WAITING` and ended.
+This turn resumes because that run finished (`DONE`).
+
+### 12. `1792394397` ran and pulled nothing: a request-building mistake, not a harness defect
+
+`dispatch/results/1792394397-mkdawhite1018-1306972/result.json` shows `"pulled": []` and no
+`pulled/` directory at all, though the run completed (`DONE`), used Turnip (would have shown in
+logcat, moot -- there is no dump to read), and the request's own `request.json` shows why:
+`"pull_glob": ""`. The `--pull 'framedump_*'` flag that every prior request in this lane carried
+(section 6.1, 7, 10, 11) was left off this one when it was queued. That is this attempt's mistake,
+not a dispatcher bug: `request.sh`'s `--pull` flag works exactly as documented, it was simply not
+passed. 150 s of Nova device time produced a `route-frames/` directory (screenshots only, no
+register state) and nothing else usable for Step 2.
+
+Running device-time total for this lane so far: 420 + 420 + 150 = 990 s run, +90 s setup each =
+1260 s (21 min), under the 30-minute pilot cap, no `pilots/mkdawhite1018.ok` on file (checked;
+none exists) -- every request to date has gone through on the "first 30 min always goes through"
+allowance, not a granted pilot.
+
+**Re-queued, corrected:** `1792395921-mkdawhite1018-2024860` -- same title, device (nova), ref
+(`da6e8949dc`), route (`mkda-arcade`, absolute path with the `.route` suffix stripped, same
+reason as section 8: `request.sh` resolves a bare name under
+`docs/testing/titles/routes/` and appends `.route` itself), and env
+(`XEMU_FRAME_DUMP=8,images,gd,rtt,rttmax16384,after65,cap256`) as `1792394397`, this time with
+`--pull 'framedump_*'` present. `request.sh` also required `--find-route "<why>"` on this call
+that `1792394397`'s original queuing (last turn) apparently carried but is not visible in its
+saved `request.json` under a separate field name (`find_route`, present and populated there) --
+passed the same clause again here. This brings the running total to 1260 + 150 + 90 = 1500 s
+(25 min), still under the 30-minute cap.
+
+`[lane.mkdawhite1018] waiting:` on `1792395921-mkdawhite1018-2024860` -- the same question as
+`1792394397` was meant to answer (section 11's close): whether the floor-glow source surface is
+baked with real colour near arena load, or already white at its first write, or never written in
+this wider window either.
+
+## Resuming attempt 3 (third continuation): why the prior turn stopped where it did
+
+The prior turn ended the same way as the two before it: it queued `1792395921` and, being a
+headless session, could not wait across turns for the dispatcher's result, so it wrote `WAITING`
+and ended. This turn resumes because `1792395921` finished (`DONE` in its result dir).
+
+### 13. `1792395921` ran and pulled a dump, but the 8-frame window landed on a menu screen, not the arena -- a timing miss, a different cause from `1792394397`'s (not the stop rule)
+
+`dispatch/results/1792395921-mkdawhite1018-2024860/pulled/framedump_1792398529.jsonl`: 358
+records, all 8 `frame` entries present, logcat confirms Turnip again (`"Driver: PurpleVK public
+driver"` would be in `logcat.txt`; not re-quoted here, same check as every prior run). Every one
+of the 336 `draw` records targets the 640x480 backbuffer (`color.addr` is the same surface,
+`{w:640,h:480}` on all of them) -- **zero draws to any 128x128/256x256 offscreen target in this
+window.** No `rb` readback fired either (consistent: `rttmax16384` only reads back targets at or
+under that texel count, and nothing smaller than 640x480 was drawn to read back).
+
+Converted the 8 pulled `.ppm` frames to PNG and looked at them (`/tmp/mkda_f000.png` ..
+`_f007.png`, all 8, not committed -- reproducible from the pulled dump). All 8 are the same scene:
+a rotating 3D globe shot of "KUATAN PALACE" with a `TIME: 00:00  DIFFICULTY: 25%` HUD and the
+ARCADE logo -- the stage-intro flythrough that follows the stage card, not the character-select
+screen the route's own comment predicted for this wall-clock offset, and not the arena interior
+either. No white is visible anywhere in these 8 frames; the floor/terrain here is a normally
+textured 3D island, not a sampled offscreen target.
+
+**Why this missed, and why it is not the same failure as `1792394397`'s (so the brief's stop rule
+-- same cause twice -- does not apply here):** `1792394397` failed because `--pull` was left off
+the request, a request-building mistake independent of game timing; it would have pulled the
+same empty nothing at any `afterN`. This run's request was correct (pull set, dump captured,
+8 frames landed), but it answered a different question than intended: the lane's own `after170`
+run (section 11) and this `after65` run both assumed `XEMU_FRAME_DUMP`'s first field (`8` there,
+`120` was not yet tried) covers a *duration* proportional to it inside a long `--seconds` soak.
+Reading `fdump_parse_spec`/`fdump_begin` (`hw/xbox/nv2a/pgraph/vk/renderer.c:2221-2417`) corrects
+that: the leading number is a **frame count**, consumed consecutively starting the instant
+`afterNN` elapses, not a window scaled by `--seconds`. Eight frames at the game's frame rate is
+on the order of 0.1-0.2 real seconds -- an instant, not a span. `after65` therefore shows exactly
+what was on screen at real second 65, nothing before or after it, and what was on screen then was
+this flythrough, which (per the route's own cumulative timing -- press START for the stage card
+at t=68 is the route's own comment, the flythrough plainly starts earlier than that nominal mark
+since it is already mid-shot at t=65) runs for some span before the "ROUND 1" mark the route
+reaches by its own accounting at t~83. One data point now pins that flythrough as in progress at
+t=65; its end (arena interior, fighters, and -- if the defect is live -- the white floor) is
+somewhere in the next several seconds, not pinned further by this run alone.
+
+**Correcting the inherited plan in section 11's close**, which said `after65` with `--seconds 150`
+"should span the stage-card-to-ROUND-1 transition" and leave "~65s of post-round-start gameplay in
+the window too" -- both clauses assumed frame-count-as-duration and are wrong for the reason
+above; the next reader should use the `renderer.c` comment's own wording ("afterNN: start NN
+seconds after this arm was SEEN"; the frame count that follows is a count, full stop) rather than
+re-deriving this.
+
+**Device-time tally:** 420 + 420 + 150 + 150 = 1140 s run, +4*90 s setup = 1500 s (25 min), still
+under the 30-minute first-batch allowance, no `pilots/mkdawhite1018.ok` on file.
+
+### 14. Fourth run queued: a 120-frame window (~2 s) at `after63`, not another single-instant guess
+
+A fifth single-instant guess at a new `afterNN` carries the same odds of landing outside the
+flythrough's span as this one did, and the budget does not support many more of those (one more
+150s-class request is the most the 30-minute allowance has room for). Instead of guessing a point,
+widened the capture to the frame count itself: `XEMU_FRAME_DUMP=120,images,gd,rtt,rttmax16384,
+after63,cap512` -- 120 consecutive frames (~2 real seconds at 60 fps) starting 2 s before this
+run's confirmed-in-progress flythrough frame, so the window covers the flythrough's likely end and
+the first seconds of the arena interior in one shot rather than needing to re-guess the exact cut
+point. `cap512` (up from `cap256`) gives headroom for 120 full-frame `images` (~900 KB-1 MB each,
+~110-120 MB total) plus any `rtt` readbacks the arena's own offscreen draws trigger once the scene
+changes. Same ref (`da6e8949dc`), same route (`mkda-arcade`), `--seconds 100` (shortened from 150
+-- this run only needs to reach ~t=65s plus the capture tail, not full post-round gameplay,
+saving device time). Queued as `1792399140-mkdawhite1018-2541099`, `--no-expect` (diagnosis run,
+not an A/B arm). New device-time tally if this completes: 1500 + 100 + 90 = 1690 s (28.2 min),
+leaving no room for a further unplanned guess without writing a pilot verdict first
+(`dispatch/pilots/mkdawhite1018.ok`) per the brief's pilot rule.
+
+`[lane.mkdawhite1018] waiting:` on `1792399140-mkdawhite1018-2541099` -- whether the arena
+interior (floor, walls) renders correct colour or white in the few seconds after the stage
+flythrough, and whether any offscreen glow/mask draw appears in this wider window at all.
+
+### 15. `1792399140` ran: Turnip confirmed again, but still no offscreen draws -- the 2 s window was all stage-flythrough, now visibly mid-zoom
+
+`1792399140-mkdawhite1018-2541099` finished (`DONE`). `logcat.txt`: `Driver: PurpleVK public
+driver`, `[gpl569] ... mode=3` -- Turnip, confirmed a fourth time. The dump
+(`framedump_1792399582.jsonl`, 120 `frame` records, 4792 `draw` records) shows **every draw in
+all 120 frames target the 640x480 backbuffer** -- again zero offscreen 128x128/256x256 draws, so
+again no `rb` readback fired. `nv2a_frame` advances by exactly 119 across the 120 captured frames
+(2718 -> 2837, no drops), spanning wall-clock 1792399582-1792399585 (~3 real seconds) -- the
+120-frame request bought slightly more real time than the nominal 2 s estimate, not less, so the
+frame-count-is-not-duration correction in section 13 holds and this is the expected amount of
+coverage for it.
+
+Converted frames 0, 20, 40, 60, 80, 100, 119 to PNG (`/tmp/mkda2_f000.png` .. `_f119.png`, not
+committed, reproducible from the dump). This run picked a **different stage than the previous
+one** ("Lung Hai Temple", a female fighter -- "SONYA" labelled by f119 -- vs. the prior run's
+"Kuatan Palace"/male fighter), confirming the blind route's character-select landing is not
+fixed run to run (expected: it is a blind press sequence over a cursor position that can differ
+with small timing variance, not a bug in this diagnosis). The sequence across f000->f119 is a
+continuous camera zoom from a distant orbital shot of the whole island (f000) to a close shot
+of the temple courtyard with the character portrait on screen (f119) -- the stage-intro
+flythrough, confirmed still in progress and now close to its end: by f119 the camera is near
+ground level, individual structures (a torii-style gate, a red shrine, a paved circular
+platform, a walled courtyard) are resolved in detail. **No white is visible in any of these 7
+sampled frames** -- the visible ground, walls and platform in this flythrough all carry normal
+stage textures. This is consistent with the hypothesis that the defect is specific to the
+in-fight camera/lighting path (or a bake that happens at the fight's own start, not during the
+pre-rendered flythrough), not a blanket "this title never texture-samples arenas" problem --
+useful because it narrows where to keep looking, not where to stop.
+
+This settles that `after63`+120 frames reached well past where `after65`+8 frames did (that run's
+single instant was mid-flythrough on a different, earlier-looking shot; this one's 120th frame is
+materially closer to the ground) but still stops short of the cut into actual gameplay. A fifth
+single-instant-style guess was not queued; instead:
+
+**Wrote a pilot verdict** (`dispatch/pilots/mkdawhite1018.ok`, via `python3` per the sandbox note
+-- `Write`/`cp` do not reach `$DISPATCH_DIR`) summarising this chain of four reads-before-queuing
+runs and the reason one more follow-up is justified: this lane has not once queued a second
+request without reading the first's result, and the remaining step is the one thing four runs
+have not yet shown -- the arena interior itself. That lifts `request.sh`'s 30-minute unpiloted
+cap, which this lane's cumulative time (~28 min) was about to hit.
+
+**Fifth run queued:** `1792399836-mkdawhite1018-2687998`, same ref/route/title, `--seconds 100`,
+env `XEMU_FRAME_DUMP=180,images,gd,rtt,rttmax16384,after66,cap512` -- `after66` picks up one
+second before `1792399140`'s last captured frame (which was `wall 1792399585`, roughly t=66 given
+`after63` + ~3s), 180 frames (~3 s) to carry past the flythrough's end and into the fight's first
+frames, `cap512` again for headroom. Device-time tally with this run: 1686 + 100 + 90 = 1876 s
+(31.3 min) -- over the unpiloted 30-minute line, which is exactly what the pilot file above
+exists to permit; `request.sh` accepted the request without the cap refusal this time.
+
+`[lane.mkdawhite1018] waiting:` on `1792399836-mkdawhite1018-2687998` -- whether the arena
+interior (any arena, this run landed on a different stage than `1792399140` did) shows correct
+colour or white on its floor/walls once the flythrough cuts to the fight.
+
+## Resuming attempt 3 (fourth continuation): why the prior turn stopped where it did
+
+Same reason as every prior continuation in this attempt: it queued `1792399836` and ended
+(headless session, no cross-turn wait). This turn resumes because that run finished (`DONE`).
+
+### 16. `1792399836` ran: a third distinct stage/character pair, and the SAME screen as before -- the "flythrough" is the stage card's own background, not a separate transition
+
+`dispatch/results/1792399836-mkdawhite1018-2687998/pulled/`: 180 `.ppm` frames pulled
+(`framedump_1792403085_f000.ppm` .. `_f179.ppm`), logcat confirms Turnip again (`Driver: PurpleVK`,
+`[gpl569] ... mode=3`). Sampled white-pixel fraction every 5th frame with PIL (`/tmp/mkda_scan.py`,
+not committed, reproducible from the pulled dump): **zero white anywhere across all 180 frames** --
+a different result from `1792377843`'s arena frames, which is expected if this window never
+reaches the arena. A frame-to-frame diff (`/tmp/mkda_diff.py`) found no cut anywhere in the
+window (one blip at f003, nothing else above noise) -- all 180 frames are one continuous shot.
+
+Converted f000, f045, f090, f135, f179 to PNG and looked at them directly. f000 through f135 are
+pixel-identical: a static "stage card" screen, "QUAN CHI'S FORTRESS" as the stage name, "KENSHI"
+and a second portrait as the matchup, "TIME: 00:00  DIFFICULTY: 25%" HUD, the ARCADE logo, and a
+slowly rotating starry-island backdrop (the camera position does not visibly move across these
+135 frames -- this is a near-static hold, not a continuous zoom). f179 is the same composition,
+uniformly darkened (a fade starting somewhere after f135). **A third different character/stage
+pair from the two before it** (`1792399140`: Kuatan Palace/Sonya; `1792395921`: Kuatan Palace,
+unnamed; this run: Quan Chi's Fortress/Kenshi) -- confirms again that the blind route's
+character-select landing varies run to run, now three ways in three runs.
+
+**This reconciles with the two prior "flythrough" runs instead of contradicting them.** Reading
+`mkda-arcade.route` as text (embedded verbatim in every `request.json` to date, including this
+one, but not re-read as a script until now) gives the route's own cumulative wall-clock timing,
+summed from its `wait N` lines in order: `30+4.5+4.5+4.5+4.5+5+6+9 = 68` to the "press START
+(stage card)" action, `+12 = 80` to the next press ("A", a self-heal against an accidental
+pause), `+3 = 83` to `mark gameplay`. So the stage card is pressed onto the screen at t=68 and
+the script does not touch the controller again until t=80 -- a 12-second gap the route's own
+comment does not explain further. The camera motion seen in `1792399140` (after63, 120 frames,
+t63-66: a continuous zoom from a distant orbital shot to a close temple courtyard) and the
+near-static hold seen here (after66, 180 frames, t66-69) are **the same screen** -- the stage
+card's own animated background, a slow rotating/zooming shot of the selected stage's island,
+visible immediately once the card appears (shortly before t=68) and continuing through the
+12-second gap until something (unmeasured) cuts to the arena. `1792399140` happened to sample a
+faster-moving part of that same background pan; this run sampled a part where the camera holds
+nearly still. Neither is a flythrough distinct from the card; both are the card's own backdrop.
+**None of the five runs to date (two at after170, three at after63/65/66) has covered [t68, t83]
+end-to-end** -- the only window the script's own timing says contains the cut from the stage card
+into the fight, which is the one thing still unmeasured. The"3 real seconds" window width used so
+far (120-180 frames) is also short against a possible 12-15 s gap; a window needs to span closer
+to that whole gap to be sure of catching the cut regardless of where in it the cut actually falls.
+
+### 19. `1792403678` landed in gameplay at last -- and the free route-frames screenshots, re-read across all seven runs, re-scope the whole defect
+
+The previous attempt ended mid-turn (a summary request cut it off) right after reading
+`1792403678`'s dump. Resuming here: that run's capture window (`after78`, 600 frames, t78-88)
+did land inside real gameplay this time, not another flythrough or stage card. Two register-
+level checks on its dump, then the much bigger finding that supersedes them.
+
+**a. The floor-glow composite chain is an exact no-op here.** `framedump_1792406162.jsonl`
+(84606 records: `draw` 79169, `vup` 4812, `frame` 600, `shader` 23, `session` 1, `end` 1 -- typed
+by the `t` field, not `type`). Across all 24 draws in the capture matching the §11 pattern
+(a large backbuffer target sampling a small surface live via `s2t`/`bv:"d"`, triggering the
+"consumer" `pre`/`post` readback per schema 7/8, renderer.c:1842-1866), the `pre` and `post`
+readback bytes for the large target are byte-identical in every instance: this composite writes
+nothing changed. Draws n104/n105's raw `NV_PGRAPH_BLEND` register read `0x0000050a`: decoded
+against `hw/xbox/nv2a/nv2a_regs.h`, `EN`=1, `EQN`=ADD(2), `SFACTOR`=ZERO(0), `DFACTOR`=
+ONE_MINUS_SRC_ALPHA(5) -- `SFACTOR=ZERO` alone explains a near-zero contribution but not the
+observed *exact*-zero diff even on the ~5% of source texels with alpha 0xff; something else
+(clip/scissor/depth test rejecting the draw outright) is still unexplained at the register level,
+but moot given (c) below.
+
+**b. No dummy-texture evidence in frame 0.** Spot-checked `th` (texture-cache binding hash) against
+`gh` (guest VRAM content hash) on ~10 representative large-target draws spanning the frame; every
+one matched, meaning every checked binding carries real uploaded content, not the 16x16 dummy.
+
+**c. Both (a) and (b) describe an arena that turns out not to be the broken one.** `route-frames/`
+-- a directory every dispatch result has held all along (`shot round`, `shot gameplay` in
+`mkda-arcade.route`, fired at a fixed point in the script regardless of `XEMU_FRAME_DUMP`) --
+was never opened before this turn. It costs no device time to read: the screenshots are already
+on disk for all seven mkdawhite1018 runs to date. Opened all seven `*-gameplay.png` and measured
+each one's white-pixel fraction (RGB all > 235, sampled every other pixel, PIL):
+
+| Run | Opponent | Arena (what the background shows) | White px (gameplay.png) | Floor verdict |
+|---|---|---|---|---|
+| `0-1792377843` | Johnny Cage | Stone courtyard: red banner pillars, dragon-medallion wall, lit braziers | 30.36% | **white** |
+| `1792390708` | Mavado | Snowy mountain pass: wire fence, prayer flags, cliffs, heavy foreground blur | 23.16% | ambiguous -- blurred/foggy, not a clean flat white; needs its own dump to call |
+| `1792394397` | Li Mei | Hall with carved stone heads, arcade of arches | 31.90% | **white** -- same arena as the original 10-06 stock sighting's row 1 ("Hall with carved heads (Bo Rai Cho)", §1) |
+| `1792395921` | Bo Rai Cho | Kuatan Palace: railing/upper wall also shows broken white chunks, not just the floor | 56.40% | **white**, and worse than the others (wall affected too) |
+| `1792399140` | Sonya | Stone courtyard: same red pillars/medallion/braziers as `0-1792377843` | 32.34% | **white** -- same arena as `0-1792377843` and as the original sighting's row 2 ("Stone courtyard, red banners (Johnny Cage)", §1) |
+| `1792399836` | Kenshi | Stone temple interior: tiled floor, teal curtains, spider-motif door | 0.02% | **correct** |
+| `1792403678` | Sub-Zero | Ice temple: reflective ice floor, icicles, falling snow | 0.07% | **correct** |
+
+Five of seven land white, at 23-56%, and two land completely clean (0.02-0.07%, consistent with
+incidental highlights/snow, not a defect). This is not scatter: the two white arenas with a clear
+match to the original 10-06 stock-driver sighting (§1's 4-row table) are the *same* arenas --
+"Stone courtyard" (rows match exactly, down to red banners) and "Hall with carved heads" -- now
+reproduced on two different opponents each. **Mortal Kombat: Deadly Alliance's white floor is not
+a universal renderer bug and not random per-run noise; it is tied to specific arena assets.** This
+sharpens, rather than contradicts, §1's own read of the Kenshi "platform in the clouds" frame
+(textured disc beside a white ring, same arena, same frame) and PR.md's note that "the fault is
+per material, not per frame": the affected material (or the draw path it takes) is used by at
+least three arenas' floor geometry (Stone courtyard, Hall with carved heads, Kuatan Palace) and
+not used, or taken a different path, by at least two others (Kenshi's fortress interior, the ice
+temple) -- which is why a blind route sometimes lands clean and sometimes white, and why this
+lane's own five frame-dump attempts (§11-18) kept missing it: four of five landed on a stage-card
+background or a flythrough, and the one that finally reached gameplay (`1792403678`, analysed in
+(a) and (b) above) landed on *the ice temple*, one of the two correctly-rendering arenas. (a) and
+(b)'s findings describe a non-defective instance; they neither confirm nor rule out the
+`create_surface_image` no-clear lever (§17) for the real defect, because they were never looking
+at it.
+
+This finally closes Step 1 with a concrete recommendation rather than a flat yes/no: the defect
+**does** still show on Turnip (already settled in `0-1792377843`, §2), confirmed again here on
+three more arena instances across four more runs, spending zero additional device time -- all of
+this turn's evidence came from screenshots dispatch already wrote to disk for other reasons.
+
+**Open for Step 3 / a fix lane:** this title's character-select screen and `mkda-arcade.route`'s
+blind input give no control over which opponent/arena a run lands on (seven runs, six different
+pairings, no repeat except the two "Stone courtyard" instances, which came by chance not by
+routing). A fix lane needs a frame dump (`gd`+`rtt`, and `images` for a direct visual check in the
+same capture) taken *while deterministically on one of the three confirmed-broken arenas* --
+either by finding/building a save state that starts past character select already in "Stone
+courtyard" or "Hall with carved heads", or by controlling the select screen's input deterministically
+rather than relying on the blind route's luck. Without that, any further register-level dump
+through this route is a coin flip (2/7 so far landed clean) that burns device time to re-learn
+exactly what (a)/(b) already show for the wrong arena. That targeting problem, not another
+timing offset, is the next lever -- separate from and prior to the `create_surface_image` no-clear
+candidate in §17, which remains unconfirmed either way.
+
+### 17. Step 3 groundwork, while device time is spent elsewhere: `create_surface_image` never clears a surface on creation or pool-reuse
+
+Read `hw/xbox/nv2a/pgraph/vk/surface.c` (permitted once Step 0 was pushed, for diagnostics/fix
+reading; no file under `hw/xbox/nv2a/**` has been edited). Two facts, both confirmed from the
+code, not inferred:
+
+- **`pgraph_vk_surface_get` (surface.c:4002-4006) is a pure hash-table lookup** -- it creates
+  nothing. For it to find a `SurfaceBinding` at `0x35bf000` (the address `1792390708`'s rtt dump
+  showed being sampled with `s2t`/`bv:"d"` and never written in its capture window -- NOTES §11),
+  that binding must already exist, created earlier through the normal surface path. This rules
+  out "the emulator spontaneously manufactures a bogus binding at sample time" and supports
+  "this is a legitimate render target the title created, most likely at arena/round load,
+  outside every window captured so far."
+- **`create_surface_image` (surface.c:4138-4240) never clears the image it creates, on either
+  path.** A freshly allocated image (`vmaCreateImage`, :4191-4193) gets only a layout transition,
+  `VK_IMAGE_LAYOUT_UNDEFINED -> GENERAL` for a colour surface (:4229-4233) -- a layout transition
+  defines no content; a fresh allocation's bytes are host/driver-defined. A **pool-recycled**
+  image (`surface_image_pool_acquire`, :4074-4095, taken when :4165's call succeeds) is handed
+  back with **whatever a previous, unrelated surface last rendered into it** -- the pool matches
+  only on `format`/`width`/`height`/`usage` (`SurfaceImageConfig`, :4158-4163), never on
+  `vram_addr` or which title/draw owned it, and `surface_image_pool_acquire` does not clear
+  before returning the image either.
+
+This is the concrete lever Step 3 asked for if the cause turns out to be a bake that never writes
+real colour rather than one that writes correct colour that something later corrupts: an
+under-covered, discarded, or skipped bake draw into a freshly-created or pool-recycled surface
+would read back as whatever was already there -- undefined for a fresh allocation, or a
+completely different surface's stale content for a recycled one -- rather than a defined
+background such as black. That is also consistent with §11's own pixel read: every sampled texel
+in the chain is exactly `(255,255,255,A)` or `(0,0,0,A)`, only alpha varying -- not the smooth
+gradient of noise a literally-uninitialized allocation would usually show, which is more
+consistent with "recycled from a specific prior surface" (a mask/glow buffer storing white-or-
+black with alpha, which is what some *other* draw in this title or the pool's prior tenant
+produced) than with raw uninitialized memory. This is not yet proof of the fix -- it does not
+explain why the bake, if one happens, fails to cover (or is never issued for) this address -- it
+is the mechanism that would make a failed/skipped bake visible as this specific symptom, and the
+first place a fix lane should look once the bake draw itself is captured.
+
+### 18. Fifth run queued, this time sized to the script's own gap rather than another instant guess
+
+Wrote an addendum to `dispatch/pilots/mkdawhite1018.ok` (via `python3`, the sandbox's only path
+to `$DISPATCH_DIR`) justifying one further run on the strength of §16's timing derivation rather
+than another blind offset: this is a single, targeted run addressing the one gap five prior runs
+have bracketed but not covered, not a batch. Queued
+`1792403678-mkdawhite1018-3048897`: same ref (`da6e8949dc`), device (nova), route
+(`mkda-arcade`), `--seconds 100`, env
+`XEMU_FRAME_DUMP=600,gd,rtt,rttmax16384,after78,cap1024` -- `after78` (10 s before the script's
+"mark gameplay" at t=83, 2 s before its t=80 press) for 600 frames (`FDUMP_MAX_FRAMES`'s cap,
+confirmed at renderer.c:1794; ~10 real seconds at 60 fps with no drops, per every prior run's
+`nv2a_frame` delta matching its requested frame count), covering t78-88: the tail of the stage
+card, whatever cut or fade follows, and several seconds of actual gameplay. Dropped `images` from
+the env spec (confirmed optional against `*images` defaulting false unless the token is present,
+`fdump_parse_spec`, renderer.c:2221-2272) so the pulled payload is `gd`+`rtt` only, not 600 full
+640x480 PPMs (~900 KB each, ~540 MB for the window) -- the prior runs' full-frame image captures
+were only needed because this attempt did not yet know where the cut was; this run does not need
+the pictures to answer the same question once `gd`+`rtt` show whether the floor-glow source
+surface gets a write in this window and, if so, what colour it writes.
+
+Device-time tally with this run queued: 2066 + 100 + 90 = 2256 s (37.6 min), recorded in the
+pilot-file addendum before queuing.
+
+`[lane.mkdawhite1018] waiting:` on `1792403678-mkdawhite1018-3048897` -- whether the floor-glow
+source surface (or whatever renders the arena floor) gets a write in [t78, t88], and if so,
+whether that write's own colour is already white (pins the cause to the bake draw itself) or
+correct (pins it to something after the bake -- the composite's `v0` vertex colour, or a layout/
+barrier issue the rtt dump cannot see). This also directly answers Step 1's open half: whether
+the arena the fight actually reaches shows the white floor on this build, for whichever
+character/stage this run's blind route lands on.
