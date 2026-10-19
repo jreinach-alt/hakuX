@@ -8,7 +8,8 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `fpsnext1019` | claude-sonnet-5 | 23 min | fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433) |
+| `fpsnext1019` | claude-sonnet-5 | 38 min | fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433) |
+| `nova-tiers1019` | claude-sonnet-5 | 13 min | Nova priority tiers that actually hold: screening yields to FPS and release-fix work |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -126,18 +127,15 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/fpsnext1019` | fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433) | `789b390b95` | 2026-10-19 08:36 |
+| `lane/fpsnext1019` | fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433) | `6a3c0c0071` | 2026-10-19 09:14 |
+| `lane/nova-tiers1019` | Nova priority tiers that actually hold: screening yields to FPS and release-fix work | `dea4c616a7` | 2026-10-19 09:13 |
 
 ## Recently landed on master
 
+- 2026-10-19 fpsdata1018: FPS dip causes in the 4-title owner capture, and fixes (#433)
 - 2026-10-19 foldjam1018: fix the three silent causes of the 2026-10-18 fold jam so they can't recur
 - 2026-10-19 drive: local tools only, act-observe instead of wait-and-fail, learn what to press
 - 2026-10-19 mkdawhite1018: Mortal Kombat: Deadly Alliance arena floors and walls draw flat white (#1058)
 - 2026-10-18 GTA III dip frame: race-free render-pass-break counters, timed fence/copy/bind costs, and the in-car fen split
-- 2026-10-18 ralli2audio1018: RalliSport Challenge 2 audio dropouts: the voice processor's guest-memory overhead, producer timing, audio thread priority
-- 2026-10-18 pagesfix1018: fix the stale `check --pages` falsifier fixture
-- 2026-10-18 drive: local tools only, act-observe instead of wait-and-fail, learn what to press
-- 2026-10-18 fpsdiag1018: one FPS lane for GTA III, Blinx 2, Fable -- known/not/could-be and a diagnostic tool (#433)
-- 2026-10-18 gta3car1018: GTA III in the car -- the render passes are a feedback-loop copy per draw (#1049)
 
-_Updated 2026-10-19 09:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-19 09:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
