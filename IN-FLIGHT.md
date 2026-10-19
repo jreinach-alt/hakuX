@@ -8,12 +8,12 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `fpsnext1019` | claude-opus-5-5 | 25 min | fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433) |
+| `fpsnext1019` | claude-opus-5-5 | 40 min | fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433) |
 
 - **Handhelds:** 2 connected.
-  - Nova: held by `lane.fpsnext1019`
+  - Nova: free for the queue
   - Thor: held by `lane.local`
-- **Device queue:** 1 waiting, 0 running.
+- **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -127,6 +127,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Recently landed on master
 
+- 2026-10-19 foldjam1018: fix the three silent causes of the 2026-10-18 fold jam so they can't recur
 - 2026-10-19 drive: local tools only, act-observe instead of wait-and-fail, learn what to press
 - 2026-10-19 mkdawhite1018: Mortal Kombat: Deadly Alliance arena floors and walls draw flat white (#1058)
 - 2026-10-18 GTA III dip frame: race-free render-pass-break counters, timed fence/copy/bind costs, and the in-car fen split
@@ -135,6 +136,5 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-18 drive: local tools only, act-observe instead of wait-and-fail, learn what to press
 - 2026-10-18 fpsdiag1018: one FPS lane for GTA III, Blinx 2, Fable -- known/not/could-be and a diagnostic tool (#433)
 - 2026-10-18 gta3car1018: GTA III in the car -- the render passes are a feedback-loop copy per draw (#1049)
-- 2026-10-18 dispatcher: dev_push gets a read-only mode for the Nova's SD-card disc pushes
 
-_Updated 2026-10-19 08:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-19 08:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
