@@ -682,3 +682,69 @@ the request's `results/<id>/DONE` appears, steps 1-4 above (read the
 `vp=` producer timing, write the pilot verdict, queue the two bar runs,
 update `FINDINGS.md`/`PR.md` and flip `PR.md` to `ready`) are what is
 left.
+
+Attempt 9 (10-18, about 18:37 PDT) -- why attempt 8 did not finish: same
+external wait as attempts 3-8 so far as attempt 8 could see (Nova absent
+from the dispatch host); attempt 8 ended correctly on `waiting:`. The
+wait has since changed shape, which is why this attempt has new ground to
+cover rather than repeating a check.
+
+- Read this file and `git log` first, per the resume brief.
+- `adb devices -l` now lists the Nova (`ee317437`) alongside the Thor
+  (`bdc158a5`): the six-hour absence attempt 8 flagged is over. The
+  dispatcher log confirms when and why it stayed unclaimed after that:
+  `10-18 18:26:23 starting worker for ee317437 (attached late)`, then
+  three `BATTERY: skip ... on nova: level 4 < need ...` lines for the
+  queued foldqueue requests and this lane's own
+  `1-1792368418-lane.ralli2audio1018-1108710` (needs 40.3%, battery at
+  4%), then at `18:30:04 HELD by .../dispatch/hold/nova; claiming
+  nothing until it is removed`. So the device came back nearly empty
+  (4-5%, per `dispatch/.battery_level.nova`: level 5 at 1792373369 =
+  18:29:29 PDT) and a `battery-hostops` hold replaced the absence as the
+  reason nothing runs. `dispatch/hold/nova.why`: "2026-10-19T01:30:00Z
+  battery-hostops: battery 5% < 15%; device_reality lifts it at >= 20%;
+  per-run battery admission in the dispatcher governs above that."
+- This changes what "unblocked" means for this lane's own request.
+  `device_reality` lifts the hold at 20%, but the dispatcher's own
+  BATTERY-admission arithmetic for an 870 s run needs 40.3% (floor 30 +
+  margin 5 + rate 21.0%/h x (870s run + 38s learned overhead)) -- a
+  higher bar than the hold's own lift point. Reaching 20% clears the
+  hold file; the queued request will keep logging `BATTERY: skip` until
+  the level clears 40.3%, not 20%. Nothing in this session can make the
+  battery charge faster, and nothing here should touch the Nova while it
+  is held (brief: "never touch the handheld by hand under a hold").
+  `logs/nova-dock-battery.tsv` is stale (last line 2026-10-01, mtime
+  Oct 1) and not a usable charge-rate source for this wait; the per-run
+  `.battery_level.nova`/`.battery_refused.nova` files are the live state
+  and were read, not written, by this attempt.
+- `hold/thor` is unchanged (`lane.local`, same thermal-test note).
+  `dispatch/queue/` still holds exactly the same four `.req` files as
+  attempt 8 (two foldqueue, one restore, this lane's pilot); nothing in
+  `running/` or a new `results/` entry for this lane's request id.
+  `dispatch/hold/lifted/` (the archive of past hold/unhold events) has no
+  entry younger than Oct 7, i.e. no record yet of this battery hold lifting.
+- Branch state unchanged: Work 1-4 (vp.c fix, `prod:` instrumentation,
+  audio-thread priority, `FINDINGS.md`, `PR.md`) were already complete
+  entering this attempt; nothing new to build or measure offline exists
+  until the queued request runs. Did not re-queue, cancel, touch the
+  device, or write to any dispatch/hold file.
+
+[lane.ralli2audio1018] waiting: Nova battery charge, not device presence.
+The Nova reconnected to the dispatch host at 18:26 PDT (ending the
+six-hour absence attempts 3-8 tracked), but at 4-5% battery, which placed
+a new `battery-hostops` hold (`dispatch/hold/nova`, lifts at >= 20%
+device-wide) and is separately refusing this lane's own queued request
+`1-1792368418-lane.ralli2audio1018-1108710` (870 s pilot on `ec7e06c467`,
+`HAKUX_PLC_WIPE=1`) via per-run BATTERY admission, which needs 40.3%, not
+just the hold's 20%. Once `dispatch/.battery_level.nova` clears 40.3% and
+the request's `results/<id>/DONE` appears:
+
+1. Read `tools/timeline.py results/<id>/logcat.txt --prod`, test `vp=`
+   mean and wall-per-block against the prediction in "The fix the pilot
+   points at" above.
+2. Write the verdict to `pilots/lane.ralli2audio1018.ok` with python3.
+3. If it holds, queue the two default runs for the bar (same route, same
+   race), each scored with `title_verdict.py --require confirmation` plus
+   `audio_starve_share`.
+4. Update `FINDINGS.md` and `PR.md` with the measured numbers, and move
+   `PR.md`'s `State:` to `ready`.
