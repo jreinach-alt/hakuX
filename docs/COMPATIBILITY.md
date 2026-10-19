@@ -4,7 +4,7 @@ _Last updated 2026-10-18, for version 0.5.0._
 
 This lists Xbox titles tried on this project's test devices, split into three groups: titles that clear the **Playable** bar, titles that run but fall short of 30 fps, and titles that do not yet play. It is not a full compatibility list: plenty of other titles have simply not been tried yet. See [`KNOWN_ISSUES.md`](../KNOWN_ISSUES.md) and the [issue tracker](https://github.com/jreinach-alt/hakuX/issues) for what is tracked about titles not on this page.
 
-92 Playable · 20 run below 30 fps · 11 not playable
+94 Playable · 20 run below 30 fps · 11 not playable
 
 ## What "Playable" means
 
@@ -105,6 +105,7 @@ with another Turnip build, may differ.
 | MLB SlugFest 2003 | USA | Nova | 59.9 | 100% | 2026-10-05 |  |
 | MLB SlugFest 2004 | USA | Nova | 44.4 | 100% | 2026-10-05 |  |
 | Mortal Kombat: Armageddon | ? | Nova | 59.2 | 100% | 2026-10-06 |  |
+| Mortal Kombat: Shaolin Monks | ? | Nova | 59.9 | 99% | 2026-10-18 |  |
 | MTV Celebrity Deathmatch | ? | Nova | 57.2 | 99% | 2026-10-04 |  |
 | MVP Baseball 2003 | USA | Nova | 59.9 | 100% | 2026-10-16 |  |
 | NBA 2K2 | USA | Nova | 57.0 | 100% | 2026-10-05 |  |
@@ -115,6 +116,7 @@ with another Turnip build, may differ.
 | NFL Blitz 2002 | USA | Nova | 45.0 | 100% | 2026-10-05 |  |
 | Pac-Man World 2 | ? | Nova | 59.9 | 100% | 2026-10-13 |  |
 | Panzer Dragoon Orta | Europe | Nova | 54.1 | 100% | 2026-10-03 |  |
+| RalliSport Challenge | ? | Nova | 59.6 | 92% | 2026-10-18 | Car flicker (#804) fixed. |
 | Ratatouille | USA | Nova | 52.8 | 100% | 2026-10-06 |  |
 | Rayman 3 Hoodlum Havoc | ? | Nova | 59.9 | 100% | 2026-10-13 |  |
 | Ricky Ponting International Cricket 2005 | Australia | Nova | 59.9 | 98% | 2026-10-15 |  |

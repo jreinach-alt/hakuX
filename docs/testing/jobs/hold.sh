@@ -2,11 +2,11 @@
 #
 # Take and release a device hold. A hold is removed only by its taker.
 #
-#   hold.sh take    <label> <tag> <why...>               exit 0 taken, 3 held by someone else, 4 refused: non-release build (nova)
+#   hold.sh take    <label> <tag> <why...>               exit 0 taken, 3 held by someone else, 4 refused: non-release build (nova), 6 refused: owner-play capture would not start (hold not left behind)
 #   hold.sh release <label> <tag>                        exit 0 released, 3 not yours (nothing removed)
 #   hold.sh who     <label>                              exit 0 held (prints holder), 1 free
 #   hold.sh wait    <label> <tag> <timeout_s> <why...>   take, retrying every 15 s; exit 3 on timeout
-#   hold.sh wait-idle <label> <timeout_s>                exit 0 idle, 3 still busy at timeout, 1 no hold
+#   hold.sh wait-idle <label> <timeout_s>                exit 0 idle, 3 still busy at timeout, 1 no hold, 5 idle but an owner-play capture died
 #
 # TO USE A DEVICE YOURSELF:  hold.sh take <label> <tag> <why> && hold.sh wait-idle <label> 900
 # and touch the device only if that exits 0. Release the hold on every exit path.
@@ -67,8 +67,55 @@
 # (am_kill 21:58:26 and :29); the #507 leg died at 132 of 420 s and was void.
 # take and wait also print a NOT IDLE notice on stderr when the device is busy.
 #
+# OWNER-PLAY HOLDS AND THE CAPTURE (#433, 10-18). A <tag> starting `owner-play`
+# is a hold taken so the owner can play a title by hand, never automated. The
+# release app writes no readable telemetry and the device's logcat ring turns
+# over every ~2-3 minutes, so an owner playthrough survives only in a
+# host-side `adb logcat` capture that was ALREADY running when the title
+# launched. On 2026-10-18 the owner's first Fable launch (jerky intro videos,
+# audio skips, the first 30 s) was lost because nothing was capturing when the
+# hold was taken at 07:09; on 10-17 a Halo run survived only by luck (a
+# capture left over from an unrelated lane run). Memory notes existed and
+# were not enough -- the hold itself now does it:
+#
+#   take     starts the capture (`adb -s <serial> logcat -v threadtime -T 1
+#            <LOGCAT_SPEC>`, the dispatcher's own spec, sourced fresh rather
+#            than copied) as a transient user systemd unit,
+#            `hakux-ownerplay-capture-<label>`, appended to
+#            `$DISPATCH_DIR/../captures/owner-play-<YYYYMMDD>/logcat-<label>-
+#            <HHMMSS>.txt`, so it outlives the shell that took the hold. If a
+#            capture for that label is already running, take does not start a
+#            second: it reports the existing one's path and age. If the
+#            capture cannot be started at all (no adb, device not listed,
+#            systemd refused), take prints `NO CAPTURE: ...` on stderr, exits
+#            6, and the hold is NOT left behind -- an unrecorded owner session
+#            is exactly the failure this exists to prevent, so a hold nobody
+#            can act on is worse than no hold.
+#   who      for an owner-play hold also prints the capture's path and age, or
+#            `NO CAPTURE RUNNING` if the unit died under it.
+#   wait-idle on an owner-play hold additionally checks the capture: exit 0
+#            prints the capture line too, and a dead capture is now a failure
+#            (exit 5) even though the device itself is idle -- the idle check
+#            and the capture check are one gate, because "idle, unrecorded" is
+#            exactly as dangerous as "busy, unrecorded".
+#   release  stops the capture unit only when the release itself succeeded
+#            (the taker's tag matched), and prints the capture file's path and
+#            size. A refused release leaves the capture running, same as it
+#            leaves the hold.
+#
+# Detection of "is label's capture still alive" is never by asking systemd:
+# this harness's own selftest shims `systemctl ... is-active` to always print
+# `active`, for any unit name, so that would be a check that cannot fail. It
+# is a pidfile this file writes itself (`hold/<label>.capture.pid`, the
+# capture loop's own `$$`) plus a `/proc/<pid>/cmdline` check -- the same
+# "a pid naming what it claims to be" idiom `hold_py idle`'s `lanes/<label>`
+# check below already uses, for the same reason: a stale number is not proof
+# of anything alive, and PID reuse after a reboot would otherwise lie.
+#
 # DISPATCH_DIR resolves as dispatcher.sh and request.sh resolve it.
 set -u
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 D="${DISPATCH_DIR:-/home/justin/hakux-work/dispatch}"
 HOLD_WAIT_INTERVAL="${HOLD_WAIT_INTERVAL:-15}"
@@ -77,6 +124,148 @@ HOLD_IDLE_INTERVAL="${HOLD_IDLE_INTERVAL:-5}"
 usage() { sed -n '3,24p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
 
 valid() { [[ "$2" =~ ^[A-Za-z0-9._:-]+$ ]] || { echo "hold.sh: bad $1 '$2' (want [A-Za-z0-9._:-]+)" >&2; exit 2; }; }
+
+# ------------------------------------------------------- owner-play capture
+
+owner_play() { case "$1" in owner-play*) return 0 ;; *) return 1 ;; esac; }
+
+cap_unit()     { printf 'hakux-ownerplay-capture-%s' "$1"; }
+cap_pidfile()  { printf '%s/hold/%s.capture.pid' "$D" "$1"; }
+cap_pathfile() { printf '%s/hold/%s.capture' "$D" "$1"; }
+
+# label_serial <label>  ->  the attached serial whose DEVICE_LABEL is <label>,
+# on stdout; non-zero when no adb, or no attached device matches. Same shape
+# as stop-emulator.sh's device_label_lease, run the other direction: devices.sh
+# has no label->serial lookup (device_env only goes serial->label), so every
+# caller that needs one iterates `adb devices` and matches $DEVICE_LABEL.
+label_serial() {
+    local label="$1" serial out
+    command -v adb >/dev/null 2>&1 || return 1
+    while IFS= read -r serial; do
+        [ -n "$serial" ] || continue
+        out=$( . "$HERE/../devices.sh" >/dev/null 2>&1
+               device_env "$serial" >/dev/null 2>&1 && printf '%s' "$DEVICE_LABEL" )
+        [ "$out" = "$label" ] && { printf '%s\n' "$serial"; return 0; }
+    done < <(adb devices 2>/dev/null | tr -d '\r' | awk 'NR>1 && $2=="device"{print $1}')
+    return 1
+}
+
+# logcat_spec  ->  dispatcher.sh's own LOGCAT_SPEC on stdout. Sourced fresh
+# (one source, not a copy that can drift) the same way
+# selftest.d/51-dispatch-hardening.sh already reads it back out: a bogus
+# subcommand hits dispatcher.sh's `*)` fallthrough (usage text only, which is
+# discarded here) after LOGCAT_SPEC is exported, so nothing beyond
+# `mkdir -p "$D"/{queue,running,results,logs}` runs. In a subshell: dispatcher.sh
+# sets and exports plenty that must not leak into this process.
+logcat_spec() {
+    ( export DISPATCH_DIR="$D" SERIAL="${SERIAL:-ee317437}"
+      . "$HERE/../dispatcher.sh" hold-sh-logcat-spec >/dev/null 2>&1
+      printf '%s' "$LOGCAT_SPEC" )
+}
+
+# capture_since <label>  ->  the capture's start time (the pidfile's mtime),
+# UTC, or "unknown" if unreadable.
+capture_since() {
+    date -u -r "$(cap_pidfile "$1")" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo unknown
+}
+
+# capture_running <label>  ->  0 and the log path on stdout when a capture
+# process for <label> is alive and really is one (not a reused pid): the
+# pidfile's pid answers to a signal and /proc/<pid>/cmdline still mentions
+# logcat. Else 1 and nothing.
+capture_running() {
+    local pf path pid
+    pf=$(cap_pidfile "$1"); path=$(cap_pathfile "$1")
+    [ -f "$pf" ] && [ -f "$path" ] || return 1
+    pid=$(cat "$pf" 2>/dev/null)
+    [[ "$pid" =~ ^[0-9]+$ ]] || return 1
+    kill -0 "$pid" 2>/dev/null || return 1
+    grep -q logcat "/proc/$pid/cmdline" 2>/dev/null || return 1
+    cat "$path"
+}
+
+# capture_report <label>  ->  0 and "capture: <path> (running since <time>)"
+# on stdout, else 1 and nothing.
+capture_report() {
+    local path
+    path=$(capture_running "$1") || return 1
+    printf 'capture: %s (running since %s)\n' "$path" "$(capture_since "$1")"
+}
+
+# capture_ensure <label>  ->  0 and the capture_report line (a pre-existing
+# capture reused as-is, or a freshly started one), or 1 and a one-line reason
+# on stdout, for the caller to print as `NO CAPTURE: <reason>`.
+capture_ensure() {
+    local label="$1" line serial spec capdir log pf
+    if line=$(capture_report "$label"); then printf '%s\n' "$line"; return 0; fi
+    command -v adb >/dev/null 2>&1 || { printf 'no adb on PATH\n'; return 1; }
+    serial=$(label_serial "$label") || { printf 'device %s not listed by adb devices\n' "$label"; return 1; }
+    spec=$(logcat_spec)
+    [ -n "$spec" ] || { printf 'LOGCAT_SPEC unknown (dispatcher.sh did not export it)\n'; return 1; }
+    capdir="$D/../captures/owner-play-$(date -u +%Y%m%d)"
+    mkdir -p "$capdir" 2>/dev/null || { printf 'could not create %s\n' "$capdir"; return 1; }
+    log="$capdir/logcat-$label-$(date -u +%H%M%S).txt"
+    pf=$(cap_pidfile "$label")
+    rm -f "$pf"
+    # The script: a restart loop that appends on every (re)start, marking the
+    # gap, and exits cleanly (killing the current adb child with it) on
+    # SIGTERM -- the same trap/background/wait shape
+    # selftest.d/79-stop-hook-hold.sh's own dispatcher.sh fixture uses for "a
+    # backgrounded process that dies cleanly". Single-quoted here: every `$`
+    # below must stay literal until the capture's own bash evaluates it --
+    # SERIAL/LOG/SPEC/PIDFILE arrive as its environment (--setenv), not by
+    # substitution into this string.
+    local script='trap "kill $cur 2>/dev/null; exit 0" TERM
+echo "$$" > "$PIDFILE"
+while :; do
+    printf "=== capture (re)start %s ===\n" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$LOG"
+    adb -s "$SERIAL" logcat -v threadtime -T 1 $SPEC >> "$LOG" 2>&1 &
+    cur=$!
+    wait "$cur"
+    rc=$?
+    printf "=== capture process exited rc=%s at %s; restarting after a gap ===\n" "$rc" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$LOG"
+    sleep 2
+done'
+    if ! systemd-run --user --unit "$(cap_unit "$label")" --collect \
+            --setenv=SERIAL="$serial" --setenv=LOG="$log" --setenv=SPEC="$spec" --setenv=PIDFILE="$pf" \
+            bash -c "$script" >/dev/null 2>&1
+    then
+        printf 'systemd-run refused to start %s\n' "$(cap_unit "$label")"
+        return 1
+    fi
+    local tries=0
+    while [ ! -s "$pf" ] && [ "$tries" -lt 25 ]; do sleep 0.2; tries=$((tries + 1)); done
+    printf '%s\n' "$log" > "$(cap_pathfile "$label")"
+    if line=$(capture_report "$label"); then printf '%s\n' "$line"; return 0; fi
+    printf '%s never confirmed running after systemd-run accepted it\n' "$(cap_unit "$label")"
+    return 1
+}
+
+# capture_release <label>  ->  stops <label>'s capture (if any) and prints
+# its file and size, or a "no record" line if there was none. Always
+# succeeds: called only after a release has already succeeded, so there is
+# nothing left to refuse.
+capture_release() {
+    local label="$1" unit pf path pid log size
+    unit=$(cap_unit "$label"); pf=$(cap_pidfile "$label"); path=$(cap_pathfile "$label")
+    pid=$(cat "$pf" 2>/dev/null)
+    # systemctl is the production mechanism (a real transient unit); killing
+    # the pidfile's own pid is what actually guarantees the stop -- the only
+    # mechanism this harness's own selftest (its systemd-run shim never
+    # starts a real unit) can exercise, and it works the same way in
+    # production: the capture script's own TERM trap tears down its current
+    # adb child and exits.
+    command -v systemctl >/dev/null 2>&1 && systemctl --user stop "$unit" >/dev/null 2>&1
+    [[ "$pid" =~ ^[0-9]+$ ]] && kill "$pid" 2>/dev/null
+    if [ -f "$path" ]; then
+        log=$(cat "$path")
+        size=$(stat -c %s "$log" 2>/dev/null || echo '?')
+        printf 'capture: %s (%s bytes)\n' "$log" "$size"
+    else
+        printf 'capture: no record for %s\n' "$label"
+    fi
+    rm -f "$pf" "$path"
+}
 
 # The whole state machine is python: bash has O_EXCL (set -C) but no way to
 # read-compare-remove without a second process, and one language for both
@@ -241,12 +430,25 @@ valid label "$label"
 case "$op" in
     who)
         [ $# -eq 2 ] || usage
-        hold_py who "$label" ;;
+        hold_py who "$label"; rc=$?
+        if [ "$rc" -eq 0 ] && owner_play "$(cat "$D/hold/$label" 2>/dev/null)"; then
+            capture_report "$label" || echo "NO CAPTURE RUNNING"
+        fi
+        exit "$rc" ;;
     take)
         [ $# -ge 4 ] || usage
         valid tag "$3"
         build_gate "$label" || exit $?
         hold_py take "$label" "$3" "${*:4}" || exit $?
+        if owner_play "$3"; then
+            if ! cap_line=$(capture_ensure "$label"); then
+                echo "NO CAPTURE: $cap_line" >&2
+                hold_py release "$label" "$3" >/dev/null 2>&1
+                exit 6
+            fi
+            echo "$cap_line"
+            echo "$cap_line" >&2
+        fi
         notice_idle ;;
     wait-idle)
         [ $# -eq 3 ] || usage
@@ -256,7 +458,20 @@ case "$op" in
             out=$(hold_py idle "$label")
             rc=$?
             # 0 idle and 1 no hold are answers; anything but 3 is an error.
-            [ "$rc" -eq 3 ] || { [ "$rc" -eq 0 ] && echo "$out" || echo "$out" >&2; exit "$rc"; }
+            if [ "$rc" -eq 3 ]; then
+                : # still busy, fall through to the timeout/retry below
+            elif [ "$rc" -eq 0 ] && owner_play "$(cat "$D/hold/$label" 2>/dev/null)"; then
+                echo "$out"
+                if cap_line=$(capture_report "$label"); then
+                    echo "$cap_line"
+                    exit 0
+                fi
+                echo "NO CAPTURE RUNNING: $label's owner-play capture died" >&2
+                exit 5
+            else
+                [ "$rc" -eq 0 ] && echo "$out" || echo "$out" >&2
+                exit "$rc"
+            fi
             if [ "$(date +%s)" -ge "$deadline" ]; then
                 echo "$out" >&2
                 echo "hold.sh: $label still busy after $3 s; the hold is still yours to keep or release" >&2
@@ -268,7 +483,9 @@ case "$op" in
     release)
         [ $# -eq 3 ] || usage
         valid tag "$3"
-        hold_py release "$label" "$3" ;;
+        hold_py release "$label" "$3"; rc=$?
+        [ "$rc" -eq 0 ] && owner_play "$3" && capture_release "$label"
+        exit "$rc" ;;
     wait)
         [ $# -ge 5 ] || usage
         valid tag "$3"

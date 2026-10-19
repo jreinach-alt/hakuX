@@ -21,9 +21,8 @@ THE LOOP, per capture:
   1. `adb exec-out screencap -p` to a scratch file (its wall time is in the
      timeline: that is the capture's cost on the host side).
   2. classify.py names the state from the frame, the previous capture and
-     the states already seen. `unknown` for `unknown_before_model`
-     consecutive captures asks the model (MODEL FALLBACK, below) when
-     ANTHROPIC_API_KEY is set; with no key nothing is ever sent anywhere.
+     the states already seen. Local tools only (pathclass's SigLIP2 head and
+     EasyOCR crops, both on this host's GPU): no network call, ever (#433).
   3. The state's policy (POLICY, below) decides the input.
   4. A state CHANGE is logged to logcat as `I/hakuX-route: state=<s> t=<s>`
      (device clock: title_verdict.py reads play time from these), a row goes
@@ -90,10 +89,24 @@ for a cursor the d-pad does not move (Castlevania's save prompt).
                          input.stall_cycles, a list of cycles, plays
                          escape n with cycle (n-1) mod len: one run tries
                          several escapes, one per stall.
-  unknown                wait; the model after `unknown_before_model`
-                         captures; `unknown_fail_s` of it is ROUTE FAIL.
+  unknown                one free capture (a confidence blip often clears on its own),
+                         then press and observe: the learned table's best answer for
+                         this screen, or the next untried rung of EXPLORE_LADDER
+                         otherwise, wrapping forever. Never waits to fail -- see
+                         ACT-OBSERVE below.
 A state seen after a later one in the profile's `order` (a main_menu after
 play) is logged as `anomaly`.
+
+ACT-OBSERVE (owner, #433, 2026-10-18 Part B/C). An `unknown` screen is never idle-waited
+to a timeout any more: it is pressed and learned from. Each press's outcome is read off
+the NEXT capture -- `advanced` (left `unknown` into a state later in `order`), `regressed`
+(left `unknown` into one earlier -- vetoes that button for this screen from here on),
+`changed` (stayed `unknown` but the frame moved: `classify.py`'s motion fraction, or if
+that branch didn't run, pathclass's own embedding far enough from the last one), or `none`
+(stayed `unknown`, nothing visibly different). Every outcome is appended to
+`pathknow/learned/<profile name>.jsonl` and `_global.jsonl` (learned.py): the next time
+this exact screen (or, via the pathclass embedding, a visually similar one on another
+title) comes up, its best non-vetoed button is tried before any ladder fallback.
 
 ENDING AT GAMEPLAY (owner, ADDENDUM 1). With --find the driver's job is to
 FIND gameplay, not to play a window: `find_play_s` (20 s) of consecutive
@@ -115,22 +128,17 @@ every state that would not skip), time to `title` and to `play`, and which
 captures each classifier source named. `drive.py learn` turns its skips into
 the profile's [skip.<state>] tables, so the next run tries the winner first.
 
-MODEL FALLBACK. Claude Haiku 4.5 (`claude-haiku-4-5-20251001`), one JPEG
-downscaled to 512 px, asked for {"screen_class", "button"}. Capped at
-`model_calls_max` per run (default 20) and cached by frame hash. Every call
-goes to <out>/classify-model-calls.jsonl with its token counts and cost.
-Its answer names a state; its button is used only for a menu-like state and
-never when the state is play. No key, no call: the default is zero calls.
+LOCAL TOOLS ONLY (owner, #433, 2026-10-18). No network call anywhere in this
+file, ever, and no external CLI invoked to ask a model about a frame.
+Everything this loop knows about a frame comes from classify.py/
+pathclass.py, both running on this host's own GPU.
 
 EXIT: 0 the window ran out or (--find) play was reached; 1 ROUTE FAIL
 (the reason is the last line printed and the summary in route-state.tsv);
 2 usage/profile error.
 """
 import argparse
-import base64
 import datetime as dt
-import hashlib
-import io
 import json
 import os
 import shutil
@@ -140,41 +148,31 @@ import sys
 import tempfile
 import threading
 import time
-import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import classify  # noqa: E402
-sys.path.insert(0, os.path.join(HERE, "..", "jobs"))
-import models  # noqa: E402  (the one model table/reader, #433)
+sys.path.insert(0, os.path.join(HERE, "pathknow"))
+import learned  # noqa: E402  (unknown-screen memory, #433 Part C)
 
 PAD = os.path.join(HERE, "..", "perf", "pad.sh")
 SKIPPABLE = ("logo", "intro_video", "cutscene")
 MENU_LIKE = ("title", "main_menu", "profile", "ingame_menu")
 LADDER = ("A", "START", "B", "X", "START+A")
+# #433 Part B: pressed on an `unknown` screen the learned table has no (or a vetoed)
+# answer for, in order, skipped and retried once the whole ladder has come up empty --
+# never idle. START excluded unless the profile can SEE a pause (has_pause_crop), the
+# same rule the cutscene skip ladder already uses, for the same reason: a wrong START
+# this loop cannot see is a pause this loop cannot undo.
+EXPLORE_LADDER = ("A", "START", "B", "X", "Y", "DOWN", "LX:min", "R1", "L1")
 NEVER = {"BACK", "SELECT"}            # BACK exits to the dashboard on some titles; no guide button exists here
 
 DEFAULTS = dict(
     fast_s=1.0, slow_s=5.0, skip_settle_s=1.5, skip_passes=3, menu_gap_s=2.0, menu_max_presses=25,
-    resume_tries=3, stall_fail_s=40.0, unknown_before_model=3, unknown_fail_s=90.0,
-    model_calls_max=20, find_play_s=20.0, confirm_play_s=6.0, keep_every_s=30.0, screencap_fail_s=60.0,
+    resume_tries=3, stall_fail_s=40.0,
+    find_play_s=20.0, confirm_play_s=6.0, keep_every_s=30.0, screencap_fail_s=60.0,
     hud_memory_s=20.0, escape_max=6, escape_capture_s=0.0, escape_reset_s=0.0,
     progress_bar=0.0, progress_window_s=10.0, stall_clear_s=0.0, keep_all=0,
-)
-
-MODEL = models.model_for("drive")   # a screen classifier, not reasoning -- Haiku in every mode (#433)
-# USD per million tokens, Haiku 4.5 list price when this was written. The
-# cost logged per call is tokens x these; check them against the current
-# price list before reading the dollars as a bill.
-MODEL_USD_PER_MTOK = (1.0, 5.0)
-MODEL_PROMPT = (
-    "This is a screenshot of an original-Xbox game running in an emulator, taken during an "
-    "unattended playtest that is trying to reach live gameplay. Answer with ONLY a JSON object: "
-    '{"screen_class": one of "logo","intro_video","title","main_menu","profile","loading",'
-    '"cutscene","ingame_menu","paused","play","black", '
-    '"button": the ONE gamepad button (A, B, X, Y or START) that makes progress toward live '
-    'gameplay from this screen, or "" if waiting is right}. "play" means the player is in '
-    "control of a character or vehicle right now; a pause overlay over the game is \"paused\"."
 )
 
 
@@ -346,8 +344,13 @@ class Driver:
         self.ladder = None               # current skip attempt: dict
         self.screen_presses = {}         # (state, source) -> presses this visit
         self.resume_tries = 0
-        self.unknown_since = None
-        self.unknown_streak = 0
+        self.explore = None              # the pending explore press awaiting its outcome: dict
+        self.explore_tried = []          # buttons tried this unknown stretch (resets on entry/exit/wrap)
+        self.explore_fresh = False       # just entered `unknown`: give the classifier one free
+                                          # capture to resolve a confidence blip before pressing anything
+        self.explored = []               # [#433] every (key, button, outcome) this run recorded, for finish()
+        self._own_learned = None         # lazily loaded, then kept current in-memory (learned.py)
+        self._global_learned = None
         self.stalled_since = None
         self.escapes = 0                 # stall_cycle runs so far
         self.esc_frames = 0
@@ -375,8 +378,6 @@ class Driver:
         self.play_frames = []
         self.marked = False
         self.last_keep = -1e9
-        self.model_calls = 0
-        self.model_cache = {}
         self.sources = {}
         self.anomalies = []
         self.time_to = {}
@@ -679,49 +680,6 @@ class Driver:
         shutil.copyfile(frame, os.path.join(self.frames_dir, name))
         return name
 
-    # -- the model ---------------------------------------------------------
-    def ask_model(self, frame):
-        key = os.environ.get("ANTHROPIC_API_KEY")
-        if not key or self.model_calls >= self.cfg["model_calls_max"]:
-            return None
-        with open(frame, "rb") as f:
-            h = hashlib.sha256(f.read()).hexdigest()[:16]
-        if h in self.model_cache:
-            return self.model_cache[h]
-        from PIL import Image
-        im = Image.open(frame).convert("RGB")
-        im.thumbnail((512, 512))
-        buf = io.BytesIO()
-        im.save(buf, format="JPEG", quality=85)
-        body = dict(model=MODEL, max_tokens=100, messages=[dict(role="user", content=[
-            dict(type="image", source=dict(type="base64", media_type="image/jpeg",
-                                           data=base64.b64encode(buf.getvalue()).decode())),
-            dict(type="text", text=MODEL_PROMPT)])])
-        rec = dict(t=round(self.t(), 1), frame_hash=h, model=MODEL)
-        self.model_calls += 1
-        try:
-            req = urllib.request.Request("https://api.anthropic.com/v1/messages",
-                                         data=json.dumps(body).encode(),
-                                         headers={"x-api-key": key, "anthropic-version": "2023-06-01",
-                                                  "content-type": "application/json"})
-            with urllib.request.urlopen(req, timeout=30) as r:
-                resp = json.load(r)
-            text = "".join(b.get("text", "") for b in resp.get("content", []) if b.get("type") == "text")
-            ans = json.loads(text[text.find("{"):text.rfind("}") + 1])
-            u = resp.get("usage", {})
-            rec.update(answer=ans, input_tokens=u.get("input_tokens"), output_tokens=u.get("output_tokens"))
-            rec["usd"] = round((u.get("input_tokens", 0) * MODEL_USD_PER_MTOK[0]
-                                + u.get("output_tokens", 0) * MODEL_USD_PER_MTOK[1]) / 1e6, 6)
-            st = ans.get("screen_class")
-            out = dict(state=st if st in classify.STATES else None, button=str(ans.get("button") or "").upper())
-        except Exception as exc:                       # an API failure is an unknown, not a crash
-            rec["error"] = str(exc)[:200]
-            out = None
-        with open(os.path.join(self.out, "classify-model-calls.jsonl"), "a") as f:
-            f.write(json.dumps(rec) + "\n")
-        self.model_cache[h] = out
-        return out
-
     # -- one capture -------------------------------------------------------
     def classify(self, frame):
         r = classify.classify_frame(frame, self.prev, self.p, self.seen, self.last_play_luma, self.state)
@@ -743,14 +701,6 @@ class Driver:
         else:
             self.scene_hist = []
         self.recovering(r)
-        if r["state"] == "unknown":
-            self.unknown_streak += 1
-            if self.unknown_streak >= self.cfg["unknown_before_model"]:
-                m = self.ask_model(frame)
-                if m and m["state"]:
-                    r.update(state=m["state"], source="model", model_button=m["button"])
-        else:
-            self.unknown_streak = 0
         return r
 
     def progress(self, frame, r):
@@ -842,21 +792,50 @@ class Driver:
                 act += " tap %s" % b + ("x%d" % n if n > 1 else "")
         return act
 
+    # -- learned table (#433 Part C) ---------------------------------------
+    def learned_tables(self):
+        if self._own_learned is None:
+            self._own_learned, self._global_learned = learned.load(self.p.get("name"))
+        return self._own_learned, self._global_learned
+
+    def resolve_explore(self, outcome):
+        """The pending explore press's outcome is in: write it to the learned table (own
+        in-memory copy too, so a later capture in THIS run sees it without a re-read) and
+        clear the pending slot. Never called with nothing pending."""
+        ex = self.explore
+        rec = learned.record(self.p.get("name"), ex["key"], ex["embedding"], ex["button"], outcome,
+                              self.t(), os.path.basename(self.out))
+        own, _ = self.learned_tables()
+        own.append(rec)
+        self._global_learned.append(rec)
+        self.explored.append((ex["key"], ex["button"], outcome))
+        self.explore = None
+
     def enter(self, state, r, frame):
         t = self.t()
         prev = self.state
         self.state, self.state_since = state, t
         if state not in self.seen:
             self.seen.append(state)
+        regressed = (state in self.order and self.order.index(state) < self.furthest
+                     and state not in ("paused", "ingame_menu", "loading", "cutscene", "stalled"))
         if state in self.order:
             i = self.order.index(state)
-            if i < self.furthest and state not in ("paused", "ingame_menu", "loading", "cutscene", "stalled"):
+            if regressed:
                 self.anomalies.append(dict(t=round(t, 1), state=state, after=self.order[self.furthest]))
             self.furthest = max(self.furthest, i)
         if state in ("title", "play") and state not in self.time_to:
             self.time_to[state] = round(t, 1)
         if prev == "title" and state in ("play", "paused"):
             self.anomalies.append(dict(t=round(t, 1), state=state, after="title"))
+        # an explore press resolves the moment the screen stops being `unknown` (#433 Part
+        # B): the same order-regression check above decides whether the button that got us
+        # here `advanced` past it or `regressed` into an earlier state.
+        if self.explore and prev == "unknown" and state != "unknown":
+            self.resolve_explore("regressed" if regressed else "advanced")
+        if prev != "unknown" and state == "unknown":
+            self.explore_tried = []          # a fresh screen gets a fresh ladder
+            self.explore_fresh = True        # ... and one free capture before the first press
         # a skip attempt resolves on the first capture in another state
         if self.ladder and state != self.ladder["state"]:
             lad = self.ladder
@@ -890,8 +869,6 @@ class Driver:
             self.release_play()
         if state != "stalled":
             self.stalled_since = None
-        if state != "unknown":
-            self.unknown_since = None
         if state != "play":
             self.play_since = None
             self.play_frames = []
@@ -986,14 +963,44 @@ class Driver:
                 act_reset = ""
             return "hold" + self.play_taps(t) + act_reset
 
-        # unknown
-        if self.unknown_since is None:
-            self.unknown_since = t
-        if t - self.unknown_since >= cfg["unknown_fail_s"]:
-            raise Fail("unknown screen for %.0f s (%s)" % (t - self.unknown_since,
-                                                             "model unavailable" if not os.environ.get("ANTHROPIC_API_KEY")
-                                                             else "%d model calls" % self.model_calls))
-        return "wait (unknown)"
+        # unknown (#433 Part B): never wait-then-fail. Resolve whatever press is still
+        # awaiting an outcome from the LAST capture (the screen stayed `unknown`, so it's
+        # `changed` or `none`), then pick the next one -- the learned table first, the next
+        # untried rung of the exploration ladder otherwise, wrapping forever once the whole
+        # ladder's been tried this stretch. The route's own wall-clock budget in `run()` is
+        # the only thing allowed to end a run that never gets past this; this branch itself
+        # must never raise Fail.
+        if self.explore is not None:
+            embedding = (r.get("pathclass") or {}).get("embedding")
+            if r.get("changed") is not None:
+                moved = r["changed"] > classify.STATIC_BAR
+            else:
+                prev_embedding = self.explore["embedding"]
+                moved = (embedding is None or prev_embedding is None or
+                         learned.cosine(embedding, prev_embedding) < learned.SIM_BAR)
+            self.resolve_explore("changed" if moved else "none")
+        if self.explore_fresh:
+            # a low-confidence reading is often gone on the very next capture with no input
+            # at all (AvP Extinction's own recorded run: two of its three `unknown` frames
+            # here resolve for free one capture later) -- one free look before spending a
+            # press on what might be nothing.
+            self.explore_fresh = False
+            return "wait (unknown, confirming)"
+        if t - self.last_press_t < cfg["skip_settle_s"]:
+            return "settle (exploring)"
+        key = "unknown:%s" % r.get("source")
+        embedding = (r.get("pathclass") or {}).get("embedding")
+        own, glob = self.learned_tables()
+        btn = learned.suggest(own, glob, key, embedding, self.explore_tried)
+        if btn is None:
+            rung = [b for b in EXPLORE_LADDER if self.has_pause_crop or "START" not in b]
+            if len(self.explore_tried) >= len(rung):
+                self.explore_tried = []      # exhausted this screen's ladder: wrap, keep trying
+            untried = [b for b in rung if b not in self.explore_tried]
+            btn = untried[0] if untried else rung[0]
+        self.explore_tried.append(btn)
+        self.explore = dict(key=key, embedding=embedding, button=btn, t=t)
+        return self.press(btn, "explore unknown (%s)" % r.get("source"))
 
     def interval(self):
         cfg = self.cfg
@@ -1030,8 +1037,8 @@ class Driver:
                 try:
                     r = self.classify(cur)
                 except classify.Unavailable as e:
-                    # #433 step 3: the generic fallback fails closed. Never a blind
-                    # press, never a model call (no ANTHROPIC_API_KEY on this host).
+                    # #433: the generic fallback fails closed. Never a blind press
+                    # when the classifier itself cannot answer (pathclass/GPU down).
                     self.result = "ROUTE FAIL drive %s: pathclass unavailable (%s)" % (self.p.get("name"), e)
                     return 1
                 st = r["state"]
@@ -1114,15 +1121,15 @@ class Driver:
                    result=res, seconds=round(t, 1), time_to_title_s=self.time_to.get("title"),
                    time_to_play_s=self.time_to.get("play"), states_seen=self.seen, skips=self.skips,
                    inputs=self.inputs, anomalies=self.anomalies, classifier_sources=self.sources,
-                   model_calls=self.model_calls, play_stretch_frames=self.play_frames,
+                   play_stretch_frames=self.play_frames, explored=self.explored,
                    written_utc=dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
         tmp = os.path.join(self.out, ".route-solution.json.tmp")
         with open(tmp, "w") as f:
             json.dump(sol, f, indent=1)
         os.replace(tmp, os.path.join(self.out, "route-solution.json"))
-        print("drive: %s after %.0f s; title at %s s, play at %s s; %d inputs, %d skips, %d model calls"
+        print("drive: %s after %.0f s; title at %s s, play at %s s; %d inputs, %d skips, %d explored"
               % (res, t, self.time_to.get("title"), self.time_to.get("play"), len(self.inputs),
-                 len(self.skips), self.model_calls))
+                 len(self.skips), len(self.explored)))
 
 
 class Fail(Exception):

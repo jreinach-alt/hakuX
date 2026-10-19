@@ -1034,20 +1034,36 @@ dev_make_660() {
     m=$(dev_mode "$1")
     [ "$m" = 660 ] || { log "  $1: mode ${m:-unreadable} after chmod 660; the app could not open it read-write"; return 1; }
 }
-# dev_push <host path> <device path>: through <path>.new and a rename, checked.
-# Mode 660 before the rename, so the file is never in place unopenable. A
-# failure before the rename leaves <path> as it was and removes <path>.new.
+# dev_push <host path> <device path> [ro]: through <path>.new and a rename,
+# checked. Mode 660 before the rename, so the file is never in place
+# unopenable. A failure before the rename leaves <path> as it was and
+# removes <path>.new.
+#
+# `ro` skips the 660 step and the final mode check -- for a disc pushed to
+# DEVICE_ISO_ROOT (the SD card), whose mode the mount synthesizes: `chmod
+# 660` is a no-op there and the mode always reads back 770, so the titles-
+# disk rule below ("THE DISK MUST BE MODE 660") always failed it even
+# though xemu opens a disc read-only and 770 is fine (dispatcher.log,
+# mkdawhite1018 10-18 11:05, docs/lanes/mkdawhite1018/NOTES.md section 7.1).
+# The sha check still runs either way. Every other caller -- titles.qcow2
+# and the hdd-guard push, both opened read-write -- omits `ro` and keeps the
+# 660 requirement unchanged.
 dev_push_drop() {
     adb_call "$ADB_QUICK_TIMEOUT" "rm $1.new" shell "rm -f '$1.new'" >/dev/null 2>&1
 }
 dev_push() {
-    local src="$1" dst="$2" want
+    local src="$1" dst="$2" ro="${3:-}" want wsrc
     want=$(sha256sum "$src" | cut -d' ' -f1)
-    adb_call 600 "push $dst" push "$src" "$dst.new" >/dev/null 2>&1 || { dev_push_drop "$dst"; return 1; }
+    # adb is Windows adb.exe; it cannot stat /mnt/... or a bare /home/... path
+    # (AGENTS.md, "Disc images live on D:"). wslpath -w turns a /mnt/d source
+    # into D:\... and a /home source into the \\wsl.localhost\... form adb.exe
+    # already resolves, so this covers both without a source-path branch.
+    wsrc=$(wslpath -w "$src")
+    adb_call 600 "push $dst" push "$wsrc" "$dst.new" >/dev/null 2>&1 || { dev_push_drop "$dst"; return 1; }
     [ "$(dev_sha256 "$dst.new")" = "$want" ] || { log "  push $dst: the device's copy does not match"; dev_push_drop "$dst"; return 1; }
-    dev_make_660 "$dst.new" || { dev_push_drop "$dst"; return 1; }
+    [ -n "$ro" ] || dev_make_660 "$dst.new" || { dev_push_drop "$dst"; return 1; }
     adb_call "$ADB_QUICK_TIMEOUT" "mv $dst" shell "mv -f '$dst.new' '$dst'" >/dev/null 2>&1 || { dev_push_drop "$dst"; return 1; }
-    [ "$(dev_sha256 "$dst")" = "$want" ] && [ "$(dev_mode "$dst")" = 660 ]
+    [ "$(dev_sha256 "$dst")" = "$want" ] && { [ -n "$ro" ] || [ "$(dev_mode "$dst")" = 660 ]; }
 }
 
 # dev_free_bytes <device dir> -> bytes free on the filesystem holding it, or
@@ -1241,7 +1257,7 @@ ensure_title_staged() {
             return 1
         fi
     fi
-    if dev_push "$src" "$DEVICE_ISO_ROOT/$title"; then
+    if dev_push "$src" "$DEVICE_ISO_ROOT/$title" ro; then
         log "  stage: pushed $src -> $DEVICE_ISO_ROOT/$title"
         inputs_note "$rdir" disc "pushed $src -> $DEVICE_ISO_ROOT/$title ($(_bytes_h "$need"), sha checked)"
         return 0
