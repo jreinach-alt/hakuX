@@ -8,10 +8,10 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `fpsdata1018` | claude-opus-5-5 | 23 min | fpsdata1018: FPS dip causes in the 4-title owner capture, and fixes (#433) |
+| `fpsdata1018` | claude-opus-5-5 | 38 min | fpsdata1018: FPS dip causes in the 4-title owner capture, and fixes (#433) |
 
 - **Handhelds:** 2 connected.
-  - Nova: free for the queue
+  - Nova: held by `lane.pathfind`
   - Thor: held by `lane.local`
 - **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
@@ -123,7 +123,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/fpsdata1018` | fpsdata1018: FPS dip causes in the 4-title owner capture, and fixes (#433) | `66e096ed51` | 2026-10-18 21:56 |
+| `lane/fpsdata1018` | fpsdata1018: FPS dip causes in the 4-title owner capture, and fixes (#433) | `245ddc4964` | 2026-10-18 22:18 |
 
 ## Recently landed on master
 
@@ -138,4 +138,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-18 dispatcher: fix the staged-disc push's /mnt/d path so adb.exe can open it
 - 2026-10-18 The compatibility page adds RalliSport Challenge and Mortal Kombat: Shaolin Monks to Playable (92 -> 94)
 
-_Updated 2026-10-18 22:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 22:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
