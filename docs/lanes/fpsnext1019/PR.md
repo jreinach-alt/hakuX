@@ -82,6 +82,15 @@ No dispatcher route reaches Fable's gameplay, so per the brief's own item 4 word
 4. Hand over both logcat files; analysis (`tobuf` sums, fps delta) happens from them, not on the device. Detail
    in `docs/lanes/fpsnext1019/NOTES.md`; per-title table in `FINDINGS.md`.
 
+Next-ranked, not started this attempt: GTA III's remaining ~140/150 in-car render passes still end at
+`copy_surface_to_texture` (a real-feedback self-sample, so neither `HAKUX_S2T_DEAD` nor `HAKUX_S2T_FB` can touch
+it); the only named remedy left is a genuine feedback-loop attachment / in-pass self-dependency. Checked
+feasibility at zero device cost before ranking it: PurpleVK's driver binary advertises
+`VK_EXT_attachment_feedback_loop_layout` and `VK_KHR_dynamic_rendering_local_read` (matching upstream Turnip's
+own documented sysmem-fallback behaviour for feedback-loop attachments) -- confirmed feasible, not a dead end,
+and possibly the same mechanism already leaking through lever (a)'s measured sysmem win. Design + a falsifiable
+pixel-safety prediction is next attempt's scope, not started here.
+
 Release note (performance): GTA III driving scenes do fewer GPU render passes per frame (a texture copy the
 renderer was already built to avoid, but had never been turned on, now runs by default); measured as an fps
 increase on one of three device trials, flat on the other two once a one-time shader-recompile cost on the first

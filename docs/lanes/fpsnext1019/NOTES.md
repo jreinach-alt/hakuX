@@ -125,6 +125,46 @@ Environment Variables field left empty, OFF arm with `HAKUX_TEXSCAN2D=0` added t
 relaunched, ~10 minutes of ordinary gameplay each, full `adb logcat -v time` capture handed back for analysis).
 Nothing to analyze yet; this is the recipe, not the result.
 
+## Next-ranked item for the next attempt: GTA III's remaining passes, feedback-loop mechanism
+
+Brief item 4 (this attempt's assigned focus, per Addendum 4) is now done to the extent this lane can push it
+without new data: RalliSport 2 confirmed on real driving, Fable's half is a written recipe awaiting the owner's
+two captures (an external dependency, not something to wait on turns for). `HAKUX_S2T_DEAD` already ruled out the
+cheap remedy for GTA III's remaining ~140/150 in-car render passes (P0 falsified: the sampled texel is real
+feedback, not dead), and `HAKUX_S2T_FB` mode 2 cannot help it either for the same reason (mode 2 only keeps a
+copy for stages that provably do not read their texture; this one does). The only remedy left that was named and
+not started is a genuine feedback-loop attachment or in-pass self-dependency -- letting the shader read the
+colour target it is currently drawing into without ending the render pass to copy it out first, which is what
+`copy_surface_to_texture` (`texture.c:1311`) exists to work around today.
+
+This is a real architecture change (subpass self-dependency / `VK_EXT_attachment_feedback_loop_layout` /
+framebuffer-local-read class of extension), not a lever that fits in the tail of an attempt that has already
+spent its budget on two write-ups this session. Per the owner's own "balanced, not cheap first" direction: this
+is the higher-effort, higher-reach option and should be opened with, not reached for last -- but opening with it
+means giving it a full attempt's budget, not a rushed partial build here.
+
+**Feasibility check, done at zero device cost:** before ranking this any higher than a hope, checked whether
+PurpleVK's Turnip build actually has the extension this remedy needs, rather than assuming. `strings` against
+the driver binary this lane already uses (`/home/justin/hakux-work/drv/T30/vulkan.purple.so`, the T30 PurpleVK
+build) finds `VK_EXT_attachment_feedback_loop_layout`, `VK_KHR_dynamic_rendering_local_read`,
+`VK_EXT_fragment_shader_interlock` and `VK_EXT_rasterization_order_attachment_access` all present in what reads
+as the driver's own extension-name table (alongside ordinary advertised extensions like
+`VK_EXT_provoking_vertex`, `VK_EXT_queue_family_foreign` in the same sorted block) -- not a dead reference, a
+real code path: `"Disabling gmem due to VK_EXT_attachment_feedback_loop_layout"` sits next to
+`TU_AUTOTUNE_FLAGS`/`"hw binning disabled"` strings, matching upstream Turnip's own documented behaviour (a
+feedback-loop attachment forces sysmem rendering, because GMEM's per-tile binning can't give a shader a
+consistent read of an attachment it is also writing this pass). **This is notable on its own**: it means
+lever (a) (`TU_DEBUG=sysmem`, already measured +3fps over shipped, FINDINGS.md) and this remedy may not be two
+independent options to rank against each other -- a correct feedback-loop implementation would likely force (or
+at least prefer) the same sysmem path the driver already falls back to for this exact situation, so sysmem's
+measured win could be partially *this* mechanism already leaking through today, just without the explicit
+attachment-feedback-loop layout transitions that would let the shader read a stable in-progress value instead
+of whatever stale/undefined content sysmem happens to leave in the attachment between the write and the
+self-read. Feasibility: **confirmed, not a dead end.** Not started: the actual design (which of the two
+extensions to target, where the single 128x128 target's bind-as-texture call needs to become a same-pass
+self-read instead of `copy_surface_to_texture`'s copy-and-restart) and the G3 falsifiable prediction for it
+(pixel safety first, matching every prior lever's own sequencing) -- a full attempt's scope, next.
+
 ## Step 0: Already-tried (G1), carried from fpsdata1018
 
 Rows 1-28 are fpsdata1018's table verbatim (`docs/lanes/fpsdata1018/NOTES.md` "Step 0"); `L/` = `docs/lanes/`.
