@@ -1326,3 +1326,58 @@ perfetto GPU counters, or a per-pass GPU-ms breakdown of the busiest passes, not
 started this attempt; ranked above C1/C3/C4/C6 for any future attempt on this title until that question is
 answered, per the owner's own 10-18 instruction against reaching for cheap/quick fixes before the thing that fits
 the measured cause.
+
+## Attempt 8, continued (2): lever (a) (`TU_DEBUG=sysmem`) revisited before building a new GPU-side timer
+
+G1 before any new instrument: the "GPU-side profiling" question just raised was already worked by a sibling
+lane. `docs/lanes/gta3instr1018/FINDINGS.md` section 6.2 split `fen` into its children on a live in-car run and
+found `rotfen` tracks the render-pass count almost exactly (7.56 -> 3.72 ms/flip as `HAKUX_S2T_FB` cuts `rp`/flip
+by a quarter) and cross-checked against the independent `[rwait526]` line that the render thread has always
+already submitted by the time the PFIFO thread waits -- **`rotfen` is not a software/scheduling stall, it is a
+genuine block on a GPU fence the GPU has not yet signalled, and it scales with render-pass count.** Building a
+new CPU-side timer around the render-pass-begin/draw-issue loop (gta3instr1018 FINDINGS.md 6.4, "the lever this
+leaves for the next lane") would explain *why* CPU time is spent issuing those passes, not why the GPU takes as
+long as it does to retire them -- a different question from the one C2/FBLOOP/SWZKEEP's "third strike" raises.
+
+This lane's own big-lever table (Attempt 1-2, lines above) already ranked exactly this GPU-render-time question
+and named an answer: **lever (a), forcing Turnip's `sysmem` render path instead of GMEM tiling, measured +3fps
+over shipped on a crash-excluded, motion-verified, equal-length window, in two independent instruments
+(`dwseries.py`, `movescore.py`), "resolved: promote"** (Attempt 2 item 4). The one open blocker recorded at the
+time was *how to apply it per-title* rather than as a global env var an owner build ships with.
+
+**That blocker is already solved, and I did not know it when I wrote "ranked above C1/C3/C4/C6" above.**
+`android/app/src/main/cpp/xemu_android.cpp`'s `ApplyRenderMode()` (merged by another lane, `lane.gpupass1010`,
+for #433/#474) already reads the disc's `title_id` and sets `TU_DEBUG=sysmem` per-title from a table
+(`kTitleRenderModes`), currently covering 007: Agent Under Fire, Dead or Alive 1 Ultimate and NFS: Most Wanted.
+GTA III is not in it. Adding it is a one-line table entry, not new infrastructure.
+
+**The complication that stops me from just adding the line:** Attempt 2 item 5 already tested sysmem stacked
+with `HAKUX_S2T_WIDEN` default-on (R2, landed earlier that same attempt) and falsified it hard: rp/flip rose to
+148.4 (worse than shipped's 130.2 with no sysmem at all), fps 19.9-20.6 (worse than every arm in item 4's table,
+including shipped). The table entry sets `TU_DEBUG` only; it does not touch `HAKUX_S2T_WIDEN`, which is
+default-on globally. Adding GTA III to `kTitleRenderModes` as written would ship exactly the falsified
+combination. Nothing in the table mechanism currently lets a title force an env var *off* (`HAKUX_S2T_WIDEN=0`)
+the way it forces `TU_DEBUG` on.
+
+### G3 prediction: widen-off + sysmem-on vs today's shipped default, on the current binary
+
+Item 4/5's data predates `HAKUX_TEXSCAN2D`, `HAKUX_S2T_FB` mode 2 and C2 (vtxstale), all landed/merged since --
+the comparison needs re-running on today's tree, not re-cited from an older binary. No rebuild needed: both
+`HAKUX_S2T_WIDEN=0` and `TU_DEBUG=sysmem` are existing env toggles; this reuses the already-on-device,
+already-built `326bfebadb-perflog.apk` (sha `b4459366...`, the vtx1 batch's apk). Arms, palindrome, owner's
+in-car save state, `HAKUX_FRAMETRACE=1` on every arm:
+
+- **Base**: no extra env (today's shipped defaults: widen on, sysmem off).
+- **SYS**: `HAKUX_S2T_WIDEN=0,TU_DEBUG=sysmem` (item 4's original "sysmem alone" configuration, re-measured here).
+
+| leg | rule | falsified if |
+|---|---|---|
+| P1 mechanism | SYS arms' `[dipwin]` `rp`/flip and `cs2t`-ended/flip are lower than Base's (sysmem changes tile-store/copy accounting the way item 4 measured) | SYS `rp`/flip is flat or higher than Base -- the item-5 interaction (not item-4's isolated reading) is what current-tree sysmem does |
+| P2 fps (the leg that matters) | on a matched, crash-free, motion-verified window (same method as every prior attempt this lane), SYS mean fps >= Base mean fps + 2.0 | SYS does not beat Base by >=2.0 fps -- do not add GTA III to `kTitleRenderModes` under any config |
+| P3 pixels | `imgcheck.py` full-frame diff of the loaded (pre-RT) screenshot, SYS vs Base, within the established noise floor (~0.2-1.2, this session's own C2 readings) | a real pixel difference -- sysmem changes something ZPASS-like this title reads (the table's own comment names #527 as the reason sysmem is not a global default) |
+| P4 stability | no crash/`DEVICE_LOST` in either arm | a crash ends the usable window early, as S1 did in Attempt 2 item 4 (must re-verify by frame sampling, not trust the raw window) |
+
+If P2 holds, the next step is the actual code change: add GTA III's title_id to `kTitleRenderModes` as
+`"sysmem"` AND give it a matching per-title `HAKUX_S2T_WIDEN` override (the table has no such mechanism yet --
+scope for that change, not this measurement). If P2 falsifies, lever (a) is dead for this title on the current
+tree and the next-ranked item is whatever c/e are now, or fresh GPU-render-time attribution work.
