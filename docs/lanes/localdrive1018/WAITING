@@ -1,35 +1,20 @@
-time 2026-10-18T20:46
-# [lane.localdrive1018] waiting: on a dispatcher worker for the Nova, not on a device hold.
+owner 2026-10-18 21:12 PDT: nova is under lane.local's owner-play hold (dispatch/hold/nova; nova.why: "owner 10-18 21:15: owner-play check of RalliSport on master; dispatcher claims nothing. Only the owner lifts this."). Resolves when the owner's play session ends, the hold lifts, and dispatch/queue/withdrawn/owner1018/1-1792380791-localdrive1018-729348.req is moved back to dispatch/queue/ (lane.local's job per its own WHY.txt in that dir) and runs to a result.
 #
-# Everything offline is done and pushed (sha 7a7b330470): A+B+C at `State: ready`, Part D's two
-# crops (letterbox-top, hud-heart) verified twice on real frames (9 Thor stills, 87 continuous
-# Nova frames). Part D's remaining pieces (car-entry, pause-menu Save-row, the drive loop, a
-# GTA III classifier_confidence floor sweep, a true held-out false-gameplay number) need frames
-# that the one route dispatchable pre-merge (`gta-3.route`, on-foot only) cannot produce -- so
-# this session built `docs/testing/titles/routes/gta3-car-pause-probe.route`, a plain press/
-# axis/wait/shot script with NO `drive` step (so it does not hit the "profile must be on master"
-# gate that blocked this lane's own gta3-drive.route/gta3.toml before). Validated with
-# `route.sh --check` and queued:
+# SUPERSEDES the `time 2026-10-18T20:46` line this file carried before (hostops, 2026-10-18
+# ~21:12 PDT): that line was satisfied the moment the clock passed 20:46 and stayed satisfied
+# forever after, so lanewaker's resume-throttled guard correctly flagged it as a loop risk
+# (`[lanewaker] resume-throttled localdrive1018`, 21:09 PDT) rather than resuming it again. The
+# real blocker this lane named ("no Nova dispatcher worker") was true when written but is now
+# stale: the Nova worker (`ee317437`) has been live and actively running other lanes' requests
+# since 20:46:12 PDT (confirmed in dispatch/logs/dispatcher.log). What actually happened instead:
+# lane.local withdrew this lane's queued probe request (`1-1792380791-localdrive1018-729348`)
+# into `dispatch/queue/withdrawn/owner1018/` at 21:12 PDT alongside four other lanes' requests, so
+# nothing runs while the owner is at the device; `dispatch/hold/nova` was placed 21:11:07 PDT and
+# the dispatcher's own log shows it stopped claiming at that second. Confirmed directly, not
+# assumed: `cat dispatch/hold/nova.why` and `cat dispatch/queue/withdrawn/owner1018/WHY.txt` both
+# read as above at the time this was written.
 #
-#   request id: 1-1792380791-localdrive1018-729348  (nova, 240s, route gta3-car-pause-probe)
-#
-# **The actual blocker found this session**: `pgrep -af "dispatcher.sh worker"` shows only one
-# worker process running on this host, for the Thor (`bdc158a5`) -- none for the Nova
-# (`ee317437`), even though the Nova is live on the bus and unheld. Both my queued request and
-# `lane.ralli2audio1018`'s own (queued just ahead of it, same device) sat completely unmoved
-# through an 8-minute bounded check: no worker, no progress, regardless of queue priority. This
-# is a dispatcher/hostops gap (a device idle while work is queued needs its runner restarted --
-# that is jam-duty's job per lane.local's own inbox instructions, not a lane's), not a device
-# hold or a flake. Re-check `pgrep -af "dispatcher.sh worker"` before assuming it is still true;
-# once a Nova worker exists again, requeuing is not needed -- the request above is already
-# queued and will run once something drains it.
-#
-# Resolves this lane when either: (1) the queued request above produces a result (check
-# `dispatch/results/1-1792380791-localdrive1018-729348`) -- then build the car-entry/pause-menu
-# crops from its frames the same way `classify.py crop`/`table` built the first two, or (2) this
-# PR merges to master, after which `gta3-drive.route`'s own future steps become dispatchable
-# directly and the probe route is no longer the only path to those frames.
-#
-# Thor: still fully, indefinitely owner-held for all GTA III work (dispatch/hold/thor,
-# thor.why unchanged since ~19:15 PDT) -- no save state on that device, not useful for this
-# title even once released, and moot anyway since it has a live worker but the wrong device.
+# This is genuinely owner-gated now (only the owner lifts dispatch/hold/nova), so it is written
+# as an `owner` line per lanewaker's own grammar instead of a `time` or `run` line that would
+# either loop again or never fire (the withdrawn request has no `dispatch/results/.../DONE` or
+# `WITHDRAWN.txt` and will not get one until it is moved back to queue/).
