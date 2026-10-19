@@ -8,7 +8,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `fpsnext1019` | claude-sonnet-5 | 21 min | fpsnext1019: GTA III in-pass feedback barrier (HAKUX_FBLOOP, opt-in), Blinx 2 and Fable gameplay captures (#43 |
+| `fpsnext1019` | claude-sonnet-5 | 36 min | fpsnext1019: GTA III CPU-side levers (HAKUX_FBLOOP, vtxstale1018/C2) all confirm but don't reach the player; B |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `lane.fpsnext1019`
@@ -126,7 +126,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/fpsnext1019` | fpsnext1019: GTA III in-pass feedback barrier (HAKUX_FBLOOP, opt-in), Blinx 2 and Fable gameplay captures (#433) | `61deafb89e` | 2026-10-19 16:04 |
+| `lane/fpsnext1019` | fpsnext1019: GTA III CPU-side levers (HAKUX_FBLOOP, vtxstale1018/C2) all confirm but don't reach the player; Blinx 2/Fab | `5c9fc668cd` | 2026-10-19 16:22 |
 
 ## Recently landed on master
 
@@ -141,4 +141,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-19 drive: local tools only, act-observe instead of wait-and-fail, learn what to press
 - 2026-10-19 mkdawhite1018: Mortal Kombat: Deadly Alliance arena floors and walls draw flat white (#1058)
 
-_Updated 2026-10-19 16:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-19 16:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
