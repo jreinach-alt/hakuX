@@ -8,8 +8,8 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `fpsnext1019` | claude-sonnet-5 | 14 min | fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433) |
-| `masterred-verdict1019` | claude-sonnet-5 | 6 min |  |
+| `fpsnext1019` | claude-sonnet-5 | 29 min | fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433) |
+| `masterred-verdict1019` | claude-sonnet-5 | 21 min |  |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `lane.fpsnext1019`
@@ -127,7 +127,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/fpsnext1019` | fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433) | `4df25d4bd8` | 2026-10-19 11:47 |
+| `lane/fpsnext1019` | fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433) | `0c98c1e4c2` | 2026-10-19 12:03 |
 
 ## Recently landed on master
 
@@ -138,4 +138,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-19 drive: local tools only, act-observe instead of wait-and-fail, learn what to press
 - 2026-10-19 mkdawhite1018: Mortal Kombat: Deadly Alliance arena floors and walls draw flat white (#1058)
 
-_Updated 2026-10-19 12:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-19 12:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
