@@ -269,7 +269,7 @@ frame at 3054), so the ceiling for that fix alone is ~25 fps at 3054, from 15.
 | # | Hypothesis | Titles | Evidence (line) | Reach (ms/frame) | Likelihood | Status |
 |---|---|---|---|---|---|---|
 | H1 | Texture of a different shape than its render surface (linear sub-rect; per-level surfaces) is downloaded and synced in `create_texture` | RalliSport 2, Fable | R2 1926-3664 `sdown 60` + `s2t=dim`; Fable 5175 `tobuf`/`sdl`/`scdl`, `s2t=levels` | R2 17-26; Fable 27.5 + 4 (first sync) | high (counter names the call site in both) | **Fix #1** |
-| H2 | Zeta re-shaped per level: eviction downloads + forced `surfupd` completion | Fable | 5175 `evict[dl:360]`, `why=inv60` | 6.3 now; it absorbs H1's wait once H1 is gone | medium | next |
+| H2 | Zeta re-shaped per level: eviction downloads + forced `surfupd` completion | Fable | 5175 `evict[dl:360]`, `why=inv60` | 6.3 now; it absorbs H1's wait once H1 is gone | medium | investigated, not built: the obvious lever (skip the download when nothing reads it back) has no existing safety net to extend -- see "H2 investigation" below for the exact counter that would make it provably safe |
 | H3 | Detach/eviction downloads waited at the next `surface_update` | Blinx 2 | 3054 `dfF 39.2`, `cDefC62`, `detach=120` | up to 39, capped by GPU 39.6 | high for the wait, gain capped | **dead**: the only lever that removes the wait without removing GPU work is skipping the STALLED finish that submits the detach/eviction downloads early (`stall_reports_only`); that lever is row 23, refuted on Simpsons (fps falls when it runs, because the early submit was pipelining CPU record against GPU work, not wasted sync). No other way to take the wait below GPU busy time without touching H4. |
 | H4 | GPU time per frame (per-pass cost, draw count) | GTA III, Blinx 2 | GTA GPU 29-48 in dips; Blinx R 39 for 45 RP | the floor under H3, and GTA's whole dip | medium | data queued: `HAKUX_GPUXFR=1`'s `XFR rpc` census (draw.c ~4488-4535, already built, off by default) reports per-pass load/store avoidability (`lclr`/`lunif`/`zdead`) -- exactly H4's "per-pass cost" broken down by cause, already instrumented, never read against this capture. Queued `1-1792397157-lane.fpsdata1018-2224298` (Blinx 2, route `gen-blinx2`, 90 s, `--no-expect` telemetry) rather than guessing a remedy with no XFR rpc reading yet (G2). GTA III has no dispatcher-reachable gameplay state to pair with it (the in-car save is reachable only by the owner-state pause-menu protocol this lane's device rules do not run by hand) -- its half of H4 stays on the owner-capture recipe in PR.md until a route exists. |
 | H5 | Fence queue depth (#796) | GTA III | row 10 | -- | low (Fen tracks GPU) | not this lane |
@@ -278,6 +278,40 @@ frame at 3054), so the ceiling for that fix alone is ~25 fps at 3054, from 15.
 Divergence noted, not explained: Fable's `dirtyIf180` counts three `download_if_dirty` calls per frame against two SDL
 downloads (`txr dl120`). The third is outside `create_texture` (blit/surface callers). It is small (~1 ms) and stays
 after Fix #1.
+
+## H2 investigation: ranked next, not built -- the download side has no existing safety net to extend
+
+H2's candidate win is Fable's 6 zeta eviction downloads/frame (`evict[dl:360]` over 60 flips) when the zeta at
+0x019b4000 reshapes between mip levels. The obvious lever -- skip the download when nothing will ever read the
+bytes back -- has a real precedent in this file for the mirror-image case: `surface_drop_covered_upload`
+(`clrskip`, `clr`, `clrfull` counters, surface.c:1867-1940) already drops a pending *upload* when the clear that
+follows covers the surface whole, because the upload's content is about to be clobbered and provably unread.
+Checked whether that machinery already covers the download side or could be read against this capture to answer
+the download question directly: it does not. `clr`/`clrfull` only fire when a binding has `upload_pending` AND
+`pg->clearing` is true at the same surfupd (surface.c:1917-1926) -- Fable's zeta reshape has no pending upload,
+only a pending *download* (the evicted content moving from the GPU image to guest VRAM), so these counters read
+`clr=0 clrfull=0` for this exact window (`fable.txt` 5175's `[sdcall]` line) and say nothing about it either way.
+
+The real question for a safe lever is the reverse of the upload case: is the zeta content being evicted ever
+read again, by a CPU peek, a texture bind (the shadow-comparator path this lane's own Fix #1 companion change
+just touched), or a later re-bind of the same shape that expects the old bytes rather than a fresh clear? If
+Fable clears each level's zeta fresh before drawing it (likely, for mip generation, where cross-level depth
+continuity would be meaningless), the eviction download is provably wasted, same shape of argument as
+`clrfull` already proves for uploads -- but nothing in this file counts it, and the capture's one zeta clear
+counter (`[clr91]` `wz=1`/frame) is a frame total, not a per-eviction one, so it cannot distinguish "one clear,
+6 reshapes all starting fresh" from "one clear, 5 reshapes inheriting stale depth that something later reads."
+
+Did not build a download-skip lever on this guess: unlike Fix #1/#2 (choosing which already-correct path reads
+a texture, provably equivalent either way), dropping a download is a correctness claim about the future --
+nothing ever reads this -- and getting it wrong reproduces exactly the kind of regression this lane's own pixel
+predictions caught twice already, in a harder-to-falsify form (a dropped write looks right until the one golden
+or gameplay moment that reads it). **What would unblock this**: a per-eviction instrument, next to the existing
+`evict[dl:...]` counter, that records whether the binding replacing the evicted one is first touched by a
+surface-covering clear (mirroring `upw_clear_read`'s "did the clear that followed cover the binding whole"
+check, but asked of the *new* binding after an eviction rather than the uploading one) before anything reads
+it. If that fires 6/6 for Fable's reshapes, the download-skip lever becomes provably safe and falls out of
+`clrfull`'s own argument; if it does not, H2 needs a different, narrower target than "skip the whole eviction."
+Not built this session -- ranked next, now with the specific missing counter rather than "medium, next."
 
 ## G3: Fix #1 prediction (written before the build)
 
