@@ -1,13 +1,17 @@
-run 1792395921-mkdawhite1018-2024860
-# Waiting on dispatch request 1792395921-mkdawhite1018-2024860 (queued, unclaimed as of
-# 2026-10-19): a corrected re-queue of 1792394397, which ran 150s on the Nova but was built
-# without --pull and so pulled nothing (result.json: "pulled": []) -- a request-building
-# mistake in this lane, not a harness defect. This request carries --pull 'framedump_*' and
-# is otherwise identical: Nova, ref da6e8949dc, mkda-arcade route,
-# XEMU_FRAME_DUMP=8,images,gd,rtt,rttmax16384,after65,cap256, armed ~15-20s before the
-# route's round-start mark. The prior rtt run (1792390708) found the floor-glow source
-# surface (256x256, s2t direct-bind) already white at the very first draw that samples it,
-# but never written within its own (steady-state) capture window, so it could not tell a
-# correct bake read every frame since from a bake that never produced real colour. This run's
-# earlier window should span the arena-load bake, if there is one; NOTES.md section 11/12 has
-# the reasoning and what each outcome means for Step 3's lever.
+run 1792399836-mkdawhite1018-2687998
+# Waiting on dispatch request 1792399836-mkdawhite1018-2687998 (queued, unclaimed as of
+# 2026-10-19 ~08:55 PDT): 180 frames at after66 on the mkda-arcade route, meant to catch the cut
+# from the stage-intro flythrough into the fight's first frames. Two prior runs narrowed this:
+# 1792395921's 8-frame window landed mid-flythrough (frame count is not a duration -- NOTES
+# section 13 corrects this lane's own earlier assumption by reading renderer.c directly), and
+# 1792399140's 120-frame window at after63 landed further in, camera zoomed to a close temple
+# shot by its last frame but still before the cut (NOTES section 15). A pilot verdict
+# (dispatch/pilots/mkdawhite1018.ok) was written to queue this one past the 30-minute unpiloted
+# device-time line, since every prior request in this lane was read before the next was queued.
+#
+# This request is additionally blocked behind a Nova hold another lane is using right now:
+# dispatch/hold/nova.why reads "2026-10-19T08:49:33Z lane.pathfind: pathfind 4D530048 one run,
+# 600 s hold (#433)" -- that hold's nominal 600s has already elapsed as of this writing but the
+# hold file has not cleared, so the dispatcher has not claimed this lane's queued request. This
+# is outside this session's control: the dispatcher claims queued requests against device
+# availability on its own schedule, and lane.pathfind's hold is not this lane's to touch.
