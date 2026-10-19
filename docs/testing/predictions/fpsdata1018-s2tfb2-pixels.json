@@ -1,10 +1,10 @@
 {
-  "registered_utc": "2026-10-19T09:56:54Z",
+  "registered_utc": "2026-10-19T10:32:55Z",
   "who": "lane.fpsdata1018",
   "issue": "433",
-  "prediction": "#433: HAKUX_S2T_FB defaults to mode 2 (texture.c s2t_fb_mode()), re-registered a third time on b50667ac35 (carries b6064d61cc's DOT_PRODUCT fix PLUS this commit's fix) and narrowed to drop a suite a single-run arm cannot falsify. A = 41c613c22a (default still off). B = b50667ac35. b6064d61cc alone (DOT_PRODUCT excluded from s2t_fb_stage_reads()'s 'does not read' set) FAILed its own re-registration 21/472, entirely Texture_shadow_comparator again: traced to s2t_fb_record() caching a raw copy of shadow-comparator depth-as-texture surfaces (DEPTH_Y16_FIXED/FLOAT, X8_Y24_FIXED/FLOAT) across more than one draw, the same format class texscan_shape_ok() already excludes for the identical reason (a raw GPU copy is not proven equivalent to a read through NV2A's hardware shadow-comparator unit). This commit adds the matching exclusion to s2t_fb_record() via pgraph_get_color_format_info(snode->key.state.color_format).depth. Before re-registering that as a pixel-safety claim, a 3-way same-ref sweep of 245ddc4964 (sweep_agreement.py, zero code change, docs/lanes/fpsdata1018/NOTES.md 'Noise floor measured') found Texture_shadow_comparator disagrees with itself on 89/1038 captures with nothing changed -- including the identical 480->400 transition this lever's own FAIL list showed on 2F16_10.00-20.00_15.0000_GT, also present in the unrelated texscan2d FAIL. This suite cannot be told apart from its own noise by a single run, so it is dropped from must_not_move below; the fix is kept as correct on the code reading, but this prediction only claims the suites below, which a single-run arm can actually test. Read from B's logcat, not predicted: '[s2tfb] on mode=2 (stages that do not read)'. A moved capture in any suite below refutes this fix and blocks the change until explained region by region.",
+  "prediction": "#433: HAKUX_S2T_FB defaults to mode 2 (texture.c s2t_fb_mode()), re-registered a fourth time on 136e8a1723 (carries b50667ac35's depth exclusion PLUS this commit's scale check). A = 41c613c22a (default still off). B = 136e8a1723. b50667ac35 alone FAILed its own re-registration 1/184: Antialiasing_tests/CPUWriteIgnoresSurfaceConfig moved 0 -> 45,056 bytes -- the identical capture and byte count as Fix #1's image_scale regression on texscan2d (a different fix, different mechanism-class member, same underlying class: a raw copy taken by copy_surface_to_texture() cached across more than one draw, read again after the surface's scale factor changed with no intervening draw to bump draw_time). This commit adds unsigned int scale to s2t_fb_memo[], set to pg->surface_scale_factor in s2t_fb_record(), checked in s2t_fb_keep() alongside the existing node/image/surface/view/draw_time/frame/run checks. Texture_shadow_comparator is dropped from must_not_move per the measured noise floor (NOTES.md 'Noise floor measured'); every other suite below is predicted unaffected, same as always. A moved capture in any suite below refutes this fix and blocks the change until explained region by region.",
   "a_ref": "41c613c22a",
-  "b_ref": "b50667ac35",
+  "b_ref": "136e8a1723",
   "must_not_move": [
     "Antialiasing_tests/*",
     "Blend_surface/*",
@@ -58,7 +58,7 @@
       "Texture_render_target::RenderTextureLoop"
     ],
     "only_tests": [],
-    "source": "/home/justin/hakux-work/dispatch/results/1-1792389196-arms-fpsdata1018-base-3521751/request.json",
-    "source_request": "1-1792389196-arms-fpsdata1018-base-3521751"
+    "source": "/home/justin/hakux-work/dispatch/results/1-1792404006-arms-fpsdata1018-base-3062037/request.json",
+    "source_request": "1-1792404006-arms-fpsdata1018-base-3062037"
   }
 }
