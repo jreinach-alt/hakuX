@@ -3173,7 +3173,9 @@ note = "STARTED lane.local 2026-10-18 ~10:50 PDT (Opus): GTA III while DRIVING a
 issues = ["433"]
 standing = false
 files = ["docs/lanes/ralli2audio1018/**"]
-note = "STARTED lane.local 2026-10-18 ~10:50 PDT (Opus): RalliSport Challenge 2 audio dropouts (starve 1.34% vs 0.1% bar) and early-race freezes, owner order. Claims apu / pgraph files on the board as it needs them. Brief: briefs/ralli2audio1018.md."
+released = ["docs/lanes/ralli2audio1018/**"]
+released_at_ready = 1078
+note = "STARTED lane.local 2026-10-18 ~10:50 PDT (Opus): RalliSport Challenge 2 audio dropouts (starve 1.34% vs 0.1% bar) and early-race freezes, owner order. Claims apu / pgraph files on the board as it needs them. Brief: briefs/ralli2audio1018.md. RELEASED (hostops, jam duty, 2026-10-18 21:30 PDT): PR #1078 is ready (OPEN, not draft, MERGEABLE, no CI block) and the lane's unit is gone (hakux-lane-ralli2audio1018.service not found) -- per roles/board.md 'release a lane's files when its PR is ready, not when it folds', released this row's only files; nothing else was waiting on docs/lanes/ralli2audio1018/** (grep of territory.toml found no other row or [free] entry naming it)."
 
 [lane.localdrive1018]
 issues = ["433"]
