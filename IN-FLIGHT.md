@@ -8,8 +8,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `fpsdata1018` | claude-sonnet-5 | 5 min |  |
-| `ralli2audio1018` | claude-sonnet-5 | 5 min | ralli2audio1018: RalliSport Challenge 2 audio dropouts: the voice processor's guest-memory overhead, producer  |
+| `fpsdata1018` | claude-opus-5-5 | 8 min | fpsdata1018: FPS dip causes in the 4-title owner capture, and fixes (#433) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -124,7 +123,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/ralli2audio1018` | ralli2audio1018: RalliSport Challenge 2 audio dropouts: the voice processor's guest-memory overhead, producer timing, au | `286d0fc9d8` | 2026-10-18 21:09 |
+| `lane/fpsdata1018` | fpsdata1018: FPS dip causes in the 4-title owner capture, and fixes (#433) | `66e096ed51` | 2026-10-18 21:56 |
 
 ## Recently landed on master
 
@@ -139,4 +138,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-18 dispatcher: fix the staged-disc push's /mnt/d path so adb.exe can open it
 - 2026-10-18 The compatibility page adds RalliSport Challenge and Mortal Kombat: Shaolin Monks to Playable (92 -> 94)
 
-_Updated 2026-10-18 21:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 22:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
