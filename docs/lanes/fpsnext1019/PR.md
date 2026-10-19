@@ -50,8 +50,16 @@ arms, confirmed four independent ways), but its fps (P2, +1.0 measured vs +3.2 p
 reappears as more GPU render time or a different idle stall) and pixel (P3, a visible elongated double-shadow
 artifact on both on arms, ~2.5x the off-vs-off noise floor) predictions do not -- **`HAKUX_SWZKEEP` does not
 ship.** Both switches are opt-in/default-off, so neither needs further gating; both results are real, instrument-
-and pixel-backed negatives, not "needs more data." Detail in `docs/lanes/fpsnext1019/NOTES.md`; per-title table in
-`FINDINGS.md`.
+and pixel-backed negatives, not "needs more data." Fable:
+H2's zeta/colour eviction-download pattern (`[edl]`, landed by fpsdata1018, never run before this attempt)
+reproduces reliably from a cold boot -- no route or save state needed (all 4 of Fable's existing states are
+schema-incompatible on the current build) -- once a perflog APK is actually installed (the first attempt read
+zero census lines against a plain debug build; `opt_stats_log_and_reset()` compiles to nothing without
+`-Pperflog=true`, a build-selection miss, not a scene finding). A 27-window/~95s capture reads `clrskip`/`dl` =
+**0.504**, not the 1.0 ("6/6") Addendum 2 set as the bar for building an unconditional download-skip lever --
+close to half of every window's evicted-and-downloaded content is real feedback a later stage reads, so the
+lever is **not built**. A conditional, per-binding skip is the next-ranked option if this is picked back up, not
+started this attempt. Detail in `docs/lanes/fpsnext1019/NOTES.md`; per-title table in `FINDINGS.md`.
 
 Release note (performance): GTA III driving scenes do fewer GPU render passes per frame (a texture copy the
 renderer was already built to avoid, but had never been turned on, now runs by default); measured as an fps
