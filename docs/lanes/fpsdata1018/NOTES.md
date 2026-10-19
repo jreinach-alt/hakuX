@@ -24,9 +24,22 @@ device runs already on disk (no new device time): `Texture_shadow_comparator` di
 unrelated fixes. Every `Texture_shadow_comparator` FAIL this lane has seen, including this one, is inside that
 floor and not attributable to any fix. See "Noise floor measured" (after Pixel FAIL #3) for the measurement
 and the correction applied to Pixel FAIL #1 and #3's framing; both fixes are kept (correct on the code
-reading), but neither is re-registered as a claim this suite's single-run arm can actually test. Re-registering
-`fpsdata1018-s2tfb2-pixels.json` on `b50667ac35` with `Texture_shadow_comparator` dropped from `must_not_move`
-is the next step, not yet done as of this line.
+reading), but neither is re-registered as a claim this suite's single-run arm can actually test. Both
+predictions re-registered (`fpsdata1018-texscan2d-pixels.json` narrowed, same `b46f4cb8d3`;
+`fpsdata1018-s2tfb2-pixels.json` on `b50667ac35`), FINDINGS.md/PR.md updated to match, all committed and
+pushed. Checked whether the RalliSport 2 route built this lane (`routes/fpsdata1018-ralli2-drive.route`)
+could be re-queued now instead: no, NOTES.md's own prior "Verdict: VOID for RalliSport 2" already found this
+scripted race does not reach the owner's sustained 260x260-in-640x480 scene (`why=dim` for <100 ms of a 480 s
+run); re-running the same route a second time without a different scene would be the same void twice, which
+the lane's stop rule treats as a result, not a reason to spend more device time on it.
+
+[lane.fpsdata1018] waiting: on `[job.arms]`'s verdict for the two re-registered pixel predictions
+(`fpsdata1018-texscan2d-pixels.json` @ `b46f4cb8d3`, same commit, narrower `must_not_move`;
+`fpsdata1018-s2tfb2-pixels.json` @ `b50667ac35`, new commit) pushed this turn at `94b226706a`. Every other
+ranked item is also an external wait: H2 and RalliSport 2/Fable's device-A/B both need the owner to play a
+gameplay window by hand (no dispatcher-reachable route reaches either scene, recipes are in PR.md/FINDINGS.md),
+H4 is blocked on the host-wide `drive generic` harness bug already briefed on PR #1085. PR.md stays
+`State: draft` until the two pixel predictions above post PASS.
 
 ## Attempt log
 
