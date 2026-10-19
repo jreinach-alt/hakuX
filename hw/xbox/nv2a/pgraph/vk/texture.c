@@ -2596,6 +2596,11 @@ static struct {
     uint32_t cp, dup, srf;
     uint32_t r2[S2C__N];     /* #1049: copies R2 bound instead, by reason */
     uint32_t r3;             /* #1049: copies R3 shared instead */
+    /* #1049 HAKUX_S2T_FB: samples of the colour target being drawn, that
+     * would copy (fb), by whether the stage's shader program reads the
+     * texture (nos: NONE, PASS_THROUGH, CLIP_PLANE, DOT_PRODUCT), and the
+     * copies the switch kept instead (keep) */
+    uint32_t fb, fb_nos, fb_keep;
     int frame;               /* the flip seen_* describe */
     int nseen;
     const SurfaceBinding *seen_s[S2C_SEEN];
@@ -2710,10 +2715,11 @@ static void s2c_log_window(unsigned int frames)
     char buf[640];
     int len = snprintf(buf, sizeof(buf),
         "[s2c] f%u cp%u dup%u srf%u why[zs%u pad%u fmt%u map%u none%u] "
-        "ovf%u r2[map%u pad%u] r3[share%u] |",
+        "ovf%u r2[map%u pad%u] r3[share%u] fb[n%u nos%u keep%u] |",
         frames, s2c.cp, s2c.dup, s2c.srf, s2c.why[S2C_ZS], s2c.why[S2C_PAD],
         s2c.why[S2C_FMT], s2c.why[S2C_MAP], s2c.why[S2C_NONE], s2c.overflow,
-        s2c.r2[S2C_MAP], s2c.r2[S2C_PAD], s2c.r3);
+        s2c.r2[S2C_MAP], s2c.r2[S2C_PAD], s2c.r3, s2c.fb, s2c.fb_nos,
+        s2c.fb_keep);
     for (int i = 0; i < S2C_MAX; i++) {
         if (!s2c.used[i]) {
             continue;
@@ -2737,6 +2743,7 @@ static void s2c_log_window(unsigned int frames)
     memset(s2c.why, 0, sizeof(s2c.why));
     memset(s2c.r2, 0, sizeof(s2c.r2));
     s2c.r3 = 0;
+    s2c.fb = s2c.fb_nos = s2c.fb_keep = 0;
 }
 #endif
 
@@ -2802,6 +2809,158 @@ static bool s2t_share_on(void)
     }
     return s2t_share_state;
 }
+
+/*
+ * #1049 (lane.gta3car1018), HAKUX_S2T_FB=1: a draw that samples the colour
+ * surface it is drawing into. GTA III does this in the car, into a 128x128
+ * target (@0x038aa080 on the owner's in-car state) that is sampled ~140 times
+ * a flip at a new draw_time each time. Each sample copied the target into the
+ * texture, and each copy ended the render pass: ~140 of the ~150 passes a
+ * flip, the frame time following the pass count (gta3car1018 NOTES).
+ *
+ * With the switch on, while the surface stays the colour target, a slot that
+ * has held a copy of it since this run's first sample keeps sampling that
+ * copy instead of taking another. "1": every such sample; the run's draws read
+ * the target as it stood at the run's first sample instead of after the draw
+ * before. "2": only a sample on a stage whose shader program does not read its
+ * texture (NONE, PASS_THROUGH, CLIP_PLANE, DOT_PRODUCT), where what the copy
+ * holds changes no pixel. A run ends at the flip, when a bind_textures pass
+ * sees another colour target, and for a slot, when the slot binds anything
+ * else. A sample of the surface while it is not the colour target copies as
+ * before, so a read after the run sees every draw. Plain colour copies only.
+ * Unset or "0": a copy per sample, as before.
+ */
+static int s2t_fb_state = -1;
+
+static int s2t_fb_mode(void)
+{
+    if (s2t_fb_state < 0) {
+        const char *e = getenv("HAKUX_S2T_FB");
+        s2t_fb_state = e && (e[0] == '1' || e[0] == '2') ? e[0] - '0' : 0;
+        if (s2t_fb_state == 1) {
+            s2t_log("[s2tfb] on mode=1 (any stage)");
+        } else if (s2t_fb_state == 2) {
+            s2t_log("[s2tfb] on mode=2 (stages that do not read)");
+        }
+    }
+    return s2t_fb_state;
+}
+
+/* The stage's shader program fetches from its texture */
+static bool s2t_fb_stage_reads(PGRAPHState *pg, int texture_idx)
+{
+    unsigned int prog =
+        (pgraph_vk_reg_r(pg, NV_PGRAPH_SHADERPROG) >> (texture_idx * 5)) &
+        0x1F;
+
+    /* NONE, PASS_THROUGH, CLIP_PLANE, DOT_PRODUCT (pgraph/psh_regs.h) */
+    return !(prog == 0x00 || prog == 0x04 || prog == 0x05 || prog == 0x11);
+}
+
+/* Per slot, the copy of the colour target it took in this run */
+static struct {
+    const TextureBinding *node;
+    VkImage image;
+    const SurfaceBinding *surface;
+    VkImageView s_view;
+    unsigned int draw_time;     /* the node's, as the copy left it */
+    int frame;
+    unsigned int run;
+} s2t_fb_memo[NV2A_MAX_TEXTURES];
+
+static const SurfaceBinding *s2t_fb_target;
+static unsigned int s2t_fb_run;
+
+/* Once per bind_textures pass: a new colour target starts a new run */
+static void s2t_fb_note_target(const PGRAPHVkState *r)
+{
+    if (r->color_binding != s2t_fb_target) {
+        s2t_fb_target = r->color_binding;
+        s2t_fb_run++;
+    }
+}
+
+/* node's image is about to be written or released */
+static void s2t_fb_forget_node(const TextureBinding *node)
+{
+    for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
+        if (s2t_fb_memo[i].node == node) {
+            s2t_fb_memo[i].node = NULL;
+        }
+    }
+}
+
+/* a surface view is being retired, so its surface may be recycled */
+static void s2t_fb_forget_view(VkImageView view)
+{
+    for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
+        if (s2t_fb_memo[i].node && s2t_fb_memo[i].s_view == view) {
+            s2t_fb_memo[i].node = NULL;
+        }
+    }
+}
+
+/* After a bind_textures pass: a slot that no longer samples its memo's node
+ * through the node's own image has left the run */
+static void s2t_fb_check_slots(const PGRAPHVkState *r)
+{
+    for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
+        if (s2t_fb_memo[i].node &&
+            (r->texture_bindings[i] != s2t_fb_memo[i].node ||
+             r->tex_surface_direct[i])) {
+            s2t_fb_memo[i].node = NULL;
+        }
+    }
+}
+
+/* After a plain colour copy into snode for slot texture_idx */
+static void s2t_fb_record(PGRAPHState *pg, int texture_idx,
+                          const SurfaceBinding *surface,
+                          const TextureBinding *snode)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    if (s2t_fb_state <= 0 || surface != r->color_binding) {
+        return;
+    }
+    s2t_fb_memo[texture_idx].node = snode;
+    s2t_fb_memo[texture_idx].image = snode->image;
+    s2t_fb_memo[texture_idx].surface = surface;
+    s2t_fb_memo[texture_idx].s_view = surface->image_view;
+    s2t_fb_memo[texture_idx].draw_time = snode->draw_time;
+    s2t_fb_memo[texture_idx].frame = pg->frame_time;
+    s2t_fb_memo[texture_idx].run = s2t_fb_run;
+}
+
+/* The slot's copy of the colour target serves this sample too */
+static bool s2t_fb_keep(PGRAPHState *pg, int texture_idx,
+                        const SurfaceBinding *surface,
+                        const TextureBinding *snode)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    int mode = s2t_fb_mode();
+
+    if (!mode || surface != r->color_binding ||
+        (mode == 2 && s2t_fb_stage_reads(pg, texture_idx))) {
+        return false;
+    }
+    __typeof__(s2t_fb_memo[0]) *m = &s2t_fb_memo[texture_idx];
+    return m->node == snode && m->image == snode->image &&
+           m->surface == surface && m->s_view == surface->image_view &&
+           m->draw_time == snode->draw_time &&
+           m->frame == pg->frame_time && m->run == s2t_fb_run &&
+           snode->current_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+}
+
+#if NV2A_PERF_LOG
+/* A sample of the colour target being drawn that would copy */
+static void s2t_fb_census(PGRAPHState *pg, int texture_idx, bool keep)
+{
+    s2c.fb++;
+    s2c.fb_nos += !s2t_fb_stage_reads(pg, texture_idx);
+    s2c.fb_keep += keep;
+}
+#endif
 
 /* A view retired into the current frame slot, as the LRU retires a node's,
  * so a draw recorded or in flight that names it still finds it. */
@@ -3125,6 +3284,9 @@ static void s2t_share_bind(PGRAPHVkState *r, int idx, TextureBinding *snode,
  */
 static void s2t_share_end_for(PGRAPHState *pg, TextureBinding *node)
 {
+    if (s2t_fb_state > 0) {
+        s2t_fb_forget_node(node);
+    }
     if (s2t_share_state != 1 || !node) {
         return;
     }
@@ -3157,6 +3319,9 @@ static void s2t_view_retired(PGRAPHState *pg, VkImageView view)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
 
+    if (s2t_fb_state > 0) {
+        s2t_fb_forget_view(view);
+    }
     if (s2t_widen_state == 1) {
         for (int i = 0; i < S2T_WIDEN_VIEWS; i++) {
             if (s2t_widen_views[i].surf_view != view) {
@@ -3915,7 +4080,16 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
     if (binding_found) {
         bool did_s2t_copy = false;
         bool did_upload = false;
-        if (surface_to_texture) {
+        bool fb_keep = false;
+        if (surface_to_texture && surface->draw_time != snode->draw_time &&
+            surface == r->color_binding) {
+            /* #1049: the sample reads the target being drawn */
+            fb_keep = s2t_fb_keep(pg, texture_idx, surface, snode);
+            TEX_PERF(s2t_fb_census(pg, texture_idx, fb_keep));
+        }
+        if (fb_keep) {
+            /* HAKUX_S2T_FB: the slot keeps this run's copy; see s2t_fb_mode() */
+        } else if (surface_to_texture) {
             if (surface->draw_time != snode->draw_time) {
                 bool can_direct_bind =
                     (surface->color ||
@@ -3997,6 +4171,9 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
                     copy_surface_to_texture(pg, surface, snode);
                     TXW_END(CP);
                     s2t_share_record(pg, surface, snode, pad_alpha_override);
+                    if (plain_copy) {
+                        s2t_fb_record(pg, texture_idx, surface, snode);
+                    }
                 }
                 did_s2t_copy = true;
             } else if ((surface->color ||
@@ -4511,6 +4688,12 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
             copy_surface_to_texture(pg, surface, snode);
             TXW_END(CP);
             s2t_share_record(pg, surface, snode, pad_alpha_override);
+            if (surface->color &&
+                !(pgraph_vk_s2t_cvt_on() &&
+                  pgraph_texture_format_expands_by_replication(
+                      snode->key.state.color_format))) {
+                s2t_fb_record(pg, texture_idx, surface, snode);
+            }
         }
     } else {
         TXW_BEGIN(UP);
@@ -4631,6 +4814,9 @@ void pgraph_vk_bind_textures(NV2AState *d)
     r->texture_bindings_changed = retired_view_rebuild_pending;
     retired_view_rebuild_pending = false;
     TEX_PERF(g_opt_stats.txr_bt++);
+    if (s2t_fb_state > 0) {
+        s2t_fb_note_target(r);
+    }
 
     if (!check_textures_dirty(pg)) {
         NV2A_VK_DPRINTF("Not dirty");
@@ -4803,6 +4989,9 @@ s2t_rescan:
     }
     if (s2t_share_rescan && ++s2t_passes <= NV2A_MAX_TEXTURES) {
         goto s2t_rescan;
+    }
+    if (s2t_fb_state > 0) {
+        s2t_fb_check_slots(r);
     }
 
     if (r->texture_bindings_changed) {

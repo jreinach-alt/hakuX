@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.util.Log
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.InputDevice
@@ -46,6 +47,8 @@ class PauseMenuOverlay(context: Context) : FrameLayout(context) {
     private var debugSection: LinearLayout? = null
     private var debugButton: Button? = null
     private var debugExpanded = false
+    /** #433 perflog1016: the owner's marks this run, numbered from 1. */
+    private var marks = 0
     private var busy = false
     private var selected = 0
     private var stickHeld = 0
@@ -144,6 +147,14 @@ class PauseMenuOverlay(context: Context) : FrameLayout(context) {
             } else {
                 true
             }
+        }
+
+        // The perflog switch is off at every launch. A marker the last run
+        // left behind would turn it on at the emulator's first poll; this runs
+        // in onCreate, before SDL starts the emulator thread.
+        val stale = perflogMarker()
+        if (stale != null && stale.exists() && stale.delete()) {
+            Log.i(PERF_TAG, "[perflog] pause menu: cleared the last run's marker; OFF at launch")
         }
     }
 
@@ -409,6 +420,10 @@ class PauseMenuOverlay(context: Context) : FrameLayout(context) {
             orientation = LinearLayout.VERTICAL
             visibility = View.GONE
 
+            addView(createPerflogButton(context), createButtonParams())
+            addView(createMarkButton(context), createButtonParams())
+            addView(createFrameDumpButton(context), createButtonParams())
+
             val capture1 = createCaptureButton(context, "Capture 1 Frame", 1)
             addView(capture1, createButtonParams())
 
@@ -441,6 +456,119 @@ class PauseMenuOverlay(context: Context) : FrameLayout(context) {
         }
     }
 
+    // ---- the perflog switch, marks and the frame dump (#433, perflog1016)
+    //
+    // All three are marker files or log lines, with no JNI: the emulator polls
+    // its markers once a second at the flip, in the directory SDL calls the
+    // external storage path (xemu_android.cpp hands it to the frame dump),
+    // which is getExternalFilesDir(null). A marker written while the menu is
+    // up is read within a second of resuming.
+
+    private fun markerFile(name: String): java.io.File? =
+        context.getExternalFilesDir(null)?.let { java.io.File(it, name) }
+
+    /** Present means on (hw/xbox/nv2a/debug.h, NV2A_PERFLOG_MARKER). */
+    private fun perflogMarker(): java.io.File? = markerFile("perflog.on")
+
+    /** Why the switch cannot move, or null when the button decides. A perflog
+     *  build times everything always (versionName ends -perflog, from
+     *  version_stamp.sh); XEMU_PERFLOG_RT=1 pins it on for the run. */
+    private fun perflogPinned(): String? {
+        val version = try {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName
+        } catch (_: Throwable) { null }
+        if (version != null && version.contains("-perflog")) return "perflog build"
+        val env = System.getenv("XEMU_PERFLOG_RT")
+        if (env != null && env.isNotEmpty() && env != "0") return "XEMU_PERFLOG_RT"
+        return null
+    }
+
+    private fun perflogLabel(): String {
+        val pinned = perflogPinned()
+        return when {
+            pinned != null -> "Perflog: ON ($pinned)"
+            perflogMarker()?.exists() == true -> "Perflog: ON"
+            else -> "Perflog: OFF"
+        }
+    }
+
+    private fun createPerflogButton(context: Context): Button {
+        return createMenuButton(context, perflogLabel()).apply {
+            val bg = (background as GradientDrawable)
+            bg.setColor(Color.argb(200, 110, 80, 40))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+            setOnClickListener {
+                val pinned = perflogPinned()
+                val marker = perflogMarker()
+                if (pinned != null) {
+                    Log.i(PERF_TAG, "[perflog] pause menu: no change, pinned on by $pinned")
+                    toast("Perflog is on for this whole run ($pinned)")
+                } else if (marker == null) {
+                    Log.w(PERF_TAG, "[perflog] pause menu: no external files dir; the switch is unavailable")
+                    toast("Perflog switch unavailable: no external storage")
+                } else {
+                    val on = !marker.exists()
+                    val ok = try {
+                        if (on) { marker.createNewFile(); marker.exists() }
+                        else { marker.delete(); !marker.exists() }
+                    } catch (_: Throwable) { false }
+                    val want = if (on) "ON" else "OFF"
+                    if (ok) {
+                        // The emulator's own line, "[perflog] runtime tier ON
+                        // (frame N, by marker)", follows on resume; this one
+                        // dates the press.
+                        Log.i(PERF_TAG, "[perflog] pause menu: $want requested")
+                        toast("Perflog $want from about a second after you resume")
+                    } else {
+                        Log.w(PERF_TAG, "[perflog] pause menu: $want requested, marker write failed: $marker")
+                        toast("Perflog: could not write the marker")
+                    }
+                }
+                text = perflogLabel()
+            }
+        }
+    }
+
+    /** One `mark owner-N` line on hakuX-route, the route driver's shape
+     *  (`log -t hakuX-route "mark <label>"`), on the logcat clock. "gameplay"
+     *  and "play" are the scored window's marks, so the owner's are numbered. */
+    private fun createMarkButton(context: Context): Button {
+        return createMenuButton(context, "Mark this moment").apply {
+            val bg = (background as GradientDrawable)
+            bg.setColor(Color.argb(200, 110, 80, 40))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+            setOnClickListener {
+                marks += 1
+                Log.i("hakuX-route", "mark owner-$marks")
+                toast("Marked owner-$marks")
+            }
+        }
+    }
+
+    /** Arms the per-draw frame dump for 30 frames from about a second after
+     *  resume (vk/renderer.c fdump_poll_marker; the marker is one-shot). */
+    private fun createFrameDumpButton(context: Context): Button {
+        return createMenuButton(context, "Frame dump (30 frames)").apply {
+            val bg = (background as GradientDrawable)
+            bg.setColor(Color.argb(200, 40, 100, 70))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+            setOnClickListener {
+                val marker = markerFile("frame_dump.on")
+                val ok = marker != null && try {
+                    marker.writeText("30\n")
+                    true
+                } catch (_: Throwable) { false }
+                if (ok) {
+                    Log.i(PERF_TAG, "[framedump] pause menu: armed 30 frames, from resume")
+                    onDismiss?.invoke()
+                } else {
+                    Log.w(PERF_TAG, "[framedump] pause menu: marker write failed: $marker")
+                    toast("Frame dump: could not write the marker")
+                }
+            }
+        }
+    }
+
     private fun createMenuButton(context: Context, label: String): Button {
         return Button(context).apply {
             text = label
@@ -467,5 +595,11 @@ class PauseMenuOverlay(context: Context) : FrameLayout(context) {
 
     private fun dpToPx(dp: Float): Float {
         return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, resources.displayMetrics)
+    }
+
+    private companion object {
+        /** The emulator's flip line is on this tag too, and the dispatcher's
+         *  logcat spec keeps it (dispatcher.sh LOGCAT_SPEC). */
+        const val PERF_TAG = "hakuX-perf"
     }
 }

@@ -13,9 +13,10 @@ Each answer:
     {state, confidence, top3: [[state, p], ..], moving, diff, black, menu: [{text, box, highlighted, intent}],
      action: {do, why}, escalate: <reason or null>, source, ms}
 
-Fail open: when the venv, torch, the GPU or the weights are missing, `classify`/`serve`/`check` print ONE line
-starting `pathclass: unavailable:` on stderr and exit 3, and `Client` raises `Unavailable`, so the caller
-falls back to the language model and never stops.
+Fail open, not fail blind: when the venv, torch, the GPU or the weights are missing, `classify`/`serve`/`check`
+print ONE line starting `pathclass: unavailable:` on stderr and exit 3, and `Client` raises `Unavailable` --
+a missing instrument, not an unknown screen, so the caller (drive.py, #433) turns it into a ROUTE FAIL rather
+than guessing at a blind press.
 
 Tiers. (1) free checks: black (mean luma, FPS corner masked, or a flat fade; classify.py's thresholds) and
 moving (changed fraction against --prev, classify.py's motion). (2) a SigLIP2 image embedding scored by a
@@ -285,6 +286,10 @@ class Classifier:
         torch, np = self.torch, self.np
         with torch.no_grad():
             pooled, grid = self._forward(self._tensor(path))
+        # #433 Part C: stashed for classify() to attach to its answer -- the embedding a
+        # learned-table lookup matches screens by. Already L2-normalized (_forward), so a
+        # plain dot product between two of these IS their cosine similarity.
+        self._last_embedding = pooled[0].cpu().numpy()
         if self.head is not None:
             h = self.head
             x = head_input(self.feats, pooled[0].cpu().numpy(), None if grid is None else grid[0].cpu().numpy(), menu)
@@ -369,6 +374,7 @@ class Classifier:
                 "top3": [[s, round(p, 3)] for s, p in ranked[:3]],
                 "moving": fc["moving"], "diff": fc["diff"], "black": fc["black"], "menu": menu,
                 "action": action, "escalate": esc, "source": source,
+                "embedding": [round(float(v), 4) for v in self._last_embedding],
                 "ms": round((time.time() - t0) * 1000, 1), "ms_image": round((t_img - t0) * 1000, 1)}
 
 

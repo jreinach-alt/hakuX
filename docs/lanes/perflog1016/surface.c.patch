@@ -1,0 +1,63 @@
+diff --git a/hw/xbox/nv2a/pgraph/vk/surface.c b/hw/xbox/nv2a/pgraph/vk/surface.c
+index 9b44c1fd99..216f4458c3 100644
+--- a/hw/xbox/nv2a/pgraph/vk/surface.c
++++ b/hw/xbox/nv2a/pgraph/vk/surface.c
+@@ -40,17 +40,20 @@ void pgraph_vk_xfr_surf(const SurfaceBinding *s, int ev);
+ #define XFR_SURF_UPLOAD 2
+ #define XFR_SURF_GONE 3
+ 
+-/* Lightweight surface sub-timers — compiled out when profiling is off */
+-#if NV2A_PERF_LOG
+-#define SURF_TIMER_INIT(name)  int64_t name = nv2a_clock_ns()
+-#define SURF_TIMER_SPLIT(name) name = nv2a_clock_ns()
+-#define SURF_TIMER_ACC(field, since) \
+-    g_nv2a_stats.surf_working.field += nv2a_clock_ns() - (since)
+-#else
+-#define SURF_TIMER_INIT(name)  ((void)0)
+-#define SURF_TIMER_SPLIT(name) ((void)0)
+-#define SURF_TIMER_ACC(field, since) ((void)0)
+-#endif
++/*
++ * Lightweight surface sub-timers, under the perflog run-time switch (#433,
++ * debug.h): off, INIT is one load and no clock read, and ACC tests the start
++ * it was given, so a timer begun off books nothing. A perflog build times
++ * them always.
++ */
++#define SURF_TIMER_INIT(name)  \
++    int64_t name = nv2a_perflog_on() ? nv2a_clock_ns() : 0
++#define SURF_TIMER_SPLIT(name) name = (name) ? nv2a_clock_ns() : 0
++#define SURF_TIMER_ACC(field, since) do { \
++    if (__builtin_expect((since) != 0, 0)) { \
++        g_nv2a_stats.surf_working.field += nv2a_clock_ns() - (since); \
++    } \
++} while (0)
+ 
+ const int num_invalid_surfaces_to_keep = 10;  // FIXME: Make automatic
+ const int max_surface_frame_time_delta = 5;
+@@ -2113,7 +2116,7 @@ static void download_surface_complete_deferred_at(NV2AState *d, int caller,
+     }
+ 
+     int64_t _t0 = 0, _t1 = 0;
+-    if (NV2A_PERF_LOG) _t0 = nv2a_clock_ns();
++    if (nv2a_perflog_on()) _t0 = nv2a_clock_ns();
+     SDCALL_DO(g_sdcall.dl[caller] += r->num_deferred_downloads + g_sg_held.n;
+               if (r->display_predownload_pending) {
+                   g_sdcall.pre[caller]++;
+@@ -2142,7 +2145,7 @@ static void download_surface_complete_deferred_at(NV2AState *d, int caller,
+         pgraph_vk_finish(pg, VK_FINISH_REASON_SURFACE_DOWN);
+     }
+ 
+-    if (NV2A_PERF_LOG) _t1 = nv2a_clock_ns();
++    if (_t0) _t1 = nv2a_clock_ns();
+     SDCALL_DO(g_sdcall.wait_ns[caller] += _t1 - _t0);
+ 
+     /*
+@@ -2155,7 +2158,7 @@ static void download_surface_complete_deferred_at(NV2AState *d, int caller,
+      */
+     pgraph_vk_complete_staged_downloads(d, r);
+ 
+-    if (NV2A_PERF_LOG) {
++    if (_t0) {
+         g_nv2a_stats.surf_working.df_flush_ns += _t1 - _t0;
+         g_nv2a_stats.surf_working.df_read_ns += nv2a_clock_ns() - _t1;
+     }
