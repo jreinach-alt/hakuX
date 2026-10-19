@@ -6,9 +6,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Right now
 
-| Lane | Model | Running for | Working on |
-|---|---|---|---|
-| `fpsnext1019` | claude-sonnet-5 | 36 min | fpsnext1019: GTA III CPU-side levers (HAKUX_FBLOOP, vtxstale1018/C2) all confirm but don't reach the player; B |
+No lane session is running.
 
 - **Handhelds:** 2 connected.
   - Nova: held by `lane.fpsnext1019`
@@ -124,9 +122,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Work in progress
 
-| Branch | Topic | Tip | Last change |
-|---|---|---|---|
-| `lane/fpsnext1019` | fpsnext1019: GTA III CPU-side levers (HAKUX_FBLOOP, vtxstale1018/C2) all confirm but don't reach the player; Blinx 2/Fab | `5c9fc668cd` | 2026-10-19 16:22 |
+No branch is being worked right now.
 
 ## Recently landed on master
 
@@ -141,4 +137,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-19 drive: local tools only, act-observe instead of wait-and-fail, learn what to press
 - 2026-10-19 mkdawhite1018: Mortal Kombat: Deadly Alliance arena floors and walls draw flat white (#1058)
 
-_Updated 2026-10-19 16:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-19 16:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
