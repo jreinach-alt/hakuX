@@ -4142,6 +4142,7 @@ static void create_surface_image(PGRAPHState *pg, SurfaceBinding *surface)
     unsigned int width = surface->width ? surface->width : 1;
     unsigned int height = surface->height ? surface->height : 1;
     pgraph_apply_scaling_factor(pg, &width, &height);
+    surface->image_scale = pg->surface_scale_factor;
 
     assert(!surface->image);
     assert(!surface->image_scratch);

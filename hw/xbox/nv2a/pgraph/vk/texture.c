@@ -2253,7 +2253,20 @@ static int texscan_plan(PGRAPHState *pg, const TextureShape *st,
         if (!s->draw_dirty || !texscan_overlaps(s, t_addr, t_len)) {
             continue;
         }
-        if (!s->color || s->upload_pending || s->image == VK_NULL_HANDLE) {
+        if (!s->color || s->upload_pending || s->image == VK_NULL_HANDLE ||
+            s->image_scale != 1) {
+            /*
+             * s->image_scale != 1: s->image's real texel grid is
+             * width*image_scale x height*image_scale (create_surface_image),
+             * baked in when the surface was created under a surface_scale_
+             * factor texscan_shape_ok's ==1 check (above, at bind time) does
+             * not retroactively apply to. A raw vkCmdCopyImage at extent
+             * s->width x s->height from that image reads a cropped corner of
+             * the oversized grid, not a resolved image -- the corruption
+             * AntialiasingTests::CPUWriteIgnoresSurfaceConfig caught (#433
+             * arms FAIL on 38c8d53ba5). Refuse; the existing SURFACE_DOWN
+             * path downscales through image_scratch correctly.
+             */
             return TEXSCAN_REFUSED;
         }
         int slot = texscan_slot(pg, st, t_addr, s, plan);

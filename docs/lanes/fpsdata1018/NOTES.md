@@ -13,7 +13,17 @@ perflog 72af9cb92c, Nova, PurpleVK) and land fixes.
   0 bytes: the session ended with no closing words, so handback resumed it as idle. Why it did not finish: it went
   to the tool before Step 0, never wrote NOTES.md, and the session ended (12 minutes in) before its first commit.
   Its two edits are kept (they read the capture correctly, checked below). This attempt commits Step 0 first.
-- **Attempt 2** (this session): Step 0, then the mechanism account (G2), then fixes.
+- **Attempt 2** (session ending ~06:00Z): Step 0, the mechanism account (G2), Fix #1 (texscan takes 2D textures)
+  built and predicted, the RalliSport 2 device A/B and the Fable/RalliSport2 owner recipe queued, PR opened
+  (`#1085`, draft). Attempt 2 did not finish: it ended right after queuing the device A/B, before either arm's
+  result existed on disk, so it could not read them back or decide the next-ranked hypothesis (H2/H3). That is a
+  legitimate stop (a real external wait on the device), not a dead end.
+- **Attempt 3** (this session): merged `origin/master` (34 commits; clean, none touching `texture.c`, `surface.c`
+  or `territory.toml` since the fork point `72af9cb92c` -- verified with `git diff <merge-base> origin/master --stat`
+  before merging). Read back both arms of the queued RalliSport 2 device A/B (section "Device A/B, read back").
+  Investigated H3 (Blinx 2's `Surf` wait) down to a dead end that is already proven dead on another title
+  (`stall_reports_only`/`HAKUX_STALLFIN=reports`, row 23) -- recorded before building anything, so it is not
+  repeated. Continuing to H2 (Fable zeta churn) next.
 
 ## Step 0: Already-tried (G1)
 
@@ -49,6 +59,7 @@ NOTES (newer than master's); ralli = `wt/ralli2audio1018/docs/lanes/ralli2audio1
 | 20 | Faster clock / governor / perf mode / sysmem | any | -- | -- | forbidden (owner) | memory `investigate-the-wait-not-the-clock` |
 | 21 | Scripted gameplay navigation (6 GTA routes) | GTA III | all VOID | -- | do not repeat | `L/gta3fps1017/NOTES.md` 0 |
 | 22 | texscan: GPU copy of draw-dirty whole-face CUBE surfaces into the texture instead of download + upload (`HAKUX_TEXSCAN`) | NFS MW cube | range 4.03 -> 0.00 ms/frame, but fps -1.4 / period +2.6 ms alone: the wait moved to the #804 report fence | NFS arms | works when paired with REPORT_ASYNC; default-on in fastpaths with it | `L/texscan1010/NOTES.md` 5-11 |
+| 23 | Skip the per-frame STALLED finish when no report is queued (`stall_reports_only()`/`HAKUX_STALLFIN=reports`, `reports.c:1320`) -- proposed here as the shared cause of GTA III's `rotfen`/`fin=stalled` and Blinx 2's `stl`/`sd[cDefC62]` wait, both ~1 STALLED finish/frame with an empty report queue in this capture (3 "report" lines total in each of `gta3.txt`/`blinx2.txt`, all three `init:` logging, none in a gameplay window) | Simpsons (K0/K1, `gpunonrender` 0702057f25) | STALLED finishes fell to 20% (5.36->1.05/frame) **but gfps fell 30.3->25.8**, G 33.0->37.75 ms, `xemu-gpu` Xfr 7.0->13.0, vCPU pfifo.lock wait +4.3 ms/frame | K0/K1 A/B pair, same clock (401 MHz), same route | **refuted**: removing the catch-up submit lets the command buffer grow bigger before its one submit, so the GPU starts the frame's work later (at the flip) instead of overlapping with CPU recording; the overlap was worth more than the rotation wait it cost | `L/gpunonrender/NOTES.md` "K0/K1: STALLED submits fall to 20%, and fps falls" |
 
 Correction carried from the research pass: `L/fpsdiag1018/FINDINGS.md` 2 item 4 credits "R3 -0.9 fps"; README gives
 -0.3 (b2) and -0.9 (b4) both to R2 vs R1, and R3 no fps number (dup 0, inert).
@@ -147,8 +158,8 @@ frame at 3054), so the ceiling for that fix alone is ~25 fps at 3054, from 15.
 |---|---|---|---|---|---|---|
 | H1 | Texture of a different shape than its render surface (linear sub-rect; per-level surfaces) is downloaded and synced in `create_texture` | RalliSport 2, Fable | R2 1926-3664 `sdown 60` + `s2t=dim`; Fable 5175 `tobuf`/`sdl`/`scdl`, `s2t=levels` | R2 17-26; Fable 27.5 + 4 (first sync) | high (counter names the call site in both) | **Fix #1** |
 | H2 | Zeta re-shaped per level: eviction downloads + forced `surfupd` completion | Fable | 5175 `evict[dl:360]`, `why=inv60` | 6.3 now; it absorbs H1's wait once H1 is gone | medium | next |
-| H3 | Detach/eviction downloads waited at the next `surface_update` | Blinx 2 | 3054 `dfF 39.2`, `cDefC62`, `detach=120` | up to 39, capped by GPU 39.6 | high for the wait, gain capped | next |
-| H4 | GPU time per frame (per-pass cost, draw count) | GTA III, Blinx 2 | GTA GPU 29-48 in dips; Blinx R 39 for 45 RP | the floor under H3, and GTA's whole dip | medium | rows 12-14 |
+| H3 | Detach/eviction downloads waited at the next `surface_update` | Blinx 2 | 3054 `dfF 39.2`, `cDefC62`, `detach=120` | up to 39, capped by GPU 39.6 | high for the wait, gain capped | **dead**: the only lever that removes the wait without removing GPU work is skipping the STALLED finish that submits the detach/eviction downloads early (`stall_reports_only`); that lever is row 23, refuted on Simpsons (fps falls when it runs, because the early submit was pipelining CPU record against GPU work, not wasted sync). No other way to take the wait below GPU busy time without touching H4. |
+| H4 | GPU time per frame (per-pass cost, draw count) | GTA III, Blinx 2 | GTA GPU 29-48 in dips; Blinx R 39 for 45 RP | the floor under H3, and GTA's whole dip | medium | next |
 | H5 | Fence queue depth (#796) | GTA III | row 10 | -- | low (Fen tracks GPU) | not this lane |
 | H6 | Thermal / clock | RalliSport 2 | row 19 | -- | ruled out for race windows: Fin = GPU = sdown | dropped |
 
@@ -250,6 +261,31 @@ hakuX-phase Fin/Sub, `[sdcall]` sdown count/ms, `txdl` why, `[tsc] ts2[...]`, an
 thermal.jsonl. Compare the first 120 s of race in each arm, not the means of the whole runs, since ralli2audio saw a
 thermal cliff after 180 s.
 
+### Device A/B (RalliSport 2), read back (attempt 3)
+
+Both arms DONE, `GPU: PurpleVK` (Adreno 740, `vulkan.purple.so`) confirmed in both. `[texscan] on 2d=0` in A,
+`2d=1` in B, so the switch took.
+
+The caveat fires: the route does **not** reach the owner's sustained scene.
+
+| | A (`HAKUX_TEXSCAN2D=0`) | B (shipped) |
+|---|---|---|
+| `why=dim` count, whole 480 s run | 4 (all within 84 ms, 23:28:46.852-.936 -- one brief flash, not sustained) | 0 |
+| `ts2[lin]` count, whole run | n/a (switch off) | 0 |
+| worst `[dipwin]` window (60 flips) | 3.529 s (~17 gfps) | 2.386 s (~25 gfps) |
+| windows total | 365 | (comparable) |
+
+The owner's capture showed `fin=sdown` 60/60-flip-window, sustained across all 16 race windows from 1926 to 3664
+(40+ s continuous). This route's scripted race shows the 260x260-in-640x480 render target for under 100 ms total
+in 480 s -- a different camera angle or moment, not the owner's sustained mirror/replay view. The two arms' worst
+windows (3.529 vs 2.386) are not comparable as an A/B of Fix #1: neither hits the scene it tests, and the
+difference is consistent with ordinary race-line/thermal variance (ralli2audio1018's own fps-cliff finding, row 19)
+between two separate 480 s runs, not with `sdown` removal.
+
+**Verdict: VOID for RalliSport 2.** This device A/B does not measure Fix #1. RalliSport 2's measurement stays with
+the owner recipe below. The route file stays in the lane (it is harmless and may hit the scene on a different
+race attempt), but no fps conclusion is drawn from it.
+
 ### Owner A/B recipe (Fable; RalliSport 2 if the route misses the scene)
 
 Fable has no route or save state to its gameplay scene. The recipe:
@@ -261,3 +297,53 @@ Fable has no route or save state to its gameplay scene. The recipe:
 
 Counters to read: `[sdcall]` sdown and tobuf, `surfupd` (Fable: does it absorb the wait?), `txdl` why=dim/levels
 (A) against `ts2[lin]`/`ts2[mip]` (B), Fin/Sub, gfps.
+
+### Fix #1's pixel prediction: arms VERDICT FAIL, root cause found and fixed
+
+`docs/testing/predictions/fpsdata1018-texscan2d-pixels.json` (a_ref `245ddc4964`, b_ref `38c8d53ba5`) came back
+FAIL on PR #1085: `Antialiasing_tests/CPUWriteIgnoresSurfaceConfig` went from bit-exact (0) to 45,056 different
+bytes, and 61 `Texture_shadow_comparator` captures differ byte-for-byte (38 at unchanged score -- `PIXELS MOVED`,
+paired worse/better rows with matching magnitudes between sibling variants, e.g. `2F16_..._EQ` +80 /
+`2F16_..._LT` -80). Captures (`/home/justin/hakux-work/dispatch/results/1-1792389196-arms-fpsdata1018-fix-3521849/
+captures1/`): A is a clean checkerboard diamond; B is gross multicolor fine-striped noise across the same shape --
+a layout/stride misread, not a rounding drift.
+
+Root cause, traced in `hw/xbox/nv2a/pgraph/vk/texture.c`'s texscan code (read, not guessed -- static trace of
+`texscan_shape_ok`, `texscan_plan`, `texscan_slot`, `texscan_apply`, and `create_surface_image` in `surface.c`):
+
+- `create_surface_image()` (surface.c:4138) sizes `surface->image`'s real Vulkan extent at
+  `width * pg->surface_scale_factor x height * pg->surface_scale_factor` (`pgraph_apply_scaling_factor`,
+  pgraph.h:695), baked in **at creation time** from whatever the global scale factor is then. `surface->width`/
+  `height` stay the logical (unscaled) values used everywhere else.
+- `texscan_shape_ok()` (texture.c:2129) only checks `pg->surface_scale_factor == 1` for the texture being bound,
+  i.e. the **current** global value. It says nothing about what scale factor was in force when a candidate
+  surface's image was created, and nothing tracked that per surface.
+- `texscan_apply()`'s `vkCmdCopyImage` (texture.c ~2463-2477) copies `extent = s->width x s->height` from
+  `srcOffset (0,0)` of `s->image`. When `s->image`'s real grid is scaled, that is a crop of the oversized render
+  target's top-left corner, not a resolve -- every other reader of a scaled surface (`surface_download`'s
+  `downscale` blit through `image_scratch`, surface.c ~1456-1507 and ~2399-2437) goes through a scale-aware blit;
+  texscan never did.
+- A surface created while AA/scale != 1 can sit in `r->surfaces` still `draw_dirty` after the register state (and
+  `pg->surface_scale_factor`) changes back to 1 with no flush -- texscan's whole point (texture.c's own doc
+  comment: "No #474 drain... counted, not taken") is to skip exactly the flush that would otherwise force a
+  correctly-scaled SURFACE_DOWN first. `AntialiasingTests::CPUWriteIgnoresSurfaceConfig` is built to vary surface
+  config across a shared surface -- textbook trigger. The `Texture_shadow_comparator` swapped-pair pattern fits
+  the same mechanism hitting different sibling sub-tests depending on which one inherits a stale scaled surface.
+
+This is **specific to texscan** (the `r->surfaces` active-scan loop already correctly refuses `!s->color` and
+`s->upload_pending` before this point, texture.c ~2256) and is not a wider pre-#433 bug: nothing before Fix #1
+ever took a raw image-to-image copy path for a 2D surface.
+
+Fix (this commit): added `unsigned int image_scale` to `SurfaceBinding` (renderer.h ~402), set from
+`pg->surface_scale_factor` in `create_surface_image()` (surface.c:4145) at the moment the image is actually
+allocated, and refused in `texscan_plan`'s active-surface loop (texture.c ~2256) alongside the existing
+`!s->color`/`upload_pending`/`VK_NULL_HANDLE` checks. A scaled leftover surface now falls through to the
+pre-existing SURFACE_DOWN path, which already downscales it correctly.
+
+Typechecked clean (`docs/lanes/fpsdata1018/typecheck.py . hw/xbox/nv2a/pgraph/vk/texture.c
+hw/xbox/nv2a/pgraph/vk/surface.c`, plain and `-DNV2A_PERF_LOG=1`, rc=0 both, no new warnings).
+
+Next: re-register the pixel prediction against this commit's sha (new a_ref/b_ref, after merging current
+origin/master) and re-queue the arms job before marking PR.md `State: ready`. The fps-side verdict on texscan2d
+(RalliSport 2/Fable) still stands behind this correctness fix -- it was never in question, only the AA-surface
+edge case was.

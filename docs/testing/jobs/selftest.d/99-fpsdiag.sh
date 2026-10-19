@@ -159,3 +159,53 @@ check "fpsdiag gaps (nophase fixture): GAP-flags the phase-dependent candidates"
     grep -q "gpu_saturation .*GAP: hakuX-phase absent" "$FD/gaps-nophase.out"
 check "fpsdiag gaps (nophase fixture): does not GAP-flag the rdc-backed candidate still in reach" \
     bash -c '! grep -q "tlb_walk_cost .*GAP" "$1"' _ "$FD/gaps-nophase.out"
+
+# -- 5. capture --attach (G5, fpsdata1018): every adb call it makes is a read,
+#    never a launch/input/write, and it still produces a scoreable capture --
+#    a fake `adb` on PATH stands in for the perflog build; no real device
+#    touched by this fragment ------------------------------------------------
+FAKEADB="$FD/fakeadb"
+mkdir -p "$FAKEADB"
+export FAKEADB_LOG="$FD/fakeadb-calls.log"
+: > "$FAKEADB_LOG"
+cat > "$FAKEADB/adb" <<'SH'
+#!/bin/bash
+echo "$*" >> "$FAKEADB_LOG"
+case "$*" in
+  *"logcat -d -v threadtime"*)
+    printf '%s\n' \
+      '10-18 21:24:09.001  5000  5001 I hakuX   : GPU: Adreno (TM) 740 Driver: PurpleVK' \
+      '10-18 21:24:09.050  5000  5001 I hakuX-pace: f=60 max=16.8 ms=16.8'
+    ;;
+  *"logcat -v threadtime"*)
+    echo '10-18 21:24:10.001  5000  5001 I hakuX-pace: f=60 max=16.8 ms=16.8'
+    sleep 100
+    ;;
+  *"shell for z in /sys/class/thermal"*) echo 41000 ;;
+  *"shell cat /sys/class/power_supply/battery/temp"*) echo 380 ;;
+  *"shell cat /proc/meminfo"*) echo "MemTotal:        8000000 kB" ;;
+  *"shell dumpsys power"*) echo "mWakefulness=Awake" ;;
+  *"shell cat /sys/devices/system/cpu/online"*) echo "0-7" ;;
+  *"shell top -b -n 1"*) echo "PID USER  PR  NI CMD" ;;
+  *"shell cat /proc/"*"task"*"stat"*) echo "1234 (haku_x) S 1 1234 1234" ;;
+  *) echo "UNEXPECTED: $*" >> "$FAKEADB_LOG.unexpected" ;;
+esac
+SH
+chmod +x "$FAKEADB/adb"
+
+CAPOUT="$FD/capture-out"
+rm -rf "$CAPOUT" 2>/dev/null
+PATH="$FAKEADB:$PATH" timeout 8 python3 "$FPSDIAG" capture --serial FAKESERIAL --title "Grand Theft Auto III" \
+    --seconds 2 --out "$CAPOUT" --pid 1234 > "$FD/capture.out" 2>&1
+capture_rc=$?
+check "fpsdiag capture --attach: exits 0 against a fake perflog-build adb" test "$capture_rc" = "0"
+check "fpsdiag capture --attach: manifest.json names the PurpleVK driver line" \
+    grep -q "Driver: PurpleVK" "$CAPOUT/manifest.json"
+check "fpsdiag capture --attach: periodic.ndjson gets at least 2 samples in a 2s capture" \
+    test "$(wc -l < "$CAPOUT/samples/periodic.ndjson" 2>/dev/null)" -ge 2
+check "fpsdiag capture --attach: logcat.txt is written (ring + follow)" \
+    test -s "$CAPOUT/logcat.txt"
+check "fpsdiag capture --attach: no adb call outside the read-only set (no launch/input/write)" \
+    bash -c '! grep -qE "(^| )(input|monkey|am (start|force-stop)|pm |uninstall|install|push|reboot|settings put)( |$)" "$1"' _ "$FAKEADB_LOG"
+check "fpsdiag capture --attach: the fake adb never saw an unrecognised call (every call matched the read-only case)" \
+    test ! -s "$FAKEADB_LOG.unexpected"
