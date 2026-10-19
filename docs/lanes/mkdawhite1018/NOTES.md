@@ -2,6 +2,19 @@
 
 Mortal Kombat: Deadly Alliance (4D57000C): arena floors and walls draw flat white.
 
+Status (10-19, attempt 3, done): **Steps 1-3 answered; PR.md State: ready.** Step 1: confirmed on
+Turnip again, on four more runs. Step 2: the defect is scoped to specific arena floor/wall
+materials ("Stone courtyard", "Hall with carved heads", "Kuatan Palace" reproduce white; Kenshi's
+fortress interior and the ice temple render correctly), found by reading the free `route-frames`
+screenshots every run already held, at zero added device cost -- section 19 has the full table.
+Step 3: no code fix (the one register-level dump this lane got landed on a correct arena by the
+blind route's luck, so it could not be used to root-cause anything); the lever for a fix lane is
+named as a targeting problem (deterministic arena selection, not another blind dump) in
+`FINDINGS.md`. **Why attempt 3 took three sessions:** the first two continuations spent their
+device-time budget chasing the stage-card/flythrough timing (sections 13-18) before the run that
+finally landed in gameplay (`1792403678`); this session read that run's dump, then found the
+arena-scope answer was sitting unread in six prior runs' own screenshots the whole time.
+
 Status (10-18 11:10 PDT, attempt 2): **blocked on the harness at Step 1 again, on a second
 defect** (section 7.1). The re-queued run `1792345978-mkdawhite1018-1601447` failed at 11:05
 with `title not on device`. The first fix works: the disc now transfers and its sha matches.
@@ -788,6 +801,84 @@ end-to-end** -- the only window the script's own timing says contains the cut fr
 into the fight, which is the one thing still unmeasured. The"3 real seconds" window width used so
 far (120-180 frames) is also short against a possible 12-15 s gap; a window needs to span closer
 to that whole gap to be sure of catching the cut regardless of where in it the cut actually falls.
+
+### 19. `1792403678` landed in gameplay at last -- and the free route-frames screenshots, re-read across all seven runs, re-scope the whole defect
+
+The previous attempt ended mid-turn (a summary request cut it off) right after reading
+`1792403678`'s dump. Resuming here: that run's capture window (`after78`, 600 frames, t78-88)
+did land inside real gameplay this time, not another flythrough or stage card. Two register-
+level checks on its dump, then the much bigger finding that supersedes them.
+
+**a. The floor-glow composite chain is an exact no-op here.** `framedump_1792406162.jsonl`
+(84606 records: `draw` 79169, `vup` 4812, `frame` 600, `shader` 23, `session` 1, `end` 1 -- typed
+by the `t` field, not `type`). Across all 24 draws in the capture matching the §11 pattern
+(a large backbuffer target sampling a small surface live via `s2t`/`bv:"d"`, triggering the
+"consumer" `pre`/`post` readback per schema 7/8, renderer.c:1842-1866), the `pre` and `post`
+readback bytes for the large target are byte-identical in every instance: this composite writes
+nothing changed. Draws n104/n105's raw `NV_PGRAPH_BLEND` register read `0x0000050a`: decoded
+against `hw/xbox/nv2a/nv2a_regs.h`, `EN`=1, `EQN`=ADD(2), `SFACTOR`=ZERO(0), `DFACTOR`=
+ONE_MINUS_SRC_ALPHA(5) -- `SFACTOR=ZERO` alone explains a near-zero contribution but not the
+observed *exact*-zero diff even on the ~5% of source texels with alpha 0xff; something else
+(clip/scissor/depth test rejecting the draw outright) is still unexplained at the register level,
+but moot given (c) below.
+
+**b. No dummy-texture evidence in frame 0.** Spot-checked `th` (texture-cache binding hash) against
+`gh` (guest VRAM content hash) on ~10 representative large-target draws spanning the frame; every
+one matched, meaning every checked binding carries real uploaded content, not the 16x16 dummy.
+
+**c. Both (a) and (b) describe an arena that turns out not to be the broken one.** `route-frames/`
+-- a directory every dispatch result has held all along (`shot round`, `shot gameplay` in
+`mkda-arcade.route`, fired at a fixed point in the script regardless of `XEMU_FRAME_DUMP`) --
+was never opened before this turn. It costs no device time to read: the screenshots are already
+on disk for all seven mkdawhite1018 runs to date. Opened all seven `*-gameplay.png` and measured
+each one's white-pixel fraction (RGB all > 235, sampled every other pixel, PIL):
+
+| Run | Opponent | Arena (what the background shows) | White px (gameplay.png) | Floor verdict |
+|---|---|---|---|---|
+| `0-1792377843` | Johnny Cage | Stone courtyard: red banner pillars, dragon-medallion wall, lit braziers | 30.36% | **white** |
+| `1792390708` | Mavado | Snowy mountain pass: wire fence, prayer flags, cliffs, heavy foreground blur | 23.16% | ambiguous -- blurred/foggy, not a clean flat white; needs its own dump to call |
+| `1792394397` | Li Mei | Hall with carved stone heads, arcade of arches | 31.90% | **white** -- same arena as the original 10-06 stock sighting's row 1 ("Hall with carved heads (Bo Rai Cho)", §1) |
+| `1792395921` | Bo Rai Cho | Kuatan Palace: railing/upper wall also shows broken white chunks, not just the floor | 56.40% | **white**, and worse than the others (wall affected too) |
+| `1792399140` | Sonya | Stone courtyard: same red pillars/medallion/braziers as `0-1792377843` | 32.34% | **white** -- same arena as `0-1792377843` and as the original sighting's row 2 ("Stone courtyard, red banners (Johnny Cage)", §1) |
+| `1792399836` | Kenshi | Stone temple interior: tiled floor, teal curtains, spider-motif door | 0.02% | **correct** |
+| `1792403678` | Sub-Zero | Ice temple: reflective ice floor, icicles, falling snow | 0.07% | **correct** |
+
+Five of seven land white, at 23-56%, and two land completely clean (0.02-0.07%, consistent with
+incidental highlights/snow, not a defect). This is not scatter: the two white arenas with a clear
+match to the original 10-06 stock-driver sighting (§1's 4-row table) are the *same* arenas --
+"Stone courtyard" (rows match exactly, down to red banners) and "Hall with carved heads" -- now
+reproduced on two different opponents each. **Mortal Kombat: Deadly Alliance's white floor is not
+a universal renderer bug and not random per-run noise; it is tied to specific arena assets.** This
+sharpens, rather than contradicts, §1's own read of the Kenshi "platform in the clouds" frame
+(textured disc beside a white ring, same arena, same frame) and PR.md's note that "the fault is
+per material, not per frame": the affected material (or the draw path it takes) is used by at
+least three arenas' floor geometry (Stone courtyard, Hall with carved heads, Kuatan Palace) and
+not used, or taken a different path, by at least two others (Kenshi's fortress interior, the ice
+temple) -- which is why a blind route sometimes lands clean and sometimes white, and why this
+lane's own five frame-dump attempts (§11-18) kept missing it: four of five landed on a stage-card
+background or a flythrough, and the one that finally reached gameplay (`1792403678`, analysed in
+(a) and (b) above) landed on *the ice temple*, one of the two correctly-rendering arenas. (a) and
+(b)'s findings describe a non-defective instance; they neither confirm nor rule out the
+`create_surface_image` no-clear lever (§17) for the real defect, because they were never looking
+at it.
+
+This finally closes Step 1 with a concrete recommendation rather than a flat yes/no: the defect
+**does** still show on Turnip (already settled in `0-1792377843`, §2), confirmed again here on
+three more arena instances across four more runs, spending zero additional device time -- all of
+this turn's evidence came from screenshots dispatch already wrote to disk for other reasons.
+
+**Open for Step 3 / a fix lane:** this title's character-select screen and `mkda-arcade.route`'s
+blind input give no control over which opponent/arena a run lands on (seven runs, six different
+pairings, no repeat except the two "Stone courtyard" instances, which came by chance not by
+routing). A fix lane needs a frame dump (`gd`+`rtt`, and `images` for a direct visual check in the
+same capture) taken *while deterministically on one of the three confirmed-broken arenas* --
+either by finding/building a save state that starts past character select already in "Stone
+courtyard" or "Hall with carved heads", or by controlling the select screen's input deterministically
+rather than relying on the blind route's luck. Without that, any further register-level dump
+through this route is a coin flip (2/7 so far landed clean) that burns device time to re-learn
+exactly what (a)/(b) already show for the wrong arena. That targeting problem, not another
+timing offset, is the next lever -- separate from and prior to the `create_surface_image` no-clear
+candidate in §17, which remains unconfirmed either way.
 
 ### 17. Step 3 groundwork, while device time is spent elsewhere: `create_surface_image` never clears a surface on creation or pool-reuse
 

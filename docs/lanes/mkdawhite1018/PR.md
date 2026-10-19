@@ -1,12 +1,12 @@
 # mkdawhite1018: Mortal Kombat: Deadly Alliance arena floors and walls draw flat white (#1058)
 
-State: draft
+State: ready
 
 Lane: mkdawhite1018            Issue: #1058 #433
 Base: master @ a1e5a7d504
-Files: docs/lanes/mkdawhite1018/NOTES.md, docs/lanes/mkdawhite1018/PR.md, docs/lanes/mkdawhite1018/WAITING, docs/lanes/mkdawhite1018/mkda-arcade.route
-Prediction: none: analysis-only (so far)
-Needs device: yes    Needs NDK: no
+Files: docs/lanes/mkdawhite1018/NOTES.md, docs/lanes/mkdawhite1018/PR.md, docs/lanes/mkdawhite1018/FINDINGS.md, docs/lanes/mkdawhite1018/WAITING, docs/lanes/mkdawhite1018/mkda-arcade.route
+Prediction: none: analysis-only, no code change made
+Needs device: no (this lane's own device work is done; a fix lane needs one)    Needs NDK: no
 
 Mortal Kombat: Deadly Alliance draws its arena floors, and the walls and pillars nearest the camera, flat
 white. The fighters, the floor decals, the HUD and the far backdrop are drawn correctly. On the Kenshi
@@ -95,11 +95,69 @@ unrelated surface's last content (the pool matches only format/width/height/usag
 concrete lever if the floor-glow surface's bake draw turns out to be skipped or under-covered rather
 than simply wrong-coloured.
 
-A sixth run, `1792403678-mkdawhite1018-3048897`, is queued: `after78`, 600 frames (~10 s, covering
+A sixth run, `1792403678-mkdawhite1018-3048897`, ran: `after78`, 600 frames (~10 s, covering
 t78-88), derived from the route script's timing rather than another guess, dropping `images` from the
-env spec to keep the payload light. `[lane.mkdawhite1018] waiting:` on it, itself still blocked
-behind a Nova hold another lane (`lane.pathfind`) currently holds (`dispatch/hold/nova.why`). This is
-outside this session's control (the dispatcher claims queued requests on its own schedule once the
-device is free), not this lane's own background task.
+env spec to keep the payload light. It finally landed inside real gameplay, not another stage-card or
+flythrough frame. Its `gd`+`rtt` dump shows the §11 floor-glow composite chain (a large backbuffer
+draw live-sampling a small offscreen surface via `tex_surface_direct`/`bv:"d"`) as an exact, byte-
+identical no-op in all 24 instances across the full 600-frame window, and finds no dummy-texture
+evidence anywhere in frame 0 (`th`==`gh` on every checked binding). **Neither result tells us
+anything about the defect**, because of the next finding.
+
+**The defect is scoped to specific arenas, not the renderer in general -- found at zero additional
+device cost.** `mkda-arcade.route` fires `shot round`/`shot gameplay` at a fixed point regardless of
+the frame-dump env spec, so every one of this lane's six prior dispatch runs already held a full-
+colour screenshot of the fight it reached, unread until now. Opening and measuring all seven
+(`0-1792377843` through `1792403678`) gives:
+
+| Run | Opponent | Arena | White px | Floor |
+|---|---|---|---|---|
+| 0-1792377843 | Johnny Cage | Stone courtyard, red banners | 30.36% | white |
+| 1792390708 | Mavado | Snowy mountain pass | 23.16% | ambiguous (blur/fog) |
+| 1792394397 | Li Mei | Hall with carved heads | 31.90% | white |
+| 1792395921 | Bo Rai Cho | Kuatan Palace | 56.40% | white (wall too) |
+| 1792399140 | Sonya | Stone courtyard, red banners | 32.34% | white |
+| 1792399836 | Kenshi | Stone temple interior | 0.02% | correct |
+| 1792403678 | Sub-Zero | Ice temple | 0.07% | correct |
+
+Five of seven land white; the two clean ones are the two arenas that landed register-level dumps in
+this lane (Kenshi's run never got a `gd`/`rtt` dump; Sub-Zero's -- `1792403678` -- is the one analysed
+above). The run this lane finally got register data from was, by the blind route's luck, one of the
+*correctly-rendering* arenas -- which is why the no-op/texture-integrity findings above are
+inconclusive rather than a disproof of any standing hypothesis. "Stone courtyard" and "Hall with
+carved heads" are the exact same arenas the original 10-06 stock-driver sighting named (`NOTES.md`
+section 1's table, rows 1 and 2), now reproduced on Turnip with different opponents -- strong
+confirmation this is a real, per-arena-asset defect and not routing noise. Full table and reasoning:
+`NOTES.md` section 19; summary and recommendation: `FINDINGS.md`.
+
+**Step 3, the lever for a fix lane:** `mkda-arcade.route`'s character-select input is blind -- seven
+runs, six different opponent/arena pairings, no way to choose which arena a run lands on. A fix lane
+needs a `gd`+`rtt`+`images` dump taken *while deterministically on one of the three confirmed-broken
+arenas* (Stone courtyard, Hall with carved heads, or Kuatan Palace) to catch the floor-paint draw's
+register state and a visual frame together -- either a save state that starts past character select
+already in one of those arenas, or a route that controls the select screen deterministically rather
+than relying on landing there by chance. Without that targeting, another register dump through this
+route is a coin flip (2 of 7 so far landed on a correct arena) and risks re-learning exactly what this
+lane already found for the wrong arena. The standing `create_surface_image` no-clear candidate
+(`hw/xbox/nv2a/pgraph/vk/surface.c`, NOTES.md section 17 -- neither a fresh nor a pool-recycled
+surface image is cleared) remains a plausible mechanism but unconfirmed either way; it was never
+tested against a broken-arena instance.
+
+**Proposed tracker update for #1058's `status_note`** (board request, not a direct edit): "Confirmed
+on Turnip (0.5.0-1018-da6e8949dc), not stock-driver-only. Scoped to specific arena floor/wall
+materials, not the renderer generally: Stone courtyard and Hall with carved heads reproduce white
+(5 of 7 sampled fights, 23-56% white pixels); Kenshi's fortress interior and the ice temple render
+correctly (0.02-0.07%). A fix lane needs deterministic arena selection (save state or scripted
+select-screen input) to get a register-level dump of a confirmed-broken arena's floor-paint draw;
+see docs/lanes/mkdawhite1018/FINDINGS.md."
+
+Device time: 2256 s (37.6 min) total queued/run against a 30-minute unpiloted cap, covered by the
+pilot verdict and its addendum (`dispatch/pilots/mkdawhite1018.ok`). This attempt's analysis (the
+no-op/texture-integrity checks and the full seven-run screenshot comparison) spent zero additional
+device time -- all of it read data already on disk.
+
+Selftest: none -- analysis-only lane, no code or test changed; the pgraph suite the tracker row asks
+for belongs to whichever fix lane picks up the named lever above, once it has a register-level dump
+of an actually-broken arena to write a fixture against.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
