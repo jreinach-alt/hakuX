@@ -614,3 +614,78 @@ passed the same clause again here. This brings the running total to 1260 + 150 +
 `1792394397` was meant to answer (section 11's close): whether the floor-glow source surface is
 baked with real colour near arena load, or already white at its first write, or never written in
 this wider window either.
+
+## Resuming attempt 3 (third continuation): why the prior turn stopped where it did
+
+The prior turn ended the same way as the two before it: it queued `1792395921` and, being a
+headless session, could not wait across turns for the dispatcher's result, so it wrote `WAITING`
+and ended. This turn resumes because `1792395921` finished (`DONE` in its result dir).
+
+### 13. `1792395921` ran and pulled a dump, but the 8-frame window landed on a menu screen, not the arena -- a timing miss, a different cause from `1792394397`'s (not the stop rule)
+
+`dispatch/results/1792395921-mkdawhite1018-2024860/pulled/framedump_1792398529.jsonl`: 358
+records, all 8 `frame` entries present, logcat confirms Turnip again (`"Driver: PurpleVK public
+driver"` would be in `logcat.txt`; not re-quoted here, same check as every prior run). Every one
+of the 336 `draw` records targets the 640x480 backbuffer (`color.addr` is the same surface,
+`{w:640,h:480}` on all of them) -- **zero draws to any 128x128/256x256 offscreen target in this
+window.** No `rb` readback fired either (consistent: `rttmax16384` only reads back targets at or
+under that texel count, and nothing smaller than 640x480 was drawn to read back).
+
+Converted the 8 pulled `.ppm` frames to PNG and looked at them (`/tmp/mkda_f000.png` ..
+`_f007.png`, all 8, not committed -- reproducible from the pulled dump). All 8 are the same scene:
+a rotating 3D globe shot of "KUATAN PALACE" with a `TIME: 00:00  DIFFICULTY: 25%` HUD and the
+ARCADE logo -- the stage-intro flythrough that follows the stage card, not the character-select
+screen the route's own comment predicted for this wall-clock offset, and not the arena interior
+either. No white is visible anywhere in these 8 frames; the floor/terrain here is a normally
+textured 3D island, not a sampled offscreen target.
+
+**Why this missed, and why it is not the same failure as `1792394397`'s (so the brief's stop rule
+-- same cause twice -- does not apply here):** `1792394397` failed because `--pull` was left off
+the request, a request-building mistake independent of game timing; it would have pulled the
+same empty nothing at any `afterN`. This run's request was correct (pull set, dump captured,
+8 frames landed), but it answered a different question than intended: the lane's own `after170`
+run (section 11) and this `after65` run both assumed `XEMU_FRAME_DUMP`'s first field (`8` there,
+`120` was not yet tried) covers a *duration* proportional to it inside a long `--seconds` soak.
+Reading `fdump_parse_spec`/`fdump_begin` (`hw/xbox/nv2a/pgraph/vk/renderer.c:2221-2417`) corrects
+that: the leading number is a **frame count**, consumed consecutively starting the instant
+`afterNN` elapses, not a window scaled by `--seconds`. Eight frames at the game's frame rate is
+on the order of 0.1-0.2 real seconds -- an instant, not a span. `after65` therefore shows exactly
+what was on screen at real second 65, nothing before or after it, and what was on screen then was
+this flythrough, which (per the route's own cumulative timing -- press START for the stage card
+at t=68 is the route's own comment, the flythrough plainly starts earlier than that nominal mark
+since it is already mid-shot at t=65) runs for some span before the "ROUND 1" mark the route
+reaches by its own accounting at t~83. One data point now pins that flythrough as in progress at
+t=65; its end (arena interior, fighters, and -- if the defect is live -- the white floor) is
+somewhere in the next several seconds, not pinned further by this run alone.
+
+**Correcting the inherited plan in section 11's close**, which said `after65` with `--seconds 150`
+"should span the stage-card-to-ROUND-1 transition" and leave "~65s of post-round-start gameplay in
+the window too" -- both clauses assumed frame-count-as-duration and are wrong for the reason
+above; the next reader should use the `renderer.c` comment's own wording ("afterNN: start NN
+seconds after this arm was SEEN"; the frame count that follows is a count, full stop) rather than
+re-deriving this.
+
+**Device-time tally:** 420 + 420 + 150 + 150 = 1140 s run, +4*90 s setup = 1500 s (25 min), still
+under the 30-minute first-batch allowance, no `pilots/mkdawhite1018.ok` on file.
+
+### 14. Fourth run queued: a 120-frame window (~2 s) at `after63`, not another single-instant guess
+
+A fifth single-instant guess at a new `afterNN` carries the same odds of landing outside the
+flythrough's span as this one did, and the budget does not support many more of those (one more
+150s-class request is the most the 30-minute allowance has room for). Instead of guessing a point,
+widened the capture to the frame count itself: `XEMU_FRAME_DUMP=120,images,gd,rtt,rttmax16384,
+after63,cap512` -- 120 consecutive frames (~2 real seconds at 60 fps) starting 2 s before this
+run's confirmed-in-progress flythrough frame, so the window covers the flythrough's likely end and
+the first seconds of the arena interior in one shot rather than needing to re-guess the exact cut
+point. `cap512` (up from `cap256`) gives headroom for 120 full-frame `images` (~900 KB-1 MB each,
+~110-120 MB total) plus any `rtt` readbacks the arena's own offscreen draws trigger once the scene
+changes. Same ref (`da6e8949dc`), same route (`mkda-arcade`), `--seconds 100` (shortened from 150
+-- this run only needs to reach ~t=65s plus the capture tail, not full post-round gameplay,
+saving device time). Queued as `1792399140-mkdawhite1018-2541099`, `--no-expect` (diagnosis run,
+not an A/B arm). New device-time tally if this completes: 1500 + 100 + 90 = 1690 s (28.2 min),
+leaving no room for a further unplanned guess without writing a pilot verdict first
+(`dispatch/pilots/mkdawhite1018.ok`) per the brief's pilot rule.
+
+`[lane.mkdawhite1018] waiting:` on `1792399140-mkdawhite1018-2541099` -- whether the arena
+interior (floor, walls) renders correct colour or white in the few seconds after the stage
+flythrough, and whether any offscreen glow/mask draw appears in this wider window at all.
