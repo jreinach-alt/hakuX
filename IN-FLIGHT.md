@@ -8,14 +8,14 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `localdrive1018` | claude-sonnet-5 | 51 min | drive: local tools only, act-observe instead of wait-and-fail, learn what to press |
-| `pagesfix1018` | claude-sonnet-5 | 1h 8m |  |
-| `ralli2audio1018` | claude-sonnet-5 | 1h 1m | ralli2audio1018: RalliSport Challenge 2 audio dropouts: the voice processor's guest-memory overhead, producer  |
+| `localdrive1018` | claude-sonnet-5 | 2 min | drive: local tools only, act-observe instead of wait-and-fail, learn what to press |
+| `pagesfix1018` | claude-sonnet-5 | 1h 23m |  |
+| `ralli2audio1018` | claude-sonnet-5 | 1h 16m | ralli2audio1018: RalliSport Challenge 2 audio dropouts: the voice processor's guest-memory overhead, producer  |
 
-- **Handhelds:** 2 connected.
-  - Nova: held by `2026-10-19T03:14:45Z`
+- **Handhelds:** 1 connected.
+  - Nova: free for the queue
   - Thor: held by `lane.local`
-- **Device queue:** 3 waiting, 1 running.
+- **Device queue:** 2 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -125,7 +125,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/localdrive1018` | drive: local tools only, act-observe instead of wait-and-fail, learn what to press | `35477b3858` | 2026-10-18 19:36 |
+| `lane/localdrive1018` | drive: local tools only, act-observe instead of wait-and-fail, learn what to press | `73792d2e58` | 2026-10-18 20:22 |
 | `lane/ralli2audio1018` | ralli2audio1018: RalliSport Challenge 2 audio dropouts: the voice processor's guest-memory overhead, producer timing, au | `723ea67e77` | 2026-10-18 20:12 |
 
 ## Recently landed on master
@@ -143,4 +143,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-18 pathfind: a screen-reading agent that drives a title from boot into gameplay
 - 2026-10-18 haloring1017: Halo CE main-menu ring: the static inside surface is the stock driver
 
-_Updated 2026-10-18 20:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 20:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
