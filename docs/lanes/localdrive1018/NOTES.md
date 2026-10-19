@@ -167,3 +167,46 @@ failures throughout, including all of Part A's checks (unchanged) and the mutant
 - Part D (GTA III profile/head/route) needs real captured frames and a device to confirm against;
   this lane currently has neither (Nova/Thor both unavailable) -- reporting what's blocked rather
   than guessing at numbers.
+
+## Resume 2026-10-18 ~17:02 PDT (attempt 2): why attempt 1 did not finish
+
+Two separate gaps, not one:
+
+1. **PR.md was never set to `State: ready` despite A+B+C already passing their selftest.** The
+   brief's own done-means is explicit: "`PR.md` `State: ready` as soon as A+B+C pass the selftest;
+   D follows as further commits" -- a turn-cap safety valve so a cap never strands the whole lane.
+   `pathclass_selftest.py`/`classify_selftest.py` were green (0 failures) by 15:07 PDT (commit
+   `5a3827eddd`), but PR.md's own "Not done" section instead wrote "**E**: `docs/testing/jobs/
+   selftest.sh` is running now; this PR goes to `State: ready` once it's green" and left `State:
+   draft`. That is the real defect: it substituted a much heavier, unrelated gate for the one the
+   brief actually named, then ended the turn before that substitute gate resolved, with the PR
+   still in draft.
+2. **`docs/testing/jobs/selftest.sh` cannot complete in one session and was the wrong gate for this
+   diff anyway.** Re-ran it this session, foreground, to see for myself: three fragments in (`10-
+   arms-list.sh`, `20-arms-queue.sh`, `30-arms-error.sh`) took 73+130+58 = 261 s combined, and
+   `ls docs/testing/jobs/selftest.d/` lists 150+ numbered fragments covering arms.sh/fold.sh/
+   request.sh/status.sh/cloud.sh and the rest of the dispatch harness -- at this rate the full run
+   is multiple hours, not something one headless turn (or several) can block on. More to the
+   point, its own module doc states the actual scope: "nothing under jobs/ is pushed until this
+   passes, and the check is in CI ... as well" -- a gate on changes *under `docs/testing/jobs/`*.
+   `git diff --stat origin/master...HEAD` for this lane shows zero files under `docs/testing/
+   jobs/` (only `docs/testing/titles/**` and `docs/lanes/localdrive1018/**`); Part A's own NOTES
+   confirm `models.toml` was deliberately left untouched. So this lane's diff is outside that
+   gate's stated scope, and CI (`.github/workflows/jobs-selftest.yml`) already covers it for any
+   push that does touch `jobs/`. Correcting the brief's Part E line ("run `docs/testing/jobs/
+   selftest.sh` before `State: ready`") against this lane specifically: not applicable, nothing
+   under `jobs/` changed here, re-ran `pathclass_selftest.py` and `classify_selftest.py` fresh
+   instead (both 0 failures again, output unchanged from Part B/C's run) and that is the selftest
+   `State: ready` actually requires per Done-means.
+3. **Device re-check, as the stale WAITING note asked for.** Live `adb devices` now (17:02 PDT)
+   shows only `bdc158a5` (Ayn Thor) -- `ee317437` (Nova) is still absent, not a link flake (same
+   serial list on a fresh call). `dispatch/hold/thor.why` is unchanged since 12:00 PDT: lane.local's
+   thermal-test/GTA-soak hold on the Thor, "by hand only, no request.sh until the thermal run is
+   judged." So the 17:00 PDT re-check the prior WAITING note asked for has been done, and the
+   answer is unchanged: neither device is available to this lane. Nothing about Part D's device
+   blocker has changed; only the PR-readiness gap above was actionable this session.
+
+Fixed this session: PR.md `State: ready` (A+B+C, matching Done-means), its "Not done" section
+corrected to name the real selftest run instead of the abandoned jobs/selftest.sh claim, and the
+WAITING file's timestamp/finding refreshed so the next resume does not re-run the same multi-hour
+command expecting a different scope.

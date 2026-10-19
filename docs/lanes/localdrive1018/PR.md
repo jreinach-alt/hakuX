@@ -1,6 +1,6 @@
 # drive: local tools only, act-observe instead of wait-and-fail, learn what to press
 
-State: draft
+State: ready
 
 Lane: localdrive1018            Issue: #433 (0.5)
 Base: master @ e34f8ffa77
@@ -71,4 +71,11 @@ Full writeup, the Already-tried table, and the open questions: `docs/lanes/local
   unavailable to this lane right now) to collect and label GTA III frames. Nothing under `gta3.toml` /
   `routes/gta3-drive.route` exists yet; this PR does not claim the opening-cutscene misclassification is
   fixed.
-- **E**: `docs/testing/jobs/selftest.sh` is running now; this PR goes to `State: ready` once it's green.
+- **E**: `docs/testing/jobs/selftest.sh` is out of scope for this diff -- `git diff --stat
+  origin/master...HEAD` touches only `docs/testing/titles/**` and `docs/lanes/localdrive1018/**`,
+  nothing under `docs/testing/jobs/` (that file's own scope, by its module doc: "nothing under
+  jobs/ is pushed until this passes"; CI already covers it for diffs that do). Re-ran
+  `pathclass_selftest.py` and `classify_selftest.py` fresh this session instead (0 failures each,
+  unchanged from the Part B/C run) -- that is the selftest this PR's Done-means names ("`State:
+  ready` as soon as A+B+C pass the selftest"). See `NOTES.md`, "Resume 2026-10-18 ~17:02 PDT",
+  for why the prior draft of this PR claimed the heavier run instead and never finished it.

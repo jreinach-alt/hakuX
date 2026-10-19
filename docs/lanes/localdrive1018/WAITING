@@ -1,8 +1,11 @@
-time 2026-10-18T17:00
-# Part D (GTA III profile/head/route proof run) needs a device; both Thor and Nova are
-# unavailable right now (Nova physically offline for the owner's thermal test since ~12:00 PDT,
-# Thor held by lane.local for the same test; dispatch/hold/thor.why, pm/stall-accepted.tsv
-# device:wedged:nova:adb, re-check 17:00 PDT). A+B+C are done and committed (5a3827eddd); nothing
-# else in this lane is blocked. Re-verify hold.sh/adb devices at resume time before queuing
-# anything -- if the owner's thermal test is still running past 17:00, this wait will correctly
-# re-fire as stale and need a later time, not a hand resume into a device that is still busy.
+time 2026-10-18T18:00
+# Part D (GTA III profile/head/route proof run) needs a device; both Thor and Nova are still
+# unavailable at the 17:00 PDT re-check (done this session, attempt 2, ~17:02 PDT): `adb devices`
+# live listing shows only bdc158a5 (Ayn Thor) -- ee317437 (Nova) is still absent, confirmed on a
+# fresh call, not a link flake. dispatch/hold/thor.why is unchanged since 12:00 PDT: lane.local's
+# thermal-test/GTA-soak hold on the Thor, by hand only, no request.sh until the thermal run is
+# judged. A+B+C are done, committed, and PR.md is now State: ready (the gap in attempt 1 was the
+# PR being left in draft despite this, see NOTES.md "Resume 2026-10-18 ~17:02 PDT"). Nothing else
+# in this lane is blocked or actionable offline. Re-verify hold.sh/adb devices at resume time
+# before queuing anything -- if the thermal test is still running past 18:00, this wait should
+# re-fire as stale again rather than hand-resuming into a device that is still busy.
