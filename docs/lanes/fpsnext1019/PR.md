@@ -4,7 +4,7 @@ State: ready
 
 Lane: fpsnext1019            Issue: #433
 Base: master @ d30f91349b (fpsdata1018, foldjam1018, compat1019b and nova-tiers1019's folds landed on master, plus this lane's own attempt-4 fold; merged in)
-Files: docs/lanes/fpsnext1019/NOTES.md, docs/lanes/fpsnext1019/PR.md, docs/lanes/fpsnext1019/FINDINGS.md, hw/xbox/nv2a/pgraph/vk/texture.c, hw/xbox/nv2a/pgraph/vk/surface.c
+Files: docs/lanes/fpsnext1019/NOTES.md, docs/lanes/fpsnext1019/PR.md, docs/lanes/fpsnext1019/FINDINGS.md
 Prediction: none: ab_compare.py's golden-capture registration does not fit a GTA III driving-scene fps claim (no
   golden exists for it). The falsifiable prediction that mattered (NOTES.md, "one guard dominates wrej[], likely
   scale/shape, not off") was written before the device run that tested it and was falsified by that run -- see
