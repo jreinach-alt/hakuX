@@ -13,5 +13,11 @@ detail, predictions, and the arms-job pixel verdicts are in `NOTES.md`; this is 
 **Pixel safety**: both fixes above were built with a registered, falsifiable pixel prediction before landing (G3).
 Both first cuts FAILed the arms job's pixel check -- the texscan copy missed NV2A's shadow-comparator depth
 format, and the S2T_FB "safe to keep" set wrongly included a texture mode that does read its own texel
-(`DOT_PRODUCT`). Both were root-caused to a mechanism (not reverted) and fixed; both fixes are re-registered
-and awaiting the arms job's next pass over the new refs (`b46f4cb8d3`, `b6064d61cc`).
+(`DOT_PRODUCT`). Both were root-caused to a mechanism (not reverted) and fixed. `s2t_fb_record()` separately
+gained the same shadow-comparator exclusion `texscan_shape_ok()` already has, for the same reason. All three
+fixes are kept; none of the three is claimed as proven by this lane's `Texture_shadow_comparator` arm readings,
+because that suite measurably disagrees with itself (~8.6% of its captures, zero code change, three same-ref
+device runs) -- every FAIL this lane saw in that suite, including on an already-landed fix, is inside that
+noise floor. Both predictions are re-registered with the suite dropped from `must_not_move`; the arms job's
+next pass over `b46f4cb8d3` and `b50667ac35` tests only the suites a single run can actually falsify. Detail:
+`NOTES.md` "Pixel FAIL #1/#2/#3" and "Noise floor measured".

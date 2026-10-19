@@ -5,8 +5,8 @@ State: draft
 Lane: fpsdata1018            Issue: #433
 Base: master @ 72af9cb92c
 Files: hw/xbox/nv2a/pgraph/vk/texture.c, hw/xbox/nv2a/pgraph/vk/surface.c, hw/xbox/nv2a/pgraph/vk/renderer.h, docs/lanes/fpsdata1018/NOTES.md, docs/lanes/fpsdata1018/PR.md, docs/lanes/fpsdata1018/FINDINGS.md, docs/lanes/fpsdata1018/typecheck.py, docs/lanes/fpsdata1018/routes/fpsdata1018-ralli2-drive.route, docs/testing/predictions/fpsdata1018-texscan2d-pixels.json, docs/testing/predictions/fpsdata1018-s2tfb2-pixels.json, docs/testing/perf/fpsdiag/fpsdiag.py, docs/testing/jobs/selftest.d/99-fpsdiag.sh
-Prediction: docs/testing/predictions/fpsdata1018-texscan2d-pixels.json @ c689d167b09d2d0493cf5a2b5a8a613a6f22d3bee8110780b0752e069587f0e4
-Prediction: docs/testing/predictions/fpsdata1018-s2tfb2-pixels.json @ 88ad82540966c87bd47256c67f159d70545b71667c6690ff58a1d4ee69eb1a7f
+Prediction: docs/testing/predictions/fpsdata1018-texscan2d-pixels.json @ 19f09787277ab9f3e79c32f0574b73a0837585c5a7d7b259a6b6944d51725334
+Prediction: docs/testing/predictions/fpsdata1018-s2tfb2-pixels.json @ 0ddea0f6472d35377e679473d870c589b237306eb19ccea2fd97c3e80f8edfbc
 Needs device: yes    Needs NDK: yes
 
 Reads the owner's 2026-10-18 capture of RalliSport 2, GTA III, Fable and Blinx 2 (master perflog 72af9cb92c) for
@@ -62,7 +62,17 @@ texture-shader combiner mode (the one that computes a dot product from the textu
 mapping) as one that "does not read its texture" -- it does, so a stage in that mode could be handed a stale
 copy. Excluded it from the set that may keep a cached copy; the other three modes in that set emit a constant or
 need no texture at all, confirmed by reading the shader generator directly, not by inference from this lever's
-own code. Pixel prediction re-registered against the fix.
+own code. The copy cache also gained the same depth-as-texture exclusion the surface-to-texture copy above
+already needed, for the same reason -- a stage reading a surface through NV2A's hardware shadow-comparator
+unit cannot be handed a raw copy taken by either route. Pixel prediction re-registered against both fixes.
+
+**A pixel test suite in both predictions' checks turned out to disagree with itself.** Three repeat device
+runs of the same unchanged build showed `Texture_shadow_comparator` moving on about 1 in 12 of its own captures
+with nothing whatever changed -- a pre-existing property of that suite on this device, not something either
+fix caused. Both predictions above are re-registered without that suite in their checklist; the two fixes
+described above are kept (each is independently correct reading the renderer code), but neither claims that
+suite's pixel checks as evidence, because a single device run cannot tell this suite's own noise apart from a
+real change in it.
 
 **Owner capture recipe to confirm the fps size of this one** (no reproducible device route exists for GTA III's
 specific in-car save state through the dispatcher's own --save registry, and this lane's device verification
