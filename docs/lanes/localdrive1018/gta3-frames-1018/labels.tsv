@@ -1,0 +1,10 @@
+file	state	note
+a4.png	cutscene	letterboxed opening cutscene, bridge in rain; pathclass called it gameplay 0.716
+a5.png	cutscene	letterboxed shot, police car and truck
+y1.png	cutscene	letterboxed shot with subtitle
+y2.png	cutscene	letterboxed shot with subtitle
+a7.png	play	on foot, HUD (clock, money, health, wanted stars, radar), car beside player, 29 fps, controllable
+m1.png	play	same scene, stick turned the player
+w3.png	play_dim_unresponsive	same scene darkened, HUD live, clock advancing, pad (stick, START) ignored; Thor only, cause unknown
+d2.png	play_dim_unresponsive	same
+st1.png	play_dim_unresponsive	same, after START

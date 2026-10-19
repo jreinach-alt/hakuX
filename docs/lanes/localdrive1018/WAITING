@@ -1,11 +1,18 @@
-time 2026-10-18T18:00
-# Part D (GTA III profile/head/route proof run) needs a device; both Thor and Nova are still
-# unavailable at the 17:00 PDT re-check (done this session, attempt 2, ~17:02 PDT): `adb devices`
+time 2026-10-18T19:05
+# Part D's remaining pieces (gta3-drive.route, pause-menu Save-row detection, car-entry detection,
+# a classifier_confidence floor sweep, the held-out false-gameplay number) need a live Thor or Nova
+# run; both are still unavailable at the 19:05 PDT re-check (attempt 2, this session): `adb devices`
 # live listing shows only bdc158a5 (Ayn Thor) -- ee317437 (Nova) is still absent, confirmed on a
 # fresh call, not a link flake. dispatch/hold/thor.why is unchanged since 12:00 PDT: lane.local's
 # thermal-test/GTA-soak hold on the Thor, by hand only, no request.sh until the thermal run is
-# judged. A+B+C are done, committed, and PR.md is now State: ready (the gap in attempt 1 was the
-# PR being left in draft despite this, see NOTES.md "Resume 2026-10-18 ~17:02 PDT"). Nothing else
-# in this lane is blocked or actionable offline. Re-verify hold.sh/adb devices at resume time
-# before queuing anything -- if the thermal test is still running past 18:00, this wait should
-# re-fire as stale again rather than hand-resuming into a device that is still busy.
+# judged.
+#
+# Everything buildable offline this session is done and committed: A+B+C (PR.md State: ready, fixed
+# from attempt 1's gap -- see NOTES.md "Resume 2026-10-18 ~17:02 PDT"), and now Part D's two crops
+# (`drive-profiles/gta3.toml`, the letterbox-top and hud-heart crops) built and verified against the
+# 9 real hand-captured Thor frames already on disk -- fixes the named cutscene-misclassification bug
+# and confirms play_dim_unresponsive never reads `play`, with an honest writeup of what that does and
+# does not prove (NOTES.md "Part D, what's buildable offline"). Nothing else in this lane is
+# actionable without a device. Re-verify hold.sh/adb devices at resume time before queuing anything --
+# if the thermal test is still running, this wait should re-fire as stale again rather than
+# hand-resuming into a device that is still busy.

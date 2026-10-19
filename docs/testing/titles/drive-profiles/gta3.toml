@@ -1,0 +1,131 @@
+# Grand Theft Auto III (Xbox, 5454000E) -- drive profile (#433, lane.localdrive1018).
+#
+# Scope of this file, honestly: it fixes ONE named bug with hard evidence (the opening
+# cutscene scored `gameplay` at 0.716, owner 2026-10-18) and inherits pathclass for
+# everything else, UNVERIFIED for this title. It does not attempt `play` detection of its
+# own, the pause-menu Save row, the on-foot-vs-in-car distinction, or a `play_dim_unresponsive`
+# state -- all of Part D's remaining pieces need either more frame diversity than the 9
+# frames this lane has, or a live Thor run to confirm against, and are not claimed done.
+# See docs/lanes/localdrive1018/NOTES.md "Part D" for what was tried and why it stops here.
+#
+# THE CROP. The 9 frames in docs/lanes/localdrive1018/gta3-frames-1018/ (captured by hand
+# on the Thor, 2026-10-18, labels.tsv) show the device renders this title pillarboxed
+# (black left/right, from the Thor's display AR, constant in every frame) AND, during the
+# opening cutscene ONLY, *also* letterboxed top/bottom (a true cinematic bar, not overscan):
+# measuring the black run down the frame's centre column (1920x1080 capture space) --
+#
+#   frame  state                   top black   bottom black
+#   a4     cutscene (bridge, rain)      143 px       180 px
+#   a5     cutscene (police/truck)      144 px       180 px
+#   y1     cutscene (subtitle)          144 px       105 px (text breaks the run)
+#   y2     cutscene (subtitle)          144 px       105 px
+#   a7     play (on foot, HUD)            0 px         0 px
+#   m1     play (on foot, HUD)            0 px         0 px
+#   w3     play_dim_unresponsive          0 px       540 px (dark content, not a bar)
+#   d2     play_dim_unresponsive          0 px       540 px
+#   st1    play_dim_unresponsive          0 px       233 px
+#
+# The TOP bar is the clean signal (unaffected by subtitle text, present in all 4 cutscene
+# frames at 143-144 px, absent -- 0 px -- in all 5 play/dim frames): a reference crop cut
+# from inside it (region 300,60,700,50 in classify.py's 1280x960 space -- comfortably below
+# the FPS_CORNER overlay at 0,0,130,50 and well inside the shortest measured bar) scores
+# (`classify.py score`, mean abs grey diff, 0-255 scale):
+#
+#   a4/a5/y1/y2 (cutscene):            0.00 / 0.00 / 0.00 / 0.00
+#   a7/m1 (play):                     38.74 / 42.36
+#   w3/d2/st1 (play_dim_unresponsive): 18.54 / 24.51 / 23.10
+#
+# threshold 8.0 sits with a >10x margin below the lowest non-cutscene score (18.54, the
+# darkened frames) and the cutscene cluster is exact zeros, not near-zeros -- this is a
+# renderer geometry fact (is the top of the viewport painted black), not a content match,
+# so it should generalize across different cutscene shots far better than a content crop
+# would (4 different scenes already in the sample: a bridge, a police truck, two subtitled
+# dialogue shots). It is untested against the credits-movie and loading-screen frames
+# (not kept from today's by-hand session, see brief) and against any cutscene that is NOT
+# letterboxed this way (e.g. a full-screen pre-rendered FMV) -- if one turns up, this
+# threshold needs a wider sample, not a guess.
+#
+# Checked against pathclass's existing known false-pass set (187 keyboard, Castlevania
+# Name Entry, Super Monkey Ball Stage Select, Sonic PAUSE, a KOF lost round, the Simpsons
+# pause-over-play case): this crop never runs for them -- it is GTA III-profile-only,
+# selected per title, so it cannot affect another title's classification.
+#
+# THE HUD CROP (`play`, bypasses pathclass's after_title gate entirely -- see below for
+# why that gate is otherwise unwinnable for this title). The health-heart icon, a small
+# fixed-position bitmap (not a digit that changes value), at region 871,173,36,36 in
+# classify.py's 1280x960 ref space -- converted from the measured full-res pixel box
+# 1220,195,1260,235 (1920x1080 capture space) through classify.py's own `content()` picture
+# crop (Thor pillarboxes a 1440x1080 picture, offset 240 px from the left; 980,195 to
+# 1020,235 in picture space) and `scale_box` (0.8889x to 1280x960) -- built and scored with
+# the real `classify.py crop`/`score` tool, not by hand, so both steps are exactly what
+# `classify_frame` will apply at runtime. It discriminates far more sharply than the
+# letterbox crop needs to, because the heart is bright red in live play and darkens to near
+# black in the dim/unresponsive frames along with everything else on screen, while cutscene
+# frames have no HUD at all:
+#
+#   a4/a5/y1/y2 (cutscene, no HUD):              60.22 / 69.10 / 52.23 / 31.53
+#   a7/m1 (play, bright heart):                   1.21 /  1.42
+#   w3/d2/st1 (play_dim_unresponsive, dark heart): 63.11 / 62.25 / 61.00
+#
+# threshold 15.0 sits with a >20x margin above the play cluster and a >2x margin below the
+# lowest non-play score (31.53) -- play is the only cluster anywhere near zero. This also
+# means the dim/unresponsive frames do NOT match this crop (good: they must never read
+# `play` per the brief) and fall through to pathclass like any other on-foot frame that
+# isn't the heart's native brightness -- UNVERIFIED against a live pathclass call what state
+# that produces (classify.py's STATES tuple has no `play_dim_unresponsive` of its own, and
+# adding one is a bigger, shared change this lane did not make on 3 frames of one occurrence).
+# Either way drive.py's #433 Part B act-observe ladder already never idles on it: `unknown`
+# presses through the ladder, `stalled` runs the existing stall-escape machinery -- both
+# already selftested, neither specific to this title. The owner's known Thor quirk (pad
+# ignored, cause unknown) is explicitly not this lane's to fix (brief: "NOT a classifier
+# problem, do not try to fix it here").
+#
+# Matching the heart crop alone does not immediately say `play`: classify_frame's HUD branch
+# (line ~433) still requires inter-frame motion once the HUD is seen, and treats the capture
+# right after a non-play/stalled/unknown state (here: the cutscene that precedes first entry
+# to play) as one more `unknown` to resolve on the next capture, not an instant `play` --
+# this is the same rule every other hand-tuned profile's HUD crop already runs under, not
+# something new for GTA III, and drive.py's ladder already handles the resulting one-capture
+# `unknown` without idling.
+#
+# WHY NOT FIX THE `after_title` GATE INSTEAD. pathclass's own temporal rule treats a
+# gameplay-looking frame as `intro_video`, not `gameplay`, until a menu/title screen has been
+# seen (classify.py's `after_title`, line ~396) -- and GTA III's boot flow (cutscene directly
+# into on-foot play, no title or menu screen ever shown) never sets it, so without this crop
+# `play` could never be confirmed for this title at all under the shared pathclass path. A
+# title-scoped HUD crop (what every other hand-tuned profile here already does: sonic-heroes,
+# forza, buffy, castlevania-cod) fixes this for GTA III alone; loosening `after_title` itself
+# would change every profile's menu-detection at once on the evidence of one title's 9 frames,
+# which is the broader, shared change this lane is explicitly not taking on.
+#
+# WHAT'S STILL NOT HERE. No GTA III `classifier_confidence`/`_menu` floor sweep (reused
+# unchanged from generic.toml -- 9 frames is not enough to tune one safely); no pause-menu
+# Save row, car-entry detection, or route file (all need live Thor frames this lane does not
+# have, see NOTES.md "Part D").
+
+name = "gta3"
+title = "Grand Theft Auto III"
+title_id = "5454000E"
+classifier = "pathclass"
+classifier_confidence = 0.85
+classifier_confidence_menu = 0.7
+order = ["boot", "logo", "intro_video", "title", "loading", "cutscene", "play"]
+
+[[crop]]
+name = "letterbox-top"
+state = "cutscene"
+ref = "letterbox-top.png"
+region = [300, 60, 700, 50]
+threshold = 8.0
+
+[[crop]]
+name = "hud-heart"
+state = "play"
+ref = "hud-heart.png"
+region = [871, 173, 36, 36]
+threshold = 15.0
+
+[drive]
+stall_fail_s = 40.0
+escape_max = 6
+ladder = ["A"]

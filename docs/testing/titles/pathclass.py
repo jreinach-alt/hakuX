@@ -13,9 +13,10 @@ Each answer:
     {state, confidence, top3: [[state, p], ..], moving, diff, black, menu: [{text, box, highlighted, intent}],
      action: {do, why}, escalate: <reason or null>, source, ms}
 
-Fail open: when the venv, torch, the GPU or the weights are missing, `classify`/`serve`/`check` print ONE line
-starting `pathclass: unavailable:` on stderr and exit 3, and `Client` raises `Unavailable`, so the caller
-falls back to the language model and never stops.
+Fail open, not fail blind: when the venv, torch, the GPU or the weights are missing, `classify`/`serve`/`check`
+print ONE line starting `pathclass: unavailable:` on stderr and exit 3, and `Client` raises `Unavailable` --
+a missing instrument, not an unknown screen, so the caller (drive.py, #433) turns it into a ROUTE FAIL rather
+than guessing at a blind press.
 
 Tiers. (1) free checks: black (mean luma, FPS corner masked, or a flat fade; classify.py's thresholds) and
 moving (changed fraction against --prev, classify.py's motion). (2) a SigLIP2 image embedding scored by a

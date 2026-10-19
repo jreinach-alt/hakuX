@@ -6,6 +6,7 @@ Lane: localdrive1018            Issue: #433 (0.5)
 Base: master @ e34f8ffa77
 Files: docs/testing/titles/drive.py, docs/testing/titles/pathclass.py,
 docs/testing/titles/pathclass_selftest.py, docs/testing/titles/drive-profiles/generic.toml,
+docs/testing/titles/drive-profiles/gta3.toml, docs/testing/titles/drive-profiles/gta3/,
 docs/testing/titles/pathknow/learned.py, docs/lanes/localdrive1018/**
 Release note (none): offline test-harness/tooling under docs/testing/titles/, not emulator code; nothing
 a player sees.
@@ -64,13 +65,35 @@ table so repeated screens get smarter, and fix GTA III's opening cutscene being 
 
 Full writeup, the Already-tried table, and the open questions: `docs/lanes/localdrive1018/NOTES.md`.
 
+## Done (D, partial, this session)
+
+- `drive-profiles/gta3.toml`, built and verified against 9 real hand-captured Thor frames
+  (`docs/lanes/localdrive1018/gta3-frames-1018/`, labelled): a `letterbox-top` crop fixes the named
+  bug (opening cutscene scored `gameplay` 0.716) via a geometry signal (the cinematic top bar,
+  present only during cutscene, 143-144px vs 0px, threshold 8.0, >10x margin) that runs before
+  pathclass and so never reaches it; a `hud-heart` crop (the health icon, fixed-position, bright in
+  live play / dark in `play_dim_unresponsive` / absent in cutscene, threshold 15.0, >20x/>2x margin)
+  bypasses pathclass's `after_title` gap, which otherwise can never confirm `play` for this title at
+  all (GTA III's boot flow has no title/menu screen for pathclass's own temporal rule to key off).
+  Verified via `classify.py table` across all 9 frames: cutscene frames never reach pathclass;
+  `play_dim_unresponsive` frames never read `play` (the brief's one hard requirement for that state).
+  Full table, the measurement tables behind both thresholds, and an honest reading of what this does
+  and does not prove (including a real open question about one frame's measured motion) are in
+  `NOTES.md`, "Part D, what's buildable offline."
+
 ## Not done
 
-- **D** (GTA III `drive-profiles/gta3.toml`, pathclass head extension, `routes/gta3-drive.route`, the
-  held-out false-gameplay number) is blocked: it needs device/frame access (Nova and Thor are both
-  unavailable to this lane right now) to collect and label GTA III frames. Nothing under `gta3.toml` /
-  `routes/gta3-drive.route` exists yet; this PR does not claim the opening-cutscene misclassification is
-  fixed.
+- **D, the rest** (`routes/gta3-drive.route`, pause-menu Save-row detection, car-entry detection, a
+  GTA III `classifier_confidence` floor sweep, a `play_dim_unresponsive` state of its own, the
+  held-out false-gameplay number) needs a live Thor or Nova run this lane does not have (both
+  unavailable, re-checked again this session -- see WAITING) to capture a continuous sequence and
+  label it; 9 hand-picked stills are enough to validate the two crops above but not enough for a
+  route, a Save-row crop, or the <=2% figure (GTA III is not even in `pathknow/eval/eval_set.tsv`'s
+  held-out set).
+- **E, for Part D**: did not wire the gta3 frames into `classify_selftest.py`'s `CASES`/`FOREIGN`
+  tables -- that harness wants a continuous dispatch-run capture, not 9 non-continuous hand-picked
+  stills, and forcing them in risked fitting the test to the frames rather than to the behavior (see
+  NOTES.md). `pathclass_selftest.py`/`classify_selftest.py` re-ran unchanged, 0 failures each.
 - **E**: `docs/testing/jobs/selftest.sh` is out of scope for this diff -- `git diff --stat
   origin/master...HEAD` touches only `docs/testing/titles/**` and `docs/lanes/localdrive1018/**`,
   nothing under `docs/testing/jobs/` (that file's own scope, by its module doc: "nothing under
