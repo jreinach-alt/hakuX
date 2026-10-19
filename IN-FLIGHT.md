@@ -6,12 +6,14 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Right now
 
-No lane session is running.
+| Lane | Model | Running for | Working on |
+|---|---|---|---|
+| `fpsnext1019` | claude-opus-5-5 | 10 min | fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433) |
 
 - **Handhelds:** 2 connected.
-  - Nova: free for the queue
+  - Nova: held by `lane.fpsnext1019`
   - Thor: held by `lane.local`
-- **Device queue:** 0 waiting, 0 running.
+- **Device queue:** 1 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -119,7 +121,9 @@ No lane session is running.
 
 ## Work in progress
 
-No branch is being worked right now.
+| Branch | Topic | Tip | Last change |
+|---|---|---|---|
+| `lane/fpsnext1019` | fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433) | `05c6771a16` | 2026-10-19 07:52 |
 
 ## Recently landed on master
 
@@ -133,4 +137,4 @@ No branch is being worked right now.
 - 2026-10-18 gta3car1018: GTA III in the car -- the render passes are a feedback-loop copy per draw (#1049)
 - 2026-10-18 dispatcher: dev_push gets a read-only mode for the Nova's SD-card disc pushes
 
-_Updated 2026-10-19 07:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-19 08:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
