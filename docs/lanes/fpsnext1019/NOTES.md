@@ -411,3 +411,19 @@ whether the gains stack (same mechanism, same copy, should be independent of ren
 this item's whole point was to resolve (a) at zero device cost, and item 3 already spent this attempt's device-time
 budget (~1270s / 21.2 of the 30 min pilot cap) landing lever (b). Next action for the next attempt: one short
 GTA III run with `TU_DEBUG=sysmem` on the current (post-item-3) binary, scored the same crash-excluded way.
+
+## Attempt 2, item 5: combined sysmem + HAKUX_S2T_WIDEN (default-on binary) -- one run
+
+**Falsifiable prediction (G3), before queuing:** if (a) and (b) are independent mechanisms (sysmem changes how a
+pass's tiles are stored/loaded; R2 removes a whole pass+copy), the combined run's render-pass count should land
+near item-4's sysmem-alone floor (~70 rp/flip over the matched window) or lower, not back up near shipped's 130 --
+i.e. the two gains should not cancel. cs2t-ended share should stay low (R2 eliminates the S2C_MAP copy regardless
+of render mode, so this should not go back up to 90%+). Falsified if rp/flip or cs2t share lands back near the
+shipped-baseline numbers from item 4 (130.2 rp/flip, 91% cs2t share) -- that would mean the two levers interact
+instead of stacking, a real and useful negative result either way.
+
+One run, reusing the already-built, already-on-device `3058a55767-perflog.apk` (R2 default-on, no rebuild needed)
+with `TU_DEBUG=sysmem` added to the env on top of `HAKUX_FRAMETRACE=1`: taken under this lane's own Nova hold, the
+pre-authorised GTA III save-state protocol, scored on the same crash-excluded `[RT+1, RT+24]` window as item 4 for
+a fair comparison. Device time budget check before taking the hold: ~1270s (~21.2 min) spent on items 1 and 3 this
+attempt; one more run of this size (park 30s + hold 60s + setup ~90s, ~3 min wall) stays under the 30 min pilot cap.
