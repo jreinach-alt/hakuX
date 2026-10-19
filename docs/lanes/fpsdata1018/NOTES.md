@@ -70,6 +70,43 @@ No other ranked item changed state this turn: H2/H4/the two owner device-A/Bs ar
 waits described above; nothing on disk (`dispatch/results/`, the PR's comments) supplies new data for any of
 them. Stopping here rather than re-deriving the same conclusion a third time in one turn.
 
+**Attempt 3, continued a third time (this resume)**: why the prior turn ended there and not further -- the
+same reason, confirmed fresh rather than assumed. Checked `gh pr view 1085 --json comments` (12 comments
+total): the newest is a `[job.arms]` FAIL at `11:01:50Z` (1/750 violated, `Antialiasing_tests/
+CPUWriteIgnoresSurfaceConfig`) against `a_ref=245ddc4964`/`b_ref=b46f4cb8d3` -- this is the arm pair this
+file's own "Pixel scare resolved" section already read, sha256-checked against three sibling runs, and
+attributed to the isolated device flake documented there (not a new, unexplained result); the `migrate_surface_image`
+fix it led to (`c4560f2ab4`) was already committed and pushed (`ae9ea479bc`) before that turn ended. The last
+`[lane.fpsdata1018]` comment (`10:59:57Z`) predates that push's own re-registration landing; no comment has
+posted since describing the current pair. Checked `dispatch/running/`+`dispatch/queue/` directly rather than
+trusting a stale mapping: `1-1792407688-arms-fpsdata1018-{base,fix}-*` (s2tfb2 @ `136e8a1723`) has its base arm
+DONE (clean `result.json`, no FAIL posted for it yet by the arms job) and its fix arm still running on `nova`
+(started `11:01:28Z` dispatch-side, device work ~`11:18Z`, not done as of `11:21Z`); `1-1792407690-arms-
+fpsdata1018-{base,fix}-*` (texscan2d @ `245ddc4964`/`c4560f2ab4`) is queued behind it, not yet started -- the
+single Nova serializes these, so this pair cannot finish before the s2tfb2 fix arm does. Both are the exact
+re-registrations this attempt's last turn pushed; neither has posted a verdict.
+
+Checked for anything else that could have changed underneath this wait: no capture directory under
+`/home/justin/hakux-work/captures/` has a file newer than the `a3aa7a5d16` commit that ended the prior turn
+(`find ... -newer NOTES.md`, empty) -- no new owner session for Fable's `[edl]` read or GTA III's `HAKUX_S2T_FB`
+A/B has arrived. The `drive generic` harness bug blocking Blinx 2's H4 census is still live: `dispatch/bin/
+titles/drive.py` already has the `sys.path.insert(..., "pathknow")` line the PR's own comment suggested as one
+of two fixes, but `dispatch/bin/titles/pathknow/` on disk still has only `classifier/`, no `learned.py` -- the
+import still fails (`python3 -c "import learned"` against that path, confirmed fresh, `ModuleNotFoundError`).
+Re-queuing against the same broken route would reproduce the identical void a third time; not done, per the
+lane's own stop rule. `territory.toml`'s `[lane.fpsdata1018]` row (`origin/board`, read via `board-wt`) still
+has not widened past the original three paths; the board-request file already asks for `texture.c`/`surface.c`/
+`renderer.h`/the predictions glob and was last updated by the prior resume -- nothing has changed to add to it,
+so left as filed rather than re-written for its own sake.
+
+Every ranked item is still exactly the external wait recorded above: the two re-registered pixel predictions
+(arms job, mid-flight), Fable H2 and GTA III's fps size (owner capture, no dispatcher route), Blinx 2 H4
+(harness bug, flagged, not this lane's files to fix). Per the role file's own instruction for exactly this
+shape of turn ("do not burn turns polling until the turn cap cuts you off; do not end silently either") --
+posting the current state as a fresh `[lane.fpsdata1018] waiting:` comment (the last one is now 6 commits and
+one arm-pair generation stale) and stopping here, rather than polling `dispatch/running/` in a sleep loop for
+a result that was ~3 minutes into a run that has historically taken ~15+ minutes end to end.
+
 ## Attempt log
 
 - **Attempt 1** (session 4431cc4c, 2026-10-19 04:39-04:51Z): committed nothing. It added two candidates to
