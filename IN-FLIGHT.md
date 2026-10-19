@@ -8,14 +8,13 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `foldjam1018` | claude-sonnet-5 | 4 min |  |
-| `localdrive1018` | claude-sonnet-5 | 0 min | drive: local tools only, act-observe instead of wait-and-fail, learn what to press |
-| `pagesfix1018` | claude-sonnet-5 | 1h 42m |  |
+| `foldjam1018` | claude-sonnet-5 | 15 min |  |
+| `localdrive1018` | claude-sonnet-5 | 11 min | drive: local tools only, act-observe instead of wait-and-fail, learn what to press |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lane.local`
-- **Device queue:** 3 waiting, 1 running.
+- **Device queue:** 7 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -125,7 +124,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/localdrive1018` | drive: local tools only, act-observe instead of wait-and-fail, learn what to press | `6771d8e2cf` | 2026-10-18 20:44 |
+| `lane/localdrive1018` | drive: local tools only, act-observe instead of wait-and-fail, learn what to press | `64492a47ea` | 2026-10-18 20:50 |
 
 ## Recently landed on master
 
@@ -140,4 +139,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-18 dispatcher: fix the staged-disc push's /mnt/d path so adb.exe can open it
 - 2026-10-18 The compatibility page adds RalliSport Challenge and Mortal Kombat: Shaolin Monks to Playable (92 -> 94)
 
-_Updated 2026-10-18 20:48 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 21:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
