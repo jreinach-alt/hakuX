@@ -1,6 +1,6 @@
 # Fix the 10-19 11:14 master-red: a usage-meter time bomb and a hold-tiers clock race
 
-State: draft
+State: ready
 
 Lane: masterred-verdict1019   Issue: #433
 Base: master @ 913e1524ffc3e3023144bdc1f8b77aeafdd75f38
@@ -47,8 +47,10 @@ title, actually passed -- see below and NOTES.md item 3).
 
 Verification: `SELFTEST_ONLY="88-usage-meterfit.sh"` (15/15) and
 `SELFTEST_ONLY="99-hold-tiers.sh"` (35/35) both green alone; full
-`SELFTEST_SHARD=0/4` and `SELFTEST_SHARD=1/4` (shards 1 and 2, the ones
-that were red) run to completion -- see NOTES.md for the pass counts.
+`SELFTEST_SHARD=0/4` (290/290) and `SELFTEST_SHARD=1/4` (1267/1267) --
+shards 1 and 2, the ones that were red -- both ran to completion green, no
+FAIL lines in either log. `origin/master` merged in after both shard runs
+started (clean, no files the shards touch).
 
 Release note (none): testing-harness infrastructure, not emulator code.
 

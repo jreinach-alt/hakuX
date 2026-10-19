@@ -115,5 +115,14 @@ a green master, which this lane's fold will trigger.
 - `SELFTEST_ONLY="88-usage-meterfit.sh"`: 15 passed, 0 failed (includes
   both new falsifier checks).
 - `SELFTEST_ONLY="99-hold-tiers.sh"`: 35 passed, 0 failed.
-- Full `SELFTEST_SHARD=0/4` (shard 1): PASSED (see below).
-- Full `SELFTEST_SHARD=1/4` (shard 2): PASSED (see below).
+- Full `SELFTEST_SHARD=0/4` (shard 1, the one that carried
+  `88-usage-meterfit.sh`): 290 passed, 0 failed, 13/158 fragments, no FAIL
+  lines anywhere in the log.
+- Full `SELFTEST_SHARD=1/4` (shard 2, the one that carried
+  `99-hold-tiers.sh`): 1267 passed, 0 failed, 49/158 fragments, no FAIL
+  lines anywhere in the log.
+- Merged `origin/master` into this branch after both shard runs started
+  (this checkout was 20 commits behind at session start); the merge only
+  touched `docs/lanes/fpsnext1019/*` and two unrelated `hw/xbox/nv2a/pgraph/vk/*.c`
+  files, none of which the running shards read, and was a clean merge with
+  no conflicts.
