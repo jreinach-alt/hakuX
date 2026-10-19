@@ -8,7 +8,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `fpsdata1018` | claude-sonnet-5 | 14 min | fpsdata1018: FPS dip causes in the 4-title owner capture, and fixes (#433) |
+| `fpsdata1018` | claude-sonnet-5 | 29 min | fpsdata1018: FPS dip causes in the 4-title owner capture, and fixes (#433) |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `lane.pathfind`
@@ -136,4 +136,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-18 gta3car1018: GTA III in the car -- the render passes are a feedback-loop copy per draw (#1049)
 - 2026-10-18 dispatcher: dev_push gets a read-only mode for the Nova's SD-card disc pushes
 
-_Updated 2026-10-19 04:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-19 05:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
