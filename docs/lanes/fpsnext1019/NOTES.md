@@ -467,3 +467,78 @@ sysmem-plus-widen.
 
 Device time this item: b8 wall ~158s (2.6 min), on top of item 3's ~1270s -- **~1428s (~23.8 min)** of this
 attempt's Nova time, under the 30 min pilot cap. Hold released after b8.
+
+## Attempt 3, item 1: Blinx 2 gameplay, measured -- one depth surface evicted and downloaded twice a flip
+
+**Route.** The owner's island state is already on the Nova (debug `x1box/states/4D530065/slot5.hxs`, 26,114,724
+bytes, the same size as the owner's release slot 1; lane.xbox loaded it on 10-18). Loaded by the GTA III pause-menu
+protocol (screenshot gate before each tap, never Save). Arm script `captures/fpsnext1019/scripts/arm-blinx.sh`
+(lane.xbox's `arm2b.sh`, paths moved): load slot 5, idle 20 s, sweep the left stick in circles for 60 s, score
+with `score2.py` (park = idle, hold/drive = circling), pull the FRAMETRACE CSV. No profile or route work needed.
+
+**Batch bx1** (10:55-11:00 PDT, `3058a55767-perflog.apk`, fresh install, so arm F carries the shader-compile cost):
+
+| arm | env | park fps | hold fps | drive fps | GPU line |
+|---|---|---|---|---|---|
+| bx1-F | `HAKUX_FRAMETRACE=1` | 21.4 | 25.0 | 21.8 | PurpleVK-public, `op=load slot=5 ok=1` |
+| bx1-X | `+HAKUX_GPUXFR=1` | 21.1 | 24.4 | 21.2 | PurpleVK-public, `op=load slot=5 ok=1` |
+
+**Where a circling flip goes** (bx1-X, 10:59:12-11:00:12, every 60-flip window agrees):
+
+| reading | value | source line |
+|---|---|---|
+| flip pace | 60 flips / 2.5-3.0 s, 2-3 vblanks a flip | `[dipwin]` |
+| PFIFO phases | Surf 22.4-25.1, Draw 9.0-9.5, Fin 1.4-5.1, Idle 0.1-3.6, Tot 36-40 ms | `hakuX-phase` |
+| GPU | 23-27 ms (R 22-25), RP 48 | `hakuX-phase` |
+| Surf's wait | `dfF` 20.8-23.4 ms (deferred-download finish) | `xemu-surf` |
+| the waits | `surfupd=fin0/fence61/dl120/1072-1329ms` per 60 frames | `[sdcall]` |
+| what they wait for | `evict[dl:120 unshelve:120 stale:0]` per 60 flips | `hakuX-stall` |
+| the evictions | `[evict372]` m10:N/0, one pair: `Z f130 ln p1024 256x256 b4 -> Z f130 sz p1024 256x256 b4` | `[evict372]` |
+| the replacement | `[edl] dl=120 clrskip=0 upload=0 other=120` | `[edl]` |
+| HAKUX_SURFGPU | `detach=120` | `[surfgpu]` |
+
+So: PFIFO spends ~22 ms of a ~38 ms flip waiting for the GPU at one fence, for two downloads of one 256x256 depth
+surface (most likely the player's shadow map; the frame shows a cast shadow behind the character). The CPU record
+(Draw ~9 ms) and the GPU (~23 ms) run one after the other, not side by side.
+
+**Mechanism (code, `vk/surface.c` `update_surface_part`).** The guest marks the 256x256 Z linear and then
+swizzled at one address, with the same format, pitch and size. Compatibility already allows a swizzle change in
+two cases: the update is a clear, or the binding was fully cleared (`cleared`, set by forza414's
+`mark_clear_full`). Here neither holds (mask m10: swizzle, not rescued). So:
+1. The eviction records a deferred download of the dirty binding (`EDL_MARK`, `download_surface_deferred`), then shelves it.
+2. `get_shelved_surface()` does not compare `swizzle`. The binding just shelved sits at the head of the shelf and
+   matches address, format, role, size and pitch. So the replacement is **the same struct and VkImage**.
+   `vram_newer` was reset by `shelve_surface`, and the download excepts its own surface, so it comes back
+   **clean** (`stale:0`, `[edl] other`).
+3. The GPU therefore keeps exactly the pixels it had. The download only copies them into VRAM in the old (linear)
+   layout. HAKUX_SURFGPU detaches the pending download from the reused struct, and the first surface_update after
+   the flip that cannot defer it waits on the frame's fence (`surfupd fence61`).
+
+#372's handoff (`surface_handoff_partner`) declines this case twice over: it needs the same swizzle, and it
+refuses a held binding that would itself come back off the shelf. The texture path (`texture.c:3945`) takes a
+compatible surface at the address whether or not it is dirty, so a sampled shadow map reads the image, not VRAM,
+in both the old and the new behaviour.
+
+**The fix (built, opt-in): `HAKUX_SWZKEEP=1`.** It adds a third swizzle rescue. When the change is swizzle-only
+(strict compatibility), TCG's watch is live, there is no CPU write (`mem_dirty`) and there is no pending upload or
+download, the binding stays bound and dirty instead of being evicted. The GPU result is the one the eviction
+produced already: the same image, reused. What changes is VRAM. The binding now owes its download, and the next
+reader (a CPU access through the watch, a texture that cannot take the image, a later eviction) takes it, in the
+swizzled layout the guest now declares, instead of the old layout. On real hardware the bytes would be the
+linear-written ones. For a uniform clear the two are the same bytes. For anything else the emulator already
+reinterprets the content across layouts (step 2), so this does not add a new inexactness on the GPU side.
+Counted on a `[swzkeep] kept=N` line beside `[evict372]`.
+
+### G3 prediction (written before the build)
+
+Arms on the island state, palindrome on one APK: off, on, on, off (after a warm-up arm that is thrown away). On is
+`HAKUX_SWZKEEP=1`; both add `HAKUX_FRAMETRACE=1`.
+
+| leg | rule | falsified if |
+|---|---|---|
+| P1 mechanism | on arms: `[evict372]` m10 growth per 60 flips <= 6 (off: ~120), `evict[dl]` <= 6, `[sdcall] surfupd` fence <= 10 per 60 frames (off: ~61), `dfF` <= 5 ms (off: 21-23), `[swzkeep] kept` growing ~120 per 60 flips | m10 still grows: the conditions (`upload_pending`/`download_pending`/`mem_dirty`) are not what I read |
+| P2 fps | circling (score2 hold+drive) mean of both on arms >= both off arms + 3.2 fps, and on-arm drive >= 25.0 | P1 holds and fps moves < 3.2: the wait moved to the flip's frame fence; then GPU+something is serial and the phase timers name it |
+| P3 pixels | the loaded frame's character-and-shadow region (imgcheck box 520 480 800 760) differs from an off arm by no more than off-vs-off does | a shadow that reads a VRAM copy differs |
+
+Expected upper bound: GPU 23-27 ms a flip, so overlapping CPU record and GPU caps out near 37-43 fps raw, i.e. 2
+vblanks (30 fps) where the game paces itself at 30.
