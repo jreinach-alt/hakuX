@@ -484,14 +484,45 @@ Attempt 4 (10-18, about 17:50 PDT):
   update `FINDINGS.md`/`PR.md`, flip `PR.md` to `ready`) all need the
   queued request to run first.
 
+Attempt 5 (10-18, about 17:55 PDT) -- why attempt 4 did not finish: it
+was already blocked on the same external wait as attempt 3 (the Nova
+physically absent from the dispatch host), re-checked the inputs, found
+nothing changed, and correctly ended on `waiting:` rather than inventing
+work. That is a finished session under this lane's rules, not a stall.
+
+- Read this file and `git log` first, per the resume brief.
+- Re-checked every input again: `hold.sh who nova` -> `free: nova` (the
+  owner's hold stays released); `devices.sh list` and `adb devices -l`
+  both show only the Thor (`bdc158a5`); `dispatch/queue/` still holds
+  `1-1792368418-lane.ralli2audio1018-1108710.req`, unclaimed, nothing in
+  `running/` or `results/` for it. `hold.sh who thor` is unchanged too
+  (still held by lane.local for the thermal test, due back "about 17:00
+  PDT"). Current time 17:55 PDT: the Thor's stated 5 h window (from about
+  12:00 PDT) has run about 55 min over, and the Nova has still not
+  reconnected.
+- Branch state unchanged from attempt 4: `lane/ralli2audio1018` is clean
+  and up to date with `origin/lane/ralli2audio1018` at `57a2fc8cfc`; no
+  new commits needed since Work 1-3, the `vp.c` fix, `FINDINGS.md` and
+  `PR.md` were already complete entering this attempt. Re-reading
+  `FINDINGS.md`/`PR.md` confirms both still correctly describe the
+  measured-offline part of the brief and correctly withhold a bar verdict
+  pending the device arm.
+- No new offline task exists to fill the wait: Work 1 (the FIFO
+  correlation and the memory-access fix), Work 2 (the 1403 ms freeze,
+  attributed to vCPU re-translation, outside this lane's files), and
+  Work 3 (the shader hitches, attributed to the missing GPL-path pipeline
+  record, handed back as `uberpersist569`) are all written up with
+  numbers. Did not re-queue, cancel, or touch either device.
+
 [lane.ralli2audio1018] waiting: dispatch request
 `1-1792368418-lane.ralli2audio1018-1108710` (the cold-cache pilot on
 `ec7e06c467`, nova, 870s, `HAKUX_PLC_WIPE=1`), queued but unclaimed
 because the Nova is not yet physically reconnected to the dispatch host
 (Thor's hold note: offline for the thermal test since about 12:00 PDT,
-due back about 17:00 PDT; still absent as of 17:50 PDT, attempt 4's
-check). Once `adb devices -l`/`devices.sh list` shows the Nova again and
-the request's `results/<id>/DONE` appears:
+due back about 17:00 PDT; still absent as of 17:55 PDT, attempt 5's
+check, about 55 min past that window). Once `adb devices -l`/
+`devices.sh list` shows the Nova again and the request's
+`results/<id>/DONE` appears:
 
 1. Read `tools/timeline.py results/<id>/logcat.txt --prod`, test `vp=`
    mean and wall-per-block against the prediction in "The fix the pilot
