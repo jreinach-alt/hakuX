@@ -4,11 +4,29 @@ Lane: fpsdata1018. Brief: `/home/justin/hakux-work/briefs/fpsdata1018.md` (owner
 causes of the FPS dips in the owner's 4-title capture (`/home/justin/hakux-work/captures/fps-owner-1018/`, master
 perflog 72af9cb92c, Nova, PurpleVK) and land fixes.
 
-[lane.fpsdata1018] waiting: on `[job.arms]`'s verdict for the two freshly re-registered pixel predictions
-(texscan2d @ `b46f4cb8d3`, S2T_FB mode 2 @ `b6064d61cc`) -- queued as `1-1792400325-*`/`1-1792400323-*`.
-PR.md stays `State: draft` until both post PASS. See the PR #1085 comment with the same text for what else
-this lane closed out first (FINDINGS.md, the corrected GTA III device-A/B claim, the briefed Blinx 2 harness
-bug, and the H2 investigation's named next step).
+**Attempt 3, continued (this resume)**: the prior turn in this same attempt ended on a legitimate external
+wait -- both re-registered pixel predictions (texscan2d @ `b46f4cb8d3`, S2T_FB mode 2 @ `b6064d61cc`) were
+queued and neither arm had finished. That is why it stopped there rather than being a dead end; per
+`handback.sh`'s rule a resume from a real dispatcher wait does not consume the attempt budget, so this is
+still attempt 3, not a new attempt. Confirmed the `1-1792400323-*`/`1-1792400325-*` job-pair mapping against
+each result's own `result.json` `purpose` field before acting on either (`1-1792400323-*` names
+`fpsdata1018-s2tfb2-pixels.json` @ `b6064d61cc`; `1-1792400325-*` names the texscan2d prediction), rather than
+trusting the mapping written down before both were queued. While still blocked on the texscan2d arm finishing,
+built the H2 instrument named as the ranked-next, not-yet-built step (see "H2 investigation" below, and the
+new "H2 instrument built" section after it) -- G7's "never end the turn with the next step obvious" rule, not
+busywork. Then the S2T_FB mode-2 arm finished and FAILed again; traced it to a real code gap
+(`s2t_fb_record()` missing the shadow-comparator exclusion `texscan_shape_ok()` already has) and fixed it
+(`b50667ac35`, committed with the H2 instrument) -- but before re-registering that fix as a pixel-safety
+claim, a sanity re-check of the *already-landed* texscan2d fix's own arm found it STILL FAILing the same
+suite. Rather than trust either FAIL or either PASS, measured the suite's own noise floor from three same-ref
+device runs already on disk (no new device time): `Texture_shadow_comparator` disagrees with itself on
+89/1038 captures with zero code change, and one capture reproduces the identical wrong transition under two
+unrelated fixes. Every `Texture_shadow_comparator` FAIL this lane has seen, including this one, is inside that
+floor and not attributable to any fix. See "Noise floor measured" (after Pixel FAIL #3) for the measurement
+and the correction applied to Pixel FAIL #1 and #3's framing; both fixes are kept (correct on the code
+reading), but neither is re-registered as a claim this suite's single-run arm can actually test. Re-registering
+`fpsdata1018-s2tfb2-pixels.json` on `b50667ac35` with `Texture_shadow_comparator` dropped from `must_not_move`
+is the next step, not yet done as of this line.
 
 ## Attempt log
 
@@ -71,6 +89,15 @@ compressed/converted exclusions. Typechecked clean (rc=0, same 5 pre-existing wa
 (this fix); predicts every `Texture_shadow_comparator` capture that moved against `3b50f167ba` returns to
 bit-exact against A. Committed (`d13ecf9109`) and pushed for the arms job to pick up; not yet read back.
 
+**Correction, later same session**: read back, this re-registration's own arm *also* FAILs (17/1038, same
+suite) after the fix landed -- see "Noise floor measured" below `Pixel FAIL #3`. A 3-way same-ref sweep with
+zero code change disagrees on 89/1038 `Texture_shadow_comparator` captures, confining every FAIL this suite has
+produced in this lane (this one included) inside that noise floor; one capture (`2F16_..._15.0000_GT`) moves
+by the identical `480->400` transition here and in the unrelated S2T_FB FAIL. The `!f.depth` mechanism traced
+above is kept (still the correct fix for a raw-copy-vs-comparator-read mismatch), but this arm's FAIL is not
+evidence either way for it, and the prediction's `must_not_move` list no longer claims this suite as a
+falsifier a single run can actually test.
+
 ## Pixel FAIL #2: S2T_FB mode-2's own arms run FAILed too -- a second, independent mechanism (DOT_PRODUCT)
 
 The arms job auto-queued and finished a pair against the *other* pending prediction
@@ -102,6 +129,122 @@ Both FAILs were found and fixed in the same session specifically *because* G3's 
 through to a mechanism instead of stopping at "the prediction failed, revert the lever" -- in both cases the
 lever's own idea (refuse a raw copy for formats/modes that need a true read) was sound, and the bug was an
 incomplete enumeration of which formats/modes qualify, not a flaw in the idea itself.
+
+## Pixel FAIL #3: S2T_FB mode-2's re-registered (DOT_PRODUCT-fixed) prediction FAILed again, same suite,
+a different mechanism
+
+Read back the S2T_FB mode-2 re-registration (`1-1792400323-...-base-2706500` / `...-fix-2706540`, both `DONE`):
+**VERDICT: FAIL -- 21 of 472 checks violated**, entirely within `Texture_shadow_comparator` again (caps 288,
+better 14, worse 7, same 267) -- the DOT_PRODUCT fix held (no `Antialiasing_tests` movement this time), but a
+third, independent leak exists in the same suite the texscan2d fix already had to exclude once (Pixel FAIL #1).
+
+Checked whether this is "more of the same" pre-existing wrong-alone defect reshaping (the cross-test-
+contamination doc's classification that already excuses texscan2d from needing a pixel-exact match here) or a
+genuine new mechanism this lever owns. It is the latter, and a different one from DOT_PRODUCT: every stage
+mode genuinely classified as "does not read its texture" by `s2t_fb_stage_reads()` (NONE/PASS_THROUGH/
+CLIP_PLANE) really does emit a constant or forward the raw texture *coordinate* (`psh.c:3326`, `:3439`,
+`:3443-3449`) rather than a sample of the bound image -- confirmed again, reading all three cases directly,
+not re-trusting Pixel FAIL #2's audit. Also checked the two side-channels that intercept a stage's texel
+*before* its combiner mode gets to decide anything (`alphakill`, `psh.c:3857-3860`, and `colorkey`'s
+`COLOR_KEY_DISCARD` case, `psh.c:3877-3879`): both operate on `t%d`, and for NONE/PASS_THROUGH/CLIP_PLANE
+`t%d` is already a mode-fixed constant or the raw coordinate, not a sample of the colour target's real pixels
+-- so neither side-channel actually depends on what the cached copy holds either. The pixel-shader
+classification itself is not the leak this time.
+
+The leak is in *what gets cached*, not in which stages are told to reuse it. `s2t_fb_record()` (texture.c
+~3100) caches the plain-copy result for **any** surface that is the current colour target, with no exclusion
+for the same shadow-comparator depth-as-texture formats (`DEPTH_Y16_FIXED/FLOAT`, `X8_Y24_FIXED/FLOAT`) that
+`texscan_shape_ok()` already excludes for the identical reason (Pixel FAIL #1, and originally `3b50f167ba`'s
+own arms FAIL before this lane existed). These formats are rendered through the surface path as ordinary
+colour targets (so `surface == r->color_binding` is true and S2T_FB's gate does not exclude them) but are
+*read* through NV2A's hardware shadow-comparator unit (`psh.c:584`, `state->shadow_map[i] = f.depth`), the
+same value-preserving-copy requirement Pixel FAIL #1 already established: "nothing measured says a raw GPU
+copy is equivalent to this format's source for the comparator." S2T_FB's copy is exactly such a raw copy
+(`copy_surface_to_texture`, the same function texscan would otherwise have reached), just reused across more
+than one draw instead of retaken fresh each time -- reusing it, rather than retaking it, is enough to reshape
+which already-wrong answer a `Texture_shadow_comparator` capture produces, same class of effect as Pixel FAIL
+#1, now hitting the cache instead of the copy-eligibility check.
+
+**Fix** (committed with this note): `s2t_fb_record()` now also declines when
+`pgraph_get_color_format_info(snode->key.state.color_format).depth` is true -- `snode->key.state.color_format`
+is the texture descriptor's own declared format, the same field `plain_copy`'s neighbouring
+`pgraph_texture_format_expands_by_replication()` check already reads a few lines above this call site. A
+depth-comparator-format surface simply never gets a memo entry, so every sample of it keeps taking a fresh
+`copy_surface_to_texture()` -- identical to `HAKUX_S2T_FB=0`'s behaviour for this format class only, every
+other format unaffected. Typechecked clean in both the plain Release line and `-DNV2A_PERF_LOG=1` (rc=0, same
+5 pre-existing warnings, no new ones).
+
+**Re-registered** `fpsdata1018-s2tfb2-pixels.json` with `a_ref` unchanged, `b_ref` = this fix's commit;
+predicts every `Texture_shadow_comparator` capture that moved against `b6064d61cc` returns to bit-exact
+against A, and (same as both prior re-registrations) nothing elsewhere moves either. This is the third
+falsifier this lever's own prediction has caught and the third time it was traced to a mechanism rather than
+reverted -- see the Already-tried table entry this adds, so a fourth attempt at this lever does not re-walk
+the same three.
+
+**Correction, same session, before this prediction was queued**: see "Noise floor measured" below. The 21
+checks this FAIL cites cannot be told apart from this suite's own run-to-run disagreement with *zero* code
+change, so this section's "third, independent mechanism" framing is retracted as a claim about what the arm
+*proved*. The `s2t_fb_record()` fix above is kept anyway -- same precedent as `texscan_shape_ok()`'s `!f.depth`
+exclusion, correct on the code reading alone -- but it is not re-registered as a `Texture_shadow_comparator`
+pixel-safety claim, because a single-run arm cannot make that claim for this suite.
+
+## Noise floor measured: Texture_shadow_comparator disagrees ~8.6% run-to-run with zero code change
+
+Before trusting Pixel FAIL #3's "third, independent mechanism" framing (it was about to be committed as a
+re-registered prediction), re-checked the ALREADY-LANDED, ALREADY-FIXED texscan2d prediction's own arms
+(`1-1792400325-...`) as a sanity pass: `ab_compare.py --expect` (bound correctly this time against the frozen
+copy at `/home/justin/hakux-work/arms/expect/c689d167...e4.json`, not the lane's live predictions/ file, which
+`os.path.basename()` does not match and reads as `UNBOUND` -- a tooling gotcha, not a real binding problem;
+re-ran both FAILs against their frozen expect files and got `PRE-REGISTERED` on both, so neither verdict below
+is a mismatched pairing) gave **VERDICT: FAIL -- 17 of 1038 checks violated**, entirely `Texture_shadow_comparator`,
+*despite* `b46f4cb8d3` already carrying the `!f.depth` exclusion this suite was supposed to need. That is the
+first sign: a fix already landed for this exact suite still "FAILs" its own re-registration.
+
+Found three same-ref repeat runs already on disk for `245ddc4964` (`1-1792389196-...-base-3521751`,
+`1-1792396705-...-base-2158864`, `1-1792400325-...-base-2706810`) -- same `apk_sha=f9ee968b9759`, same device
+(`nova`), same 415 exact captures, but three *different* total differing-pixel counts (4,931,823 / 4,930,175 /
+4,930,661) from the *same binary* on *zero* code change. Ran `sweep_agreement.py` across the three:
+
+```
+1038 captures over 3 runs: 949 agree, 89 disagree, 0 absent
+```
+
+Checked every disagreeing line: **all 89 are `Texture_shadow_comparator`, zero in any other suite.** This is a
+direct, device-measured confirmation of `docs/investigations/cross-test-contamination.md`'s "wrong-alone"
+classification for this suite -- not a theoretical excuse, a measured ~8.6%-of-captures noise floor on this
+exact device/APK with nothing whatever changed.
+
+The smoking gun tying this to Pixel FAIL #1 and #3 specifically (not just "the suite is noisy in general"):
+`Texture_shadow_comparator/2F16_10.00-20.00_15.0000_GT` is in all three sets -- it disagrees in the 3-run
+zero-change sweep, AND it is the *exact same* `480 -> 400` transition in both the texscan2d FAIL (unrelated
+fix, unrelated A/B pair) and the S2T_FB FAIL (different unrelated fix, different unrelated A/B pair). Two
+independent code changes, touching different functions, cannot cause the identical capture to move by the
+identical transition; the capture does that on its own. Two more captures appear in both FAIL lists with
+*opposite*-direction transitions (`2P16f_..._14.0400_A`: 516->430 vs 430->344; `3P16f_..._14.0400_GE`: 430->344
+vs 344->430) -- consistent with each base arm's own "wrong" value differing run to run too, which the three-way
+sweep also shows directly (the three base runs' own px totals differ from each other).
+
+**Conclusion**: Pixel FAIL #1's 23/1038 and #3's 21/472's `Texture_shadow_comparator`-only counts, and this
+re-check's 17/1038, are all within (not exceeding) the measured 89/1038 zero-change noise floor, and at least
+one specific capture reproduces the identical wrong transition under two unrelated fixes. None of the three can
+be told apart from noise with a single-run arm. This does **not** reopen Pixel FAIL #1's or #3's underlying
+code reasoning (`!f.depth` in `texscan_shape_ok()`, the matching exclusion in `s2t_fb_record()`): a raw GPU
+copy still has no proof of being equivalent to a shadow-comparator read, and both fixes are kept as correct,
+defensible, harmless-elsewhere code. What is retracted is the claim that either arm's FAIL *proved* the bug
+these fixes target was live before the fix, or that fixing it would make the arm PASS -- it cannot, since the
+suite does not hold still for either arm of a single-run A/B regardless of what the code does.
+
+**Pixel FAIL #2 is unaffected by this correction**: its moved capture, `Antialiasing_tests/
+CPUWriteIgnoresSurfaceConfig` (0 -> 45056 px), is in a different suite, one with zero disagreements anywhere in
+the 3-run zero-change sweep above. That FAIL stays a real, confirmed regression.
+
+**Action taken**: both prediction files' `must_not_move` lists drop `Texture_shadow_comparator/*` (a suite a
+single-run arm cannot falsify is not a falsifier, G3) with a note citing this measurement; `fpsdata1018-s2tfb2-
+pixels.json` is re-registered on `b_ref=b50667ac35` (this session's commit, carries the `s2t_fb_record()` fix)
+predicting only its remaining `must_not_move` suites hold, which is the claim a single-run arm can actually
+make. Added row 25 to the Already-tried table so a later attempt at either lever does not re-spend a device run
+re-discovering that this suite needs `--runs N`/`sweep_agreement.py`, not a single-run `--expect`, to say
+anything about a change inside it.
 
 ## H4 census: both jobs came back void, and the second void is a host-wide harness bug, not mine
 
@@ -178,6 +321,9 @@ NOTES (newer than master's); ralli = `wt/ralli2audio1018/docs/lanes/ralli2audio1
 | 21 | Scripted gameplay navigation (6 GTA routes) | GTA III | all VOID | -- | do not repeat | `L/gta3fps1017/NOTES.md` 0 |
 | 22 | texscan: GPU copy of draw-dirty whole-face CUBE surfaces into the texture instead of download + upload (`HAKUX_TEXSCAN`) | NFS MW cube | range 4.03 -> 0.00 ms/frame, but fps -1.4 / period +2.6 ms alone: the wait moved to the #804 report fence | NFS arms | works when paired with REPORT_ASYNC; default-on in fastpaths with it | `L/texscan1010/NOTES.md` 5-11 |
 | 23 | Skip the per-frame STALLED finish when no report is queued (`stall_reports_only()`/`HAKUX_STALLFIN=reports`, `reports.c:1320`) -- proposed here as the shared cause of GTA III's `rotfen`/`fin=stalled` and Blinx 2's `stl`/`sd[cDefC62]` wait, both ~1 STALLED finish/frame with an empty report queue in this capture (3 "report" lines total in each of `gta3.txt`/`blinx2.txt`, all three `init:` logging, none in a gameplay window) | Simpsons (K0/K1, `gpunonrender` 0702057f25) | STALLED finishes fell to 20% (5.36->1.05/frame) **but gfps fell 30.3->25.8**, G 33.0->37.75 ms, `xemu-gpu` Xfr 7.0->13.0, vCPU pfifo.lock wait +4.3 ms/frame | K0/K1 A/B pair, same clock (401 MHz), same route | **refuted**: removing the catch-up submit lets the command buffer grow bigger before its one submit, so the GPU starts the frame's work later (at the flip) instead of overlapping with CPU recording; the overlap was worth more than the rotation wait it cost | `L/gpunonrender/NOTES.md` "K0/K1: STALLED submits fall to 20%, and fps falls" |
+
+| 24 | `HAKUX_S2T_FB` mode 2 (GTA III in-car fix): its pixel prediction FAILed on the same lever before landing clean -- DOT_PRODUCT misclassified as a non-reading combiner mode, a real regression (Pixel FAIL #2, `Antialiasing_tests/CPUWriteIgnoresSurfaceConfig` moved) | `Antialiasing_tests` | arms `--expect`, 24/472 then 0/472 (after DOT_PRODUCT excluded; the remaining `Texture_shadow_comparator` moves are noise, see row 25) | 1 arms pair, this lever | landed once the DOT_PRODUCT mechanism was excluded; `s2t_fb_record()` also gained the shadow-comparator-format exclusion `texscan_shape_ok()` already needed (correct on the code reading, kept, but not provable by this suite's single-run arm -- row 25) | this file, "Pixel FAIL #2" |
+| 25 | `Texture_shadow_comparator` as a `must_not_move` suite in a single-run `--expect` pixel prediction: used three times this lane (texscan2d, S2T_FB mode 2 x2) and FAILed every time (23/1038, 24/472, 21/472) including on an already-landed fix (17/1038 re-check of `b46f4cb8d3`) | same 4 arms pairs above, plus a 3-way same-ref sweep (`245ddc4964`, zero code change) | `sweep_agreement.py` across 3 same-ref runs: 89/1038 disagree, 100% `Texture_shadow_comparator`, zero elsewhere; one capture (`2F16_..._15.0000_GT`) reproduces the identical `480->400` transition under two unrelated fixes | 3 same-ref device runs already on disk, no new device time spent | **this suite cannot be gated by a single-run arm**: it disagrees with itself ~8.6% of the time with no code change. Drop it from `must_not_move` in any future prediction against this suite; use `--runs N` + `sweep_agreement.py` (or a majority-of-N vote) if a real claim about it is ever needed | this file, "Noise floor measured" |
 
 Correction carried from the research pass: `L/fpsdiag1018/FINDINGS.md` 2 item 4 credits "R3 -0.9 fps"; README gives
 -0.3 (b2) and -0.9 (b4) both to R2 vs R1, and R3 no fps number (dup 0, inert).
@@ -318,6 +464,55 @@ check, but asked of the *new* binding after an eviction rather than the uploadin
 it. If that fires 6/6 for Fable's reshapes, the download-skip lever becomes provably safe and falls out of
 `clrfull`'s own argument; if it does not, H2 needs a different, narrower target than "skip the whole eviction."
 Not built this session -- ranked next, now with the specific missing counter rather than "medium, next."
+
+## H2 instrument built: per-eviction download-vs-read pairing (not a fix yet -- needs a capture)
+
+Built the per-eviction instrument the section above named as the unblocking step, while the last turn's
+pixel-prediction arms were still running (G7: the next step was obvious, so it got built rather than the
+turn ending on a wait that had not actually arrived yet).
+
+**What it measures.** `g_sdcall` (surface.c, the existing perflog-tier struct behind `clr`/`clrfull`/`clrskip`)
+gains four counters: `edl_dl` (evictions at the "incompatible" site in `update_surface_part` -- same address,
+different shape/pitch, Fable's mip-reshape pattern), and, of those, `edl_clrskip` (the replacement binding's
+very first touch this call was a covering clear that dropped its own pending upload -- i.e. the evicted
+binding's downloaded bytes are provably never read, by the same argument `clrskip` already makes for the
+mirror-image upload case), `edl_upload` (the replacement binding did upload -- the download fed a real read),
+and `edl_other` (the replacement's `upload_pending` was already false before the clearing check ran -- a
+shelf hit with clean VRAM already; ambiguous, not claimed as wasted).
+
+**Where, and where not.** Marked only the "incompatible" eviction branch (`surface.c`, inside
+`update_surface_part`, the branch guarded by `surface->draw_dirty` right before `download_surface_deferred`).
+Deliberately did not mark the other two `sd_eviction_dl` sites: the handoff-fallback branch is documented in
+its own comment as deterministically re-uploading (not an open question), and `invalidate_overlapping_surfaces`
+is already proven necessary by an existing comment citing issue #7 (overlap eviction, a different mechanism
+from the mip-reshape pattern H2 is about). Conflating all three into one counter set would make the result
+uninterpretable -- a mix of "provably wasted", "known necessary", and "a third mechanism" under one number.
+
+**Mechanics.** `EDL_MARK(color)` sets a per-call, per-slot (`color`/`zeta`) flag at the eviction site itself.
+`pgraph_vk_surface_update()` resets both flags at its top (`EDL_RESET()`) and, after the existing
+clearing-upload-drop block runs (`surface_drop_covered_upload`, same `pg->clearing` gate as before, unchanged),
+calls `EDL_RESOLVE(slot, pending_before, binding)` with the replacement binding's `upload_pending` snapshotted
+*before* that block ran and the binding itself read *after* -- `edl_clrskip` fires exactly when the drop
+actually happened for this binding, `edl_upload` when it was pending and survived, `edl_other` when it was
+never pending to begin with. All four counters, and a new `[edl]` perflog line (`frames=N dl=.. clrskip=..
+upload=.. other=..`, emitted from `sdcall_log()` only when `edl_dl` is nonzero), are gated the same as every
+other field in `g_sdcall` -- `#if NV2A_PERF_LOG && defined(__ANDROID__)`, a no-op in release and host builds.
+This is purely additive instrumentation: `surface_drop_covered_upload` still runs under the exact same
+`pg->clearing` condition as before the edit; nothing about which uploads get dropped has changed.
+
+**Read command** (for the owner or a future lane, same pattern as the existing `[sdcall]` line, which is also
+read by hand rather than through `fpsdiag.py` -- it does not parse `[sdcall]`-style lines today): build a
+perflog APK from this PR's head, play Fable's gameplay window, and grep the device logcat for `\[edl\]`:
+```
+adb logcat -d | grep '\[edl\]'
+```
+If `clrskip` reads 6/6 against Fable's `evict[dl:360]`-per-60-flips window, the download-skip lever this
+section's parent asked for becomes provably safe by the same argument `clrfull` already makes for uploads,
+and is next. If it reads lower, the remainder names exactly how many of Fable's reshapes are not safe to skip,
+which narrows H2 to a partial lever instead of an all-or-nothing one. **Not yet run against the owner's
+capture or any device** -- this is the instrument, not the result; no claim is made here about what Fable's
+actual split is. Typechecked clean in both the plain Release line and `-DNV2A_PERF_LOG=1` (rc=0, no new
+warnings).
 
 ## G3: Fix #1 prediction (written before the build)
 
