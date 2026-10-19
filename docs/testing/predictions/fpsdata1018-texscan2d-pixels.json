@@ -1,10 +1,10 @@
 {
-  "registered_utc": "2026-10-19T05:34:11Z",
+  "registered_utc": "2026-10-19T07:47:52Z",
   "who": "lane.fpsdata1018",
   "issue": "433",
-  "prediction": "#433 texscan 2D (lane.fpsdata1018), pixel leg. A = 245ddc4964 (master's texture.c), B = 38c8d53ba5. Both arms run texscan through the default-on fastpaths; B also takes a 2D texture whose every draw-dirty surface fills one slot of it -- a swizzled surface that is a whole mip level of it, or a linear surface at the texture's own pitch inside its one level -- and copies each on the GPU (vkCmdCopyImage into that mip level, or at that x/y) instead of the SURFACE_DOWN download and re-upload. Each slot passes check_surface_to_texture_compatiblity for a texture of exactly its shape (extent, pitch, layout, stride, unconverted), so the bytes are the round trip's. A 2D texture with no draw-dirty surface over it returns before any flush or completion, exactly as in A. Suites: texscan1010's 29 texture/surface/cube/render suites plus the other render-to-texture ones (Antialiasing_tests, Color_zeta_overlap, Swath_width, Window_clip, 3D_primitive, Image_blit). RenderTextureLoop skipped as the arms job does. Predicted: every capture the same between arms or inside the run-to-run band. Read from B's logcat, not predicted: '[texscan] on 2d=1' (the route is on) and any '[texscan] first copy ... lin1' or '... lin0' line on a 2D texture (whether these suites exercise the new copy). With none, this leg shows the change inert where it does not fire, and the copy's pixels are judged on the owner's RalliSport 2 and Fable A/B (HAKUX_TEXSCAN2D=0 against unset, same build). A moved capture refutes 'the round trip's bytes' and blocks the change until explained region by region.",
+  "prediction": "#433 texscan 2D (lane.fpsdata1018), pixel leg, re-registered on the fix for the FAIL this same leg returned on 38c8d53ba5. A = 245ddc4964 (master's texture.c, pre-#433). B = 3b50f167ba, which carries 38c8d53ba5 (texscan extended cube-only -> 2D) PLUS the correctness fix: SurfaceBinding.image_scale (set from pg->surface_scale_factor at create_surface_image time) and a refusal in texscan_plan's active-surface scan when a candidate's image_scale != 1. 38c8d53ba5 alone let a surface whose real VkImage was sized under a since-changed surface_scale_factor serve as a texscan copy source at its logical (unscaled) extent -- a crop of the oversized grid, not a resolve -- which is what moved Antialiasing_tests/CPUWriteIgnoresSurfaceConfig off exact and paired-swapped several Texture_shadow_comparator variants. The fix's predicted effect: every capture that moved on 38c8d53ba5's arm returns to bit-exact against A (the scaled-surface case now refuses texscan and falls through to the pre-existing, already-correct SURFACE_DOWN path), while the unscaled-surface copies this leg exists to measure (texscan1010's cube suites plus the new 2D ones) still move exactly as 38c8d53ba5 predicted: same or inside the run-to-run band. Read from B's logcat, not predicted: '[texscan] on 2d=1'. A moved capture -- in either direction from 38c8d53ba5's FAIL set, or any new one -- refutes this fix and blocks the change until explained region by region.",
   "a_ref": "245ddc4964",
-  "b_ref": "38c8d53ba5",
+  "b_ref": "3b50f167ba",
   "must_not_move": [
     "Blend_surface/*",
     "DMA_corruption_around_surfaces/*",
@@ -87,6 +87,8 @@
       "Texture_render_target::RenderTextureLoop"
     ],
     "only_tests": [],
-    "source": "stated on the --register command line"
+    "source": "/home/justin/hakux-work/dispatch/results/1-1792389196-arms-fpsdata1018-base-3521751/request.json",
+    "source_request": "1-1792389196-arms-fpsdata1018-base-3521751",
+    "disc_id_seen": "35-suites:2c63c615:3D_primitive,Antialiasing_tests,Blend_su"
   }
 }
