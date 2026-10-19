@@ -253,14 +253,14 @@ def _eq_for_billing_model(eq_by_model, model):
     return total
 
 
-def collect_fit_samples(work_dir, projects_dir, max_age_days=14):
+def collect_fit_samples(work_dir, projects_dir, max_age_days=14, now=None):
     """-> [(mtime, model, costUSD, transcript_eq), ...], one tuple per
     billed model entry of every headless run under work_dir/logs whose run
     log carries a session_id AND a transcript (transcript_eq() found at
     least one file). A run missing either contributes nothing -- same
     silence on both sides of the ratio fit_prices_transcripts() fits, which
     is why a run with no transcript cannot skew it."""
-    cutoff = time.time() - max_age_days * 86400
+    cutoff = (now if now is not None else time.time()) - max_age_days * 86400
     samples = []
     for f in glob.glob(os.path.join(work_dir, "logs", "**", "*.json"), recursive=True):
         try:
@@ -322,7 +322,7 @@ def combined_price_map(work_dir, projects_dir, now, max_age_days=14):
     number for a model it has data for, else fit_prices()'s -- "a model with
     no fit at all keeps today's behaviour" (the brief's words)."""
     base = fit_prices(work_dir, max_age_days=max_age_days)
-    samples = collect_fit_samples(work_dir, projects_dir, max_age_days=max_age_days)
+    samples = collect_fit_samples(work_dir, projects_dir, max_age_days=max_age_days, now=now)
     merged = dict(base)
     merged.update(fit_prices_transcripts(samples, now))
     return merged
