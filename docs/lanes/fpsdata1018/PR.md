@@ -4,8 +4,8 @@ State: draft
 
 Lane: fpsdata1018            Issue: #433
 Base: master @ 72af9cb92c
-Files: hw/xbox/nv2a/pgraph/vk/texture.c, docs/lanes/fpsdata1018/NOTES.md, docs/lanes/fpsdata1018/PR.md, docs/lanes/fpsdata1018/typecheck.py, docs/lanes/fpsdata1018/routes/fpsdata1018-ralli2-drive.route, docs/testing/predictions/fpsdata1018-texscan2d-pixels.json, docs/testing/perf/fpsdiag/fpsdiag.py, docs/testing/jobs/selftest.d/99-fpsdiag.sh
-Prediction: docs/testing/predictions/fpsdata1018-texscan2d-pixels.json @ af9b4547dc7421a9245ac78154dfc9c4873d382303b4fac0fdda8a6104b95c62
+Files: hw/xbox/nv2a/pgraph/vk/texture.c, hw/xbox/nv2a/pgraph/vk/surface.c, hw/xbox/nv2a/pgraph/vk/renderer.h, docs/lanes/fpsdata1018/NOTES.md, docs/lanes/fpsdata1018/PR.md, docs/lanes/fpsdata1018/typecheck.py, docs/lanes/fpsdata1018/routes/fpsdata1018-ralli2-drive.route, docs/testing/predictions/fpsdata1018-texscan2d-pixels.json, docs/testing/perf/fpsdiag/fpsdiag.py, docs/testing/jobs/selftest.d/99-fpsdiag.sh
+Prediction: docs/testing/predictions/fpsdata1018-texscan2d-pixels.json @ 2aed2cea325ead44a673f008d5155ac193891f2fa6fa1d773cb485608818437e
 Needs device: yes    Needs NDK: yes
 
 Reads the owner's 2026-10-18 capture of RalliSport 2, GTA III, Fable and Blinx 2 (master perflog 72af9cb92c) for
@@ -32,6 +32,14 @@ A 2D texture with no drawn surface over it is untouched. `HAKUX_TEXSCAN2D=0` res
 
 `fpsdiag.py` gains two candidates: `c2b_fin_sub_renderthread_wait` (the Fin swing is the finish's own submit wait,
 not the frame-slot fence) and `c9_surf_download_wait` (the Surf swing).
+
+**Fixed a texture-corruption regression in the above.** The arms job's pixel prediction on the first cut FAILed:
+a render target created while the antialiasing/supersampling scale factor was not 1 could stay eligible for this
+GPU-side copy after the scale factor changed back to 1, and the copy read a crop of its oversized backing image
+instead of a resolved one. `SurfaceBinding` now remembers the scale factor its image was actually created under,
+and the copy route declines a render target whose image does not match the current, unscaled grid (falling back
+to the pre-existing download path, which already handles this correctly). Pixel prediction re-registered against
+this fix; its arms result will post to this PR.
 
 Release note (performance): RalliSport Challenge 2 races and Fable gameplay no longer stall every frame reading a render target back through system memory.
 
