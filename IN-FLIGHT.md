@@ -8,14 +8,14 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `localdrive1018` | claude-sonnet-5 | 2 min | drive: local tools only, act-observe instead of wait-and-fail, learn what to press |
-| `pagesfix1018` | claude-sonnet-5 | 1h 23m |  |
-| `ralli2audio1018` | claude-sonnet-5 | 1h 16m | ralli2audio1018: RalliSport Challenge 2 audio dropouts: the voice processor's guest-memory overhead, producer  |
+| `foldjam1018` | claude-sonnet-5 | 0 min |  |
+| `localdrive1018` | claude-sonnet-5 | 17 min | drive: local tools only, act-observe instead of wait-and-fail, learn what to press |
+| `pagesfix1018` | claude-sonnet-5 | 1h 38m |  |
 
 - **Handhelds:** 1 connected.
   - Nova: free for the queue
   - Thor: held by `lane.local`
-- **Device queue:** 2 waiting, 0 running.
+- **Device queue:** 4 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -125,11 +125,11 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/localdrive1018` | drive: local tools only, act-observe instead of wait-and-fail, learn what to press | `73792d2e58` | 2026-10-18 20:22 |
-| `lane/ralli2audio1018` | ralli2audio1018: RalliSport Challenge 2 audio dropouts: the voice processor's guest-memory overhead, producer timing, au | `723ea67e77` | 2026-10-18 20:12 |
+| `lane/localdrive1018` | drive: local tools only, act-observe instead of wait-and-fail, learn what to press | `6771d8e2cf` | 2026-10-18 20:44 |
 
 ## Recently landed on master
 
+- 2026-10-18 drive: local tools only, act-observe instead of wait-and-fail, learn what to press
 - 2026-10-18 fpsdiag1018: one FPS lane for GTA III, Blinx 2, Fable -- known/not/could-be and a diagnostic tool (#433)
 - 2026-10-18 gta3car1018: GTA III in the car -- the render passes are a feedback-loop copy per draw (#1049)
 - 2026-10-18 dispatcher: dev_push gets a read-only mode for the Nova's SD-card disc pushes
@@ -139,8 +139,5 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-18 perflog1016: a pause-menu switch for the perflog telemetry tier, and a "Mark this moment" button (#433)
 - 2026-10-18 dispatcher: fix the staged-disc push's /mnt/d path so adb.exe can open it
 - 2026-10-18 The compatibility page adds RalliSport Challenge and Mortal Kombat: Shaolin Monks to Playable (92 -> 94)
-- 2026-10-18 compat1018b: drop GTA III and Vice City from Playable (#433, #1049)
-- 2026-10-18 pathfind: a screen-reading agent that drives a title from boot into gameplay
-- 2026-10-18 haloring1017: Halo CE main-menu ring: the static inside surface is the stock driver
 
-_Updated 2026-10-18 20:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 20:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
