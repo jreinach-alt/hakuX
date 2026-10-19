@@ -821,3 +821,64 @@ and the request's `results/<id>/DONE` appears:
    `audio_starve_share`.
 4. Update `FINDINGS.md` and `PR.md` with the measured numbers, and move
    `PR.md`'s `State:` to `ready`.
+
+Attempt 11 (10-18, about 18:58 PDT) -- why attempt 10 did not finish: same
+external wait it correctly named (both the `nova` logical hold and the
+battery floor below the per-run BATTERY-admission need); attempt 10 ended
+correctly on `waiting:`. This attempt found no change in either
+condition, only elapsed time, so there is no new ground to add beyond
+confirming the wait is still live and has not silently resolved.
+
+- Read this file and `git log` first, per the resume brief.
+- `dispatch/hold/nova` is unchanged: still present, still owner tag
+  `lanelocal-offline`, same reason text ("owner 10-18 ~12:00 PDT took the
+  Nova offline for ~5 h (back ~17:00 PDT) ... release when the owner says
+  it is back"). `dispatch/hold/nova.why` content is byte-identical to
+  attempt 10's read. The dispatcher log's two most recent `HELD by
+  .../dispatch/hold/nova` lines (18:42:49, 18:47:44) are both already in
+  attempt 10's record; nothing newer has been appended for nova in the 8
+  minutes since (checked `tail -30 dispatcher.log`, same lines).
+- `dispatch/.battery_level.nova` still reads `11` at mtime/epoch
+  1792374169 = 18:42:49 PDT -- the identical sample attempt 10 already
+  recorded, not a new, higher reading; no fresher sample file exists.
+  Still below the 15.3% need for this lane's queued 870 s pilot under the
+  battery-override floor (`dispatch/hold/nova.battery-override`,
+  unchanged text, expires 06:38 PDT). The dispatcher cannot admit the
+  request from a logical hold either way, so a crossed battery floor
+  alone would not unblock it; both conditions attempt 10 named are still
+  jointly required and still both unmet.
+- `dispatch/queue/` still holds the same three `.req` files (two
+  foldqueue, this lane's pilot `1-1792368418-lane.ralli2audio1018-
+  1108710`, mtime 17:06, unchanged size). `dispatch/running/` is empty.
+  `dispatch/results/` has no new entry for this request id (the only
+  `ralli2audio1018` result present, `...-2335205`, predates this pilot
+  and was already read in an earlier attempt). `dispatch/hold/lifted/`
+  has no entry younger than Sep 28, i.e. still no record of this nova
+  hold being lifted.
+- `dispatch/hold/thor` and `thor.why` are unchanged (`lane.local`,
+  same thermal-test note, same stale "~17:00 PDT" estimate, now well
+  over two hours past it).
+- Branch state unchanged: Work 1-4, `FINDINGS.md`, `PR.md` were already
+  complete entering this attempt; nothing new to build or measure
+  offline exists until the queued request runs. Did not re-queue,
+  cancel, touch either device, or write to any dispatch/hold file.
+
+[lane.ralli2audio1018] waiting: unchanged from attempt 10 -- both (a) the
+`nova` logical hold (`lanelocal-offline`, "release when the owner says it
+is back") and (b) the Nova battery level (`dispatch/.battery_level.nova`
+flat at 11% since 18:42:49 PDT, need 15.3% under the active
+battery-override floor) must clear before the queued request
+`1-1792368418-lane.ralli2audio1018-1108710` can run. Once
+`hold.sh who nova` (or an equivalent read of `dispatch/hold/nova`) reports
+free, the battery clears 15.3%, and the request's `results/<id>/DONE`
+appears:
+
+1. Read `tools/timeline.py results/<id>/logcat.txt --prod`, test `vp=`
+   mean and wall-per-block against the prediction in "The fix the pilot
+   points at" above.
+2. Write the verdict to `pilots/lane.ralli2audio1018.ok` with python3.
+3. If it holds, queue the two default runs for the bar (same route, same
+   race), each scored with `title_verdict.py --require confirmation` plus
+   `audio_starve_share`.
+4. Update `FINDINGS.md` and `PR.md` with the measured numbers, and move
+   `PR.md`'s `State:` to `ready`.
