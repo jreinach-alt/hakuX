@@ -2975,7 +2975,13 @@ static bool s2t_share_on(void)
  * sees another colour target, and for a slot, when the slot binds anything
  * else. A sample of the surface while it is not the colour target copies as
  * before, so a read after the run sees every draw. Plain colour copies only.
- * Unset or "0": a copy per sample, as before.
+ *
+ * #433 (lane.fpsdata1018): mode 2 never changes a pixel (s2t_fb_keep only
+ * answers true for a stage that provably does not read its texture), so it
+ * is now the default; "0" still turns the whole switch off and "1" still
+ * asks for the staleness-risking any-stage mode. See NOTES.md for the
+ * evidence this default is built on (gta3car1018's S1 run) and its limits
+ * (one trial, confounded by unscripted driving traffic).
  */
 static int s2t_fb_state = -1;
 
@@ -2983,7 +2989,7 @@ static int s2t_fb_mode(void)
 {
     if (s2t_fb_state < 0) {
         const char *e = getenv("HAKUX_S2T_FB");
-        s2t_fb_state = e && (e[0] == '1' || e[0] == '2') ? e[0] - '0' : 0;
+        s2t_fb_state = e && e[0] == '0' ? 0 : e && e[0] == '1' ? 1 : 2;
         if (s2t_fb_state == 1) {
             s2t_log("[s2tfb] on mode=1 (any stage)");
         } else if (s2t_fb_state == 2) {

@@ -347,3 +347,62 @@ Next: re-register the pixel prediction against this commit's sha (new a_ref/b_re
 origin/master) and re-queue the arms job before marking PR.md `State: ready`. The fps-side verdict on texscan2d
 (RalliSport 2/Fable) still stands behind this correctness fix -- it was never in question, only the AA-surface
 edge case was.
+
+### GTA III's fence-wait candidate (G3 prediction, before building): HAKUX_S2T_FB default -> mode 2
+
+Already-tried, this exact lever: `lane.gta3car1018` (#1049) built `HAKUX_S2T_FB` and ran a device batch (c2,
+`docs/lanes/gta3car1018/NOTES.md` section 6) but shipped it **off by default** in both modes. What's different
+this time: nothing about the mechanism -- I'm not re-deriving it, I'm reading their result and deciding the
+default. The brief's own scope section names "the fence wait" as GTA III's one supported candidate; that lane's
+section 4.1 ties the fence/pass-stall growth directly to this copy-per-sample loop, so this is that candidate.
+
+**Mechanism** (read in `hw/xbox/nv2a/pgraph/vk/texture.c`, not re-measured): GTA III's in-car scene draws into a
+128x128 colour target it also samples ~140 times/flip at a new `draw_time` each time (`s2c` census,
+gta3car1018 NOTES section 4.1). Before the switch, every sample re-copies the target and ends the render pass:
+~140 of ~150 passes/flip. `HAKUX_S2T_FB=2` lets a slot keep this run's copy across samples whose shader stage
+providably does not read its texture at all (`s2t_fb_stage_reads()`, texture.c:2997 -- NONE/PASS_THROUGH/
+CLIP_PLANE/DOT_PRODUCT combiner modes, checked fresh per sample in `s2t_fb_keep()` at the point of use,
+texture.c:3083-3099). Because the check gates each individual sample against whether that sample's result can
+reach a pixel, this is pixel-safe by construction, independent of scene or title: a kept copy is only ever
+substituted for a sample that could not have changed the rendered image no matter what the copy held.
+
+**Why this will work (evidence chain)**: gta3car1018's `S1` run (NOTES section 6.1, the one clean, un-aborted
+`HAKUX_S2T_FB=2` reading) measured 38.20 rp/flip and 35.89 ms/flip against the same-session `O1` baseline's
+57.11 rp/flip and 40.36 ms/flip -- fewer passes, less frame time, in the same direction as the rp-vs-ms fit in
+their section 4.1 (ms/flip = 30.89 + 0.1309 x rp/flip). `S1`'s own light-traffic third (device clock
+11:30:38-11:30:46) drops to 9-14 rp/flip and **hits the 33.3 ms/flip cap (30 fps)** outright.
+
+**Predicted delta**: GTA III in-car dip windows, rp/flip cut by roughly a third to half of baseline (pattern-
+matching `S1` vs `O1`); `fen`/`rotfen` (the GPU wait that scales with pass count per section 4.1) down by a
+comparable fraction; light-traffic moments reaching 30 fps, heavy-traffic moments still short of it (their own
+section 6.3: "the fence wait and stalled finishes... are still 10-15 ms/flip in S1's heavy-traffic windows" --
+this is NOT a full fix for the dip, only for the part this mechanism owns).
+
+**What it cannot help**: Fable (Fin/zeta-and-mip-download pattern, Fix #1's `tobuf`), Blinx 2 (`Surf`-time,
+no texture-download or self-sampling pattern in its capture), RalliSport 2 (Fin, also Fix #1). None of those
+three titles' captures show a surface sampled as its own bound texture; this lever is GTA III-specific by the
+mechanism itself (a feedback loop that only exists when the current colour target is also a bound texture).
+
+**What would falsify this**: a repeat in-car A/B (below) showing no rp/flip or fen drop relative to a same-
+session off baseline, or any pixel movement in a host suite run with the switch on (should be impossible by the
+stage-reads gate, but the previous lane never registered a pixel prediction for it -- doing that here, below,
+rather than taking the "pixel-safe by construction" argument on faith alone).
+
+**Why default now, not another opt-in switch**: the only reason the prior lane left it off was "neither [mode]
+proven the better default yet" from a single trial per mode confounded by unscripted driving traffic (their
+section 6.3) -- not a correctness doubt. Mode 2's safety argument is structural, not statistical; the open
+question was only the *size* of the win under traffic variance, which is a reason to confirm with a cleaner,
+repeated device A/B (below), not a reason to leave a correctness-safe, already-measured-net-positive lever off
+by default while this lane is explicitly judged on landed fixes. `HAKUX_S2T_FB=0` still exists for anyone who
+wants the old per-sample-copy behaviour back; `=1` still exists for the unsafe any-stage mode, now opt-in only.
+
+Change made: `s2t_fb_mode()` (texture.c ~2982) now defaults unset/unrecognized `HAKUX_S2T_FB` to mode 2 instead
+of off; explicit `"0"` still forces it off, explicit `"1"` still forces the any-stage mode. Typechecked clean
+(rc=0, no new warnings, same pre-existing shift/unused-variable warnings as before).
+
+Pixel-safety prediction registered separately (`docs/testing/predictions/fpsdata1018-s2tfb2-pixels.json`,
+`must_not_move` across the surface/texture/render-target suites `S2T_FB` can reach) rather than relying on the
+stage-reads argument unverified. Device A/B queued as a 2-repeat batch (not the prior single noisy trial) against
+the Nova's GTA III in-car save state, to separate the switch's effect from traffic variance this time; see
+PR.md for the request. Nova is currently held by `lane.pathfind`; this is a dispatcher queue entry, not a direct
+device touch, so it runs whenever the hold clears -- not something this lane idles waiting on.
