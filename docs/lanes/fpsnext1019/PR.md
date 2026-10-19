@@ -3,7 +3,7 @@
 State: ready
 
 Lane: fpsnext1019            Issue: #433
-Base: master @ 913e1524ff (fpsdata1018, foldjam1018, compat1019b and nova-tiers1019's folds landed on master; merged in)
+Base: master @ d30f91349b (fpsdata1018, foldjam1018, compat1019b and nova-tiers1019's folds landed on master, plus this lane's own attempt-4 fold; merged in)
 Files: docs/lanes/fpsnext1019/NOTES.md, docs/lanes/fpsnext1019/PR.md, docs/lanes/fpsnext1019/FINDINGS.md, hw/xbox/nv2a/pgraph/vk/texture.c, hw/xbox/nv2a/pgraph/vk/surface.c
 Prediction: none: ab_compare.py's golden-capture registration does not fit a GTA III driving-scene fps claim (no
   golden exists for it). The falsifiable prediction that mattered (NOTES.md, "one guard dominates wrej[], likely
@@ -59,7 +59,14 @@ zero census lines against a plain debug build; `opt_stats_log_and_reset()` compi
 **0.504**, not the 1.0 ("6/6") Addendum 2 set as the bar for building an unconditional download-skip lever --
 close to half of every window's evicted-and-downloaded content is real feedback a later stage reads, so the
 lever is **not built**. A conditional, per-binding skip is the next-ranked option if this is picked back up, not
-started this attempt. Detail in `docs/lanes/fpsnext1019/NOTES.md`; per-title table in `FINDINGS.md`.
+started this attempt. RalliSport 2: read back fpsdata1018's landed `HAKUX_TEXSCAN2D` default against real
+gameplay for the first time (previously only pixel-sanity-proven) -- on the kept dispatcher route, the ON arm
+shows zero `sdown` (deferred-download fence-wait) in every driving-phase window and a 59.0fps mean, the OFF arm
+(`HAKUX_TEXSCAN2D=0`) shows `sdown` in 63/63 driving windows and a 38.2fps mean, same route, only the env var
+differs -- confirmed on real data, nothing further to do on this lever. (Both arms still show `sdown` on
+pre-race menu/flyover screens; the claim is scoped to the driving phase, which is what the bar measures.) Fable's
+half of this read-back (`HAKUX_S2T_FB` mode 2 against `tobuf`) is not yet done. Detail in
+`docs/lanes/fpsnext1019/NOTES.md`; per-title table in `FINDINGS.md`.
 
 Release note (performance): GTA III driving scenes do fewer GPU render passes per frame (a texture copy the
 renderer was already built to avoid, but had never been turned on, now runs by default); measured as an fps
