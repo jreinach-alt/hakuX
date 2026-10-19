@@ -353,3 +353,66 @@ Also fixed in passing: `pathclass.py`'s module docstring (lines ~16-18) still sa
 `Unavailable` falls back to "the language model" -- stale since Part A removed that path entirely,
 missed by Part A's grep gate because it has no banned literal string. Corrected to describe the
 actual behavior (`Unavailable` -> a ROUTE FAIL via drive.py, never a model fallback).
+
+## Resume 2026-10-18 ~19:08 PDT (attempt 3): why attempt 2 did not finish, and a false alarm chased down
+
+Attempt 2 did not fail -- it ended correctly, on a legitimate `WAITING` line, with A+B+C at
+`State: ready` and Part D's two offline-buildable crops done and verified. "Did not finish" here
+means only: Part D's device-dependent pieces (route, Save-row crop, car-entry crop, the held-out
+false-gameplay number) were still blocked on a device, same as before. Re-checked at resume:
+
+- **Thor**: went back on FULL hold at owner order, ~19:15 PDT (`dispatch/hold/thor.why`, refreshed
+  19:12:08 PDT, arrived mid-session as a live file change): "the thermal test and GTA driving soaks
+  are over: the Thor has none of the Nova's GTA III save states, so no GTA work on it. Nova only;
+  only the owner lifts this." This forecloses the Thor for GTA III work entirely, not just "lane.local
+  has it right now" -- there is no save state on that device to resume a GTA III run from, so even
+  once released it is not useful for this title.
+- **Nova**: still held, unchanged since 18:42:56 PDT (`dispatch/hold/nova.why`): "release when the
+  owner says it is back" -- the original "~17:00 PDT" was an estimate inside that same note, not a
+  release condition; `adb devices -l` shows `ee317437` present on the bus (as it did before), but
+  presence is not the release signal here, the owner's word is (memory
+  `device-presence-needs-a-live-listing` cuts the other way -- don't trust a stale doc over a live
+  check -- it does not say presence overrides an explicit hold). No device is available to this lane
+  this session either.
+
+**A false alarm, chased down before trusting it**: `git log --all` in this worktree surfaced a
+commit `847cd3e734` ("territory: retire localdrive1018, add fpsdiag1018") and this harness's own
+auto-memory (`one-fps-lane-fpsdiag-1018.md`) says the owner ordered this lane stopped at ~15:15 PDT
+in favor of a single `fpsdiag1018` lane. Taken at face value this would mean the whole brief below
+is moot and attempt 2 should never have kept committing past 15:15 PDT. Checked rather than trusted
+(a brief/memory claim of this size is exactly the kind of thing that needs a current-state check,
+not a rerun of the same assumption):
+
+- `847cd3e734` is **not an ancestor of this lane's HEAD, and not an ancestor of `origin/master`**
+  (`git merge-base --is-ancestor` on both, confirmed false) -- it exists only on a local `board`
+  branch ref in this worktree's repo, which is not the canonical territory ledger.
+- The canonical ledger is the nested repo `/home/justin/hakux-work/board-wt`, branch `origin/board`.
+  Its actual history for both lane names, oldest to newest:
+  `9d4906d1fb` (15:12:29 PDT, claim lane.localdrive1018) -> `5ce44336f4` (15:13:12 PDT, release
+  models.py to it) -> `7e8dd1422c` (15:49:26 PDT, **create** lane.fpsdiag1018 as a *separate*,
+  coexisting row, not a replacement) -> `de4d955860` (16:51:22 PDT, fpsdiag1018 released at ready,
+  PR #1081 CI green, unit gone -- that lane finished its own separate scope) -> `aeca499189`
+  (19:01:27 PDT, **widens** lane.localdrive1018's row to add `pathknow/learned.py`, because a fold
+  attempt on this lane's PR at 18:14 PDT was refused as "outside files"). There is no retirement
+  commit for localdrive1018 anywhere in this history -- `[retired.localdrive1018]` does not exist
+  in `board-wt`'s current `territory.toml` (checked directly, grepped for both section names).
+  `docs/testing/preflight.sh`'s `territory` check also came back `ok` this session, which it would
+  not if this lane's files were outside its live row.
+- Conclusion: the retirement was a draft/abandoned take that never reached the canonical board --
+  possibly an early, wrong write during the owner's 15:15 PDT fpsdiag1018 conversation that got
+  corrected within the same hour once hostops saw both scopes were meant to coexist (fpsdiag1018 for
+  the FPS-cause diagnostic tool per the owner's "switch to coding, not gameplay navigation" words;
+  localdrive1018 for the classifier/act-observe rework, a different and already-scoped ask from
+  13:50 PDT). The live board has kept granting and widening this lane's territory as recently as 7
+  minutes before this session started. **Correcting the memory file now** (`one-fps-lane-fpsdiag-
+  1018.md`) so a future session is not sent down this same dead end re-deriving the same check.
+- This also means attempt 2's commits after 15:15 PDT were not a violation of anything live --
+  they match the canonical board the whole time.
+
+**This session's actions**: re-ran `pathclass_selftest.py` and `classify_selftest.py` fresh (0
+failures each, unchanged), merged `origin/master` (session-start hook flagged this checkout 2
+commits behind; the merge was clean, 4 unrelated files from `devpushro1018`'s fold, no conflicts),
+re-ran both selftests again post-merge (0 failures each, unchanged), and ran `docs/testing/
+preflight.sh` (passed, including `territory ok`). No code change was needed or made -- Part D's
+remaining pieces are still genuinely device-gated, and nothing offline was left undone. Refreshing
+`WAITING` with the current findings instead of re-deriving the same device check next time.
