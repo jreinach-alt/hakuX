@@ -599,3 +599,40 @@ directly: the role rules this lane runs under say device access goes through `re
 worker is infra the harness's own jam-duty role (lane.local's inbox instructions: "a device idle
 while work is queued ... -> find why and restart the runner") is positioned to do, with the
 authority and context this lane does not have. Named here instead of guessed around.
+
+## Resume 2026-10-18 ~20:49 PDT (attempt 5, labelled "attempt 3" in this dispatch's header):
+why attempt 4 did not finish, and the two things that changed underneath it
+
+Attempt 4 did not fail -- it ended correctly on `WAITING` (commit `6771d8e2cf`), naming a specific,
+source-confirmed infra gap (no `dispatcher.sh worker ee317437` process for the Nova, so the queued
+probe request `1-1792380791-localdrive1018-729348` could not run no matter how long it sat) and
+handing that off to jam duty rather than guessing around it, per this role's own rule that device
+workers are hostops's to restart, not a lane's. That is a finished-session outcome, not a failure.
+
+Two things have changed since, checked live rather than trusted from the note: (1) **master now
+has a fold of this lane's own PR** -- `git log HEAD..origin/master` shows `72af9cb92c "fold:
+lane/localdrive1018 ... drive: local tools only, act-observe instead of wait-and-fail, learn what
+to press"`, folded from this branch's state as of `73792d2e58` (A+B+C+D-partial, the state PR.md
+currently describes). This branch's two newest commits (`7a7b330470` the probe route, `6771d8e2cf`
+the WAITING note) postdate that fold snapshot and are not in it -- they are this lane's live
+increment on top of already-folded work, not yet folded themselves. No action needed from this
+fact alone (the board/fold job owns when to pick up the rest); noted so a future resume does not
+mistake "master has a `fold: lane/localdrive1018` commit" for "this lane is done" -- two commits'
+worth of work (the probe route + the still-pending device evidence it exists to gather) are still
+open on this branch. (2) **the Nova worker is back**: `pgrep -af "dispatcher.sh worker"` now shows
+TWO processes, `bdc158a5` (Thor, pid 670426) and `ee317437` (Nova, pid 987498) -- jam duty (or a
+hostops tick) restarted it since attempt 4's check, confirming the diagnosis was right and this was
+exactly the kind of gap that role is positioned to fix. `dispatch/hold/` no longer has a `nova` or
+`nova.why` file (unchanged from attempt 4); it does now have `lifted` (a dir) and
+`nova.battery-override` (owner, 2026-10-18 18:40 PDT, "Nova may be dispatched from 10%", expires
+06:38 PDT -- per memory `nova-battery-floor-5-owner-1018`, not something this lane needs to act on,
+just context for why the Nova is usable at whatever charge it is at right now).
+
+My probe request is still in `dispatch/queue/` (`1-1792380791-localdrive1018-729348.req`,
+unchanged, `ref 73792d2e58` -- still valid, that commit is on both this branch and `origin/master`
+now), one slot behind `lane.ralli2audio1018`'s own 870 s request (`1-1792380737-...-709884`,
+queued 20:32:18 PDT, same device, same `priority: study` tier, FIFO -- not release-priority like
+mine, but queued one minute earlier so it goes first), which `dispatch/running/` shows as the
+device's current job. No action to take here beyond waiting for FIFO to reach mine: this is a
+normal queue turnaround, not the attempt-4 infra gap (that gap was "no worker process exists";
+this is "a worker exists and is busy," the ordinary case `request.sh` is built for).
