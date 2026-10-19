@@ -556,3 +556,58 @@ the request's `results/<id>/DONE` appears:
    `audio_starve_share`.
 4. Update `FINDINGS.md` and `PR.md` with the measured numbers, and move
    `PR.md`'s `State:` to `ready`.
+
+Attempt 7 (10-18, about 18:06 PDT) -- why attempt 6 did not finish: same
+external wait as attempts 3-6 (the Nova physically absent from the
+dispatch host), re-checked and still true; attempt 6 ended correctly on
+`waiting:`, which is a finished session, not a stall.
+
+- Read this file and `git log` first, per the resume brief.
+- Re-checked every input, this time also reading the dispatcher's own
+  service state directly instead of only its log: `hold.sh who nova` ->
+  `free: nova` (unchanged); `dispatch/hold/` has only `thor` and
+  `thor.why`, no `nova` file. `adb devices -l` shows only `bdc158a5`
+  (thor). `systemctl --user status hakux-dispatcher` shows the service
+  itself is alive and healthy -- active (running) since 2026-10-18
+  12:06:54 PDT, 5h59m uptime at check time -- but its own worker list
+  under that cgroup shows a worker for `bdc158a5` only, no `ee317437`
+  worker: the service did not crash or hang, it simply has never seen the
+  Nova on the bus since its last restart, consistent with the log's silence
+  since 12:06:56 PDT (log-mtime matches service start, so the log was not
+  going stale on its own -- there has been nothing to log). This is a
+  sharper version of attempt 6's finding, not a new fact: the wait is
+  device-presence, not dispatcher-health, and nothing inside this session
+  can make the Nova physically reconnect.
+- `dispatch/queue/1-1792368418-lane.ralli2audio1018-1108710.req` is still
+  present, unclaimed, 3801 bytes, mtime 17:06 (last touched by attempt
+  3's `request.sh` submission plus whatever re-stat the queue walker did);
+  nothing in `running/` or `results/` for it.
+- `hold.sh who thor` is unchanged (lane.local, same thermal-test note,
+  due back "about 17:00 PDT"); current time 18:06 PDT is now about 1h06m
+  past that estimate.
+- Branch state unchanged: Work 1-3, the `vp.c` fix, `FINDINGS.md` and
+  `PR.md` were already complete entering this attempt; nothing new to
+  build or measure offline exists until the queued request runs. Did not
+  re-queue, cancel, or touch either device.
+
+[lane.ralli2audio1018] waiting: dispatch request
+`1-1792368418-lane.ralli2audio1018-1108710` (the cold-cache pilot on
+`ec7e06c467`, nova, 870s, `HAKUX_PLC_WIPE=1`), queued but unclaimed
+because the Nova is not yet physically reconnected to the dispatch host.
+The dispatcher service itself is confirmed healthy (active since 12:06:54
+PDT, correctly running a Thor worker); it has simply never seen the Nova
+since that restart. Thor's hold note said the Nova would be back "about
+17:00 PDT" for the thermal test; as of 18:06 PDT that estimate is 1h06m
+overdue and the Nova is still absent from `adb devices -l`. Once
+`adb devices -l`/`devices.sh list` shows the Nova again and the request's
+`results/<id>/DONE` appears:
+
+1. Read `tools/timeline.py results/<id>/logcat.txt --prod`, test `vp=`
+   mean and wall-per-block against the prediction in "The fix the pilot
+   points at" above.
+2. Write the verdict to `pilots/lane.ralli2audio1018.ok` with python3.
+3. If it holds, queue the two default runs for the bar (same route, same
+   race), each scored with `title_verdict.py --require confirmation` plus
+   `audio_starve_share`.
+4. Update `FINDINGS.md` and `PR.md` with the measured numbers, and move
+   `PR.md`'s `State:` to `ready`.
