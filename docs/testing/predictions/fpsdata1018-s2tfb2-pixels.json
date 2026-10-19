@@ -1,10 +1,10 @@
 {
-  "registered_utc": "2026-10-19T08:00:25Z",
+  "registered_utc": "2026-10-19T08:47:41Z",
   "who": "lane.fpsdata1018",
   "issue": "433",
-  "prediction": "#433: HAKUX_S2T_FB now defaults to mode 2 instead of off (texture.c s2t_fb_mode(), was gta3car1018/#1049's opt-in switch). Mode 2 lets a slot keep this run's cached surface-to-texture copy across samples, but only for a sampling stage whose shader program provably does not read its texture at all (s2t_fb_stage_reads: NONE/PASS_THROUGH/CLIP_PLANE/DOT_PRODUCT combiner modes), checked fresh per sample in s2t_fb_keep() at the point of use. A kept copy is only ever substituted for a sample whose result cannot reach a pixel, independent of what the copy holds -- the switch should not move a single pixel on any capture, on this desktop disc or any other, because this disc's suites either never hit the surface-samples-itself pattern (most captures) or, where a render target is sampled while still the bound colour target (Texture_render_target::RenderTextureLoop, gta3car1018 NOTES section 5: 'draws once per binding, so the first sample copies and nothing is kept'), the run's only sample is never a repeat so the cache is never consulted. PREDICTION: zero differing captures between a_ref and b_ref across this entire disc; any movement anywhere falsifies the stage-reads safety argument, not just this title's use of it.",
+  "prediction": "#433: HAKUX_S2T_FB defaults to mode 2 (texture.c s2t_fb_mode()), re-registered on b6064d61cc after the first cut FAILed. A = 41c613c22a (default still off). B = b6064d61cc, which carries fa4cca9241 (default -> mode 2) PLUS this commit's fix: s2t_fb_stage_reads() dropped PS_TEXTUREMODES_DOTPRODUCT (0x11) from its 'does not read' set. fa4cca9241 alone FAILed 24/472 checks (Antialiasing_tests/CPUWriteIgnoresSurfaceConfig 0->45056 px, plus 23 Texture_shadow_comparator captures) because a DOT_PRODUCT-mode stage sampling the current colour target was told it could keep a stale copy -- psh.c's dotmap_src() proves that mode reads the stage's own texel (the dot-product input), unlike NONE/PASS_THROUGH/CLIP_PLANE, which emit constants or need no texture at all. With DOT_PRODUCT removed from the set, every stage mode 2 now keeps a cached copy for is one that psh.c itself never reads a texel from, so the same stage-reads argument the first cut made (now actually true of every included mode) predicts zero differing captures between A and B. Read from B's logcat, not predicted: '[s2tfb] on mode=2 (stages that do not read)'. A moved capture anywhere refutes this fix and blocks the change until explained region by region.",
   "a_ref": "41c613c22a",
-  "b_ref": "fa4cca9241",
+  "b_ref": "b6064d61cc",
   "must_not_move": [
     "Antialiasing_tests/*",
     "Blend_surface/*",
@@ -60,7 +60,6 @@
     ],
     "only_tests": [],
     "source": "/home/justin/hakux-work/dispatch/results/1-1792389196-arms-fpsdata1018-base-3521751/request.json",
-    "source_request": "1-1792389196-arms-fpsdata1018-base-3521751",
-    "disc_id_seen": "35-suites:2c63c615:3D_primitive,Antialiasing_tests,Blend_su"
+    "source_request": "1-1792389196-arms-fpsdata1018-base-3521751"
   }
 }
