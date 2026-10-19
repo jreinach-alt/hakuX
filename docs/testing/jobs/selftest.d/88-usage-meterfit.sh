@@ -93,7 +93,7 @@ import meter
 
 work, projects, now = '$UF/work', '$UF/projects', float($UF_NOW)
 old_fit = meter.fit_prices(work)
-samples = meter.collect_fit_samples(work, projects)
+samples = meter.collect_fit_samples(work, projects, now=now)
 new_fit = meter.fit_prices_transcripts(samples, now)
 old_opus = old_fit['claude-opus-5-5']
 new_opus = new_fit['claude-opus-5-5']
@@ -113,7 +113,7 @@ work, projects, now = '$UF/work', '$UF/projects', float($UF_NOW)
 # The mutant: feed fit_prices_transcripts the run's modelUsage eq (1000) in
 # place of its transcript eq (900) for every sample -- i.e. undo the #433
 # fix and go back to pricing a modelUsage token against itself.
-samples = meter.collect_fit_samples(work, projects)
+samples = meter.collect_fit_samples(work, projects, now=now)
 mutant_samples = []
 for mtime, model, cost, eq in samples:
     if model == 'claude-opus-5-5':
@@ -132,7 +132,7 @@ sys.path.insert(0, '$HERE/usage')
 import meter
 
 work, projects, now = '$UF/work', '$UF/projects', float($UF_NOW)
-samples = meter.collect_fit_samples(work, projects)
+samples = meter.collect_fit_samples(work, projects, now=now)
 fit = meter.fit_prices_transcripts(samples, now)
 fable = fit['claude-fable-5-1']
 want = 10.0 / 1900.0
@@ -147,7 +147,7 @@ import sys
 sys.path.insert(0, '$HERE/usage')
 import meter
 
-samples = meter.collect_fit_samples('$UF/work', '$UF/projects')
+samples = meter.collect_fit_samples('$UF/work', '$UF/projects', now=float($UF_NOW))
 assert not any(model == 'claude-haiku-4-5-20251001' for _, model, _, _ in samples), samples
 "
 
@@ -164,6 +164,106 @@ assert abs(merged['claude-haiku-4-5-20251001'] - old_fit['claude-haiku-4-5-20251
     ('a model with no transcript-fit data must keep fit_prices()\'s own number unchanged', merged, old_fit)
 assert abs(merged['claude-haiku-4-5-20251001'] - 2.0/2000) < 1e-9, merged
 "
+
+# Falsifier for the 10-19 time bomb: case 2 above already proves the fix
+# against TODAY's real gap (UF_NOW is a fixed calendar date, and the real
+# gap to wall-clock only grows) -- this proves it against a gap deliberately
+# pushed far past the 14-day edge, so the check does not itself start
+# failing again once the real gap grows past 14 days too.
+UH="$T/usagemeterfit-faredge"; rm -rf "$UH"
+mkdir -p "$UH/work/logs/lane" "$UH/projects/-home-justin-hakux-work-wt-meterfix"
+export HAKUX_WORK="$UH/work" HAKUX_CLAUDE_PROJECTS="$UH/projects"
+UH_NOW=$(( $(date +%s) - 30 * 86400 ))
+
+python3 - "$UH/work/logs/lane" "$UH/projects/-home-justin-hakux-work-wt-meterfix" "$UH_NOW" <<'PY'
+import datetime, json, os, sys
+
+logs_dir, proj_dir, now = sys.argv[1], sys.argv[2], int(sys.argv[3])
+
+def write_run(name, session_id, model, cost, mu_eq_tokens, age_s):
+    path = os.path.join(logs_dir, name + ".json")
+    with open(path, "w") as fh:
+        json.dump({"session_id": session_id, "modelUsage": {
+            model: {"inputTokens": mu_eq_tokens, "cacheCreationInputTokens": 0,
+                    "cacheReadInputTokens": 0, "outputTokens": 0, "costUSD": cost}}}, fh)
+    mtime = now - age_s
+    os.utime(path, (mtime, mtime))
+
+def write_transcript(session_id, model, input_tokens, age_s):
+    path = os.path.join(proj_dir, session_id + ".jsonl")
+    ts = datetime.datetime.fromtimestamp(now - age_s, datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    with open(path, "w") as fh:
+        fh.write(json.dumps({"type": "assistant", "timestamp": ts,
+                              "message": {"id": "msg-" + session_id, "model": model,
+                                          "usage": {"input_tokens": input_tokens,
+                                                    "cache_creation_input_tokens": 0,
+                                                    "cache_read_input_tokens": 0,
+                                                    "output_tokens": 0}}}) + "\n")
+
+# Same shape as case 2 (fallback): one run 1h old, one 5 days old, both ages
+# measured from UH_NOW -- which is itself pinned 30 real days in the past.
+write_run("faredge-recent", "sid-faredge1", "claude-fable-5-1", 1.0, 100, 3600)
+write_transcript("sid-faredge1", "claude-fable-5-1", 100, 3600)
+write_run("faredge-older", "sid-faredge2", "claude-fable-5-1", 9.0, 1800, 5 * 86400)
+write_transcript("sid-faredge2", "claude-fable-5-1", 1800, 5 * 86400)
+PY
+
+check "falsifier: a fixture clock pinned 30 real days in the past still gets the combined 14-day fit, because the cutoff is measured from the fixture's own now= and not wall-clock" \
+    python3 -c "
+import sys
+sys.path.insert(0, '$HERE/usage')
+import meter
+
+work, projects, now = '$UH/work', '$UH/projects', float($UH_NOW)
+samples = meter.collect_fit_samples(work, projects, now=now)
+fit = meter.fit_prices_transcripts(samples, now)
+fable = fit['claude-fable-5-1']
+want = 10.0 / 1900.0
+assert abs(fable - want) < 1e-9, ('must be the combined 14-day fit even 30 real days later', fable, want)
+"
+
+check "falsifier's MUTANT -- reinstate collect_fit_samples's pre-#433 cutoff (always wall-clock, the now= argument silently ignored) and the far-past fixture's model drops out of the fit entirely" \
+    python3 -c "
+import sys, glob, json, os, time
+sys.path.insert(0, '$HERE/usage')
+import meter
+
+work, projects, now = '$UH/work', '$UH/projects', float($UH_NOW)
+
+def broken_collect_fit_samples(work_dir, projects_dir, max_age_days=14):
+    cutoff = time.time() - max_age_days * 86400   # the pre-#433 bug: now= ignored
+    samples = []
+    for f in glob.glob(os.path.join(work_dir, 'logs', '**', '*.json'), recursive=True):
+        try:
+            mtime = os.path.getmtime(f)
+            if mtime < cutoff:
+                continue
+            r = json.load(open(f))
+        except Exception:
+            continue
+        if not isinstance(r, dict):
+            continue
+        mu = r.get('modelUsage') or {}
+        sid = r.get('session_id')
+        if not mu or not sid:
+            continue
+        eq_by_model = meter.transcript_eq(projects_dir, sid)
+        if eq_by_model is None:
+            continue
+        for model, u in mu.items():
+            cost = u.get('costUSD')
+            eq = meter._eq_for_billing_model(eq_by_model, model)
+            if cost and eq:
+                samples.append((mtime, model, cost, eq))
+    return samples
+
+samples = broken_collect_fit_samples(work, projects)
+fit = meter.fit_prices_transcripts(samples, now)
+assert 'claude-fable-5-1' not in fit, \
+    ('mutant must drop the far-past fixture model entirely: if this fails the mutant is not exercising the 10-19 bug', fit)
+"
+
+export HAKUX_WORK="$UF/work" HAKUX_CLAUDE_PROJECTS="$UF/projects"
 
 echo "== meter.py: old-format state migrates on the first tick; the latest calibration recomputes, its percent/utc do not"
 UG="$T/usagemeterfit-migrate"; rm -rf "$UG"

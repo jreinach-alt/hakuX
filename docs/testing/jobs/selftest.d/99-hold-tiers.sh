@@ -109,15 +109,18 @@ check "(e) hold/nova itself is gone too" htr_gone "$HTIER_D/hold/nova"
 # (c) yield-check: a sweep hold in force, then a 1-* request appears.
 check "(c) sweep take (setup) exits 0" htr_rc 0 take nova --tier sweep lane.c screening
 check "(c) yield-check with nothing queued exits 0 (keep going)" htr_rc 0 yield-check nova lane.c
-# Age is read from the id's own epoch, so "59s old" and "61s old" are just
+# Age is read from the id's own epoch, so "30s old" and "90s old" are just
 # different epochs in the fixture's filename -- no sleeping in the fixture.
+# Margins wide of HOLD_YIELD_S=60 (30s short, 90s past) so the few seconds a
+# loaded multi-shard run can spend between htr_now and the age.sh/yield-check
+# process actually reading the clock cannot flip either side of the edge.
 htr_now=$(date +%s)
-mk_req "1-$(( htr_now - 59 ))-fps.young"
-check "(c) a 1-* request 59s old does not yield yet (exit 0)" htr_rc 0 yield-check nova lane.c
-rm -f "$HTIER_D/queue/1-$(( htr_now - 59 ))-fps.young.req"
-mk_req "1-$(( htr_now - 61 ))-fps.old"
-check "(c) the same request at 61s old does yield (exit 7)" htr_rc 7 yield-check nova lane.c
-rm -f "$HTIER_D/queue/1-$(( htr_now - 61 ))-fps.old.req"
+mk_req "1-$(( htr_now - 30 ))-fps.young"
+check "(c) a 1-* request 30s old does not yield yet (exit 0)" htr_rc 0 yield-check nova lane.c
+rm -f "$HTIER_D/queue/1-$(( htr_now - 30 ))-fps.young.req"
+mk_req "1-$(( htr_now - 90 ))-fps.old"
+check "(c) the same request at 90s old does yield (exit 7)" htr_rc 7 yield-check nova lane.c
+rm -f "$HTIER_D/queue/1-$(( htr_now - 90 ))-fps.old.req"
 # any 0-* yields at once, regardless of age
 mk_req "0-$htr_now-blocker.now"
 check "(c) a brand-new 0-* request yields immediately (exit 7)" htr_rc 7 yield-check nova lane.c
