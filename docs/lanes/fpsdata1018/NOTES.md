@@ -960,3 +960,14 @@ new ones). Re-registering `fpsdata1018-texscan2d-pixels.json` a fifth time (`a_r
 pixel-safety falsifier, not a ride on Fix #1's already-spent one.
 
 Added to the Already-tried table (row 27): this gap, found while investigating a flake, not the flake's cause.
+
+Pushed (`c4560f2ab4` + the re-registered prediction, `ae9ea479bc`) and posted `[lane.fpsdata1018] waiting:` on
+PR #1085. Checked `dispatch/queue/`, `dispatch/running/` and `dispatch/results/` fresh: nothing new has been
+queued for either pending prediction yet (`fpsdata1018-texscan2d-pixels.json` @ `c4560f2ab4`, just pushed; `fpsdata1018-s2tfb2-pixels.json` @ `136e8a1723`, pushed earlier this session, also not yet picked up -- the
+most recent arms result on disk for either lever is still `1-1792404008-*`, from before both of these pushes).
+Everything else open in this lane is also an external wait already recorded in PR.md: GTA III's in-car fps
+size (owner capture, no scripted route to the save state), Fable's H2 download-skip lever (needs the owner's
+`[edl]` capture before it can be built safely), and Blinx 2's H4 (blocked on the host-wide `drive generic`
+harness bug, flagged on PR #1085, outside this lane's files). **WAITING**: the arms job to queue and finish
+both pending prediction pairs above; nothing further to build until one of those lands or an owner capture
+arrives.
