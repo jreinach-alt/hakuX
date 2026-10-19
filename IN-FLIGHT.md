@@ -8,7 +8,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `fpsdata1018` | claude-opus-5-5 | 8 min | fpsdata1018: FPS dip causes in the 4-title owner capture, and fixes (#433) |
+| `fpsdata1018` | claude-opus-5-5 | 23 min | fpsdata1018: FPS dip causes in the 4-title owner capture, and fixes (#433) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -138,4 +138,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-18 dispatcher: fix the staged-disc push's /mnt/d path so adb.exe can open it
 - 2026-10-18 The compatibility page adds RalliSport Challenge and Mortal Kombat: Shaolin Monks to Playable (92 -> 94)
 
-_Updated 2026-10-18 22:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 22:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
