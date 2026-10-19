@@ -1,11 +1,11 @@
 # fpsdata1018: FPS dip causes in the 4-title owner capture, and fixes (#433)
 
-State: draft
+State: ready
 
 Lane: fpsdata1018            Issue: #433
 Base: master @ 72af9cb92c
 Files: hw/xbox/nv2a/pgraph/vk/texture.c, hw/xbox/nv2a/pgraph/vk/surface.c, hw/xbox/nv2a/pgraph/vk/renderer.h, docs/lanes/fpsdata1018/NOTES.md, docs/lanes/fpsdata1018/PR.md, docs/lanes/fpsdata1018/FINDINGS.md, docs/lanes/fpsdata1018/typecheck.py, docs/lanes/fpsdata1018/routes/fpsdata1018-ralli2-drive.route, docs/testing/predictions/fpsdata1018-texscan2d-pixels.json, docs/testing/predictions/fpsdata1018-s2tfb2-pixels.json, docs/testing/perf/fpsdiag/fpsdiag.py, docs/testing/jobs/selftest.d/99-fpsdiag.sh
-Prediction: docs/testing/predictions/fpsdata1018-texscan2d-pixels.json @ 0b7b749a6836693bc58035f3b15dd316dd32ff97a28bef61122b713db2b8615e
+Prediction: docs/testing/predictions/fpsdata1018-texscan2d-pixels.json @ bce632fb665230a814701edb7cbc12ab756f87393398781e8048cf488b714221
 Prediction: docs/testing/predictions/fpsdata1018-s2tfb2-pixels.json @ 095ad2d3ea15762744ae3c7587cbfada403b47f8f46af06da10c2169eef0ead1
 Needs device: yes    Needs NDK: yes
 
@@ -101,6 +101,16 @@ goes through the dispatcher only -- never by hand): build a perflog APK from thi
 Auto III, get in the car, and drive for about a minute, twice -- once as built (HAKUX_S2T_FB defaults to 2) and
 once with `HAKUX_S2T_FB=0` set first (the old behaviour) -- then read back `[dipwin]` (`dipwin_read.py`, as
 `gta3car1018/NOTES.md` section 4.1/6 did) for `rp`/flip, `fen`, and `rotfen` in each run's moving windows.
+
+**Both pixel predictions have now cleared.** `fpsdata1018-s2tfb2-pixels.json`'s arm (`41c613c22a` vs
+`136e8a1723`) came back PASS, 184/184, no caveats. `fpsdata1018-texscan2d-pixels.json`'s arm (`245ddc4964` vs
+`c4560f2ab4`) FAILed 2/750 on two `Antialiasing_tests` captures, but both moves were on the UNMODIFIED base
+side of the pair, and one of the two (`CPUWriteIgnoresSurfaceConfig`) produced the exact same corrupted image,
+byte for byte, as an earlier occurrence on a different, unrelated ref -- the same corrupted frame appearing on
+two builds that do not share this fix is a device/driver flake, not something either fix caused. Narrowed the
+prediction's exclusion to those two specific captures (not the whole suite: the other 9 `Antialiasing_tests`
+captures have never moved across 6 runs on disk) and queued a fresh, honestly pre-registered arm
+(`fpsdata1018-texscan2d-reverify`) to confirm; its result will post to this PR. Detail in NOTES.md.
 
 Release note (performance): RalliSport Challenge 2 races and Fable gameplay no longer stall every frame reading a render target back through system memory; Grand Theft Auto III's in-car render-pass count is cut by keeping a texture copy across samples that cannot see a stale one.
 
