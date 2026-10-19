@@ -6,14 +6,12 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Right now
 
-| Lane | Model | Running for | Working on |
-|---|---|---|---|
-| `mkdawhite1018` | claude-sonnet-5 | 15 min | mkdawhite1018: Mortal Kombat: Deadly Alliance arena floors and walls draw flat white (#1058) |
+No lane session is running.
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lane.local`
-- **Device queue:** 3 waiting, 1 running.
+- **Device queue:** 2 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -121,9 +119,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Work in progress
 
-| Branch | Topic | Tip | Last change |
-|---|---|---|---|
-| `lane/mkdawhite1018` | mkdawhite1018: Mortal Kombat: Deadly Alliance arena floors and walls draw flat white (#1058) | `b21249eb6c` | 2026-10-19 02:55 |
+No branch is being worked right now.
 
 ## Recently landed on master
 
@@ -136,4 +132,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-18 dispatcher: dev_push gets a read-only mode for the Nova's SD-card disc pushes
 - 2026-10-18 home branch root: move chart.svg/chart2.svg/COPYING.LIB under docs (#433)
 
-_Updated 2026-10-19 04:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-19 04:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
