@@ -3049,6 +3049,7 @@ static struct {
     unsigned int draw_time;     /* the node's, as the copy left it */
     int frame;
     unsigned int run;
+    unsigned int scale;         /* pg->surface_scale_factor, as the copy left it */
 } s2t_fb_memo[NV2A_MAX_TEXTURES];
 
 static const SurfaceBinding *s2t_fb_target;
@@ -3127,6 +3128,7 @@ static void s2t_fb_record(PGRAPHState *pg, int texture_idx,
     s2t_fb_memo[texture_idx].draw_time = snode->draw_time;
     s2t_fb_memo[texture_idx].frame = pg->frame_time;
     s2t_fb_memo[texture_idx].run = s2t_fb_run;
+    s2t_fb_memo[texture_idx].scale = pg->surface_scale_factor;
 }
 
 /* The slot's copy of the colour target serves this sample too */
@@ -3146,6 +3148,25 @@ static bool s2t_fb_keep(PGRAPHState *pg, int texture_idx,
            m->surface == surface && m->s_view == surface->image_view &&
            m->draw_time == snode->draw_time &&
            m->frame == pg->frame_time && m->run == s2t_fb_run &&
+           /*
+            * #433 arms FAIL on b50667ac35's own re-registration:
+            * Antialiasing_tests/CPUWriteIgnoresSurfaceConfig moved exactly
+            * 45,056 bytes, the same capture and byte count as Fix #1's
+            * image_scale regression (see texscan_plan's s->image_scale != 1
+            * check above). The memo's copy was taken by copy_surface_to_texture(),
+            * which sizes its vkCmdCopyImage region by multiplying surface->
+            * width/height by pg->surface_scale_factor *as read at copy time*
+            * (texture.c:1339-1340). This test reconfigures the surface (and so
+            * the scale factor) by a CPU write with no intervening draw, so
+            * surface->draw_time and snode->draw_time -- the only staleness this
+            * memo checked -- do not move, and the slot kept a copy sized for
+            * the scale in force when it was taken instead of the scale in
+            * force now. Refuse the memo once the scale has moved since the
+            * copy was made; a sample with surface->draw_time == snode->
+            * draw_time already skips this function and reuses the surface's
+            * own current view directly (line ~4376), which has no such gap.
+            */
+           m->scale == pg->surface_scale_factor &&
            snode->current_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 }
 

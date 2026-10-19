@@ -366,6 +366,7 @@ NOTES (newer than master's); ralli = `wt/ralli2audio1018/docs/lanes/ralli2audio1
 
 | 24 | `HAKUX_S2T_FB` mode 2 (GTA III in-car fix): its pixel prediction FAILed on the same lever before landing clean -- DOT_PRODUCT misclassified as a non-reading combiner mode, a real regression (Pixel FAIL #2, `Antialiasing_tests/CPUWriteIgnoresSurfaceConfig` moved) | `Antialiasing_tests` | arms `--expect`, 24/472 then 0/472 (after DOT_PRODUCT excluded; the remaining `Texture_shadow_comparator` moves are noise, see row 25) | 1 arms pair, this lever | landed once the DOT_PRODUCT mechanism was excluded; `s2t_fb_record()` also gained the shadow-comparator-format exclusion `texscan_shape_ok()` already needed (correct on the code reading, kept, but not provable by this suite's single-run arm -- row 25) | this file, "Pixel FAIL #2" |
 | 25 | `Texture_shadow_comparator` as a `must_not_move` suite in a single-run `--expect` pixel prediction: used three times this lane (texscan2d, S2T_FB mode 2 x2) and FAILed every time (23/1038, 24/472, 21/472) including on an already-landed fix (17/1038 re-check of `b46f4cb8d3`) | same 4 arms pairs above, plus a 3-way same-ref sweep (`245ddc4964`, zero code change) | `sweep_agreement.py` across 3 same-ref runs: 89/1038 disagree, 100% `Texture_shadow_comparator`, zero elsewhere; one capture (`2F16_..._15.0000_GT`) reproduces the identical `480->400` transition under two unrelated fixes | 3 same-ref device runs already on disk, no new device time spent | **this suite cannot be gated by a single-run arm**: it disagrees with itself ~8.6% of the time with no code change. Drop it from `must_not_move` in any future prediction against this suite; use `--runs N` + `sweep_agreement.py` (or a majority-of-N vote) if a real claim about it is ever needed | this file, "Noise floor measured" |
+| 26 | `HAKUX_S2T_FB` mode 2's depth-excluded re-registration (`b50667ac35`) still FAILed: `s2t_fb_memo[]` had no check that `pg->surface_scale_factor` matched between record and keep, so a slot could reuse a copy sized for a stale scale after a CPU-write reconfigure that never bumps `draw_time` | `Antialiasing_tests` | `ab_compare.py`, 1/184, `CPUWriteIgnoresSurfaceConfig` 0 -> 45,056 -- byte-for-byte the same capture and count as row 22's/Fix #1's `image_scale` regression, a different cache (`s2t_fb_keep`) taking the same raw-copy route (`copy_surface_to_texture`) | 1 arms pair, this lever (`1-1792404006-*`) | fixed: `s2t_fb_memo[].scale` recorded at copy time, checked at keep time, same precedent as Fix #1's `image_scale` and row 24's depth exclusion | this file, "Pixel FAIL #4" |
 
 Correction carried from the research pass: `L/fpsdiag1018/FINDINGS.md` 2 item 4 credits "R3 -0.9 fps"; README gives
 -0.3 (b2) and -0.9 (b4) both to R2 vs R1, and R3 no fps number (dup 0, inert).
@@ -803,3 +804,63 @@ driving"). This lane's device rules (G6) are dispatcher-only, never by hand, so 
 itself. That is why PR.md hands the owner a manual capture recipe for this one instead of a device A/B this
 lane ran -- that recipe is the correct and only way to get a repeat reading, not a placeholder for one. The
 pixel-safety prediction above is this lane's actual, dispatcher-verifiable device evidence for the change.
+
+**Resume, this turn**: the previous turn in this attempt ended on a legitimate external wait (`7e5f97de1d`):
+both re-registered pixel predictions were queued (`1-1792404006-*` for s2tfb2 @ `b50667ac35`, `1-1792404008-*`
+for texscan2d @ `b46f4cb8d3`) and neither had a result on disk yet, so there was nothing further to read or
+build without manufacturing busywork (G7's actual stop condition, not a dead end). Checked `dispatch/queue/`,
+`dispatch/running/` and `dispatch/results/` fresh rather than trusting that snapshot: the texscan2d pair
+(`1-1792404008-*`) is still live (base DONE at 03:23Z, fix still queued, unchanged from last turn) -- that wait
+is real and ongoing. The s2tfb2 pair (`1-1792404006-*`) is no longer a wait: both arms finished (base DONE
+03:14Z, fix DONE 03:21Z) since the last turn ended, and no `[job.arms]` comment or verdict file had posted yet
+for it. Rather than wait again for the host-level arms job to notice and post, ran the comparison myself
+(`ab_compare.py --a ... --b ... --expect fpsdata1018-s2tfb2-pixels.json`, read-only, costs no device time) --
+G6 asks this lane to prove a change against measured counters, and the measurement already existed on disk.
+
+## Pixel FAIL #4: S2T_FB mode-2's depth-excluded re-registration (`b50667ac35`) FAILed on a fourth, different
+suite -- the same image_scale mechanism Fix #1 already fixed once, in a second cache this lever owns
+
+`ab_compare.py` against `1-1792404006-arms-fpsdata1018-base-3062037` (A, `41c613c22a`, switch off) and
+`1-1792404006-arms-fpsdata1018-fix-3062074` (B, `b50667ac35`, switch on, depth exclusion already landed):
+**VERDICT: FAIL -- 1 of 184 checks violated**: `Antialiasing_tests/CPUWriteIgnoresSurfaceConfig` moved
+**0 -> 45,056** differing bytes. This is not `Texture_shadow_comparator` (the noise-floor suite Pixel FAIL #1/
+#3 already discounted) and it is not in that suite's must_not_move exclusion -- this is a clean, single,
+attributable FAIL on a suite with no measured noise, the *same* capture and the *exact same byte count* as
+Fix #1's original `image_scale` regression (texscan2d, "Pixel FAIL #1" above, before its fix).
+
+That byte-for-byte match is the finding, not a coincidence to explain away: `s2t_fb_record()`/`s2t_fb_keep()`
+cache a copy taken by `copy_surface_to_texture()` (texture.c:1273), whose `vkCmdCopyImage` region multiplies
+`surface->width`/`height` by `pg->surface_scale_factor` **as read at copy time** (texture.c:1339-1340,
+`pgraph_apply_scaling_factor`) to decide how many texels of `surface->image` to read. `CPUWriteIgnoresSurfaceConfig`
+reconfigures the surface (and so the scale factor) with a direct CPU write, not a draw, so `surface->draw_time`
+and `snode->draw_time` -- the memo's only staleness check before this fix -- do not move, and `s2t_fb_keep()`
+answered true for a sample taken after the reconfigure using a copy sized for the scale in force *before* it.
+This is the same class of bug Fix #1 fixed (a stale copy read at the wrong scale after a config change with no
+intervening flush), in a second place that takes the same raw-copy route (`copy_surface_to_texture`, the
+function texscan would otherwise have reached) but keeps it across draws instead of retaking it fresh --
+exactly Pixel FAIL #2/#3's "reusing it, rather than retaking it, is enough to reshape the answer" pattern,
+this time for scale instead of format.
+
+**Fix** (committed with this note, `hw/xbox/nv2a/pgraph/vk/texture.c`): added `unsigned int scale` to
+`s2t_fb_memo[]`, set to `pg->surface_scale_factor` in `s2t_fb_record()` at copy time, and checked in
+`s2t_fb_keep()` alongside the existing node/image/surface/view/draw_time/frame/run checks. A memo recorded
+under one scale factor is now refused once the scale factor has moved, regardless of whether `draw_time` moved
+-- the slot falls through to a fresh `copy_surface_to_texture()` call instead, identical to `HAKUX_S2T_FB=0`'s
+behaviour for exactly this situation. The "same draw_time, direct view reuse" branch (texture.c ~4376, taken
+when `s2t_fb_keep` is not even called) is unaffected and has no equivalent gap: it reads the surface's own
+*current* view directly, never a cached copy, so a scale change there is already reflected on the next read.
+
+Typechecked clean: `docs/lanes/fpsdata1018/typecheck.py . hw/xbox/nv2a/pgraph/vk/texture.c` (rc=0) and
+`docs/lanes/fpsdata1018/typecheck.py . -DNV2A_PERF_LOG=1 hw/xbox/nv2a/pgraph/vk/texture.c` (rc=0) -- note the
+`-D` flag is attached with no space and the worktree root is the first positional argument; `-D NV2A_PERF_LOG=1`
+(space-separated) silently mis-files the define as a source path and fails with "no such file". Same 5
+pre-existing warnings both times, no new ones.
+
+Re-registering `fpsdata1018-s2tfb2-pixels.json` on this commit (`a_ref` unchanged `41c613c22a`, `b_ref` = this
+fix) below; this is the fourth time this lever's own registered prediction has caught a real gap before it
+shipped (Pixel FAIL #2: DOT_PRODUCT: Pixel FAIL #3: missing depth exclusion in the cache; this: missing scale
+check in the cache) and the fourth time it was root-caused and fixed rather than reverted. Added to the
+Already-tried table: this exact mechanism (image_scale/stale-copy-after-reconfigure-with-no-flush) is now
+fixed in two places (texscan_plan, s2t_fb_keep) that both take the GPU-copy-and-reuse route; any third
+candidate lever that also caches a raw `copy_surface_to_texture()`/`vkCmdCopyImage` result across more than one
+draw needs the same check before it is registered, not after a FAIL finds it again.
