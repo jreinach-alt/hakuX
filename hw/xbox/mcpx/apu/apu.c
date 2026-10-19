@@ -138,6 +138,231 @@ static bool apu_pace_on(void)
     }
     return on;
 }
+
+/*
+ * Producer timing, printed beside every starve line (#433, lane
+ * ralli2audio1018; the line itself is apu_prod_report() below).
+ *
+ * The starve line says how much of the output the sink zero-filled. It cannot
+ * say why the FIFO was short, and RalliSport Challenge 2 on the Nova is short
+ * in 0.02-1% of callbacks through windows with no frame hitch over 121 ms. Two
+ * mechanisms give a short of one or two blocks there and want different fixes:
+ * the producer stops for about 50 ms (paced at the mid watermark the FIFO
+ * holds about 8 blocks more than one callback asks for), or the sink calls
+ * back twice in quick succession and drains 16 KB from a FIFO paced to cover
+ * 8 KB. These counters tell the two apart and say where the producer's time
+ * went. Fields are written on the APU thread except the cb/sh group, which
+ * the sink callback writes with relaxed atomics, as apu_starve does.
+ */
+#include <sys/resource.h>
+#include <sys/syscall.h>
+
+#define APU_PROD_CPUS 8
+#define APU_PROD_WORKERS 8
+
+static struct {
+    uint32_t blocks, free_blocks, late, frames;
+    int64_t late_us, gap_max;
+    int qmin;
+    int64_t blk_wall0, blk_cpu0, last_push;
+    int64_t wall_sum, wall_max, cpu_sum, cpu_max;
+    int64_t vp_sum, vp_max, bql_max;
+    uint32_t cpu[APU_PROD_CPUS];
+    int ss_fd, nworkers, wss_fd[APU_PROD_WORKERS];
+    uint64_t ss_rq, wss_rq[APU_PROD_WORKERS];
+    int64_t push_us;
+    uint32_t cb_n;
+    int64_t cb_gap_max;
+    int cb_lvl_min;
+    int sh_miss, sh_lvl;
+    int64_t sh_age, sh_prev;
+} apu_prod = {
+    .qmin = INT_MAX, .cb_lvl_min = INT_MAX, .ss_fd = -1,
+};
+
+static int64_t apu_prod_cpu_us(void)
+{
+    struct timespec ts;
+
+    if (clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts)) {
+        return 0;
+    }
+    return (int64_t)ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
+}
+
+static bool apu_prod_schedstat(int fd, uint64_t *rq)
+{
+    char b[96];
+    ssize_t n;
+    char *e;
+
+    if (fd < 0) {
+        return false;
+    }
+    n = pread(fd, b, sizeof(b) - 1, 0);
+    if (n <= 0) {
+        return false;
+    }
+    b[n] = 0;
+    (void)strtoull(b, &e, 10); /* run time; the second field is the wait */
+    *rq = strtoull(e, NULL, 10);
+    return true;
+}
+
+static int apu_prod_schedstat_open(int tid, uint64_t *rq)
+{
+    char path[64];
+
+    snprintf(path, sizeof(path), "/proc/self/task/%d/schedstat", tid);
+    int fd = open(path, O_RDONLY | O_CLOEXEC);
+    if (!apu_prod_schedstat(fd, rq)) {
+        *rq = 0;
+    }
+    return fd;
+}
+
+/*
+ * HAKUX_APU_PRIO (#433): the APU thread and its voice workers are the only
+ * producers of the audio stream, and they run at whatever nice their creator
+ * had, the same as the vCPU, PFIFO and render threads they share cores with.
+ * Every VP frame is a fork-join across the workers (voice_work_dispatch), 1500
+ * a second, so one worker waiting for a CPU holds the frame. On by default:
+ * unset means on and HAKUX_APU_PRIO=0 leaves the threads as created, for an
+ * A/B. The value is Android's THREAD_PRIORITY_AUDIO, which SDLAudioManager
+ * already gives its own audio threads. The work is paced by the FIFO, so the
+ * threads sleep once it is full and cannot take more than the audio needs.
+ */
+#define APU_PRIO_NICE (-16)
+
+static void apu_prod_init(MCPXAPUState *d)
+{
+    VoiceWorkDispatch *vwd = &d->vp.voice_work_dispatch;
+    const char *e = getenv("HAKUX_APU_PRIO");
+    bool prio = e ? !(e[0] == '0' && e[1] == '\0') : true;
+    int tids[APU_PROD_WORKERS + 1];
+    int n = MIN(vwd->num_workers, APU_PROD_WORKERS);
+    int was_a, was_w = 0, set = 0;
+
+    tids[0] = qemu_get_thread_id();
+    for (int i = 0; i < n; i++) {
+        tids[i + 1] = pthread_gettid_np(vwd->workers[i].thread.thread);
+    }
+    was_a = getpriority(PRIO_PROCESS, tids[0]);
+    if (n) {
+        was_w = getpriority(PRIO_PROCESS, tids[1]);
+    }
+    if (prio) {
+        for (int i = 0; i <= n; i++) {
+            set += setpriority(PRIO_PROCESS, tids[i], APU_PRIO_NICE) == 0;
+        }
+    }
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-audio",
+                        "apu_prio: %s (HAKUX_APU_PRIO%s): apu thread %d nice "
+                        "%d -> %d, %d voice workers nice %d -> %d, %d of %d set",
+                        prio ? "on" : "off", e ? "" : ", default", tids[0],
+                        was_a, getpriority(PRIO_PROCESS, tids[0]), n, was_w,
+                        n ? getpriority(PRIO_PROCESS, tids[1]) : 0, set,
+                        prio ? n + 1 : 0);
+
+    apu_prod.ss_fd = apu_prod_schedstat_open(tids[0], &apu_prod.ss_rq);
+    for (int i = 0; i < n; i++) {
+        apu_prod.wss_fd[i] =
+            apu_prod_schedstat_open(tids[i + 1], &apu_prod.wss_rq[i]);
+    }
+    apu_prod.nworkers = n;
+}
+
+static void apu_prod_throttle(MCPXAPUState *d, int queued, bool free_run,
+                              int64_t late_us)
+{
+    apu_prod.qmin = MIN(apu_prod.qmin, queued);
+    apu_prod.free_blocks += free_run;
+    if (late_us > 0) {
+        apu_prod.late++;
+        apu_prod.late_us += late_us;
+    }
+}
+
+static void apu_prod_block_start(MCPXAPUState *d)
+{
+    if (d->ep_frame_div % 8 == 0) {
+        apu_prod.blk_wall0 = qemu_clock_get_us(QEMU_CLOCK_REALTIME);
+        apu_prod.blk_cpu0 = apu_prod_cpu_us();
+    }
+}
+
+static void apu_prod_vp(int us)
+{
+    apu_prod.frames++;
+    apu_prod.vp_sum += us;
+    apu_prod.vp_max = MAX(apu_prod.vp_max, us);
+}
+
+static void apu_prod_bql(int64_t us)
+{
+    apu_prod.bql_max = MAX(apu_prod.bql_max, us);
+}
+
+static void apu_prod_push(void)
+{
+    int64_t now = qemu_clock_get_us(QEMU_CLOCK_REALTIME);
+    unsigned cpu = APU_PROD_CPUS;
+
+    /* sched_getcpu() is behind _GNU_SOURCE in bionic, which this build does
+     * not define; the syscall is the same call. */
+    syscall(__NR_getcpu, &cpu, NULL, NULL);
+
+    if (apu_prod.blk_wall0) {
+        int64_t w = now - apu_prod.blk_wall0;
+        int64_t c = apu_prod_cpu_us() - apu_prod.blk_cpu0;
+        apu_prod.wall_sum += w;
+        apu_prod.wall_max = MAX(apu_prod.wall_max, w);
+        apu_prod.cpu_sum += c;
+        apu_prod.cpu_max = MAX(apu_prod.cpu_max, c);
+    }
+    if (apu_prod.last_push) {
+        apu_prod.gap_max = MAX(apu_prod.gap_max, now - apu_prod.last_push);
+    }
+    apu_prod.last_push = now;
+    qatomic_set(&apu_prod.push_us, now);
+    apu_prod.blocks++;
+    if (cpu < APU_PROD_CPUS) {
+        apu_prod.cpu[cpu]++;
+    }
+}
+
+/* On the sink callback's thread. @t0 is the callback's entry, @lvl the FIFO
+ * level it found there. */
+static void apu_prod_cb(int64_t t0, int lvl, int free_b, int copied)
+{
+    static int64_t prev;
+    int64_t gap = prev ? t0 - prev : 0;
+    int miss = free_b - copied;
+
+    prev = t0;
+    qatomic_set(&apu_prod.cb_n, qatomic_read(&apu_prod.cb_n) + 1);
+    if (gap > qatomic_read(&apu_prod.cb_gap_max)) {
+        qatomic_set(&apu_prod.cb_gap_max, gap);
+    }
+    if (lvl < qatomic_read(&apu_prod.cb_lvl_min)) {
+        qatomic_set(&apu_prod.cb_lvl_min, lvl);
+    }
+    if (miss > 0 && miss > qatomic_read(&apu_prod.sh_miss)) {
+        qatomic_set(&apu_prod.sh_miss, miss);
+        qatomic_set(&apu_prod.sh_lvl, lvl);
+        qatomic_set(&apu_prod.sh_age, t0 - qatomic_read(&apu_prod.push_us));
+        qatomic_set(&apu_prod.sh_prev, gap);
+    }
+}
+#else
+static inline void apu_prod_init(MCPXAPUState *d) {}
+static inline void apu_prod_throttle(MCPXAPUState *d, int queued,
+                                     bool free_run, int64_t late_us) {}
+static inline void apu_prod_block_start(MCPXAPUState *d) {}
+static inline void apu_prod_vp(int us) {}
+static inline void apu_prod_bql(int64_t us) {}
+static inline void apu_prod_push(void) {}
+static inline void apu_prod_cb(int64_t t0, int lvl, int free_b, int copied) {}
 #endif
 
 static void throttle(MCPXAPUState *d)
@@ -176,6 +401,10 @@ static void throttle(MCPXAPUState *d)
 
     if (queued_bytes > d->monitor.queued_bytes_low) {
         int64_t now_us = qemu_clock_get_us(QEMU_CLOCK_REALTIME);
+        apu_prod_throttle(d, queued_bytes, false,
+                          d->next_frame_time_us &&
+                          now_us - d->next_frame_time_us > EP_FRAME_US ?
+                          now_us - d->next_frame_time_us : 0);
         if (d->next_frame_time_us == 0 ||
             now_us - d->next_frame_time_us > EP_FRAME_US) {
             d->next_frame_time_us = now_us;
@@ -198,6 +427,7 @@ static void throttle(MCPXAPUState *d)
         int mid = (d->monitor.queued_bytes_low + d->monitor.queued_bytes_high) / 2;
         d->next_frame_time_us += (queued_bytes > mid) - (queued_bytes < mid);
     } else {
+        apu_prod_throttle(d, queued_bytes, true, 0);
         d->next_frame_time_us = start_us;
     }
 
@@ -385,6 +615,97 @@ static void apu_starve_account(int free_b, int copied)
  * on describes the capture run, not a normal one, and the reader must be able
  * to tell which they are holding.
  */
+#ifdef __ANDROID__
+/*
+ * The producer-timing line for the window the starve line just closed, then a
+ * reset. Times are milliseconds unless named. Producer: blk blocks pushed, of
+ * which free were produced with the FIFO at or under the low watermark (free
+ * running, behind); late resets of the pacing deadline and the lateness they
+ * dropped; qmin the lowest FIFO level throttle saw; gap the longest time
+ * between two pushes; wall and cpu mean/max per block from the end of throttle
+ * to the push, as elapsed and as this thread's CPU time (wall well over cpu
+ * is time spent off CPU: preempted, or waiting on the workers or a lock); vp
+ * mean/max us of the voice workers' fork-join per VP frame; bql the longest
+ * BQL wait for an interrupt update; rq this thread's run-queue wait and wrq
+ * the voice workers' (sum over workers / the worst one); c the CPU each push
+ * ran on. Sink: cb callbacks, gapmax the longest time between two, lvlmin the
+ * lowest FIFO level a callback found on entry, and for the worst short of the
+ * window: the bytes it lacked, the level it found, how long since the last
+ * push (age) and since the callback before it (prev). A prev near 0 with an
+ * age under one block says two callbacks drained a FIFO the producer was
+ * keeping up with; a long age with a large rq or wall says the producer
+ * stopped.
+ */
+static void apu_prod_report(void)
+{
+    uint64_t rq = 0, wrq_sum = 0, wrq_max = 0;
+    uint32_t n = apu_prod.blocks;
+    int qmin = apu_prod.qmin == INT_MAX ? -1 : apu_prod.qmin;
+    int lvlmin = qatomic_read(&apu_prod.cb_lvl_min);
+
+    if (apu_prod_schedstat(apu_prod.ss_fd, &rq)) {
+        uint64_t r = rq;
+        rq -= apu_prod.ss_rq;
+        apu_prod.ss_rq = r;
+    }
+    for (int i = 0; i < apu_prod.nworkers; i++) {
+        uint64_t r;
+        if (apu_prod_schedstat(apu_prod.wss_fd[i], &r)) {
+            uint64_t dr = r - apu_prod.wss_rq[i];
+            apu_prod.wss_rq[i] = r;
+            wrq_sum += dr;
+            wrq_max = MAX(wrq_max, dr);
+        }
+    }
+
+    APU_CAP_LOG("prod: blk=%u free=%u late=%u/%.1fms qmin=%d gap=%.1fms "
+                "wall=%.2f/%.1fms cpu=%.2f/%.1fms vp=%u/%uus bql=%.2fms "
+                "rq=%.1fms wrq=%.1f/%.1fms c=%u/%u/%u/%u/%u/%u/%u/%u | "
+                "cb=%u gapmax=%.1fms lvlmin=%d short=%dB lvl=%d age=%.1fms "
+                "prev=%.1fms",
+                n, apu_prod.free_blocks, apu_prod.late,
+                apu_prod.late_us / 1000.0, qmin, apu_prod.gap_max / 1000.0,
+                n ? apu_prod.wall_sum / 1000.0 / n : 0.0,
+                apu_prod.wall_max / 1000.0,
+                n ? apu_prod.cpu_sum / 1000.0 / n : 0.0,
+                apu_prod.cpu_max / 1000.0,
+                apu_prod.frames ? (unsigned)(apu_prod.vp_sum / apu_prod.frames)
+                                : 0,
+                (unsigned)apu_prod.vp_max, apu_prod.bql_max / 1000.0,
+                rq / 1e6, wrq_sum / 1e6, wrq_max / 1e6,
+                apu_prod.cpu[0], apu_prod.cpu[1], apu_prod.cpu[2],
+                apu_prod.cpu[3], apu_prod.cpu[4], apu_prod.cpu[5],
+                apu_prod.cpu[6], apu_prod.cpu[7],
+                qatomic_read(&apu_prod.cb_n),
+                qatomic_read(&apu_prod.cb_gap_max) / 1000.0,
+                lvlmin == INT_MAX ? -1 : lvlmin,
+                qatomic_read(&apu_prod.sh_miss), qatomic_read(&apu_prod.sh_lvl),
+                qatomic_read(&apu_prod.sh_age) / 1000.0,
+                qatomic_read(&apu_prod.sh_prev) / 1000.0);
+
+    apu_prod.blocks = apu_prod.free_blocks = apu_prod.late = 0;
+    apu_prod.frames = 0;
+    apu_prod.late_us = apu_prod.gap_max = 0;
+    apu_prod.wall_sum = apu_prod.wall_max = 0;
+    apu_prod.cpu_sum = apu_prod.cpu_max = 0;
+    apu_prod.vp_sum = apu_prod.vp_max = apu_prod.bql_max = 0;
+    apu_prod.qmin = INT_MAX;
+    memset(apu_prod.cpu, 0, sizeof(apu_prod.cpu));
+    /* The sink writes these; a callback landing between the read above and
+     * this reset loses its maximum to the next window, which a diagnostic
+     * can afford. */
+    qatomic_set(&apu_prod.cb_n, 0);
+    qatomic_set(&apu_prod.cb_gap_max, 0);
+    qatomic_set(&apu_prod.cb_lvl_min, INT_MAX);
+    qatomic_set(&apu_prod.sh_miss, 0);
+    qatomic_set(&apu_prod.sh_lvl, 0);
+    qatomic_set(&apu_prod.sh_age, 0);
+    qatomic_set(&apu_prod.sh_prev, 0);
+}
+#else
+static inline void apu_prod_report(void) {}
+#endif
+
 static void apu_starve_report(MCPXAPUState *d, int64_t now_ms)
 {
     static int64_t last_ms;
@@ -428,6 +749,7 @@ static void apu_starve_report(MCPXAPUState *d, int64_t now_ms)
                     d->monitor.device_buffer_bytes,
                     d->monitor.fifo_capacity_bytes,
                     apu_capture.fp ? "ARMED" : "off");
+        apu_prod_report();
         reports++;
         last_ms = now_ms;
         last_calls = calls;
@@ -717,6 +1039,7 @@ static void se_frame(MCPXAPUState *d)
     float mixbins[NUM_MIXBINS][NUM_SAMPLES_PER_FRAME] = { 0 };
 
     mcpx_apu_vp_frame(d, mixbins);
+    apu_prod_vp(g_dbg.vp.total_worker_time_us);
     mcpx_apu_dsp_frame(d, mixbins);
 
     if ((d->ep_frame_div + 1) % 8 == 0) {
@@ -819,6 +1142,7 @@ static void se_frame(MCPXAPUState *d)
             fifo8_push_all(&d->monitor.fifo, (uint8_t *)d->monitor.frame_buf,
                            sizeof(d->monitor.frame_buf));
             qemu_spin_unlock(&d->monitor.fifo_lock);
+            apu_prod_push();
         }
         memset(d->monitor.frame_buf, 0, sizeof(d->monitor.frame_buf));
     }
@@ -874,12 +1198,16 @@ static void monitor_sink_cb(void *opaque, uint8_t *stream, int free_b)
         return;
     }
 
-    int avail = 0;
+    int64_t t0 = qemu_clock_get_us(QEMU_CLOCK_REALTIME);
+    int avail = 0, lvl0 = 0;
     int wait_attempts = 10;
     for (int i = 0; i < wait_attempts; i++) {
         qemu_spin_lock(&s->monitor.fifo_lock);
         avail = fifo8_num_used(&s->monitor.fifo);
         qemu_spin_unlock(&s->monitor.fifo_lock);
+        if (i == 0) {
+            lvl0 = avail;
+        }
         if (avail >= free_b) {
             break;
         }
@@ -914,6 +1242,7 @@ static void monitor_sink_cb(void *opaque, uint8_t *stream, int free_b)
      * Folding them in would make every pause look like a starvation burst.
      */
     apu_starve_account(free_b, copied);
+    apu_prod_cb(t0, lvl0, free_b, copied);
 
     qemu_cond_broadcast(&s->cond);
 }
@@ -1143,6 +1472,26 @@ static void monitor_init(MCPXAPUState *d)
     d->monitor.device_buffer_bytes = drain_bytes;
     d->monitor.queued_bytes_high = MIN(3 * drain_bytes, max_high);
     d->monitor.queued_bytes_low = MIN(drain_bytes, d->monitor.queued_bytes_high);
+#ifdef __ANDROID__
+    /* HAKUX_APU_CUSHION=N (opt-in, #433): pace the FIFO N device periods
+     * deep instead of one, for a sink that calls back several times in a row.
+     * Each extra period is one device buffer of output latency (42.7 ms at
+     * the default 2048 samples). Unset keeps the watermarks above. */
+    int cushion = getenv_int_clamped("HAKUX_APU_CUSHION", 1, 4, 1);
+    if (cushion > 1) {
+        d->monitor.queued_bytes_low = MIN(cushion * drain_bytes,
+                                          max_high - 2 * fifo_frame_bytes);
+        d->monitor.queued_bytes_high = MIN(d->monitor.queued_bytes_low +
+                                           2 * drain_bytes, max_high);
+    }
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-audio",
+                        "apu_cushion: %d (HAKUX_APU_CUSHION%s): low %d B, "
+                        "high %d B, fifo %d B", cushion,
+                        getenv("HAKUX_APU_CUSHION") ? "" : ", default",
+                        d->monitor.queued_bytes_low,
+                        d->monitor.queued_bytes_high,
+                        d->monitor.fifo_capacity_bytes);
+#endif
 
     SDL_PauseAudioDevice(sdl_audio_dev, 0);
 
@@ -1401,6 +1750,7 @@ type_init(mcpx_apu_register);
 static void *mcpx_apu_frame_thread(void *arg)
 {
     MCPXAPUState *d = MCPX_APU_DEVICE(arg);
+    apu_prod_init(d);
     qemu_mutex_lock(&d->lock);
     while (!qatomic_read(&d->exiting)) {
         int xcntmode = GET_MASK(qatomic_read(&d->regs[NV_PAPU_SECTL]),
@@ -1414,7 +1764,9 @@ static void *mcpx_apu_frame_thread(void *arg)
 
         if (d->set_irq) {
             qemu_mutex_unlock(&d->lock);
+            int64_t bql_t0 = qemu_clock_get_us(QEMU_CLOCK_REALTIME);
             bql_lock();
+            apu_prod_bql(qemu_clock_get_us(QEMU_CLOCK_REALTIME) - bql_t0);
             update_irq(d);
             bql_unlock();
             qemu_mutex_lock(&d->lock);
@@ -1431,6 +1783,7 @@ static void *mcpx_apu_frame_thread(void *arg)
             continue;
         }
         throttle(d);
+        apu_prod_block_start(d);
         se_frame((void *)d);
     }
     qemu_mutex_unlock(&d->lock);
