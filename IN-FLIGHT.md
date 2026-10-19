@@ -8,12 +8,12 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `localdrive1018` | claude-sonnet-5 | 36 min | drive: local tools only, act-observe instead of wait-and-fail, learn what to press |
-| `pagesfix1018` | claude-sonnet-5 | 53 min |  |
-| `ralli2audio1018` | claude-sonnet-5 | 46 min | ralli2audio1018: RalliSport Challenge 2 audio dropouts: the voice processor's guest-memory overhead, producer  |
+| `localdrive1018` | claude-sonnet-5 | 51 min | drive: local tools only, act-observe instead of wait-and-fail, learn what to press |
+| `pagesfix1018` | claude-sonnet-5 | 1h 8m |  |
+| `ralli2audio1018` | claude-sonnet-5 | 1h 1m | ralli2audio1018: RalliSport Challenge 2 audio dropouts: the voice processor's guest-memory overhead, producer  |
 
 - **Handhelds:** 2 connected.
-  - Nova: free for the queue
+  - Nova: held by `2026-10-19T03:14:45Z`
   - Thor: held by `lane.local`
 - **Device queue:** 3 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
@@ -126,10 +126,11 @@ The harness dashboard, with each release's targets and the progress charts, is [
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
 | `lane/localdrive1018` | drive: local tools only, act-observe instead of wait-and-fail, learn what to press | `35477b3858` | 2026-10-18 19:36 |
-| `lane/ralli2audio1018` | ralli2audio1018: RalliSport Challenge 2 audio dropouts: the voice processor's guest-memory overhead, producer timing, au | `4dfe7f0600` | 2026-10-18 19:44 |
+| `lane/ralli2audio1018` | ralli2audio1018: RalliSport Challenge 2 audio dropouts: the voice processor's guest-memory overhead, producer timing, au | `723ea67e77` | 2026-10-18 20:12 |
 
 ## Recently landed on master
 
+- 2026-10-18 fpsdiag1018: one FPS lane for GTA III, Blinx 2, Fable -- known/not/could-be and a diagnostic tool (#433)
 - 2026-10-18 gta3car1018: GTA III in the car -- the render passes are a feedback-loop copy per draw (#1049)
 - 2026-10-18 dispatcher: dev_push gets a read-only mode for the Nova's SD-card disc pushes
 - 2026-10-18 home branch root: move chart.svg/chart2.svg/COPYING.LIB under docs (#433)
@@ -141,6 +142,5 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-18 compat1018b: drop GTA III and Vice City from Playable (#433, #1049)
 - 2026-10-18 pathfind: a screen-reading agent that drives a title from boot into gameplay
 - 2026-10-18 haloring1017: Halo CE main-menu ring: the static inside surface is the stock driver
-- 2026-10-18 GTA III: where the 46 ms parked frame goes once every copy is removed
 
-_Updated 2026-10-18 20:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-18 20:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
