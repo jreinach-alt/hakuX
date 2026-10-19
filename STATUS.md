@@ -1,6 +1,6 @@
 # hakuX status
 
-_updated 2026-10-19 00:59 PDT_
+_updated 2026-10-19 01:29 PDT_
 
 0.6: Measured 264 / 300 · Playable 94 / 110.
 
@@ -19,14 +19,14 @@ Playable **94** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓▓▓░`
 | release | Measured target | projected date | Playable target | projected date |
 |---|---|---|---|---|
 | 0.6 | 300 | 2026-10-21 | 110 | 2026-10-21 |
-| 0.7 | 425 | 2026-10-29 | 185 | 2026-10-31 |
-| 0.8 | 575 | 2026-11-08 | 300 | 2026-11-16 |
-| 0.9 | 725 | 2026-11-18 | 480 | 2026-12-12 |
-| 1.0 | 876 | 2026-11-28 | 789 | 2027-01-24 |
+| 0.7 | 425 | 2026-10-30 | 185 | 2026-11-01 |
+| 0.8 | 575 | 2026-11-09 | 300 | 2026-11-17 |
+| 0.9 | 725 | 2026-11-19 | 480 | 2026-12-13 |
+| 1.0 | 876 | 2026-11-30 | 789 | 2027-01-26 |
 
 Measured: titles with a frame rate reading taken during gameplay, on either handheld. Playable: titles rated Playable. The charts place each title on the date it first qualified, and the projected dates in the table assume the last 7 days' pace continues.
 
-Ships when both are met. At the last 48 h rate: about 2026-11-11.
+Ships when both are met. At the last 48 h rate: about 2026-11-12.
 
 Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/Nova handhelds.
 
@@ -144,6 +144,7 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | **Die Hard Vendetta Europe En Fr Es It** | 🔴 Crashes or hangs |  |
 | **Dino Crisis 3** | 🔴 Crashes or hangs | **27.2**<br>Nova, Oct 2 |
 | **Fuzion Frenzy** | 🔴 Crashes or hangs | **30.6**<br>Nova, Sep 27 |
+| **Magi Death Fight Japan** | 🔴 Crashes or hangs |  |
 | **Midtown Madness 3** | 🔴 Crashes or hangs | **3.1**<br>Thor, Sep 27 |
 | **Mission Impossible Operation Surma USA** | 🔴 Crashes or hangs | **6.9**<br>Nova, Oct 12 |
 | **Project Gotham Racing** | 🔴 Crashes or hangs | **14.3**<br>Thor, Sep 26 |
@@ -663,5 +664,5 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 
 </details>
 
-621 titles: 94 Playable, 8 below 30 fps, 15 crash or hang, 148 measured but not rated yet, 356 not tested yet.
+622 titles: 94 Playable, 8 below 30 fps, 16 crash or hang, 148 measured but not rated yet, 356 not tested yet.
 
