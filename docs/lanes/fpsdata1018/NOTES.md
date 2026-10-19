@@ -405,6 +405,7 @@ NOTES (newer than master's); ralli = `wt/ralli2audio1018/docs/lanes/ralli2audio1
 | 25 | `Texture_shadow_comparator` as a `must_not_move` suite in a single-run `--expect` pixel prediction: used three times this lane (texscan2d, S2T_FB mode 2 x2) and FAILed every time (23/1038, 24/472, 21/472) including on an already-landed fix (17/1038 re-check of `b46f4cb8d3`) | same 4 arms pairs above, plus a 3-way same-ref sweep (`245ddc4964`, zero code change) | `sweep_agreement.py` across 3 same-ref runs: 89/1038 disagree, 100% `Texture_shadow_comparator`, zero elsewhere; one capture (`2F16_..._15.0000_GT`) reproduces the identical `480->400` transition under two unrelated fixes | 3 same-ref device runs already on disk, no new device time spent | **this suite cannot be gated by a single-run arm**: it disagrees with itself ~8.6% of the time with no code change. Drop it from `must_not_move` in any future prediction against this suite; use `--runs N` + `sweep_agreement.py` (or a majority-of-N vote) if a real claim about it is ever needed | this file, "Noise floor measured" |
 | 26 | `HAKUX_S2T_FB` mode 2's depth-excluded re-registration (`b50667ac35`) still FAILed: `s2t_fb_memo[]` had no check that `pg->surface_scale_factor` matched between record and keep, so a slot could reuse a copy sized for a stale scale after a CPU-write reconfigure that never bumps `draw_time` | `Antialiasing_tests` | `ab_compare.py`, 1/184, `CPUWriteIgnoresSurfaceConfig` 0 -> 45,056 -- byte-for-byte the same capture and count as row 22's/Fix #1's `image_scale` regression, a different cache (`s2t_fb_keep`) taking the same raw-copy route (`copy_surface_to_texture`) | 1 arms pair, this lever (`1-1792404006-*`) | fixed: `s2t_fb_memo[].scale` recorded at copy time, checked at keep time, same precedent as Fix #1's `image_scale` and row 24's depth exclusion | this file, "Pixel FAIL #4" |
 | 27 | `migrate_surface_image()` not copying `image_scale` from a shelved/invalid surface's old binding to its new one, found while re-checking texscan2d's own prediction for a suspected regression that turned out to be a device flake | `Antialiasing_tests` (same flake check, not this gap) | `sha256sum` across 4 existing result dirs (2 base, 2 fix): 3/4 byte-identical on bit-identical builds, 1/4 differs -- the flake, not evidence for or against this gap, which always safely under-refuses (`0 != 1`) rather than corrupts | 0 new device time (read existing results) | fixed: `dst->image_scale = src->image_scale;` added to `migrate_surface_image()`; re-registered texscan2d's prediction a fifth time since this changes texscan eligibility for migrated surfaces, a new falsifiable claim Fix #1's own registration never made | this file, "Pixel scare resolved" |
+| 28 | `Antialiasing_tests/CPUWriteIgnoresSurfaceConfig` and `/FramebufferNotModifiedBySurfaceState` as `must_not_move` members in texscan2d's prediction, across the fresh `1-1792407690-*` arm pair at `245ddc4964`/`c4560f2ab4` | `Antialiasing_tests` | `CPUWriteIgnoresSurfaceConfig`: 6 runs on disk, 2 distinct sha256, the corrupted one byte-identical both times it appears -- once on fix `b46f4cb8d3`, once on base `245ddc4964` (zero #433 code); `FramebufferNotModifiedBySurfaceState`: 5/6 runs match, this pair's base alone differs by 6 bytes | 0 new device time for this finding (read 6 existing result dirs); 1 fresh arms pair queued (`fpsdata1018-texscan2d-reverify`) to get an honest post-registration verdict, since the first check against this exact pair was POST-HOC per `ab_compare.py`'s own flag | both moves are on the unmodified (A) side in this pair -- direct evidence against attribution to this lane's code, strongest yet; narrowed `must_not_move` to name the other 9 `Antialiasing_tests` captures individually (0 moves in 6 runs each) rather than dropping the whole suite, since only these 2 of 11 captures have ever moved | this file, "Attempt 3: why attempt 2 did not finish" |
 
 Correction carried from the research pass: `L/fpsdiag1018/FINDINGS.md` 2 item 4 credits "R3 -0.9 fps"; README gives
 -0.3 (b2) and -0.9 (b4) both to R2 vs R1, and R3 no fps number (dup 0, inert).
@@ -1008,3 +1009,89 @@ size (owner capture, no scripted route to the save state), Fable's H2 download-s
 harness bug, flagged on PR #1085, outside this lane's files). **WAITING**: the arms job to queue and finish
 both pending prediction pairs above; nothing further to build until one of those lands or an owner capture
 arrives.
+
+## Attempt 3: why attempt 2 did not finish, and the two verdicts that landed while it waited
+
+Attempt 2 ended correctly, not short: it had built and typechecked every fix this lane has (texscan2d, the
+S2T_FB scale/depth/DOT_PRODUCT fixes, the `migrate_surface_image` fix), re-registered both pixel predictions
+against the latest commit, pushed, and posted `[lane.fpsdata1018] waiting:` on PR #1085 with nothing left to
+build until the arms job's queued runs landed or an owner capture arrived (per G7, this is the one brake --
+"the same failure twice for one cause means stop", not "an external wait exists"). This is a legitimate
+`handback.sh` resume on a wait, not a fresh attempt against unfinished work (role.md: "a resume for a wait
+does not count against your attempts").
+
+**Both pending arm pairs had landed by the time this attempt started** (dispatch results dirs
+`1-1792407688-*` for `fpsdata1018-s2tfb2-pixels.json` @ `136e8a1723`, and `1-1792407690-*` for
+`fpsdata1018-texscan2d-pixels.json` @ `c4560f2ab4`; the texscan2d fix arm was still mid-run at session start
+and finished during this session's own foreground poll, not a background task left running past a turn).
+
+**s2tfb2 @ `136e8a1723`: VERDICT: PASS -- all 184 registered checks hold, no caveats.** `ab_compare.py --a
+.../1-1792407688-arms-fpsdata1018-base-3509436 --b .../1-1792407688-arms-fpsdata1018-fix-3509473 --expect
+docs/testing/predictions/fpsdata1018-s2tfb2-pixels.json` ran clean: zero moved captures, `Texture_shadow_comparator`
+already excluded per the measured noise floor, no other suite moved. This is the fourth and final re-registration
+of this lever's own prediction (depth exclusion, then DOT_PRODUCT exclusion, then the scale-staleness check);
+all four fixes it caught are kept and none of its predictions has failed on anything but the already-discounted
+noise floor since. This lever (`HAKUX_S2T_FB` defaulting to mode 2) is pixel-proven; nothing further to build
+for it in this lane.
+
+**texscan2d @ `c4560f2ab4`: VERDICT: FAIL -- 2/750, both on the UNCHANGED (A) side, which is itself the
+evidence this fix did not cause either.** `ab_compare.py --a .../1-1792407690-arms-fpsdata1018-base-3509888
+--b .../1-1792407690-arms-fpsdata1018-fix-3509978 --expect docs/testing/predictions/fpsdata1018-texscan2d-pixels.json`:
+`Antialiasing_tests/CPUWriteIgnoresSurfaceConfig` moved 45056 -> 0 and `Antialiasing_tests/
+FramebufferNotModifiedBySurfaceState` moved 1 -> 0. Read `result.json` on both sides first to make sure this
+really was the registered pair, not a stale read: base `ref` = `245ddc4964` (the prediction's own `a_ref`,
+unmodified master, no #433 code at all), fix `ref` = `c4560f2ab4` (the prediction's own `b_ref`) -- an exact
+match, not a mismatched arm.
+
+`CPUWriteIgnoresSurfaceConfig` is the same capture "Pixel scare resolved" (above) already traced to a device
+flake on one run out of four. This run is a fifth and sixth data point (base and fix each produce one capture),
+and they sharpen the conclusion rather than reopening it:
+
+| Run | arm | ref | sha256 (16 hex) | size |
+|---|---|---|---|---|
+| `1-1792400325-...-2706810` | base | `245ddc4964` | `8f719443e1b38521` | 42471 |
+| `1-1792400325-...-2706853` | fix | `b46f4cb8d3` | `8f719443e1b38521` | 42471 |
+| `1-1792404008-...-3062345` | base | `245ddc4964` | `8f719443e1b38521` | 42471 |
+| `1-1792404008-...-3062388` | fix | `b46f4cb8d3` | `a031d5810bc07fdc` | 122253 |
+| `1-1792407690-...-3509888` | base | `245ddc4964` | `a031d5810bc07fdc` | 122253 |
+| `1-1792407690-...-3509978` | fix | `c4560f2ab4` | `8f719443e1b38521` | 42471 |
+
+Two distinct images across six runs, never a third. The corrupted one (`a031d5810bc07fdc`, 122253 bytes) is
+**byte-for-byte identical** both times it appears -- once on the fix side of `b46f4cb8d3` and once on the base
+side of `245ddc4964`, two different refs, one of them carrying none of this lane's code. A code change cannot
+produce the same corrupted frame on a build that does not contain it; a device/driver race that occasionally
+mis-renders this one CPU-write-then-read test can, and did, on both sides independently. This is stronger than
+the earlier "3 of 4 agree" reading: the flake has now been caught on the unmodified baseline itself, with
+nothing this lane wrote anywhere in the build.
+
+`FramebufferNotModifiedBySurfaceState` had not moved in any of the five prior runs this lane has on disk
+(`4ed6f91a5676852a`, 34931 bytes, 1-1792400325 base+fix, 1-1792404008 base+fix, 1-1792407690 fix). Only this
+run's base differs (`f7c0757b267ddd01`, 34937 bytes, a 6-byte difference) -- one occurrence in six runs, on the
+unmodified side again. Lower confidence than the first (one data point, not two matching corrupted frames),
+but the same direction of evidence: the anomaly is on the side with no #433 code.
+
+**Not a blanket suite exclusion.** `Antialiasing_tests` has 11 captures; these two are the only ones that have
+ever moved across all six runs on disk. The other 9 (`AAOnThenOffCPUWrite`, `CreateSurfaceWithCenter1`,
+`CreateSurfaceWithCenterCorner2`, `CreateSurfaceWithSquareOffset4`, `FBSurfaceWithCenter1`,
+`FBSurfaceWithCenterCorner2`, `GPUAAWriteAfterCPUWrite`, `NonAACPURoundTrip`, `SurfaceStatesAreIndependent`)
+have zero moves in six runs and stay in `must_not_move`, named individually rather than folding the whole
+suite out the way `Texture_shadow_comparator` was (that suite moved on ~8.6% of ALL its captures across three
+same-ref runs -- a suite-wide property; this is two specific tests, both in the CPU-write/surface-reconfiguration
+class, the kind of test most exposed to a GPU scheduling race across a config change, not a suite-wide one).
+
+**Re-registered `fpsdata1018-texscan2d-pixels.json` a fourth time, same refs (`245ddc4964`/`c4560f2ab4`, no code
+change), replacing `Antialiasing_tests/*` with the other 9 names individually.** Checked it against the
+`1-1792407690-*` pair immediately: 748/748 PASS -- but `ab_compare.py` itself correctly flagged this specific
+check as `POST-HOC` (the prediction file's registration timestamp is after this arm's result timestamp, since
+I wrote it to explain a result I had already seen), and said so in its own output: "a prediction written after
+the measurement is a description of it, and the verdict below is worth nothing." That is correct and this
+PASS is NOT claimed as this fix's proof. Queued a fresh, independent pair against the same two refs
+(`ab_run.sh --who fpsdata1018-texscan2d-reverify --fix c4560f2ab4 --parent 245ddc4964 --suites <same 35> --expect
+docs/testing/predictions/fpsdata1018-texscan2d-pixels.json`; both APKs already cached, no build needed) so the
+narrowed prediction gets one honest, pre-registered verdict instead of resting on the post-hoc read. Committing
+the re-registered file before this queued pair's result lands, per the registration rule.
+
+Added to the Already-tried table: row for "Antialiasing_tests suite-wide noise floor" would overstate this --
+only `CPUWriteIgnoresSurfaceConfig` and `FramebufferNotModifiedBySurfaceState` are measured flaky (6 runs each);
+the other 9 captures in that suite are measured stable across the same 6 runs and are not a candidate for any
+future blanket exclusion without their own evidence.

@@ -23,3 +23,13 @@ that suite, including on an already-landed fix, is inside that noise floor; the 
 that suite and is not subject to this discount. Both predictions are re-registered with the suite dropped from
 `must_not_move`; the arms job's next pass over `b46f4cb8d3` and `136e8a1723` tests only the suites a single run
 can actually falsify. Detail: `NOTES.md` "Pixel FAIL #1/#2/#3/#4" and "Noise floor measured".
+
+**s2tfb2's prediction is now clean**: the arm pair against `41c613c22a`/`136e8a1723` came back VERDICT: PASS,
+184/184 checks, no moves anywhere. This lever (`HAKUX_S2T_FB` default mode 2) is pixel-proven; nothing further
+to build for it in this lane. texscan2d's latest arm (`245ddc4964`/`c4560f2ab4`) found two more flaky captures
+in `Antialiasing_tests` (`CPUWriteIgnoresSurfaceConfig`, `FramebufferNotModifiedBySurfaceState`) -- both moved
+on the UNMODIFIED base side this time, which a code change cannot cause; `CPUWriteIgnoresSurfaceConfig`'s
+corrupted image is now confirmed byte-identical across two independent occurrences on two different refs, one
+of which carries none of this lane's code. These two captures (not the whole suite -- the other 9 in it have
+never moved across 6 runs) are now named individually out of `must_not_move`; a fresh, honestly-pre-registered
+arm is queued to confirm. Detail: `NOTES.md` "Attempt 3: why attempt 2 did not finish".
