@@ -542,3 +542,70 @@ Arms on the island state, palindrome on one APK: off, on, on, off (after a warm-
 
 Expected upper bound: GPU 23-27 ms a flip, so overlapping CPU record and GPU caps out near 37-43 fps raw, i.e. 2
 vblanks (30 fps) where the game paces itself at 30.
+
+## Attempt 3, item 3: GTA III beyond R2 -- the S/widen A/B does not converge; the next cause is named
+
+**Batch g1** (11:01-11:14 PDT, `3058a55767-perflog.apk`, already installed, so the shader cache was warm; owner's
+in-car state; palindrome W, A on, B off, B2 off, A2 on; off = `HAKUX_S2T_WIDEN=0`; all `HAKUX_FRAMETRACE=1`; every
+arm `GPU: PurpleVK-public`, `op=load ... ok=1`):
+
+| arm | widen | park fps | hold fps | drive fps | hold rp/flip (`[dipwin]`) |
+|---|---|---|---|---|---|
+| W (discarded) | on | 22.0 | 25.3 | 21.0 | 57.1 |
+| A | on | 22.0 | 28.1 | 26.3 | 50.1 |
+| B | off | 22.4 | 22.6 | 25.0 | 99.7 |
+| B2 | off | 22.4 | 22.8 | 25.9 | 135.3 |
+| A2 | on | 20.7 | 17.0 | 14.3 | 147.0 |
+
+The two on arms disagree by 11 fps on hold (28.1 vs 17.0). The two off arms agree with each other (22.6, 22.8),
+but sit between the two on arms. **Two clean runs do not agree, and the brief's "repeat until two agree" does not
+converge on this route.** What tracks fps is render passes per flip, not the switch: A 50 rp → 28 fps, A2 147 rp →
+17 fps, both with widen on. The hold-window regression from attempt 2 (ms/flip = 30.89 + 0.1309 x rp) predicts
+26.7 and 20.0 fps for those pass counts; measured 28.1 and 17.0. The direction holds; the cost per pass is steeper
+at the high end than the fit. The scripted throttle hold does not put the same scene in front of the camera each run, and
+the scene sets the pass count.
+
+**What ends the passes** (`[dipwin] bnd`, callers by library offset in `nd=`, symbolized with `llvm-addr2line`
+against the APK's own `libxemu.so`):
+- With widen on, almost every `bnd` is `bind_surface_as_texture` (texture.c, the COLOR_ATTACHMENT_WRITE →
+  SHADER_READ barrier after `pgraph_vk_begin_nondraw_commands`).
+- With widen off, it is `copy_surface_to_texture`.
+- Either way there is one break per sample of the 128x128 colour target @0x038aa080 (colour fmt 0x4), sampled
+  as texture fmt 0x7 (X8R8G8B8 swizzled) with component map 0002, 40-140 times a flip, while it is the colour
+  target being drawn.
+- The census line `fb[n.. nos0 keep0]` says every one of these samples is on a stage whose shader program
+  fetches (PROJECT2D), so #1049's mode 2 (keep only on stages that do not fetch) keeps none of them.
+
+R2 turned the copy into a barrier but not into no break. The next dominant cause is these feedback samples: up to
+140 of the ~150 passes a flip, the same thing gta3car1018 found for the copy before R2 existed.
+
+**G2, mechanism before remedy.** Each sample is one of two cases. The census added below says which, in one run.
+1. **The texel is dead.** The stage fetches because its mode is PROJECT2D, but no combiner reads t_i. Then the
+   slot can keep any image of the node's shape, with no break and no pixel change.
+2. **The texel is live:** real feedback. Then the remedy is a feedback-loop attachment or an in-pass by-region
+   self-dependency. That is a bigger change, and the census decides whether it is needed.
+
+**Built, opt-in: `HAKUX_S2T_DEAD=1`** (texture.c `s2t_fb_texel_dead()`). A texel is dead when all of these hold:
+- No combiner stage in use (the COMBINECTL count) and no final-combiner input (A-G) names the stage's t register.
+- Every later stage is a plain fetch, NONE, PASS_THROUGH or CLIP_PLANE. Every dependent mode reads an earlier
+  stage's texel.
+- The stage does not alpha-kill or colour-key.
+
+For a dead sample, the slot keeps the node's own image when the node's image can be sampled
+(SHADER_READ_ONLY). When it cannot, the sample copies once ("prime") and the samples after it keep. The census
+always counts dead and prime, switch or not, on a new `dead[n.. prime..]` field after `fb[...]`; the existing
+parsers' `fb\[n nos keep\]` regex is unchanged.
+
+### G3 prediction for HAKUX_S2T_DEAD (written before the build)
+
+Arms on the owner's in-car state, one APK, palindrome: warm-up (discarded), off, on, on, off. On =
+`HAKUX_S2T_DEAD=1`. All arms keep widen at its default (on) and add `HAKUX_FRAMETRACE=1`.
+
+| leg | rule | falsified if |
+|---|---|---|
+| P0 census (decides G2) | off arms: `dead` n / `fb` n >= 0.8 over the hold windows | `dead` near 0: the texel is live, the switch can do nothing, and the remedy is a feedback-loop attachment |
+| P1 mechanism | on arms: `fb` keep / `fb` n >= 0.8; `prime` <= 5 per 60 flips; `[dipwin]` rp/flip in the hold windows <= 30 (off: 50-147) | P0 holds but rp stays > 30: something other than the sample ends the pass (`nd=` names it) |
+| P2 fps | each on arm's hold fps >= 27.0, and the mean of the on arms >= the mean of the off arms + 3.2. From the regression, 30 rp/flip ≈ 34.8 ms; the game paces itself at 2 vblanks | P1 holds and fps < 27: the regression's slope does not carry over, and the pass count was not the cost |
+| P3 pixels | the in-car frame at load (full frame, and the 128x128 target's region if it is visible) differs from an off arm by no more than off-vs-off does | a "dead" texel was read: the consumer list in `s2t_fb_texel_dead()` misses a reader |
+
+P0 is measured on the off arms, which run the same census, so the decision does not depend on the switch.
