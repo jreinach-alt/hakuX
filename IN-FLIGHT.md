@@ -8,12 +8,12 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `fpsnext1019` | claude-opus-5-5 | 40 min | fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433) |
+| `fpsnext1019` | claude-sonnet-5 | 9 min | fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lane.local`
-- **Device queue:** 0 waiting, 0 running.
+- **Device queue:** 1 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -123,7 +123,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/fpsnext1019` | fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433) | `05c6771a16` | 2026-10-19 07:52 |
+| `lane/fpsnext1019` | fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433) | `789b390b95` | 2026-10-19 08:36 |
 
 ## Recently landed on master
 
@@ -137,4 +137,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-18 fpsdiag1018: one FPS lane for GTA III, Blinx 2, Fable -- known/not/could-be and a diagnostic tool (#433)
 - 2026-10-18 gta3car1018: GTA III in the car -- the render passes are a feedback-loop copy per draw (#1049)
 
-_Updated 2026-10-19 08:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-19 08:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
