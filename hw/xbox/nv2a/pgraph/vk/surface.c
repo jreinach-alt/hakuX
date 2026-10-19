@@ -40,6 +40,11 @@ void pgraph_vk_xfr_surf(const SurfaceBinding *s, int ev);
 #define XFR_SURF_UPLOAD 2
 #define XFR_SURF_GONE 3
 
+#if NV2A_PERF_LOG
+/* [dipwin] (#1049): the binding gate's render-pass end, by cause, in draw.c */
+void pgraph_vk_dipwin_surface_break(bool no_binding, bool buffer_dirty);
+#endif
+
 /* Lightweight surface sub-timers — compiled out when profiling is off */
 #if NV2A_PERF_LOG
 #define SURF_TIMER_INIT(name)  int64_t name = nv2a_clock_ns()
@@ -5533,6 +5538,12 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
         // FIXME: We don't need to be so aggressive flushing the command list
         // pgraph_vk_finish(pg, VK_FINISH_REASON_SURFACE_CREATE);
         if (r->in_render_pass) { OPT_STAT_INC(rp_break_surface); }
+#if NV2A_PERF_LOG
+        if (r->in_render_pass) {
+            pgraph_vk_dipwin_surface_break(!current_binding,
+                                           pg_surface->buffer_dirty);
+        }
+#endif
         pgraph_vk_ensure_not_in_render_pass(pg);
 
         unbind_surface(d, color);
