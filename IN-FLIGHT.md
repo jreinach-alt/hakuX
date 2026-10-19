@@ -8,7 +8,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `savestate-req1019` | claude-sonnet-5 | 29 min | savestate-req1019: load a save state through request.sh -- no hand-driving to reach a scene (#433) |
+| `savestate-req1019` | claude-sonnet-5 | 44 min | savestate-req1019: load a save state through request.sh -- no hand-driving to reach a scene (#433) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -141,4 +141,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-19 drive: local tools only, act-observe instead of wait-and-fail, learn what to press
 - 2026-10-19 mkdawhite1018: Mortal Kombat: Deadly Alliance arena floors and walls draw flat white (#1058)
 
-_Updated 2026-10-19 15:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-19 15:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
