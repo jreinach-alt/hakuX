@@ -623,3 +623,125 @@ Arms on the owner's in-car state, one APK, palindrome: warm-up (discarded), off,
 | P3 pixels | the in-car frame at load (full frame, and the 128x128 target's region if it is visible) differs from an off arm by no more than off-vs-off does | a "dead" texel was read: the consumer list in `s2t_fb_texel_dead()` misses a reader |
 
 P0 is measured on the off arms, which run the same census, so the decision does not depend on the switch.
+
+## Attempt 4, item 1: both palindromes run -- `HAKUX_S2T_DEAD` P0 falsified, `HAKUX_SWZKEEP` P1 holds but P2 and P3 do not
+
+Attempt 3 had already queued both palindromes (`g2` for GTA III/S2T_DEAD, `bx2` for Blinx 2/SWZKEEP) before it hit
+the turn cap; `bx2` ran to completion (`BATCH_DONE 11:25:34`) and `g2` was cut off mid-way through its last arm
+(`O2`'s `arm.sh` had launched the app and confirmed `GPU: PurpleVK-public` but never reached the pause-menu load,
+score, or restore -- the run directory existed with only a partial `arm.log`, no `score2.txt`). This attempt: took
+the Nova hold (`hold.sh take`, one `0-`/foldqueue restore was running at start, `wait-idle` cleared it in <1 min),
+moved the half-finished `g2-O2` run dir aside (`runs/attic/g2-O2-incomplete-attempt3`, `arm.sh` refuses to reuse an
+existing dir), re-ran `O2` clean (launched, pause-menu/slot-5 load verified, RT held 60s, `GPU: PurpleVK-public`
+confirmed, scored), then finished the batch's own closing steps by hand (prefs restore -- `RESTORE_OK` -- and the
+dispatcher's shader-cache marker) since `batch.sh` itself was the process that died. No device time was needed for
+`bx2`; `g2` cost one arm (~2.5 min). Hold released after both are confirmed restored.
+
+### GTA III, `HAKUX_S2T_DEAD`: P0 falsified -- the feedback texel is live, not dead
+
+Census summed over every 60-flip window, full runs, off arms (widen stays default-on, `HAKUX_S2T_DEAD` unset):
+
+| arm | windows | `fb` n (sum) | `dead` n (sum) | dead/fb |
+|---|---|---|---|---|
+| O1 | 58 | 224,858 | 0 | 0.0 |
+| D1 (on, same census runs regardless) | 60 | 223,241 | 0 | 0.0 |
+| D2 (on) | 60 | 182,941 | 0 | 0.0 |
+| O2 | 0 (no `[s2c]` lines at all this run -- see below) | -- | -- | -- |
+
+**Zero dead texels in 631,040 feedback-sample events across three full runs.** The P0 rule (`dead`/`fb` >= 0.8 to
+confirm) is not close to met -- it is not even a noisy near-miss, every single window across every run reads
+`dead[n0 prime0]`. **`s2t_fb_texel_dead()`'s hypothesis is wrong: the COLOR_ATTACHMENT sample the stage takes is
+real feedback, not a fetch nothing downstream reads.** This also explains the fps and pixel results below for
+free: a switch that never finds a dead texel cannot change anything it touches.
+
+`O2` is its own small finding: the in-car scene this run landed on produced **zero** `[s2c]` census lines and
+`dipwin lines: 0` for the whole run, yet scored hold 27.7 / drive 28.6 fps -- far above every other arm in this
+batch (18.5-23.4 hold, 18.8-20.9 drive) including the other `off` arm (O1: 22.2 hold / 21.8 drive). This is the
+same scene-variance problem attempt 3 already named (`g1`'s A/A2 disagreement): the scripted 60s RT-hold does not
+land the camera on the same traffic/turn every time, and a scene with few or no feedback-sampling frames in view
+is both fast and census-quiet. Not a finding about the switch -- a reminder that any single-run fps number here is
+scene-dependent, and the `dead`/`fb` census (which does not depend on fps) is the one number in this batch that is
+not.
+
+**Pixel sanity (P3), full frame, `m3-loaded.png` (same save-state, before RT):** O1 vs D1 diff=0.1 (th 3.0, MATCH)
+-- consistent with zero engagement: a switch that never fires cannot move a pixel. O1 vs O2 (off-vs-off noise
+floor) diff=1.2, also MATCH -- the scene-variance above shows up in fps and the census, not in the loaded-frame
+screenshot (same save state, before the RT hold that diverges the route).
+
+**Verdict: `HAKUX_S2T_DEAD` is a dead end as built, for the right reason (G5).** The code and the census
+instrumentation are correct and worth keeping (the `dead[n prime]` field costs nothing when always-zero, and a
+future title or scene might actually hit the dead case), but on GTA III's in-car scene the feedback sample is
+real: every one of the up-to-140-per-flip COLOR_ATTACHMENT reads this lever targets is a texel some stage in the
+chain actually consumes. Per the prediction's own next step: **the remedy is a feedback-loop attachment or an
+in-pass by-region self-dependency** (G2's case 2) -- a bigger, Vulkan-feedback-loop-extension-shaped change, not a
+quick lever. Ranking this against the brief's items 2-4 (Fable H2 untouched, GTA III's own next cause unnamed
+beyond this), a feedback-loop attachment is not started this attempt: it needs its own mechanism writeup and
+risk assessment (feedback loops are exactly the kind of Vulkan validation-layer-flagged construct a renderer
+should enter carefully), and Fable H2 is both higher-ranked in the brief and unblocked. Left `HAKUX_S2T_DEAD` in
+the tree, opt-in, default off, uncommitted-further (the commit that built it already describes the switch
+correctly; this is a result to report, not a code change to make).
+
+### Blinx 2, `HAKUX_SWZKEEP`: P1 (mechanism) holds cleanly, P2 (fps) and P3 (pixels) do not -- do not ship
+
+**P1, mechanism** (batch `bx2`, full-run sums/means):
+
+| arm | `[edl] dl=` sum | `[swzkeep] kept=` sum | `surfupd...fence` lines | Surf phase mean (ms) | Tot phase mean (ms) |
+|---|---|---|---|---|---|
+| O1 (off) | 4,388 | -- | 37 | 10.1 | 27.1 |
+| O2 (off) | 4,378 | -- | 37 | 11.6 | 27.2 |
+| K1 (on) | -- (no `[edl]` lines at all) | 41,276 | 0 | 1.1 | 18.0 |
+| K2 (on) | -- (no `[edl]` lines at all) | 44,162 | 0 | 0.9 | 21.1 |
+
+Exactly what the prediction asked for: off arms repeat the eviction/download pattern this lever targets
+(`[evict372]`'s last line each off run is the same `pair0 ... m10 Z f130 ln p1024 256x256 b4 -> Z f130 sz p1024
+256x256 b4` handoff-declined case the mechanism section above names); on arms never hit `[edl]` at all (the
+binding stays bound, so the deferred-download path this counts never fires), `[swzkeep] kept` climbs by the
+tens of thousands over a ~58-64s run, `surfupd`'s fence-wait call site goes to exactly 0, and the PFIFO `Surf`
+phase (where the wait lived) drops by an order of magnitude (10-12ms -> ~1ms). **P1 passes outright.**
+
+**P2, fps -- falsified.** Score2 (same batch, see `batch.log` above for the full park/hold/drive table):
+
+| arm | hold fps | drive fps |
+|---|---|---|
+| O1 | 25.6 | 22.4 |
+| O2 | 25.4 | 22.4 |
+| K1 | 22.8 | 24.0 |
+| K2 | 27.7 | 25.4 |
+
+Off-arm mean of (hold+drive)/2: 24.0, 23.9 -> 23.95. On-arm mean: 23.4, 26.55 -> 24.98. **Gain: +1.0 fps, not the
+predicted +3.2**, and only one on arm (K2, 25.4) clears the "on-arm drive >= 25.0" bar; K1 (24.0) does not. The
+prediction's own falsifier for this leg says exactly what to do next: *"the wait moved to the flip's frame fence;
+then GPU+something is serial and the phase timers name it."* They do: K1's GPU phase mean (16.5ms, R:15.5) is
+higher than either off arm's (13.5/13.1, 14.1/13.7) -- removing the eviction left more live state for the GPU to
+redraw against, so the GPU side got slower even as the CPU-side wait vanished. K2's GPU mean (13.3) stayed flat,
+but its Idle/stall mean rose to 13.5ms (off arms: 8.9-10.5) -- the CPU is now idle-waiting on something else
+(pacing/vsync, not the removed download). Either way the saved CPU time did not reach the player: it was
+re-spent on the GPU (K1) or turned into a different stall (K2). This is a clean instrument-backed answer, not a
+"needs more data" shrug (G5).
+
+**P3, pixels -- falsified, and visibly so.** Character-and-shadow region (box 520,480,800,760 per the prediction),
+`m3-loaded.png` (same save-state slot 5, before any input):
+
+| comparison | diff | vs threshold 3.0 |
+|---|---|---|
+| O1 vs O2 (off-vs-off noise floor) | 2.7 | MATCH |
+| O1 vs K1 (on) | 6.7 | NO_MATCH, ~2.5x the noise floor |
+| O1 vs K2 (on) | 6.9 | NO_MATCH, ~2.5x the noise floor |
+
+Visual check (both `m3-loaded.png`, same slot-5 load) confirms it is not a measurement artifact: the off-arm
+screenshot shows the character's shadow as a short patch under the bike; **the on-arm screenshot shows an
+additional long, straight shadow streak extending well past the character to the right**, a double-shadow /
+elongated-shadow artifact, consistent across both on arms. This is exactly the failure mode the prediction
+named going in: *"a shadow that reads a VRAM copy differs."* The mechanism (texture.c, keeping a swizzle-only
+rebind bound and dirty instead of evicting it) reuses the GPU's existing image for sampling (correct, per P1 and
+the GTA III R2 precedent) but leaves VRAM holding stale bytes in the old layout for one more frame than before;
+something in Blinx 2's shadow pass reads that stale VRAM copy before the owed download catches up, same risk the
+prediction flagged for this exact 256x256 Z-depth surface (most likely the player's own shadow map).
+
+**Verdict: `HAKUX_SWZKEEP` does not ship.** All three legs point the same way: the mechanism works exactly as
+designed (P1), but the fps win it was built for does not reach the player (P2, the cost moved to the GPU or an
+idle stall instead of disappearing) and it introduces a visible shadow-rendering defect on the one title it was
+built for (P3). It is already opt-in and default-off, so nothing further is needed to keep it from shipping; no
+further work on this lever is planned unless a future finding explains why the GPU/stall cost appeared and shows
+how to avoid it without the VRAM staleness. Both predictions (G3) did their job: three of the four legs across the
+two levers were falsified, and each falsifier named a concrete, truthful next step instead of a vague "inconclusive."
