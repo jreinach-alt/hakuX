@@ -1300,3 +1300,81 @@ resolved.
   Did not open a new issue for the fps cliff or the unexplained app exit --
   both are handed off in `FINDINGS.md`/the PR body for lane.local to route;
   this lane's `Files:` does not include `nv2a_issues.toml` or any tracker.
+
+## Attempt 16 (10-18, resumed per the brief as "attempt 1" in this worktree
+again) -- why the previous attempt did not finish: it did finish its own
+scope (resolved the fps-cliff isolation question, marked the PR ready).
+What is new is the owner update appended to the brief afterward, timestamped
+~21:50 PDT -- after attempt 15's ~21:10 PDT work -- with two items
+(a white-surface defect report, and a new unfixed-master telemetry capture)
+that attempt 15 never saw and `FINDINGS.md` had no section for. This attempt
+is that work.
+
+- Read this file and `git log` first, per the resume brief. Confirmed via
+  `git log --oneline` that `286d0fc9d8` (current HEAD) is a plain merge of
+  `origin/master` on top of attempt 15's ready-marked tip (`6fdb1c3cb6`),
+  bringing in unrelated commits (fpsdiag1018, localdrive1018, gta3car1018)
+  that do not touch this lane's files.
+- Confirmed via `git diff origin/master...HEAD --stat` that this branch's
+  only non-doc files are `hw/xbox/mcpx/apu/apu.c` and
+  `hw/xbox/mcpx/apu/vp/vp.c`, matching `PR.md`'s `Files:` line and the owner
+  update's own description of the diff.
+- Checked `dispatch/hold/nova` (`owner-play-1018e`) and `dispatch/hold/thor`
+  (`lane.local`) directly -- `hold.sh` is not on `PATH` in this worktree, so
+  read the hold files the dispatcher itself writes instead of the wrapper.
+  Both holds match the brief's SessionStart snapshot: the Nova is still on
+  the owner's hold, no device work available this attempt either.
+- **White surfaces (item 1):** read every hunk of the `apu.c`/`vp.c` diff by
+  header (19 hunks total) and confirmed none reach `hw/xbox/nv2a/**`, `vk/`,
+  `gl/`, or any lock those own -- the locks this branch touches (`d->lock`,
+  `fifo_lock`, `bql_lock`) are pre-existing calls it only wraps with a
+  timer. Worked through `voice_ldl`'s guest-RAM read (same bytes as the old
+  `ldl_le_phys` path, naturally-aligned 32-bit accesses so no new tearing
+  risk, no widened race window) and `voice_set_mask`'s skipped store (only
+  skips when the value is unchanged, so RAM content after the call is
+  identical either way). Found, via a read-only Explore agent over
+  `hw/xbox/nv2a/pgraph/vk/texture.c`, a pre-existing, code-documented
+  mechanism that already explains a one-off white flash with no connection
+  to this branch: `create_dummy_texture()` (an opaque-white 16x16 fallback)
+  is bound in place of a real texture when the per-frame texture-descriptor
+  LRU cache is exhausted, and the surrounding comment names this exact
+  failure mode and says it self-corrects on the next draw -- matching a
+  single wrong frame that goes away on its own. Wrote all of this up under
+  `FINDINGS.md`'s new "White surfaces" section, including the one device
+  run that would make this certain (an A/B of `723ea67e77` vs. master, same
+  RalliSport Challenge save/scene) rather than claiming certainty from
+  reading code alone.
+- **New telemetry (item 2):** read `/home/justin/hakux-work/captures/fps-owner-1018/ralli2.txt`
+  (master perflog build `72af9cb92c`, no fix, RalliSport Challenge 2,
+  21:21-21:23 PDT) plus its pre-existing `ralli2.analyze.txt` and
+  `HANDOFF.md` from the fpsdiag1018 lane's capture session. Extracted the 9
+  `starve:` prints (not a running total -- byte counts are non-monotonic
+  across prints) and all 36 per-second `hakuX-phase` lines
+  (`Fin`/`Sub`/`Fen`) by timestamp. Aggregate zero-filled share over the
+  whole clip: 9.8% (1,112,064 / 11,321,344 bytes) -- worse than the 1.34%
+  the owner's original, longer session scored. `Fen` (GPU fence wait) stays
+  flat at 0.1-0.5 ms throughout; every `Fin` swing (11-26 ms from 21:22:15
+  on) is almost entirely `Sub` (CPU-side submission) -- CPU-bound work
+  competing for the same CPU the voice workers run on, which is exactly the
+  mechanism this branch's `prod:` model already names and the reason for
+  the priority change. The per-print starve windows and the per-second
+  `Fin`/`Sub` spikes do not line up 1:1 (the starve print's reset schedule
+  is not tied to wall-clock seconds the way `hakuX-phase` is), but both
+  cluster inside the same ~30 s stretch of the race and nowhere outside it.
+  Wrote this up under `FINDINGS.md`'s new section, explicit that it is
+  "before" evidence for the already-identified and already-fixed mechanism,
+  not a second device confirmation (the Nova was on hold during and after
+  this capture, so the fix was never run against this same stretch).
+- `PR.md`'s `State:` stays `ready`: item 1 asked to keep it ready only if
+  the white-surface question is answered, and it is answered above --
+  offline analysis with a reasoned conclusion and a named decisive run, not
+  a device reproduction (none was possible, Nova held throughout). The
+  PR body's prediction/selftest/Files lines are unchanged; added a line
+  pointing at the new `FINDINGS.md` sections and the one open device check.
+- Did not queue the A/B check named above: the Nova is still on the
+  owner's hold, and the brief is explicit that device work waits for the
+  hold to clear, not that this lane should queue speculatively against a
+  held device. Nothing else needs a device to resolve -- there is no
+  dispatch id to wait on, the open item is an owner decision ("the owner
+  decides" per the brief) about whether to spend device time on the named
+  A/B check, not a running request this lane can poll.

@@ -154,3 +154,154 @@ tombstone, no thermal-mitigation flag set in the device's own thermal
 status at the last sample 31s prior), handing focus back to the launcher.
 This is a device/app-robustness question, not an audio or render defect,
 and is also handed off rather than chased here.
+
+## White surfaces
+
+The owner saw white panels on the car in RalliSport Challenge (4D53000F,
+not Challenge 2) on this branch's isolation build (`723ea67e77`,
+`HAKUX_APU_PRIO=0`), once, not reproduced since; master and the 0.5.2
+release both ran clean afterward.
+
+**(a) Everything this branch changes, and what each path can touch:**
+
+`git diff origin/master...HEAD --stat` outside `docs/lanes/ralli2audio1018/**`
+touches exactly two files: `hw/xbox/mcpx/apu/apu.c` and
+`hw/xbox/mcpx/apu/vp/vp.c`. Every hunk in `apu.c` (14 hunks, checked by
+header) sits inside the APU's own internal functions -- `throttle`,
+`apu_starve_account`/`apu_starve_report` (new `apu_prod_*` timing
+counters), `se_frame`, `monitor_sink_cb`, `monitor_init`, and
+`mcpx_apu_frame_thread` -- plus the `HAKUX_APU_PRIO` block that calls
+`setpriority(PRIO_PROCESS, tid, ...)` on the APU's own thread ids. None of
+it reaches `hw/xbox/nv2a/**`, `vk/`, `gl/`, or any lock those own (the
+locks it does touch -- `d->lock`, `fifo_lock`, `bql_lock`/`bql_unlock` --
+are pre-existing calls this branch only wraps with a timer, not new
+acquisitions or a changed order). `vp.c`'s 5 hunks are the `voice_ldl`
+helper and its three call sites (`voice_get_mask`, `voice_set_mask`,
+`voice_get_samples`) plus the `vp_ram_size` init. Nothing here allocates,
+maps, or iterates any buffer the render path owns.
+
+**(b) The new guest-RAM reads in `vp.c`:**
+
+`voice_ldl` reads `d->ram_ptr[addr]` directly (`ldl_le_p`, a plain host
+load, no RCU read lock) when the address is within `vp_ram_size`, falling
+back to `ldl_le_phys(&address_space_memory, ...)` above it -- the same
+call the old code always used. Three things to check:
+
+- *Does it read different bytes than before?* No. For an address inside
+  RAM, `ldl_le_phys` on a plain-RAM physical address resolves to the same
+  host-backed buffer `d->ram_ptr` points at; both paths read the same
+  bytes. The change is which API reaches them, not which bytes they are.
+- *Can it tear or read stale data under a concurrent guest write?*
+  Every call site uses a `voice + offset` that comes from `NV_PAVS_SIZE`
+  field layout and is used with `ctz32(mask)` bit-field math, so these are
+  natural, aligned 32-bit accesses -- atomic at the host ISA level with or
+  without the RCU path. The RCU lock the old path held protects against
+  the memory map changing (hot-unplug/resize), not against a second
+  writer touching the same bytes; a concurrent guest write to the same
+  voice register was already an unguarded race in the old code, and
+  `voice_ldl` does not widen that window.
+- *Does the skipped store in `voice_set_mask` drop a write something else
+  relies on?* It only skips the store when the computed value equals what
+  is already there (`v == old`), so the byte content of RAM after the
+  call is identical whether the store runs or is skipped -- there is no
+  observable difference for anything that later reads that address,
+  including a concurrent writer: skipping a no-op write can only narrow a
+  clobber window (by shortening the time the address is touched at all),
+  never widen one.
+
+**(c) What would differ, in a RalliSport Challenge scene, between this
+branch and master:** nothing in pixel output. Every changed line is
+CPU-side APU code reading and writing audio voice registers and SSL
+entries in a software-defined RAM region the game allocated for its own
+audio engine -- disjoint from any texture, vertex buffer, or NV2A command
+data a render frame touches. The scheduling change (`HAKUX_APU_PRIO`)
+changes which threads the OS scheduler favors, not any data a frame reads;
+it could in principle delay a render thread under contention (a frame
+timing effect, which is what the fps-cliff isolation run above was built
+to test and already separates from this change), but a scheduling delay
+is not a mechanism for a data-correctness defect like a texture reading
+as solid white.
+
+**A concrete alternative mechanism already exists in code, independent of
+this branch.** The Vulkan backend (`hw/xbox/nv2a/pgraph/vk/texture.c`)
+keeps a 16x16 opaque-white dummy texture (`create_dummy_texture()`,
+filled via `memset(..., 0xff, ...)`) and binds it in place of a real
+texture in several cases, including when the texture-descriptor LRU
+cache is exhausted for a frame (too many distinct textures bound in one
+submit) and a slot had no prior binding -- the surrounding comment in
+that code names this exact failure mode ("substituting the dummy for a
+frame is a wrong texture") and deliberately leaves the slot dirty so it
+self-corrects on the next draw. That matches the report precisely: a
+single wrong-looking frame or two, gone on its own, with no app restart
+or fix needed, and no connection to audio or APU code either way. The GL
+backend has no equivalent fallback, which is also consistent with this
+not showing up as a steady-state defect across runs.
+
+**This does not, on its own, prove the branch is innocent** -- it is a
+plausible alternative with supporting code, not a reproduction. The
+single decisive check, if more certainty is wanted before folding: an A/B
+of `723ea67e77` vs. `origin/master` on the same RalliSport Challenge
+save/scene, several passes through the same stretch, screenshot diff
+against the console-calibrated golden if one exists for this title. That
+needs the Nova; it is not queued while the owner's hold
+(`owner-play-1018e`) is in force. Queuing it is the next step once the
+hold clears, for whoever picks this up next.
+
+## New telemetry on master (10-18 21:21-21:23 PDT, no fix): compared against this branch's producer model
+
+`/home/justin/hakux-work/captures/fps-owner-1018/ralli2.txt`, master
+perflog build `72af9cb92c` (pre-fix: no `prod:` line, voice workers at the
+old nice -4), RalliSport Challenge 2, about two minutes of race.
+
+Audio `starve:` lines over the whole clip (9 prints, each covering the
+interval back to the previous print, not a running total -- the byte
+counts are not monotonic):
+
+| print ends | window | short/total callbacks | zero-filled |
+|---|---|---:|---:|
+| 21:21:47 | pre-race/load | 108/132 | 81.4% |
+| 21:21:59 | 12 s | 2/269 | 0.74% |
+| 21:22:04 | 5 s | 1/118 | 0.64% |
+| 21:22:09 | 5 s | 1/118 | 0.11% |
+| 21:22:14 | 5 s | 16/116 | 4.85% |
+| 21:22:19 | 5 s | 2/118 | 0.21% |
+| 21:22:24 | 5 s | 14/117 | 4.70% |
+| 21:22:29 | 5 s | 52/117 | **11.75%** |
+| 21:22:40 | 11 s | 1/277 | 0.09% |
+
+Aggregate over the whole clip: 1,112,064 of 11,321,344 bytes zero-filled =
+**9.8%** -- worse than the 1.34% the owner's original, longer session
+scored, on the same unfixed master.
+
+The per-second `hakuX-phase` lines (36 of them, matching the 36 windows
+`fpsdiag.py` found) give `Fin` broken into `Sub` (CPU-side submission) and
+`Fen` (GPU fence wait). `Fen` stays flat at 0.1-0.5 ms throughout; every
+`Fin` swing is a `Sub` swing: 0.1-0.2 ms in the clean stretch (21:21:49 to
+21:22:09) and 11-26 ms, almost all `Sub`, from 21:22:15 onward. That is
+CPU-bound command-submission work competing for the same CPU the voice
+workers run on, not GPU wait -- the mechanism this branch's own `prod:`
+model already names (a shader-compile burst or a few ms of run-queue wait
+tips the producer under real time) and the reason the priority change
+raises the voice workers to the frame thread's tier: under CPU
+contention from the render thread's own submission work, the pre-fix
+nice -4 workers lose the scheduling contest for CPU the nice -16 frame
+thread already wins.
+
+The correlation is not a clean 1:1 per-print match: the worst `Sub` spikes
+at 21:22:15/18 (16-22 ms) land inside the *low*-starve window ending
+21:22:19 (0.21%), while the high-starve windows (21:22:14, 24, 29) show
+only modest `Fin` elevation at their edges. The `starve:` print interval
+is not tied to the same clock as the per-second `hakuX-phase` lines (its
+byte counts reset on its own schedule, not every wall-clock second), so a
+tight per-bucket alignment is not available from this capture; the
+30-second stretch that holds every elevated `Fin`/`Sub` sample
+(21:22:10-21:22:53) is also the stretch that holds every elevated starve
+sample (21:22:14-21:22:29) and nothing outside it, which is the level of
+correlation this capture supports.
+
+This is a "before" data point for the same symptom class this branch
+already fixed and verified twice on device (bar runs 1-2 above,
+`audio_starve_share` 0.0 against this same race). It was not re-run with
+the fix -- the Nova was on the owner's hold during this capture and
+remains on hold now -- so it is read as supporting evidence for the
+mechanism, not a second confirmation of the fix.

@@ -78,6 +78,18 @@ of 870s (no crash signature, no device-side thermal-mitigation flag), a
 device/app-robustness question outside this fix, also handed off rather
 than chased here.
 
+A one-off white-panel report on this branch's isolation build, in a
+different title (RalliSport Challenge, not Challenge 2), is addressed in
+`FINDINGS.md`'s "White surfaces" section: every changed line is CPU-side
+APU code touching a RAM region disjoint from anything the render path
+reads, the new guest-RAM reads carry the same bytes and no new race
+window, and a pre-existing, code-documented white-fallback mechanism in
+the Vulkan texture cache (unrelated to this branch) already matches the
+report. That is reasoned from the diff and the renderer's own code, not a
+device reproduction -- the Nova was on an owner hold throughout. The named
+decisive check (an A/B of this build vs. master on the same save/scene) is
+still open for whoever has Nova time next.
+
 Detail is in `docs/lanes/ralli2audio1018/NOTES.md` and `FINDINGS.md`.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
