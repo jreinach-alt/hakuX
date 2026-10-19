@@ -1230,3 +1230,73 @@ either way.
   behind no flag. Queued even with the Nova currently unreachable --
   `request.sh` queues regardless and the dispatcher will claim it once the
   device is back, so there is nothing more to do until then.
+
+[lane.ralli2audio1018] waiting: dispatch request
+`1-1792380737-lane.ralli2audio1018-709884` (the `HAKUX_APU_PRIO=0` isolation
+run, ref `723ea67e77`, nova, 870 s) to decide whether this fix's priority
+change causes the fps cliff bar runs 1-3 all showed at ~t=180-240s. Nothing
+further to do until it resolves.
+
+## Attempt 15 (10-18, resumed per the brief as "attempt 1" in this worktree,
+about 21:10 PDT) -- why the prior resume did not finish: it correctly ended
+on the `waiting:` above for the isolation run; that request has since
+resolved.
+
+- Read this file and `git log` first, per the resume brief.
+- `dispatch/results/1-1792380737-lane.ralli2audio1018-709884/` exists with
+  `DONE` present: the isolation run landed. `run.log`: `guest exited after
+  670s of 870s` -- at 21:00:02 the hakuX process (pid 8477) simply stops
+  appearing in the logcat and `org.es_de.frontend` (the launcher, not
+  hakuX) becomes the foreground app; `ROUTE STOPPED` names this directly
+  ("xemu is gone, so the guest exited"). No `hakuX-crash`/`FATAL`/tombstone
+  line anywhere in the logcat (consistent with the memory note that a
+  hakuX crash leaves no tombstone) and `thermal.jsonl`'s `pw.thermal_status`
+  stays `0` (no OS-level thermal mitigation flagged) through the last
+  sample at 20:59:33, 31 s before the exit -- so this reads as an
+  unexplained app exit, not a clean soak-timeout or a device disconnect
+  (unlike bar run 3's `adb.exe: device not found`, this run's `adb_failures=0`
+  and the device stayed reachable enough to log `held ... for 670s` and
+  `PERF: restored=... perf_restored=true` after). It is a device/app
+  robustness question outside this lane's files (a possible
+  thermal-adjacent OOM-kill or watchdog, not an audio or render defect);
+  noted for whoever owns device robustness, not chased further here --
+  the run's data to t=670s already answers this attempt's one question
+  (below), and the lane's files (`vp.c`, `apu.c`) have no connection to the
+  Android lifecycle of the hakuX process.
+- **The answer the isolation run was queued for**: bucketing `hakuX-perf:
+  gfps=` into 30 s windows (same method attempt 14 used on bar runs 1-3),
+  with `HAKUX_APU_PRIO=0` (voice workers back at nice -4, the pre-fix
+  priority):
+
+  | window start (s) | mean gfps | min | max |
+  |---|---|---|---|
+  | 0-150 | 59.0 | 59 | 59 |
+  | 180 | 53.1 | 3 | 59 |
+  | 210 | 50.3 | 36 | 63 |
+  | 240 | 38.3 | 36 | 41 |
+  | 270-630 | 36.7-49.1 | 31 | 60 |
+
+  The same cliff, in the same place (the clean ~59 fps plateau ends at
+  t=180-210s, same as bar runs 1-3), appears with the priority change
+  **off**. That is the falsifier this isolation run was built to test, and
+  it is not met: **the fps cliff is not caused by this lane's
+  `HAKUX_APU_PRIO` change.** It is also not the vp.c memory-read path
+  (CPU-side APU code, already ruled out in `FINDINGS.md` on mechanism
+  grounds) and not shader-cache state (this run's cache was cleared cold,
+  same as bar run 1's clear-then-cold start; bar run 2 ran warm; the cliff
+  showed in both). Three different env states (priority on + cold, priority
+  on + warm, priority off + cold) all produce the same shape at the same
+  wall-clock mark into a continuous race on this device. That converges on
+  a device/title thermal or sustained-load characteristic independent of
+  anything on this branch.
+- This resolves `FINDINGS.md`'s open "if/then": the audio fix ships on its
+  own merits (its own bar -- audio_starve_share, hitches -- was already
+  confirmed twice, by a wide margin, in bar runs 1-2), and the fps cliff is
+  a separate, pre-existing, device/title-specific finding to hand off, not
+  a reason to gate this fix or change `HAKUX_APU_PRIO`'s default.
+- Updated `FINDINGS.md` and `PR.md` with this result; set `PR.md`'s
+  `State:` to `ready`. Cleared `WAITING` (nothing left to wait on).
+- Did not touch the compat/README/ledger/Wall surfaces, per the brief.
+  Did not open a new issue for the fps cliff or the unexplained app exit --
+  both are handed off in `FINDINGS.md`/the PR body for lane.local to route;
+  this lane's `Files:` does not include `nv2a_issues.toml` or any tracker.

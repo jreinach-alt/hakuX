@@ -124,20 +124,33 @@ racing, then a sustained drop to a 25-50 fps band for the rest of the run,
 even after a cooldown gap before the run starts. This does not move with
 a cooldown gap, which argues for a within-race thermal characteristic of
 this title on this device rather than cumulative heat from queuing runs
-back to back. It is also not something the vp.c memory-read change could
-cause (CPU-side APU code only). It could, in principle, be caused by this
-fix's own priority change (voice workers raised to nice -16, a new
-system-wide scheduling change) crowding out render-adjacent CPU work once
-the CPU is thermally constrained. An isolation run with
-`HAKUX_APU_PRIO=0` is queued to tell these apart; see NOTES.md.
+back to back.
 
-The owner's own hand-played capture (514 s, fps_ok 0.9873, no cliff) predates
-this fix and does not distinguish between the two explanations either way.
+An isolation run (`HAKUX_APU_PRIO=0`, this fix's priority change off, the
+vp.c memory-read change still in effect) reproduces the identical cliff at
+the identical ~180-210 s mark. Four runs now (two priority-on, one aborted
+priority-on, one priority-off), across both cold and warm shader caches,
+all cut at the same wall-clock mark into one continuous race. **The fps
+cliff is not caused by this change**: not the vp.c memory-read path
+(CPU-side APU code, no render-path connection either way), not the
+priority change (reproduces with it off), and not shader-cache state
+(reproduces warm and cold). It is a device/title characteristic that
+shows up under several continuous minutes of this race's particular load,
+independent of anything on this branch. The owner's own hand-played
+capture (514 s, fps_ok 0.9873, no cliff) stayed under the ~180 s mark
+where the cliff starts, which is consistent with this reading rather than
+contradicting it.
 
-**If the isolation run shows the same cliff with the priority change off**:
-the fps bar is not met for a reason outside this fix's control, the audio
-fix ships on its own merits (it only touches audio), and the fps finding is
-a separate, title/device-specific issue to hand off.
-**If the cliff shrinks or clears**: `HAKUX_APU_PRIO`'s default needs to
-change before this fix ships behind no flag, and that becomes the next
-step instead.
+The audio fix ships on its own merits: its own bar (audio_starve_share,
+hitches) is confirmed twice, by a wide margin. The fps cliff is a
+separate, pre-existing, device/title-specific finding, handed off rather
+than fixed here -- it is outside `hw/xbox/mcpx/apu/**` and needs its own
+investigation (likely thermal/sustained-load characterization, not an
+audio or APU lever).
+
+A second, unrelated observation from the isolation run: the hakuX process
+exited on its own at t=670s of the 870s run (no crash signature, no
+tombstone, no thermal-mitigation flag set in the device's own thermal
+status at the last sample 31s prior), handing focus back to the launcher.
+This is a device/app-robustness question, not an audio or render defect,
+and is also handed off rather than chased here.

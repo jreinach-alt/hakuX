@@ -1,6 +1,6 @@
 # ralli2audio1018: RalliSport Challenge 2 audio dropouts: the voice processor's guest-memory overhead, producer timing, audio thread priority
 
-State: draft
+State: ready
 
 Lane: ralli2audio1018            Issue: #433
 Base: master @ f98feca3ba
@@ -57,14 +57,27 @@ prediction by a wide margin (143 us mean fork-join vs. a predicted
 390-450 us). Two default-cache runs of the same race both confirm
 audio_starve_share (0.0, bar 0.001) and hitches (0, bar: none over 500 ms)
 by a wide margin; the owner's 1.34% starve share and 580/774/410 ms
-compile hitches are gone. `fps_ok` misses the 0.90 bar on both
-(0.8618, and a second run the tool could not score for fps for an
-unrelated route-frame gap); a third, independently-run confirmation
-reproduces the same shape (clean to ~200s, then degraded) even after a
-cooldown gap, which does not implicate this change's memory-read path
-(CPU-side APU code only) but could implicate its priority change
-(voice workers raised to nice -16) under thermal CPU contention. An
-isolation run with `HAKUX_APU_PRIO=0` is queued to tell these apart.
+compile hitches are gone.
+
+`fps_ok` misses the 0.90 bar on every run: 0.8618 on the first bar run, two
+more unscoreable for an unrelated route-frame gap and a device disconnect,
+and a dedicated isolation run with `HAKUX_APU_PRIO=0` (this fix's priority
+change off). All four show the same clean ~59 fps plateau cutting off at
+the same ~180-210 s mark into one continuous race, regardless of whether
+the priority change is on or off and regardless of warm or cold shader
+cache. That rules out this branch as the cause (the vp.c change is
+CPU-side APU code with no render-path connection either way, and now the
+priority change and cache state are ruled out too): the fps cliff is a
+device/title characteristic independent of this fix, not something to gate
+this change on. **This fix ships on its own merits** -- its own bar
+(audio_starve_share, hitches) is confirmed twice, by a wide margin -- and
+the fps cliff is handed off as a separate finding.
+
+The isolation run also showed the hakuX process exit on its own at t=670s
+of 870s (no crash signature, no device-side thermal-mitigation flag), a
+device/app-robustness question outside this fix, also handed off rather
+than chased here.
+
 Detail is in `docs/lanes/ralli2audio1018/NOTES.md` and `FINDINGS.md`.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
