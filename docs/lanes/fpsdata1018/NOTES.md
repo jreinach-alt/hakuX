@@ -367,6 +367,7 @@ NOTES (newer than master's); ralli = `wt/ralli2audio1018/docs/lanes/ralli2audio1
 | 24 | `HAKUX_S2T_FB` mode 2 (GTA III in-car fix): its pixel prediction FAILed on the same lever before landing clean -- DOT_PRODUCT misclassified as a non-reading combiner mode, a real regression (Pixel FAIL #2, `Antialiasing_tests/CPUWriteIgnoresSurfaceConfig` moved) | `Antialiasing_tests` | arms `--expect`, 24/472 then 0/472 (after DOT_PRODUCT excluded; the remaining `Texture_shadow_comparator` moves are noise, see row 25) | 1 arms pair, this lever | landed once the DOT_PRODUCT mechanism was excluded; `s2t_fb_record()` also gained the shadow-comparator-format exclusion `texscan_shape_ok()` already needed (correct on the code reading, kept, but not provable by this suite's single-run arm -- row 25) | this file, "Pixel FAIL #2" |
 | 25 | `Texture_shadow_comparator` as a `must_not_move` suite in a single-run `--expect` pixel prediction: used three times this lane (texscan2d, S2T_FB mode 2 x2) and FAILed every time (23/1038, 24/472, 21/472) including on an already-landed fix (17/1038 re-check of `b46f4cb8d3`) | same 4 arms pairs above, plus a 3-way same-ref sweep (`245ddc4964`, zero code change) | `sweep_agreement.py` across 3 same-ref runs: 89/1038 disagree, 100% `Texture_shadow_comparator`, zero elsewhere; one capture (`2F16_..._15.0000_GT`) reproduces the identical `480->400` transition under two unrelated fixes | 3 same-ref device runs already on disk, no new device time spent | **this suite cannot be gated by a single-run arm**: it disagrees with itself ~8.6% of the time with no code change. Drop it from `must_not_move` in any future prediction against this suite; use `--runs N` + `sweep_agreement.py` (or a majority-of-N vote) if a real claim about it is ever needed | this file, "Noise floor measured" |
 | 26 | `HAKUX_S2T_FB` mode 2's depth-excluded re-registration (`b50667ac35`) still FAILed: `s2t_fb_memo[]` had no check that `pg->surface_scale_factor` matched between record and keep, so a slot could reuse a copy sized for a stale scale after a CPU-write reconfigure that never bumps `draw_time` | `Antialiasing_tests` | `ab_compare.py`, 1/184, `CPUWriteIgnoresSurfaceConfig` 0 -> 45,056 -- byte-for-byte the same capture and count as row 22's/Fix #1's `image_scale` regression, a different cache (`s2t_fb_keep`) taking the same raw-copy route (`copy_surface_to_texture`) | 1 arms pair, this lever (`1-1792404006-*`) | fixed: `s2t_fb_memo[].scale` recorded at copy time, checked at keep time, same precedent as Fix #1's `image_scale` and row 24's depth exclusion | this file, "Pixel FAIL #4" |
+| 27 | `migrate_surface_image()` not copying `image_scale` from a shelved/invalid surface's old binding to its new one, found while re-checking texscan2d's own prediction for a suspected regression that turned out to be a device flake | `Antialiasing_tests` (same flake check, not this gap) | `sha256sum` across 4 existing result dirs (2 base, 2 fix): 3/4 byte-identical on bit-identical builds, 1/4 differs -- the flake, not evidence for or against this gap, which always safely under-refuses (`0 != 1`) rather than corrupts | 0 new device time (read existing results) | fixed: `dst->image_scale = src->image_scale;` added to `migrate_surface_image()`; re-registered texscan2d's prediction a fifth time since this changes texscan eligibility for migrated surfaces, a new falsifiable claim Fix #1's own registration never made | this file, "Pixel scare resolved" |
 
 Correction carried from the research pass: `L/fpsdiag1018/FINDINGS.md` 2 item 4 credits "R3 -0.9 fps"; README gives
 -0.3 (b2) and -0.9 (b4) both to R2 vs R1, and R3 no fps number (dup 0, inert).
@@ -864,3 +865,98 @@ Already-tried table: this exact mechanism (image_scale/stale-copy-after-reconfig
 fixed in two places (texscan_plan, s2t_fb_keep) that both take the GPU-copy-and-reuse route; any third
 candidate lever that also caches a raw `copy_surface_to_texture()`/`vkCmdCopyImage` result across more than one
 draw needs the same check before it is registered, not after a FAIL finds it again.
+
+## Pixel scare resolved: the texscan2d `b46f4cb8d3` re-check's FAIL on `CPUWriteIgnoresSurfaceConfig` was a
+device flake, not a regression -- but it surfaced a real, separate gap worth fixing
+
+Read back the texscan2d prediction's own arms fresh this turn (`1-1792404008-arms-fpsdata1018-{base-3062345,
+fix-3062388}`, `a_ref=245ddc4964` vs `b_ref=b46f4cb8d3`, the already-landed fix): `ab_compare.py --expect`
+gave **VERDICT: FAIL -- 1 of 750 checks violated**: `Antialiasing_tests/CPUWriteIgnoresSurfaceConfig` moved
+**0 -> 45,056** bytes. This directly contradicted the "Correction" entry above (line ~236), which read back a
+*different* arm pair on the *same* `a_ref`/`b_ref` (`1-1792400325-...`) and found the only FAIL confined to
+`Texture_shadow_comparator` (17/1038) -- no `CPUWriteIgnoresSurfaceConfig` movement at all. Visually confirmed
+via the capture PNGs that this is real structured corruption (the fix arm's image is dense multicolor fine
+striping over the same diamond shape the base arm renders as a clean checkerboard), not a black frame or a
+truncated file -- so this could not be dismissed as a decode artifact without checking further.
+
+Ruled out a stale/mismatched build first: `git show b46f4cb8d3:hw/xbox/nv2a/pgraph/vk/texture.c` confirms the
+`s->image_scale != 1` refusal is textually present in the tested commit, and the dispatcher's build log for
+`b46f4cb8d3` shows a genuine ninja recompile of `texture.c` (`BUILD SUCCESSFUL`, same 3 pre-existing
+`-Wshift-negative-value` warnings), not a stale cache hit.
+
+**The decisive check**: both arm pairs share the identical `apk_sha` on both sides (`245ddc4964` ->
+`f9ee968b9759`, `b46f4cb8d3` -> `ec81116c55bd`, same device `nova`, same shader-cache-clear transition in both
+`result.json`s) -- bit-identical builds, same device, same refs, run twice. `sha256sum` on
+`captures1/Antialiasing_tests::CPUWriteIgnoresSurfaceConfig.png` across all four result dirs (both base runs,
+both fix runs):
+
+| Run | sha256 (16 hex) | size |
+|---|---|---|
+| base, `1-1792400325-...-2706810` | `8f719443e1b38521` | 42471 |
+| base, `1-1792404008-...-3062345` | `8f719443e1b38521` | 42471 |
+| fix, `1-1792400325-...-2706853` | `8f719443e1b38521` | 42471 |
+| fix, `1-1792404008-...-3062388` | `a031d5810bc07fdc` | 122253 |
+
+Three of four are byte-identical (the clean checkerboard); only the second fix run differs. The exact same
+binary (`ec81116c55bd`) produced the correct answer once and the corrupted one once -- this is a run-to-run
+device flake on this one test, not a reproducible consequence of `b46f4cb8d3`'s code. Per `device-run-flakes`
+(rerun twice): with 3 of 4 runs agreeing and the dissenting run bit-for-bit matched on the build side, the
+weight of evidence is "flake", and the texscan2d fix's pixel-safety claim stands as it was before this turn
+(not amended, not retracted). This is a second, distinct noise source from the already-measured
+`Texture_shadow_comparator` ~8.6% floor (that floor was measured on `245ddc4964` only, same-ref, zero code
+change, 3 runs, 100% confined to that suite); `Antialiasing_tests::CPUWriteIgnoresSurfaceConfig` disagreeing
+with itself under a bit-identical build on a *different* ref pair means this device/test combination can flake
+outside that suite too, at a much lower rate (1 run out of 8 total runs across both pairs' fix side, only).
+No prediction file needs amending for this: `must_not_move` already requires a check to be reproduced before
+it blocks a change, and `ab_compare.py` correctly flagged it for inspection; only the suite-level noise-floor
+discount (already in both prediction files for `Texture_shadow_comparator`) does not yet cover this, and is
+not broadened to cover this one single-occurrence flake either -- one disagreement in 8 runs is not grounds for
+a blanket exclusion the way 89/1038 across 3 runs was. If a third independent arm pair on this same `a_ref`/
+`b_ref` also disagrees on this test, that changes this conclusion.
+
+**Found while tracing this (kept as a separate, real fix, not the explanation for the flake above)**:
+`migrate_surface_image()` (surface.c:4302) -- the function `update_surface_part()` calls when it reuses a
+shelved or invalid surface's backing `VkImage` for a newly (re)bound target -- copies `image`, `image_view`,
+`image_layout`, `allocation`, `image_scratch`, `image_scratch_current_layout` and `allocation_scratch` from the
+old binding to the new one, but not `image_scale`. The new binding's `target` local is `memset` to 0 before
+this call and `populate_surface_binding_target()` never sets `image_scale` either (only `create_surface_image()`
+does, at the one assignment site in the whole renderer: `surface->image_scale = pg->surface_scale_factor;`,
+surface.c:4204, which only ever runs for a brand-new image). So every surface that is EVER reused via the shelf
+or invalid-list migration path -- which is the common case for a render target whose address/format/pitch keeps
+recurring, e.g. the GTA III/RalliSport 2 steady-state churn this lane is already chasing -- permanently reads
+`image_scale == 0` for the rest of its life, even once correctly reconfigured back to the unscaled grid
+`texscan_shape_ok()`/`texscan_plan()` require. Since `texscan_plan`'s check is `s->image_scale != 1` (refuse),
+`0 != 1` is always true: a migrated surface can **never** take the texscan GPU-copy fast path, no matter its
+real scale, silently falling back to the slower SURFACE_DOWN download+upload route Fix #1 was built to avoid.
+Traced `update_surface_part()`'s two call sites (surface.c ~5851 `get_shelved_surface` reuse, ~5857
+`get_any_compatible_invalid_surface` reuse) and the `*surface = target` assignment that makes `target`'s
+(zeroed) `image_scale` the live value -- confirmed no other code path ever sets `image_scale` to anything but
+0 (via memset) or the correct value (via `create_surface_image`), so this is a real, if safely one-directional
+(under-use, not corruption), gap: `0 != 1` always refuses, it never wrongly allows. This is why it does not
+explain the flake above (which would need a false *allow*, not a safe refuse) but it is a genuine, currently
+unclaimed fps opportunity this lane's own fix left on the table for every migrated surface.
+
+**Prediction (G3), before building**: adding `dst->image_scale = src->image_scale;` to `migrate_surface_image()`
+makes a migrated surface's `image_scale` field accurately reflect its real backing image for the rest of its
+life, exactly as a freshly created surface's already does. Why this will work: `src`'s `image_scale` was
+itself set correctly by whichever `create_surface_image()` call originally made that image (migration moves
+the image handle itself, not just a stale copy of a field describing it -- the image's real texel grid does
+not change by being migrated to a new `SurfaceBinding` struct). Predicted effect: surfaces that cycle through
+the shelf (reused at the same address/format/pitch across frames, the common steady-state case) become texscan-
+eligible again once they are genuinely at the unscaled grid, instead of permanently falling back to
+SURFACE_DOWN after their first reuse -- more of RalliSport 2's race and Fable's gameplay frames should hit
+Fix #1's fast path than currently do, on top of the already-measured win. Falsifier: any pixel-prediction
+`must_not_move` capture moving after this change (a migrated surface could, in principle, be re-eligible for
+texscan while actually still scale-mismatched if `src->image_scale` itself were ever wrong -- traced above and
+not found, but the pixel prediction is the actual falsifier, not this trace alone). This cannot help GTA III or
+Blinx 2 (texscan2d's own scope is RalliSport 2/Fable's shape mismatch; neither GTA III nor Blinx 2 downloads a
+texture in gameplay per the mechanism account above).
+
+**Fix** (`hw/xbox/nv2a/pgraph/vk/surface.c`, `migrate_surface_image()`): added
+`dst->image_scale = src->image_scale;` alongside the existing field copies. Typechecked clean:
+`docs/lanes/fpsdata1018/typecheck.py . hw/xbox/nv2a/pgraph/vk/surface.c` (rc=0, same pre-existing warnings, no
+new ones). Re-registering `fpsdata1018-texscan2d-pixels.json` a fifth time (`a_ref` unchanged `245ddc4964`,
+`b_ref` = this commit) below, since this changes which surfaces are texscan-eligible and needs its own
+pixel-safety falsifier, not a ride on Fix #1's already-spent one.
+
+Added to the Already-tried table (row 27): this gap, found while investigating a flake, not the flake's cause.

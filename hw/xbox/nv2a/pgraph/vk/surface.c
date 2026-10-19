@@ -4311,6 +4311,14 @@ static void migrate_surface_image(SurfaceBinding *dst, SurfaceBinding *src)
     dst->image_scratch = src->image_scratch;
     dst->image_scratch_current_layout = src->image_scratch_current_layout;
     dst->allocation_scratch = src->allocation_scratch;
+    /*
+     * The migrated image's real texel grid does not change by moving to a
+     * new SurfaceBinding struct; the target's zeroed image_scale (#433,
+     * fpsdata1018 NOTES.md "Pixel scare resolved") would otherwise read as
+     * scale 0 forever, permanently refusing texscan_plan's `!= 1` check for
+     * this surface even once it is genuinely at the unscaled grid.
+     */
+    dst->image_scale = src->image_scale;
 
     src->image = VK_NULL_HANDLE;
     src->image_view = VK_NULL_HANDLE;
