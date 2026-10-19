@@ -636,3 +636,38 @@ mine, but queued one minute earlier so it goes first), which `dispatch/running/`
 device's current job. No action to take here beyond waiting for FIFO to reach mine: this is a
 normal queue turnaround, not the attempt-4 infra gap (that gap was "no worker process exists";
 this is "a worker exists and is busy," the ordinary case `request.sh` is built for).
+
+**Two bounded foreground waits (8 min each, 20 s polls, no chained sleeps) -- the queue moved, but
+mine is now further back, not closer.** `lane.ralli2audio1018`'s 870 s job finished and landed in
+`dispatch/results/` between the two waits (its `run.log`/`logcat.txt` stopped growing at 21:00:07
+PDT; `dispatch/running/` went empty). My request did not move into `running/` next, though --
+checked why rather than waiting a third time on the same guess: `dispatch/queue/` picked up four
+NEW requests while I was waiting, all targeting `nova`, all tier **`blocker`** (confirmed by
+reading each `.req`'s `priority` field directly, not inferring from the filename's leading digit):
+`0-1792381848-fpsdiag1018-1094601` (900 s), `0-1792381850-fpsdiag1018-1095573` (700 s),
+`0-1792382334-hakux-0b-1285228` (360 s), `0-1792382337-hakux-0b-1285509` (360 s) -- 2320 s (~39
+min) of higher-than-mine-priority work, queued after mine but ranked ahead of it. `priority:
+study` (this probe) is below `priority: blocker` in the dispatcher's own ordering (the filename's
+leading `0-`/`1-` is exactly that rank, written by `request.sh` at enqueue time, confirmed by the
+four new `.req` files all reading `blocker` and all carrying a `0-` prefix while mine, `study`,
+carries a `1-`) -- this is the dispatcher working as designed, not a flake or a second infra gap:
+a release-priority (#433 is 0.5) probe correctly yields to four `blocker`-tier requests from two
+other lanes. Nothing to fix or report here; the Nova worker itself (`ee317437`, pid 987498) is
+still alive and running, confirmed again this entry.
+
+At ~39 minutes of now-queued `blocker` work ahead of a 240 s+90 s request, polling further in this
+session would mean sitting through most or all of it with nothing else to show -- exactly the
+"don't poll until the turn cap cuts you off" case this role's rules warn against. Nothing else in
+this lane's scope is actionable offline right now: A+B+C are `State: ready` and already folded
+into `master` (see above); D's remaining pieces (car-entry/pause-menu crops, the GTA III
+`play_dim_unresponsive` state, the held-out eval-set row, the confidence-floor sweep) all need
+either this probe's frames or a device slot this lane does not have standing to jump ahead for.
+Ending this session on `WAITING` for the queue to clear, named below and in a PR comment on
+forge PR #1082 (http://127.0.0.1:3330/jreinach-alt/hakuX/pulls/1082) once this is pushed.
+
+**WAITING**: on `dispatch/queue/1-1792380791-localdrive1018-729348.req` to reach
+`dispatch/running/` then `dispatch/results/` on the Nova. Resolves when either (a) the four
+`blocker`-tier requests ahead of it drain naturally (~39 min of device time as of 21:08 PDT, FIFO
+within tier), or (b) a future session checks `dispatch/results/` for `729348` directly. No code
+change is pending on this; the next session's first move is reading that result and continuing
+Part D's car-entry/pause-menu crop work from whatever frames it contains.
