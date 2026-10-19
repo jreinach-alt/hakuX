@@ -3,7 +3,7 @@
 State: ready
 
 Lane: foldjam1018             Issue: none (harness defect, dispatched directly)
-Base: master @ 72af9cb92c
+Base: master @ f3eb1122b0
 Files: docs/investigations/foldjam1018.md, docs/lanes/foldjam1018/**, docs/testing/check_territory.py, docs/testing/jobs/selftest.d/98-foldjam1018.sh, docs/testing/jobs/selftest.d/98-foldjam1018-territory.sh
 Prediction: none: analysis-only plus host-tool/dispatcher changes outside this repo; no renderer/emulator code, no device arm
 Needs device: no    Needs NDK: no
@@ -40,16 +40,31 @@ it goes):
   investigation doc -- `lane.sh` is sparsewt1017's, and the notification channel is a dispatch-ownership
   call, not mine.
 - **E**: spec only, by design -- `hold.sh` is holdcap1018's, `battery_admit.py` is toolsmith's.
+- **A, found by this PR's OWN first fold attempt (investigation doc section 6)**: item A's widening correctly
+  pulled `51-dispatch-hardening.sh` into this PR's `SELFTEST_ONLY` run (it mentions `check_territory.py`, a
+  changed file), but 51 calls `clear_markers`/`finish_queue`, which are only DEFINED in `50-arms-requeue.sh` --
+  a full suite run only works because bash sources every fragment, in order, before 51 runs. The partial run
+  never sourced 50, so both calls silently failed open (`command not found`, non-fatal under `set -u`),
+  corrupting fixture state and cascading into unrelated FAILs/a hang instead of a clear error -- confirmed by
+  blacklisting this PR's own head three times (`foldqueue.log` 00:11, and two later master shas) before
+  hostops root-caused it. Fixed: `offline_fold.py` gains `shard_chains()` (reads `selftest.sh`'s own
+  `SHARD_CHAINS` array, which already lists `50-arms-requeue 51-dispatch-hardening ...` as a group that shares
+  state) and `close_chains()`, which unions any selected fragment's full chain into the `SELFTEST_ONLY` set
+  before running -- reusing the one place this project already curates "these fragments must run together"
+  instead of inventing a second notion of it. For a dependency `SHARD_CHAINS` hasn't caught up to yet,
+  `fold_fail_message()` greps a failing log for the `<name>: command not found` shape this exact bug produces
+  and names it plainly instead of a bare "selftest failed (rc N)".
 
-Testing: `docs/testing/jobs/selftest.d/98-foldjam1018.sh` and `98-foldjam1018-territory.sh` (new) ran for
-real through `docs/testing/jobs/selftest.sh`, alongside a re-run of `66-status-titles.sh` to confirm no
-regression from the `check_territory.py` edit -- 35 checks, 0 failed. The two new fragments mirror the
-external tools' key logic inline (documented, with the staleness risk named) since `offline_fold.py`/
+Testing: `docs/testing/jobs/selftest.d/98-foldjam1018.sh` and `98-foldjam1018-territory.sh` ran for real
+through `docs/testing/jobs/selftest.sh` (`SELFTEST_ONLY=98-foldjam1018` + `66-status-titles` re-run) -- 0
+failures. The chain-closure bug and its fix were both reproduced for real, not just in unit tests:
+`SELFTEST_ONLY="51-dispatch-hardening" bash docs/testing/jobs/selftest.sh` alone against this tree fails
+exactly as the investigation doc describes (`clear_markers: command not found`, then hangs); running the full
+13-fragment chain `close_chains` computes for that input passes clean. The two new/extended fragments mirror
+the external tools' key logic inline (documented, with the staleness risk named) since `offline_fold.py`/
 `foldqueue.sh`/`driver_tick.py` live outside this repo and cannot be imported by a selftest fragment.
 Everything outside the repo was also verified by `py_compile`/`bash -n` plus isolated unit tests against
 synthetic fixtures (`host-tools/driver_selftest.py` gained 11 new cases, all passing; its one pre-existing
-unrelated failure was reproduced identically against the pre-edit backup). Nothing was run end-to-end
-against the live `/home/justin/hakuX` repo or the live fold queue -- per "never run git in a tree that is
-not your worktree," that is lane.local's to exercise for real.
+unrelated failure was reproduced identically against the pre-edit backup).
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

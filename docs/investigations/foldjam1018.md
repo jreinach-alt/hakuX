@@ -237,6 +237,88 @@ only (item E):
 This is written here as the proposed change, not implemented -- per the brief, ownership of `hold.sh` and
 `battery_admit.py` belongs to other lanes.
 
+## 6. (Found by this lane's own fold, 2026-10-19) The widening in item A can select a fragment without the
+sibling it depends on for function definitions
+
+This lane's own fold of commit `aa99e3acc4` failed `selftest failed (rc 1)` three times (00:11, then again at
+two later master shas, per hostops's 06:13 PDT resume) on a bug in the item-A widening this lane itself shipped
+-- not a regression in the PR's actual diff.
+
+**Root cause (verified against the real fragments, not assumed).** Item A's `Selftest: 98-foldjam1018
+98-foldjam1018-territory 66-status-titles` names an explicit subset. `mentioning_fragments()` then widens it
+with every *other* fragment whose text mentions a changed file -- correctly, since this PR changes
+`docs/testing/check_territory.py` and `51-dispatch-hardening.sh` names `check_territory.py` 5 times (it drives
+the real script). So `51-dispatch-hardening.sh` gets pulled in. But `51-dispatch-hardening.sh` calls
+`clear_markers`/`finish_queue` (lines 270, 275, 284, 294, 301, 327, 333, 345) without defining them -- both are
+only defined in `50-arms-requeue.sh` (lines 58-59), and a *full* selftest run only works because bash sources
+every fragment, in file order, in one shell, before 51 runs: by the time 51 calls `clear_markers`, 50 has
+already defined it, purely from load order, not from any explicit dependency declaration. A `SELFTEST_ONLY`
+run that selects 51 without 50 never sources 50, so both calls fail as a bare, non-fatal `set -u` error --
+`clear_markers: command not found` -- not a fatal one (`set -e` is not in play for a function call that's
+merely absent), so it corrupts fixture state silently and cascades into unrelated-looking `FAIL`s and, in one
+reproduction here, a genuine hang in the next fragment section waiting on state `clear_markers` never cleared.
+**Reproduced directly**: `SELFTEST_ONLY="51-dispatch-hardening" bash docs/testing/jobs/selftest.sh` run against
+this tree prints exactly `FAIL E: fixture not as 50 leaves it (two clean results, an empty queue)` followed by
+`.../51-dispatch-hardening.sh: line 294: clear_markers: command not found` and then hangs in section E2 instead
+of failing fast.
+
+This is a gap in item A's own widening rule, not a one-off: widening-by-file-mention finds fragments that
+*reference* a changed path, but had no notion of a fragment *depending on another fragment for its function
+definitions* -- a partial/widened run can always pick a fragment whose helpers only exist because of file-order
+sourcing in the full suite, for any pair of fragments with this shape, not just 50/51.
+
+### Fix (implemented and tested)
+
+Rather than inventing a second notion of "these fragments share state," reuse the one this project already
+curates for exactly this reason: `selftest.sh`'s own `SHARD_CHAINS` array, whose header already says
+"fragments share state on purpose... A CHAIN below is a set that must land in one shard" -- `50-arms-requeue
+51-dispatch-hardening ...` is already one of its three listed chains. The shard splitter already honors chains;
+the `SELFTEST_ONLY` path in `offline_fold.py` simply never consulted the same list, so the two selectors had
+silently drifted apart.
+
+`offline_fold.py` (outside the repo) gains two new functions:
+
+- `shard_chains(testing_dir)`: regex-parses `SHARD_CHAINS=( ... )` straight out of the live
+  `docs/testing/jobs/selftest.sh` text (no bash invocation, no new repo-file dependency -- the same
+  "read the fragment/script text" style `mentioning_fragments` already uses) and returns each chain as a
+  `set` of fragment basenames.
+- `close_chains(names, chains)`: given the already-selected fragment names, unions in the full membership of
+  any chain that overlaps them, returning `(closed, added)` so the fold log can say exactly what was pulled in
+  and why.
+
+Both selftest-fragment-selection branches (the `Selftest: none` auto-widen, and the named-subset widen) now
+call `close_chains` on their final fragment set before building `SELFTEST_ONLY`, and log
+`"widening with N fragment(s) from the same SHARD_CHAINS group (a selected fragment calls a function only
+defined there): ..."` when it adds anything. Verified: `close_chains(["51-dispatch-hardening"], shard_chains(...))`
+against the real `selftest.sh` returns the full 13-fragment chain including `50-arms-requeue`; an unrelated
+fragment (`75-fold-exact`) widens to nothing.
+
+**Defense in depth, for a dependency SHARD_CHAINS hasn't caught up to yet.** `close_chains` only fixes gaps
+already captured in `SHARD_CHAINS`; a *new* undefined-function dependency between two fragments neither chain
+lists would still fail, just as before. So a partial run's failure is no longer just "selftest failed (rc N)":
+new `fold_fail_message(rc, log, run)` greps the log for the `<name>: command not found` shape bash produces for
+exactly this failure mode and, when found, names the undefined command(s) and points at `SHARD_CHAINS` as the
+fix -- turning a silent fixture-corruption cascade into a loud, specific message the next person does not have
+to re-derive. Verified against both a log containing the real `clear_markers: command not found` line (message
+names it and points at `SHARD_CHAINS`) and an ordinary failure log with no such line (message is the plain
+"selftest failed" with no false claim of a chain gap).
+
+**Falsifier** (the one the hostops addendum asked for): `SELFTEST_ONLY="51-dispatch-hardening"
+bash docs/testing/jobs/selftest.sh` alone, run directly against this tree -- reproduces the bug exactly as
+described above (confirms the defect is real, not a theory) and is mirrored, since `offline_fold.py` cannot be
+imported from a bash fragment, as new checks in `docs/testing/jobs/selftest.d/98-foldjam1018.sh`: `(a)` the
+real `SHARD_CHAINS` array still chains 50 with 51 (so this test doesn't go stale silently if that chain is ever
+split), `(b)` closing over `51-dispatch-hardening` alone pulls in `50-arms-requeue`, `(c)` closing over an
+unchained fragment adds nothing, `(d)`/`(e)` the "command not found" log-scan correctly names `clear_markers`
+from a synthetic log with the real error shape, and names nothing from an ordinary failure log. Ran for real
+through `docs/testing/jobs/selftest.sh` (`SELFTEST_ONLY=98-foldjam1018`): 13/13 pass.
+
+**Cost tradeoff, named rather than hidden.** The 50/51 chain has 13 members (`SHARD_SECS` puts their combined
+serial time above 10 minutes); any future PR whose own `Selftest:` widening touches *any one* member now pays
+the whole chain, not just that one fragment. That is the correct trade against a silent hang/corruption, but it
+means a small, targeted `Selftest:` subset can occasionally balloon back toward a near-full run if it brushes
+this particular chain -- worth knowing, not a reason to skip the fix.
+
 ## Summary: what shipped, what didn't
 
 | Item | Status | Where |
@@ -244,6 +326,7 @@ This is written here as the proposed change, not implemented -- per the brief, o
 | D: owner-order fold path | Shipped, tested | `offline-git/offline_fold.py` |
 | B: master-keyed blacklist + jam-row wording | Shipped, tested (unit + real `docs/testing/jobs/selftest.sh` run) | `offline-git/foldqueue.sh`, `host-tools/driver_tick.py`, repo fragment `98-foldjam1018.sh` |
 | A: Selftest-claim auto-widen (both `none` and named-subset forms) | Shipped, tested (unit + real selftest run) | `offline-git/offline_fold.py`, repo fragment `98-foldjam1018.sh` |
+| A: widened fragment set closed over SHARD_CHAINS + loud "command not found" diagnosis (found by this lane's own fold, section 6) | Shipped, tested (unit + the real failure reproduced and fixed) | `offline-git/offline_fold.py`, repo fragment `98-foldjam1018.sh` |
 | A: background master-red health check + alarm | Shipped, tested (syntax + isolated unit tests only, not run live) | `offline-git/master_health_check.sh`, `offline-git/foldqueue.sh`, `host-tools/driver_tick.py` |
 | C: `check_territory.py` FREE-widen exact-fix message | Shipped, tested (real selftest run) | `docs/testing/check_territory.py`, repo fragment `98-foldjam1018-territory.sh` |
 | C: territory-at-ready check, fold-to-running-lane notification | Not implemented -- spec above; `lane.sh` is sparsewt1017's, and the notification channel is a dispatch-ownership decision | this doc, section 3 |

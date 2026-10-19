@@ -4,6 +4,45 @@ Owner order 2026-10-18 ~20:40 PDT, dispatched directly (no issue): fix the proce
 does not care about the selftest/process itself, only that this exact failure mode can't recur. Scope: fold
 and dispatch tooling only -- no gameplay, no device, no emulator code.
 
+## Attempt 3 (resumed 2026-10-19 06:50 PDT): why attempt 2 didn't finish
+
+Attempt 2 (06:16-06:31 PDT) did the actual fix work -- `shard_chains()`/`close_chains()`/`fold_fail_message()`
+in `offline_fold.py`, the SHARD_CHAINS falsifier, the investigation doc section 6 writeup -- and verified it
+for real (`SELFTEST_ONLY=98-foldjam1018` + `66-status-titles`, 0 failures). But its last action was to say it
+would "wait for the background verification task to finish; it will notify me automatically" and end the
+turn there. This is a headless `claude -p` session: nothing started with `run_in_background` or left running
+survives the session ending, so that notification was never coming, and the session ended with four files
+modified and never committed or pushed (`git status` showed the same four files still modified when this
+attempt started, 24 minutes later, with origin/master unchanged at f3eb1122b0). hostops caught this at 06:50
+PDT and resumed attempt 3 to finish the mechanical part: re-verify nothing drifted, commit, push, in one
+turn, no background wait.
+
+Re-verification this session: `SELFTEST_ONLY="98-foldjam1018 98-foldjam1018-territory 66-status-titles" bash
+docs/testing/jobs/selftest.sh` -- 40 passed, 0 failed (same result PR.md already claims). origin/master is
+still f3eb1122b0, matching `PR.md`'s `Base:` line, so no rebase/re-merge was needed. Re-ran the falsifier
+(`SELFTEST_ONLY="51-dispatch-hardening" bash docs/testing/jobs/selftest.sh` alone, bypassing the fix) and it
+still hangs as the investigation doc describes -- confirms the bug is real and the fix (which lives in
+`offline_fold.py`'s fragment-selection path, not in a bare `SELFTEST_ONLY` invocation) is what actually
+closes it, not that the hang went away on its own.
+
+## Attempt 2 (resumed 2026-10-19 06:13 PDT): why attempt 1 didn't finish
+
+Attempt 1 shipped D, B, A (the auto-widen) and part of C, marked the PR ready, and was then blacklisted by its
+own fold: commit `aa99e3acc4` failed `selftest failed (rc 1)` at 23:58:18 PDT, and again at two later master
+shas (per hostops's 06:13 resume note) -- not from a defect in the PR's actual diff, but from a bug in item A's
+own widening logic, found by hostops and root-caused in their 00:11 PDT addendum: `mentioning_fragments()`
+correctly pulled in `51-dispatch-hardening.sh` (it mentions `check_territory.py`, a file this PR changes), but
+51 calls `clear_markers`/`finish_queue`, which are only DEFINED in `50-arms-requeue.sh` -- a full suite run
+only works because bash sources every fragment, in file order, in one shell, before 51 runs. A
+`SELFTEST_ONLY=51-dispatch-hardening` run never sources 50, so both calls fail open (`command not found`,
+non-fatal under `set -u`), corrupting fixture state and cascading into unrelated FAILs instead of a clear
+error. This session (attempt 2) fixes that gap: see investigation doc section 6 for the full root-cause
+writeup and the fix (`shard_chains()`/`close_chains()` in `offline_fold.py`, closing a widened fragment set
+over `selftest.sh`'s own `SHARD_CHAINS` array, plus `fold_fail_message()` to name the undefined command loudly
+if a future gap isn't yet in `SHARD_CHAINS`). Reproduced the real failure directly
+(`SELFTEST_ONLY="51-dispatch-hardening" bash docs/testing/jobs/selftest.sh` hangs/fails exactly as described)
+before writing the fix, and confirmed the fix closes it (`close_chains` pulls in the full 13-fragment chain).
+
 ## What I found (re-verified from logs, not assumed from the brief)
 
 The brief's open question ("why didn't compat1017b's own fold run fragment 66?") had a wrong suspected
