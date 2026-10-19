@@ -8,13 +8,13 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `fpsdata1018` | claude-sonnet-5 | 16 min | fpsdata1018: FPS dip causes in the 4-title owner capture, and fixes (#433) |
-| `mkdawhite1018` | claude-sonnet-5 | 11 min | mkdawhite1018: Mortal Kombat: Deadly Alliance arena floors and walls draw flat white (#1058) |
+| `fpsdata1018` | claude-sonnet-5 | 31 min | fpsdata1018: FPS dip causes in the 4-title owner capture, and fixes (#433) |
+| `mkdawhite1018` | claude-sonnet-5 | 26 min | mkdawhite1018: Mortal Kombat: Deadly Alliance arena floors and walls draw flat white (#1058) |
 
 - **Handhelds:** 2 connected.
-  - Nova: free for the queue
+  - Nova: held by `lane.pathfind`
   - Thor: held by `lane.local`
-- **Device queue:** 1 waiting, 1 running.
+- **Device queue:** 5 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -124,8 +124,8 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/fpsdata1018` | fpsdata1018: FPS dip causes in the 4-title owner capture, and fixes (#433) | `d13ecf9109` | 2026-10-19 01:42 |
-| `lane/mkdawhite1018` | mkdawhite1018: Mortal Kombat: Deadly Alliance arena floors and walls draw flat white (#1058) | `6f9517088b` | 2026-10-19 01:39 |
+| `lane/fpsdata1018` | fpsdata1018: FPS dip causes in the 4-title owner capture, and fixes (#433) | `2fd50f390d` | 2026-10-19 01:55 |
+| `lane/mkdawhite1018` | mkdawhite1018: Mortal Kombat: Deadly Alliance arena floors and walls draw flat white (#1058) | `3d38cb88bb` | 2026-10-19 01:51 |
 
 ## Recently landed on master
 
@@ -138,4 +138,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-18 dispatcher: dev_push gets a read-only mode for the Nova's SD-card disc pushes
 - 2026-10-18 home branch root: move chart.svg/chart2.svg/COPYING.LIB under docs (#433)
 
-_Updated 2026-10-19 01:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-19 02:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
