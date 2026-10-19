@@ -416,3 +416,89 @@ re-ran both selftests again post-merge (0 failures each, unchanged), and ran `do
 preflight.sh` (passed, including `territory ok`). No code change was needed or made -- Part D's
 remaining pieces are still genuinely device-gated, and nothing offline was left undone. Refreshing
 `WAITING` with the current findings instead of re-deriving the same device check next time.
+
+**Continuation, same attempt 3 (~19:30-20:19 PDT): device freed, first live evidence for Part D.**
+
+Fixed `route.sh`'s stale `drive` step doc first (it still said a `drive` step "stops the route ...
+on ... a screen it cannot name", contradicting Part B's already-shipped, already-selftested
+ACT-OBSERVE behavior -- `drive.py`'s own module doc is the source of truth; `route.sh`'s is a live
+reader-facing doc, not lane history, so a stale copy of the old behavior was actively wrong, not
+just outdated). Verified `bash -n route.sh`. Added `routes/gta3-drive.route` "Stage 1" -- one step
+(`drive gta3 300 find`), named honestly as unproven beyond this one run, with the car-entry/
+Save-row/drive-loop steps explicitly marked NOT YET HERE. Both committed as `35477b3858`.
+
+Checked the hold files directly rather than trusting the last WAITING snapshot: `dispatch/hold/`
+lost `nova` and `nova.why` between this session's start and ~19:33 PDT (a bounded host-maintenance
+hold, not the owner's earlier "release when the owner says it is back" one, lifted on its own) --
+confirmed by polling `dispatch/hold/` every ~60 s rather than re-reading the stale note. `thor` and
+`thor.why` are still present, unchanged: Thor stays fully, indefinitely owner-held for all GTA III
+work (no save state on that device). This freed the Nova for the first time this lane has had a
+device.
+
+**Tried to run this lane's own code through the dispatcher -- refused, and why, confirmed from the
+source, not guessed**: `request.sh --route gta3-drive --title ... --device nova` came back `refusing
+to queue: ... drive 'gta3': no profile .../dispatch/bin/titles/drive-profiles/gta3.toml ... A
+'drive' profile must be in the serving snapshot ... or on the serving tree's master.` This lane's
+`drive.py`/`gta3.toml`/`learned.py`/`generic.toml` changes are not merged to `master`, so the
+dispatcher -- which only runs code already on the serving snapshot -- cannot execute them at all.
+This is a structural pre-merge limitation, not a flag mistake, and it means Part D's own route
+cannot be device-validated before this PR lands. **Pivoted**: dispatched the EXISTING, already-
+proven `gta-3.route` instead (same golden, same title, on `master` already) purely to collect
+continuous real frames for OFFLINE validation of the (unmerged) `gta3.toml` crops -- evidence this
+lane did not have beyond 9 hand-picked Thor stills.
+
+Two `request.sh` argument mistakes on the way, both diagnosed from the tool's own refusal text
+and `titlestate.py`'s resolution code, not guessed: (1) `--title "Grand Theft Auto III"` (the
+catalog display name) was refused ("the title could not be identified") -- `--title` needs the
+literal on-device ISO filename or an 8-hex TitleID prefix; the correct string,
+`5454000E-Grand_Theft_Auto_III.xiso.iso`, came from `targets.toml`'s `[titles."5454000E"]` entry.
+(2) the first `gta3-drive` route attempt, covered above.
+
+**The dispatched run**: `1-1792377549-localdrive1018-3572782`, nova, `gta-3.route`, 300 s,
+87 frames every 3 s (51.5 MB), 8547 logcat lines, queued 19:39 PDT, ran 20:10:51-20:16:07 PDT (two
+other lanes' requests queued just ahead of it on the same device -- `ralli2audio1018` x2 -- so it
+sat in queue ~31 min before the worker reached it; no action needed, just time). Reached real
+on-foot play: `route-frames/201335-fist-hud.png` / `-gameplay.png` fired the `waitfor fist-hud`
+mark ~164 s into the route, matching the route's own pathfound timing. **Found and noted, not
+fixed (out of this lane's file scope)**: `request.sh`'s own `--wait` result-summary printer threw
+on this soak result (`partial: command not found`, `goldens: No such file or directory`, then a
+Python `SyntaxError` on an inlined `AI_AGENT=...` env value) -- a pre-existing bug in `request.sh`
+itself, unrelated to this lane's code; it only broke the summary text, not the run (`DONE` and
+`result.json` both wrote correctly, confirmed by reading them directly). `request.sh` is not in
+this lane's `Files:`; flagging here rather than fixing it.
+
+**Validated both `gta3.toml` crops against these 87 real, continuous NOVA frames** (not Thor, and
+not hand-picked), with `classify.py table --profile .../gta3.toml <frames>` -- the exact pipeline
+`classify_frame` runs at drive-time, not a hand script:
+
+- `letterbox-top`: exact `0.0` on every one of the 7 frames the table calls `cutscene`
+  (f00012/15/17/19/25/26/27), vs 13.4-230.7 on the boot/loading/transition frames around them and
+  no value at all (crop only applies in the `cutscene` state) during `play`. Matches the 9-still
+  claim of "exact zeros, not near-zeros" exactly, now on a second device and a different boot run.
+- `hud-heart`: held under the 15.0 threshold on **all 40** frames the table calls `play`
+  (f00047-f00086), but the real margin is narrower than the 9-still estimate suggested -- scores
+  ranged 1.9 to **12.9** (f00086) within the play cluster itself, not the clean "<6" band all 9
+  stills showed. Still correctly under threshold every time (0 false negatives, 0 false `play` on
+  any of the 46 non-play frames in the same run -- boot/black/loading/cutscene/stalled all stayed
+  out of `play`), but this is real evidence the margin is tighter in motion than at rest, worth
+  carrying forward rather than re-asserting the wider stills-only number.
+- The transition itself (`stalled`, f00031-f00045, ~15 frames / ~45 s between the cutscene ending
+  and the pathfound route's first LY/A presses landing) never idled and never failed -- exactly
+  Part B's existing stall-escape and ACT-OBSERVE machinery, already selftested, doing its job on a
+  real run with no title-specific code of its own.
+- **Zero false `play` calls anywhere in the run** (0/46 non-play frames): the closest thing this
+  lane has yet to a held-out false-gameplay number for GTA III, though it is one run on the route
+  the classifier/crop was tuned toward, not a blind held-out set -- said plainly, not inflated.
+
+**Still not done** (unchanged from the `gta3-drive.route` file's own "NOT YET HERE" note): car-entry
+(Y) detection/crop, the pause-menu Save-row crop and the state-save step, the drive loop itself, a
+GTA III-specific `classifier_confidence`/`_menu` floor sweep (9-ish frames is still not enough to
+tune one safely), and adding GTA III to `pathknow/eval/eval_set.tsv` for a true held-out number.
+All four need either more frame diversity than one proven-route run gives (no car-entry or
+pause-menu frame exists in this run; the pathfound `gta-3.route` never presses Y or START) or a
+dispatched run of this lane's OWN route/profile, which stays blocked on the pre-merge limitation
+above until this PR lands.
+
+Merged `origin/master` again before writing this (25 commits behind by the time the device run
+finished; clean merge, 4 lanes' unrelated files, no conflicts), re-ran `pathclass_selftest.py` and
+`classify_selftest.py` once more post-merge (0 failures each).

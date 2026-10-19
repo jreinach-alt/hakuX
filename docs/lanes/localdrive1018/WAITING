@@ -1,28 +1,38 @@
-time 2026-10-18T19:20
-# Part D's remaining pieces (gta3-drive.route, pause-menu Save-row detection, car-entry detection,
-# a classifier_confidence floor sweep, the held-out false-gameplay number) need a live device with
-# GTA III save-state history; neither available device qualifies at the 19:20 PDT re-check
-# (attempt 3, this session):
+time 2026-10-18T20:19
+# Part D's remaining pieces (car-entry detection, the pause-menu Save-row crop, the drive loop
+# itself, a GTA III classifier_confidence floor sweep, a true held-out false-gameplay number) are
+# now blocked on something other than device availability, found this session:
 #
-# - Thor: owner put it back on FULL hold ~19:15 PDT (dispatch/hold/thor.why, refreshed 19:12:08
-#   PDT): the thermal test/GTA soaks are over, "the Thor has none of the Nova's GTA III save
-#   states, so no GTA work on it. Nova only; only the owner lifts this." Not a by-hand-only
-#   carve-out any more -- fully off-limits, and not useful for GTA III even once released.
-# - Nova: still held since 18:42:56 PDT (dispatch/hold/nova.why): "release when the owner says it
-#   is back" -- `adb devices -l` shows ee317437 present on the bus, but presence is not the
-#   release signal, the owner's word is, and it hasn't come yet (the "~17:00 PDT" in the same note
-#   was an estimate, not a trigger).
+# - Nova: freed ~19:33 PDT (a bounded host-maintenance hold on top of the owner's earlier one
+#   lifted on its own; confirmed by polling dispatch/hold/ directly, not by re-reading the old
+#   note). Used it: dispatched 300 s on the EXISTING, already-proven `gta-3.route` (result
+#   1-1792377549-localdrive1018-3572782), 87 real continuous frames, reached on-foot play. Both
+#   gta3.toml crops validated against this real footage with classify.py's own `table` pipeline --
+#   see NOTES.md "Continuation" entry for the numbers. Nova is not currently held
+#   (dispatch/hold/ has no nova/nova.why file as of this writing) but may be claimed by another
+#   lane's queued request at any moment; re-check before assuming it is free.
+# - Thor: still fully, indefinitely owner-held for all GTA III work (dispatch/hold/thor,
+#   thor.why unchanged since ~19:15 PDT) -- no save state on that device, not useful for this
+#   title even once released.
 #
-# Everything buildable offline is done and committed (A+B+C ready, Part D's two crops verified
-# against the 9 real hand-captured frames -- see NOTES.md). This session re-ran both selftests (0
-# failures), merged origin/master (clean, unrelated files), re-ran both selftests again (0
-# failures), and ran preflight.sh (passed, territory ok). Also chased down and resolved a false
-# alarm: a stale, never-canonical "retire localdrive1018" draft (local `board` ref commit
-# 847cd3e734, and auto-memory one-fps-lane-fpsdiag-1018.md) turned out NOT to be an ancestor of
-# origin/master or this branch; the real board (board-wt, origin/board) shows this lane's
-# territory row still active and widened as recently as 19:01:27 PDT, well after fpsdiag1018 (a
-# separate, coexisting lane) finished its own scope. Memory corrected so this isn't re-chased.
+# **The actual blocker now**: this lane's own code (drive.py, gta3.toml, learned.py,
+# generic.toml) is not on `master`, and the dispatcher only runs a `drive` profile that is in
+# the serving snapshot or on master -- confirmed by a direct refusal this session
+# ("A 'drive' profile must be in the serving snapshot ... or on the serving tree's master").
+# So `routes/gta3-drive.route` (this lane's own route, the one that would eventually press Y to
+# enter a car and open the pause menu to find the Save row) cannot be dispatched until this PR
+# merges. The EXISTING proven `gta-3.route` that COULD be dispatched today never presses Y or
+# opens the pause menu (it is an on-foot walk/sprint loop only), so it cannot produce a
+# car-entry or Save-row frame no matter how many times it is re-run.
 #
-# Nothing else in this lane is actionable without a device. Re-verify both hold files and `adb
-# devices -l` at resume time before queuing anything on the Nova -- only an explicit owner "it's
-# back" word releases it, not elapsed time or bus presence.
+# This is a `blocked:`, not a `waiting:` for a timer: the remaining Part D pieces need either
+# (1) this PR merging to master, after which gta3-drive.route's own future car-entry/Save-row
+# steps can be dispatched for real, or (2) a one-off human- or maintainer-scripted route that
+# presses Y/opens pause specifically to harvest those frames -- this lane is not positioned to
+# invent that blind without a frame to check it against, which is the whole reason Part D's crop
+# work has insisted on real evidence over guesses throughout.
+#
+# Everything else is done: A+B+C at `State: ready`, Part D's two crops now verified twice (9
+# hand-captured Thor stills, and 87 continuous Nova frames from a real dispatched run). route.sh's
+# stale doc is fixed. Both selftests pass post-merge. origin/master merged clean twice this
+# session (most recently 25 commits, no conflicts). No further offline work is being withheld.

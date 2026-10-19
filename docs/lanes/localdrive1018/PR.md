@@ -3,15 +3,18 @@
 State: ready
 
 Lane: localdrive1018            Issue: #433 (0.5)
-Base: master @ e34f8ffa77
+Base: master @ 63827dc908
 Files: docs/testing/titles/drive.py, docs/testing/titles/pathclass.py,
 docs/testing/titles/pathclass_selftest.py, docs/testing/titles/drive-profiles/generic.toml,
 docs/testing/titles/drive-profiles/gta3.toml, docs/testing/titles/drive-profiles/gta3/,
-docs/testing/titles/pathknow/learned.py, docs/lanes/localdrive1018/**
+docs/testing/titles/pathknow/learned.py, docs/testing/titles/route.sh,
+docs/testing/titles/routes/gta3-drive.route, docs/lanes/localdrive1018/**
 Release note (none): offline test-harness/tooling under docs/testing/titles/, not emulator code; nothing
 a player sees.
-Prediction: none: analysis-only so far (no device arm; Nova/Thor out per brief)
-Needs device: no (this lane; the GTA III proof run is lane.local's, by hand, on the Thor)
+Prediction: none: analysis-only so far (no arm registered; the one device run this session made was a
+survey on the EXISTING proven gta-3.route, not an A/B against a golden)
+Needs device: no further device time requested by this lane; one survey soak already run and folded in
+(see below) -- the GTA III proof run quoted in "Owner" above is lane.local's, by hand, on the Thor
 Needs NDK: no
 
 Owner (2026-10-18 ~13:50 PDT): the classifier was supposed to run on local tools with no API calls; it
@@ -80,16 +83,32 @@ Full writeup, the Already-tried table, and the open questions: `docs/lanes/local
   Full table, the measurement tables behind both thresholds, and an honest reading of what this does
   and does not prove (including a real open question about one frame's measured motion) are in
   `NOTES.md`, "Part D, what's buildable offline."
+- **Re-validated on a second, independent dataset this session**: dispatched 300 s on the existing,
+  already-proven `gta-3.route` (nova, 87 continuous frames every 3 s, `1-1792377549-localdrive1018-
+  3572782`) and ran `classify.py table --profile gta3.toml` over all 87 -- the real `classify_frame`
+  pipeline, not a hand script. `letterbox-top` scored exact `0.0` on every one of the run's 7
+  `cutscene` frames, matching the 9-still claim on a different device and a different boot run.
+  `hud-heart` stayed under threshold on all 40 `play` frames with zero false `play` calls on the
+  other 46 frames, but the real margin is narrower in motion than at rest -- scores ranged 1.9-12.9
+  within the play cluster (vs. the clean <6 band the 9 stills showed), still safely under the 15.0
+  threshold but worth carrying forward honestly rather than re-quoting the wider number. Also added
+  `routes/gta3-drive.route` ("Stage 1", one step, honestly scoped: only this step has run against a
+  live device) and fixed `route.sh`'s stale `drive`-step doc, which still described the pre-Part-B
+  "fails on an unnamed screen" behavior. Full numbers: `NOTES.md`, "Continuation" entry.
 
 ## Not done
 
-- **D, the rest** (`routes/gta3-drive.route`, pause-menu Save-row detection, car-entry detection, a
-  GTA III `classifier_confidence` floor sweep, a `play_dim_unresponsive` state of its own, the
-  held-out false-gameplay number) needs a live Thor or Nova run this lane does not have (both
-  unavailable, re-checked again this session -- see WAITING) to capture a continuous sequence and
-  label it; 9 hand-picked stills are enough to validate the two crops above but not enough for a
-  route, a Save-row crop, or the <=2% figure (GTA III is not even in `pathknow/eval/eval_set.tsv`'s
-  held-out set).
+- **D, the rest** (car-entry detection, the pause-menu Save-row crop, the drive loop itself, a
+  GTA III `classifier_confidence` floor sweep, a `play_dim_unresponsive` state of its own, a true
+  held-out false-gameplay number) -- now blocked on something more specific than "no device", found
+  this session: the dispatcher refuses to run a `drive` profile that is not on `master` ("A 'drive'
+  profile must be in the serving snapshot ... or on the serving tree's master"), so this lane's own
+  `gta3-drive.route`/`gta3.toml` cannot be dispatched until this PR merges. The one route that CAN
+  be dispatched today (the existing, proven `gta-3.route`) never presses Y or opens the pause menu,
+  so it cannot produce a car-entry or Save-row frame no matter how many times it is re-run. See
+  `WAITING` for the full state. GTA III is also still not in `pathknow/eval/eval_set.tsv`'s held-out
+  set, so the <=2% figure the brief asks for still has no blind number behind it -- the closest
+  available evidence is this session's 0/46 false-`play` count on the one real run captured so far.
 - **E, for Part D**: did not wire the gta3 frames into `classify_selftest.py`'s `CASES`/`FOREIGN`
   tables -- that harness wants a continuous dispatch-run capture, not 9 non-continuous hand-picked
   stills, and forcing them in risked fitting the test to the frames rather than to the behavior (see
