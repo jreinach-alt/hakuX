@@ -152,8 +152,8 @@ check "fpsdiag analyze: the refused boot-marker dip window is excluded from the 
 # -- gaps: no-path lists every candidate; a real path lists only the ones
 #    this fixture actually could not measure -------------------------------
 python3 "$FPSDIAG" gaps > "$FD/gaps-nopath.out" 2>&1
-check "fpsdiag gaps (no path): lists all 10 candidates by name, unconditionally" \
-    test "$(grep -c 'needs: see FINDINGS.md' "$FD/gaps-nopath.out")" = "10"
+check "fpsdiag gaps (no path): lists all 12 candidates by name, unconditionally" \
+    test "$(grep -c 'needs: see FINDINGS.md' "$FD/gaps-nopath.out")" = "12"
 python3 "$FPSDIAG" gaps "$FD/nophase.txt" --title "Grand Theft Auto III" > "$FD/gaps-nophase.out" 2>&1
 check "fpsdiag gaps (nophase fixture): GAP-flags the phase-dependent candidates" \
     grep -q "gpu_saturation .*GAP: hakuX-phase absent" "$FD/gaps-nophase.out"
