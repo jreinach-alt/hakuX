@@ -1640,10 +1640,14 @@ static struct {
  * binds that recopied every face after an upload or a new image (force),
  * copies the #474 drain would have waited before (faf), recorded downloads
  * it completed first (cmpl), and cubes it left to the downloads because a
- * surface over them is not a face it can copy (fb).
+ * surface over them is not a face it can copy (fb). ts2[]: of those binds,
+ * the 2D ones (#433, lane.fpsdata1018): a swizzled texture's levels (mip),
+ * a linear texture's rectangle (lin), and 2D textures left to the downloads
+ * (fb).
  */
 static struct {
     uint32_t bind, cp, keep, force, faf, cmpl, fb;
+    uint32_t mip2, lin2, fb2;
 } tss;
 
 static int tsc_classify(PGRAPHState *pg, const SurfaceBinding *s,
@@ -1845,8 +1849,10 @@ static void tsc_log_window(unsigned int frames)
         tsc.cls[TSC_FACEX], tsc.cls[TSC_MIP], tsc.cls[TSC_SUB],
         tsc.cls[TSC_PART]);
     len += snprintf(buf + len, sizeof(buf) - len,
-        " ts[bind%u cp%u keep%u force%u faf%u cmpl%u fb%u] |",
-        tss.bind, tss.cp, tss.keep, tss.force, tss.faf, tss.cmpl, tss.fb);
+        " ts[bind%u cp%u keep%u force%u faf%u cmpl%u fb%u]"
+        " ts2[mip%u lin%u fb%u] |",
+        tss.bind, tss.cp, tss.keep, tss.force, tss.faf, tss.cmpl, tss.fb,
+        tss.mip2, tss.lin2, tss.fb2);
     memset(&tss, 0, sizeof(tss));
     for (int i = 0; i < TSC_MAX; i++) {
         if (!tsc.used[i]) {
@@ -1904,19 +1910,37 @@ static void tsc_log_window(unsigned int frames)
  * swizzled 2D faces, not compressed or converted, scale 1, no texture
  * replacement. A cube with any other surface over it -- shelved, invalid,
  * partial, another shape -- takes the existing path unchanged.
+ *
+ * #433 (lane.fpsdata1018): 2D textures too, the same way, where a surface
+ * over one is not its shape and s2t refuses it. In the owner's 10-18 capture
+ * that refusal is RalliSport 2's whole race-time Fin, one SURFACE_DOWN finish
+ * a frame: a linear 640x480 texture read over the 260x260 surface the game
+ * draws at its first row, at the texture's pitch (s2t=dim). It is also two of
+ * Fable's downloads a frame: a 3-level swizzled 128x128 texture whose every
+ * level is a surface of its own (s2t=levels). A swizzled level is copied
+ * whole into its mip level; a linear surface into its rectangle of the
+ * texture's one level, where its rows land at the shared pitch. Each slot is
+ * a surface s2t would copy for a texture of exactly its shape, so the bytes
+ * are again the round trip's. A linear texture takes one surface, never
+ * two, since overlapping surfaces' downloads would order which one wins.
+ * HAKUX_TEXSCAN2D=0 keeps the route to cubes.
  */
 static int texscan_state = -1;
+static bool texscan2d_state;
 
 static bool texscan_on(void)
 {
     if (texscan_state < 0) {
         const char *e = getenv("HAKUX_TEXSCAN");
+        const char *e2 = getenv("HAKUX_TEXSCAN2D");
         texscan_state = e && e[0] == '1';
+        texscan2d_state = !(e2 && e2[0] == '0');
         if (texscan_state) {
 #ifdef __ANDROID__
-            __android_log_print(ANDROID_LOG_INFO, "hakuX", "[texscan] on");
+            __android_log_print(ANDROID_LOG_INFO, "hakuX", "[texscan] on 2d=%d",
+                                texscan2d_state);
 #else
-            fprintf(stderr, "[texscan] on\n");
+            fprintf(stderr, "[texscan] on 2d=%d\n", texscan2d_state);
 #endif
         }
     }
@@ -2063,12 +2087,17 @@ static void s2tshelf_audit_hit(const SurfaceBinding *shelved,
 bool pgraph_vk_texscan_complete_range(PGRAPHState *pg, hwaddr start,
                                       hwaddr size);
 
+/* A slot is a cube's face, a swizzled 2D texture's level, or a linear
+ * texture's one surface (slot 0). */
+#define TEXSCAN_SLOTS 16
 typedef struct TexscanPlan {
-    uint8_t mask;                 /* faces with an undownloaded surface */
-    SurfaceBinding *s[6];
+    uint16_t mask;                /* slots with an undownloaded surface */
+    SurfaceBinding *s[TEXSCAN_SLOTS];
+    uint8_t layer[TEXSCAN_SLOTS], level[TEXSCAN_SLOTS];
+    uint32_t x[TEXSCAN_SLOTS], y[TEXSCAN_SLOTS];  /* where it lands */
 } TexscanPlan;
 
-/* What a face's last copy was taken from. The surface pointer is compared,
+/* What a slot's last copy was taken from. The surface pointer is compared,
  * never followed: one freed since is caught by surface_list_gen. */
 typedef struct TexscanSrc {
     const SurfaceBinding *s;
@@ -2079,15 +2108,15 @@ typedef struct TexscanSrc {
     uint32_t draw_generation;
 } TexscanSrc;
 
-/* Per texture image: which faces hold which surface's pixels. A binding
- * absent here has every face copied. */
+/* Per texture image: which slots hold which surface's pixels. A binding
+ * absent here has every slot copied. */
 #define TEXSCAN_MEMO 16
 static struct {
     const TextureBinding *node;   /* compared, never followed */
     VkImage image;
     uint32_t list_gen;
-    uint8_t mask;                 /* faces src[] describes */
-    TexscanSrc src[6];
+    uint16_t mask;                /* slots src[] describes */
+    TexscanSrc src[TEXSCAN_SLOTS];
 } texscan_memo[TEXSCAN_MEMO];
 static unsigned int texscan_memo_next;
 
@@ -2100,8 +2129,11 @@ static bool texscan_overlaps(const SurfaceBinding *s, hwaddr start,
 static bool texscan_shape_ok(PGRAPHState *pg, const TextureShape *st)
 {
     BasicColorFormatInfo f = pgraph_get_color_format_info(st->color_format);
-    return st->cubemap && st->levels == 1 && !st->border &&
-           st->dimensionality == 2 && !f.linear &&
+    bool kind_ok = st->cubemap ? st->levels == 1 && !f.linear :
+                   texscan2d_state && st->levels >= 1 &&
+                   st->levels <= (f.linear ? 1 : TEXSCAN_SLOTS);
+    return kind_ok && !st->border &&
+           st->dimensionality == 2 &&
            pg->surface_scale_factor == 1 &&
            !pgraph_is_texture_format_compressed(pg, st->color_format) &&
            !pgraph_texture_format_is_converted(st->color_format) &&
@@ -2109,11 +2141,84 @@ static bool texscan_shape_ok(PGRAPHState *pg, const TextureShape *st)
 }
 
 /*
- * Whether every surface the range scan would download for this cube is a
- * whole face of its shape. The scan's own predicates (vk/surface.c,
+ * The slot a draw-dirty surface over the texture fills, or -1 when it fills
+ * none: a cube's whole face, a swizzled texture's whole level, or a
+ * rectangle of a linear texture's rows at its pitch. Each is then held to
+ * the s2t test for a texture of exactly the slot's shape.
+ */
+static int texscan_slot(PGRAPHState *pg, const TextureShape *st,
+                        hwaddr t_addr, const SurfaceBinding *s,
+                        TexscanPlan *plan)
+{
+    BasicColorFormatInfo f = pgraph_get_color_format_info(st->color_format);
+    unsigned int bpp = f.bytes_per_pixel;
+    TextureShape slot_shape = *st;
+    unsigned int slot, x = 0, y = 0;
+
+    if (s->vram_addr < t_addr) {
+        return -1;
+    }
+    hwaddr off = s->vram_addr - t_addr;
+    slot_shape.cubemap = false;
+    slot_shape.levels = 1;
+    if (st->cubemap) {
+        size_t layer = get_cubemap_layer_size(pg, *st);
+        size_t face_len = (size_t)st->width * st->height * bpp;
+        if (!face_len || face_len > layer || off % layer ||
+            off / layer >= 6 || s->size != face_len) {
+            return -1;
+        }
+        slot = off / layer;
+    } else if (f.linear) {
+        if (!st->pitch || (off % st->pitch) % bpp) {
+            return -1;
+        }
+        slot = 0;
+        x = (off % st->pitch) / bpp;
+        y = off / st->pitch;
+        if (x + s->width > st->width || y + s->height > st->height) {
+            return -1;
+        }
+        slot_shape.width = s->width;
+        slot_shape.height = s->height;
+    } else {
+        /* get_texture_layout's level walk */
+        unsigned int w = st->width, h = st->height;
+        hwaddr level_off = 0;
+        for (slot = 0; slot < st->levels; slot++) {
+            w = MAX(w, 1);
+            h = MAX(h, 1);
+            if (level_off == off) {
+                break;
+            }
+            level_off += (hwaddr)w * h * bpp;
+            w /= 2;
+            h /= 2;
+        }
+        if (slot >= st->levels || s->size != (size_t)w * h * bpp) {
+            return -1;
+        }
+        slot_shape.width = w;
+        slot_shape.height = h;
+    }
+    if (!check_surface_to_texture_compatiblity(s, &slot_shape)) {
+        return -1;
+    }
+    plan->layer[slot] = st->cubemap ? slot : 0;
+    plan->level[slot] = st->cubemap || f.linear ? 0 : slot;
+    plan->x[slot] = x;
+    plan->y[slot] = y;
+    return slot;
+}
+
+/*
+ * Whether every surface the range scan would download for this texture
+ * fills a slot of it. The scan's own predicates (vk/surface.c,
  * pgraph_vk_download_surfaces_in_range_if_dirty): a draw-dirty active surface
  * over the range, or a shelved or invalid one with pixels not in VRAM, which
- * always refuses the plan. TEXSCAN_NONE: nothing over the cube to download.
+ * always refuses the plan. For a 2D texture a shelved draw-dirty one refuses
+ * it as well: create_texture's shelf lookup may bind that one directly.
+ * TEXSCAN_NONE: nothing over the texture to download.
  */
 enum { TEXSCAN_NONE, TEXSCAN_PLAN, TEXSCAN_REFUSED };
 
@@ -2121,20 +2226,20 @@ static int texscan_plan(PGRAPHState *pg, const TextureShape *st,
                          hwaddr t_addr, size_t t_len, TexscanPlan *plan)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
-    BasicColorFormatInfo f = pgraph_get_color_format_info(st->color_format);
-    size_t layer = get_cubemap_layer_size(pg, *st);
-    size_t face_len = (size_t)st->width * st->height * f.bytes_per_pixel;
-    TextureShape face_shape = *st;
     SurfaceBinding *s;
 
-    face_shape.cubemap = false;
     plan->mask = 0;
-    if (!face_len || face_len > layer) {
-        return TEXSCAN_REFUSED;
+    if (st->cubemap) {
+        BasicColorFormatInfo f =
+            pgraph_get_color_format_info(st->color_format);
+        size_t face_len = (size_t)st->width * st->height * f.bytes_per_pixel;
+        if (!face_len || face_len > get_cubemap_layer_size(pg, *st)) {
+            return TEXSCAN_REFUSED;
+        }
     }
     QTAILQ_FOREACH(s, &r->shelved_surfaces, entry) {
-        if (s->shelved_dirty && s->draw_dirty && s->width && s->height &&
-            texscan_overlaps(s, t_addr, t_len)) {
+        if ((s->shelved_dirty || !st->cubemap) && s->draw_dirty &&
+            s->width && s->height && texscan_overlaps(s, t_addr, t_len)) {
             return TEXSCAN_REFUSED;
         }
     }
@@ -2148,21 +2253,31 @@ static int texscan_plan(PGRAPHState *pg, const TextureShape *st,
         if (!s->draw_dirty || !texscan_overlaps(s, t_addr, t_len)) {
             continue;
         }
-        if (s->vram_addr < t_addr) {
+        if (!s->color || s->upload_pending || s->image == VK_NULL_HANDLE) {
             return TEXSCAN_REFUSED;
         }
-        hwaddr off = s->vram_addr - t_addr;
-        unsigned int face = off / layer;
-        if (off % layer || face >= 6 || (plan->mask & (1u << face)) ||
-            !s->color || s->upload_pending || s->image == VK_NULL_HANDLE ||
-            s->size != face_len ||
-            !check_surface_to_texture_compatiblity(s, &face_shape)) {
+        int slot = texscan_slot(pg, st, t_addr, s, plan);
+        if (slot < 0 || (plan->mask & (1u << slot))) {
             return TEXSCAN_REFUSED;
         }
-        plan->mask |= 1u << face;
-        plan->s[face] = s;
+        plan->mask |= 1u << slot;
+        plan->s[slot] = s;
     }
     return plan->mask ? TEXSCAN_PLAN : TEXSCAN_NONE;
+}
+
+/* A 2D texture with no draw-dirty surface over it has nothing for the route
+ * to copy, and is left to the existing path untouched (no flush, no
+ * completion): only a cube took the route before. */
+static bool texscan_any_dirty(PGRAPHVkState *r, hwaddr t_addr, size_t t_len)
+{
+    SurfaceBinding *s;
+    QTAILQ_FOREACH(s, &r->surfaces, entry) {
+        if (s->draw_dirty && texscan_overlaps(s, t_addr, t_len)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 /*
@@ -2177,6 +2292,9 @@ static bool texscan_prepare(PGRAPHState *pg, const TextureShape *st,
 
     plan->mask = 0;
     if (!texscan_on() || !texscan_shape_ok(pg, st)) {
+        return false;
+    }
+    if (!st->cubemap && !texscan_any_dirty(r, t_addr, t_len)) {
         return false;
     }
     /* A queued draw sets its target's draw_dirty and draw_generation only
@@ -2199,11 +2317,20 @@ static bool texscan_prepare(PGRAPHState *pg, const TextureShape *st,
     }
     int verdict = texscan_plan(pg, st, t_addr, t_len, plan);
     if (verdict != TEXSCAN_PLAN) {
-        TEX_PERF(if (verdict == TEXSCAN_REFUSED) { tss.fb++; });
+        TEX_PERF(if (verdict == TEXSCAN_REFUSED) {
+                     if (st->cubemap) { tss.fb++; } else { tss.fb2++; }
+                 });
         plan->mask = 0;
         return false;
     }
-    TEX_PERF(tss.bind++);
+    TEX_PERF(tss.bind++;
+             if (!st->cubemap) {
+                 if (pgraph_get_color_format_info(st->color_format).linear) {
+                     tss.lin2++;
+                 } else {
+                     tss.mip2++;
+                 }
+             });
     return true;
 }
 
@@ -2238,16 +2365,16 @@ static bool texscan_src_same(const TexscanSrc *a, const TexscanSrc *b)
 
 /*
  * After the binding is resolved (found or created, uploaded or not): copy
- * every planned face whose surface changed since this image last took it.
- * `uploaded` says the image was just filled from VRAM, which holds the faces'
- * pixels from before their surfaces were drawn, so every face is copied.
+ * every planned slot whose surface changed since this image last took it.
+ * `uploaded` says the image was just filled from VRAM, which holds the slots'
+ * pixels from before their surfaces were drawn, so every slot is copied.
  */
 static void texscan_apply(PGRAPHState *pg, TextureBinding *snode,
                           const TexscanPlan *plan, bool uploaded)
 {
     NV2AState *d = container_of(pg, NV2AState, pgraph);
     PGRAPHVkState *r = pg->vk_renderer_state;
-    static bool logged;
+    static bool logged[3];
 
     s2t_share_end_for(pg, snode);
     int m = texscan_memo_find(snode);
@@ -2263,19 +2390,19 @@ static void texscan_apply(PGRAPHState *pg, TextureBinding *snode,
     }
     texscan_memo[m].image = snode->image;
     texscan_memo[m].list_gen = r->surface_list_gen;
-    /* A face with no undownloaded surface now holds what VRAM held at the
+    /* A slot with no undownloaded surface now holds what VRAM held at the
      * last upload or what it was last copied; either way the next copy of it
      * starts over. */
     texscan_memo[m].mask &= plan->mask;
 
-    TexscanSrc now[6];
-    uint8_t todo = 0;
-    for (int face = 0; face < 6; face++) {
-        if (!(plan->mask & (1u << face))) {
+    TexscanSrc now[TEXSCAN_SLOTS];
+    uint16_t todo = 0;
+    for (int slot = 0; slot < TEXSCAN_SLOTS; slot++) {
+        if (!(plan->mask & (1u << slot))) {
             continue;
         }
-        SurfaceBinding *s = plan->s[face];
-        now[face] = (TexscanSrc){
+        SurfaceBinding *s = plan->s[slot];
+        now[slot] = (TexscanSrc){
             .s = s,
             .vram_addr = s->vram_addr,
             .image = s->image,
@@ -2284,12 +2411,12 @@ static void texscan_apply(PGRAPHState *pg, TextureBinding *snode,
             .draw_time = s->draw_time,
             .draw_generation = s->draw_generation,
         };
-        if ((texscan_memo[m].mask & (1u << face)) &&
-            texscan_src_same(&texscan_memo[m].src[face], &now[face])) {
+        if ((texscan_memo[m].mask & (1u << slot)) &&
+            texscan_src_same(&texscan_memo[m].src[slot], &now[slot])) {
             TEX_PERF(tss.keep++);
             continue;
         }
-        todo |= 1u << face;
+        todo |= 1u << slot;
     }
 
     if (todo) {
@@ -2324,11 +2451,11 @@ static void texscan_apply(PGRAPHState *pg, TextureBinding *snode,
                                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
         snode->current_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 
-        for (int face = 0; face < 6; face++) {
-            if (!(todo & (1u << face))) {
+        for (int slot = 0; slot < TEXSCAN_SLOTS; slot++) {
+            if (!(todo & (1u << slot))) {
                 continue;
             }
-            SurfaceBinding *s = plan->s[face];
+            SurfaceBinding *s = plan->s[slot];
             pgraph_vk_xfr_surf(s, XFR_SURF_READ);
             pgraph_vk_transition_image_layout(
                 pg, cmd, s->image, s->host_fmt.vk_format, s->image_layout,
@@ -2337,8 +2464,11 @@ static void texscan_apply(PGRAPHState *pg, TextureBinding *snode,
                 .srcSubresource.aspectMask = s->host_fmt.aspect,
                 .srcSubresource.layerCount = 1,
                 .dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                .dstSubresource.baseArrayLayer = face,
+                .dstSubresource.mipLevel = plan->level[slot],
+                .dstSubresource.baseArrayLayer = plan->layer[slot],
                 .dstSubresource.layerCount = 1,
+                .dstOffset.x = plan->x[slot],
+                .dstOffset.y = plan->y[slot],
                 .extent.width = s->width,
                 .extent.height = s->height,
                 .extent.depth = 1,
@@ -2348,8 +2478,8 @@ static void texscan_apply(PGRAPHState *pg, TextureBinding *snode,
             pgraph_vk_transition_image_layout(
                 pg, cmd, s->image, s->host_fmt.vk_format,
                 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, s->image_layout);
-            texscan_memo[m].src[face] = now[face];
-            texscan_memo[m].mask |= 1u << face;
+            texscan_memo[m].src[slot] = now[slot];
+            texscan_memo[m].mask |= 1u << slot;
             TEX_PERF(tss.cp++);
         }
 
@@ -2363,30 +2493,34 @@ static void texscan_apply(PGRAPHState *pg, TextureBinding *snode,
         pgraph_vk_end_nondraw_commands(pg, cmd);
 
         /* The download would have left dirty bits for the first check over
-         * these faces to mark every binding that reads them; this binding is
+         * these slots to mark every binding that reads them; this binding is
          * current already. */
-        for (int face = 0; face < 6; face++) {
-            if (todo & (1u << face)) {
+        for (int slot = 0; slot < TEXSCAN_SLOTS; slot++) {
+            if (todo & (1u << slot)) {
                 pgraph_vk_mark_textures_possibly_dirty(
-                    d, plan->s[face]->vram_addr, plan->s[face]->size);
+                    d, plan->s[slot]->vram_addr, plan->s[slot]->size);
             }
         }
         snode->possibly_dirty = false;
 
-        if (!logged) {
-            logged = true;
+        /* the first copy of each kind: cube, swizzled 2D, linear */
+        const TextureShape *st = &snode->key.state;
+        int kind = st->cubemap ? 0 :
+                   pgraph_get_color_format_info(st->color_format).linear ?
+                   2 : 1;
+        if (!logged[kind]) {
+            logged[kind] = true;
 #ifdef __ANDROID__
             __android_log_print(ANDROID_LOG_INFO, "hakuX",
                 "[texscan] first copy tex @%" HWADDR_PRIx " %ux%u fmt0x%x "
-                "faces0x%x", snode->key.texture_vram_offset,
-                snode->key.state.width, snode->key.state.height,
-                snode->key.state.color_format, todo);
+                "faces0x%x levels%u lin%d", snode->key.texture_vram_offset,
+                st->width, st->height, st->color_format, todo, st->levels,
+                kind == 2);
 #else
             fprintf(stderr, "[texscan] first copy tex @%" HWADDR_PRIx
-                    " %ux%u fmt0x%x faces0x%x\n",
-                    snode->key.texture_vram_offset, snode->key.state.width,
-                    snode->key.state.height, snode->key.state.color_format,
-                    todo);
+                    " %ux%u fmt0x%x faces0x%x levels%u lin%d\n",
+                    snode->key.texture_vram_offset, st->width, st->height,
+                    st->color_format, todo, st->levels, kind == 2);
 #endif
         }
     }
@@ -3722,7 +3856,7 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
 
     /* lane.texscan1010: HAKUX_TEXSCAN=1 copies a cube's drawn faces on the
      * GPU once the binding is resolved, instead of the two downloads below
-     * (texscan_prepare) */
+     * (texscan_prepare); #433, a 2D texture's drawn levels or rectangle too */
     TexscanPlan ts_plan = { 0 };
     bool ts_taken = !surface_to_texture &&
         texscan_prepare(pg, &state, texture_vram_offset, texture_length,
