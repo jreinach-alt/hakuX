@@ -1,14 +1,14 @@
 # hakuX status
 
-_updated 2026-10-19 08:37 PDT_
+_updated 2026-10-19 09:07 PDT_
 
-0.6: Measured 265 / 300 · Playable 94 / 110.
+0.6: Measured 268 / 300 · Playable 97 / 110.
 
 ## How close is 0.6?
 
-Measured **265** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓▓▓░`
+Measured **268** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓▓▓░`
 
-Playable **94** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓▓▓░`
+Playable **97** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓▓▓░`
 
 ![Titles over time](chart.svg)
 
@@ -19,14 +19,14 @@ Playable **94** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓▓▓░`
 | release | Measured target | projected date | Playable target | projected date |
 |---|---|---|---|---|
 | 0.6 | 300 | 2026-10-21 | 110 | 2026-10-21 |
-| 0.7 | 425 | 2026-10-31 | 185 | 2026-11-02 |
-| 0.8 | 575 | 2026-11-11 | 300 | 2026-11-19 |
-| 0.9 | 725 | 2026-11-22 | 480 | 2026-12-17 |
-| 1.0 | 876 | 2026-12-04 | 789 | 2027-02-02 |
+| 0.7 | 425 | 2026-10-30 | 185 | 2026-10-31 |
+| 0.8 | 575 | 2026-11-10 | 300 | 2026-11-17 |
+| 0.9 | 725 | 2026-11-21 | 480 | 2026-12-13 |
+| 1.0 | 876 | 2026-12-02 | 789 | 2027-01-26 |
 
 Measured: titles with a frame rate reading taken during gameplay, on either handheld. Playable: titles rated Playable. The charts place each title on the date it first qualified, and the projected dates in the table assume the last 7 days' pace continues.
 
-Ships when both are met. At the last 48 h rate: about 2026-11-05.
+Ships when both are met. At the last 48 h rate: about 2026-10-28.
 
 Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/Nova handhelds.
 
@@ -78,6 +78,7 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | **Jacked** | 🟢 Playable |  |
 | **Jet Set Radio Future** | 🟢 Playable | **24.2**<br>Thor, Sep 27 |
 | **Kabuki Warriors** | 🟢 Playable | **59.9**<br>Nova, Oct 3 |
+| **Knights of the Temple II** | 🟢 Playable |  |
 | **Knockout Kings 2002** | 🟢 Playable |  |
 | **KOF: Maximum Impact – Maniax** | 🟢 Playable | **59.9**<br>Nova, Oct 17 |
 | **Legacy of Kain: Defiance** | 🟢 Playable | **29.0**<br>Nova, Oct 11 |
@@ -104,6 +105,7 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | **NFL Blitz 2002** | 🟢 Playable | **45.0**<br>Nova, Oct 5 |
 | **Pac-Man World 2** | 🟢 Playable | **59.9**<br>Nova, Oct 13 |
 | **Panzer Dragoon Orta** | 🟢 Playable | **54.1**<br>Nova, Oct 3 |
+| **Pro Evolution Soccer 5 (Europe)** | 🟢 Playable |  |
 | **RalliSport Challenge** | 🟢 Playable | **59.9**<br>Nova, Oct 4 |
 | **Ratatouille** | 🟢 Playable | **52.8**<br>Nova, Oct 6 |
 | **Rayman 3 Hoodlum Havoc** | 🟢 Playable | **59.9**<br>Nova, Oct 13 |
@@ -118,6 +120,7 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | **SpongeBob SquarePants: Battle for Bikini Bottom** | 🟢 Playable |  |
 | **The Lord of the Rings: The Fellowship of the Ring** | 🟢 Playable |  |
 | **The Simpsons Hit & Run** | 🟢 Playable | **37.9**<br>Nova, Oct 4 |
+| **The Wild Rings** | 🟢 Playable |  |
 | **TimeSplitters 2** | 🟢 Playable | **59.9**<br>Nova, Oct 13 |
 | **ToeJam & Earl III: Mission to Earth** | 🟢 Playable | **42.1**<br>Nova, Oct 3 |
 | **Tony Hawk's Pro Skater 2x** | 🟢 Playable | **59.8**<br>Thor, Oct 1 |
@@ -302,7 +305,7 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | **XIII USA Europe En Fr De Es It** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 7 |
 | **Yetisports Arctic Adventures Europe** | 🔵 Measured, not rated yet | **35.1**<br>Nova, Oct 16 |
 
-<details><summary>356 titles not tested yet</summary>
+<details><summary>354 titles not tested yet</summary>
 
 | Title |
 |---|
@@ -565,7 +568,6 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | Just Cause |
 | Justice League Heroes |
 | Knight s Apprentice Memorick s Adventures |
-| Knights of the Temple II |
 | Kung Fu Chaos |
 | Largo Winch Empire Under Threat |
 | Legends of Wrestling |
@@ -633,7 +635,6 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | The Matrix Path of Neo |
 | The Simpsons Road Rage |
 | The Urbz Sims in the City |
-| The Wild Rings |
 | Tiger Woods PGA Tour 06 |
 | Tiger Woods PGA Tour 07 |
 | Tiger Woods PGA Tour 2003 |
@@ -665,5 +666,5 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 
 </details>
 
-623 titles: 94 Playable, 8 below 30 fps, 16 crash or hang, 149 measured but not rated yet, 356 not tested yet.
+624 titles: 97 Playable, 8 below 30 fps, 16 crash or hang, 149 measured but not rated yet, 354 not tested yet.
 
