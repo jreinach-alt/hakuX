@@ -1,0 +1,132 @@
+# state: returning   (rallisport-2.returning's menus; a new drive loop after the mark)
+# RalliSport Challenge 2 (4D530039): Time Attack, Crossover, Australia / Copperhead, Hyundai Accent Evo 3.
+# lane.ralli2audio1018, 2026-10-18, #433: the audio starve in the owner's 10-18 capture came while racing.
+#
+# Why a new loop: rallisport-2.returning's loop opens with 2.5 s of full LT. At the mark the car stands on
+# the start line facing the straight (10-12 run 1-1791822916-lane.local-3120610, shot `gameplay`: 0 mph,
+# race clock 00:23), so the reverse backs it off the grid into the paddock behind the start, where it sat
+# for the rest of the run (frames at race clock 01:12 and 02:15: car against the paddock fence, minimap
+# marker behind the start line). That run measured a stationary car: audio short 0.0, which says nothing
+# about racing.
+#
+# This loop holds RT from the mark and weaves the stick in short pulses, so the barriers on both sides
+# keep the car in the channel, and every ~14 s it brakes and reverses on right lock for 1.5 s, which frees
+# a car pinned against a barrier and only slows a moving one. Blind; the soak's periodic frames (race
+# clock, LAP, minimap marker) say how far it got.
+wait 35.4
+shot boot
+wait 8.1
+press A
+wait 7.4
+shot a1
+wait 2.4
+press START
+wait 5.3
+shot start
+wait 7.0
+press A
+wait 5.2
+shot prof
+wait 1.8
+axis HATX min
+wait 0.9
+axis HATX mid
+wait 1.7
+shot ta
+wait 13.8
+axis HATX max
+wait 0.5
+axis HATX mid
+wait 1.1
+shot tap
+wait 9.0
+axis HATX max
+wait 0.6
+axis HATX mid
+wait 1.2
+shot tap2
+wait 12.7
+axis HATX min
+wait 0.4
+axis HATX mid
+wait 3.2
+axis HATX min
+wait 0.5
+axis HATX mid
+wait 0.8
+axis HATX min
+wait 0.5
+axis HATX mid
+wait 0.9
+axis HATX min
+wait 0.4
+axis HATX mid
+wait 0.9
+axis HATX min
+wait 0.4
+axis HATX mid
+wait 0.9
+axis HATX min
+wait 0.4
+axis HATX mid
+wait 0.8
+axis HATX min
+wait 0.4
+axis HATX mid
+wait 1.5
+shot left7
+wait 8.3
+press A
+wait 4.2
+shot rtype
+wait 1.9
+press A
+wait 4.2
+shot track
+wait 2.4
+press A
+wait 6.5
+shot settings
+wait 2.3
+press A
+wait 8.2
+shot car
+wait 10.9
+press A
+wait 8.2
+shot car2
+wait 11.0
+press A
+wait 14.2
+shot go
+wait 16.5
+mark gameplay
+axis LT min
+axis RT max
+wait 6
+shot drive6
+repeat forever {
+    axis LX max
+    wait 0.7
+    axis LX mid
+    wait 2.5
+    axis LX min
+    wait 0.7
+    axis LX mid
+    wait 2.5
+    axis LX max
+    wait 0.7
+    axis LX mid
+    wait 2.5
+    axis LX min
+    wait 0.7
+    axis LX mid
+    wait 2.5
+    axis RT min
+    axis LT max
+    axis LX max
+    wait 1.5
+    axis LT min
+    axis LX mid
+    axis RT max
+}
