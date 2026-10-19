@@ -4,7 +4,7 @@ _Last updated 2026-10-18, for version 0.5.0._
 
 This lists Xbox titles tried on this project's test devices, split into three groups: titles that clear the **Playable** bar, titles that run but fall short of 30 fps, and titles that do not yet play. It is not a full compatibility list: plenty of other titles have simply not been tried yet. See [`KNOWN_ISSUES.md`](../KNOWN_ISSUES.md) and the [issue tracker](https://github.com/jreinach-alt/hakuX/issues) for what is tracked about titles not on this page.
 
-94 Playable · 20 run below 30 fps · 11 not playable
+97 Playable · 20 run below 30 fps · 11 not playable
 
 ## What "Playable" means
 
@@ -90,6 +90,7 @@ with another Turnip build, may differ.
 | Jacked | Europe | Nova | 46.1 | 100% | 2026-10-14 |  |
 | Jet Set Radio Future | USA | Nova | 59.9 | 100% | 2026-10-04 |  |
 | Kabuki Warriors | ? | Nova | 59.9 | 100% | 2026-09-30 |  |
+| Knights of the Temple II | ? | Nova | 30.0 | 100% | 2026-10-14 |  |
 | Knockout Kings 2002 | USA | Nova | 59.8 | 100% | 2026-10-16 |  |
 | KOF: Maximum Impact – Maniax | USA | Nova | 52.4 | 99% | 2026-09-29 |  |
 | Legacy of Kain: Defiance | USA | Nova | 47.6 | 97% | 2026-10-07 |  |
@@ -116,6 +117,7 @@ with another Turnip build, may differ.
 | NFL Blitz 2002 | USA | Nova | 45.0 | 100% | 2026-10-05 |  |
 | Pac-Man World 2 | ? | Nova | 59.9 | 100% | 2026-10-13 |  |
 | Panzer Dragoon Orta | Europe | Nova | 54.1 | 100% | 2026-10-03 |  |
+| Pro Evolution Soccer 5 (Europe) | Europe | Nova | 59.9 | 100% | 2026-10-18 |  |
 | RalliSport Challenge | ? | Nova | 59.6 | 92% | 2026-10-18 | Car flicker (#804) fixed. |
 | Ratatouille | USA | Nova | 52.8 | 100% | 2026-10-06 |  |
 | Rayman 3 Hoodlum Havoc | ? | Nova | 59.9 | 100% | 2026-10-13 |  |
@@ -130,6 +132,7 @@ with another Turnip build, may differ.
 | SpongeBob SquarePants: Battle for Bikini Bottom | USA | Nova | 59.9 | 100% | 2026-10-07 |  |
 | The Lord of the Rings: The Fellowship of the Ring | USA | Nova | 30.0 | 100% | 2026-10-07 |  |
 | The Simpsons Hit & Run | ? | Nova | 37.9 | 100% | 2026-10-04 |  |
+| The Wild Rings | ? | Nova | 53.3 | 100% | 2026-10-18 |  |
 | TimeSplitters 2 | ? | Nova | 59.9 | 99% | 2026-10-13 |  |
 | ToeJam & Earl III: Mission to Earth | USA | Nova | 59.9 | 99% | 2026-10-02 |  |
 | Tony Hawk's Pro Skater 2x | ? | Nova | 59.8 | 100% | 2026-10-01 |  |
