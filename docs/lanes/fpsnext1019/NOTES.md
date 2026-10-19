@@ -24,6 +24,17 @@ on average in the SAME scene, or a measured per-pass GPU ms drop that accounts f
   merged build this attempt needs; rebuild and reinstall before any capture rather than assuming device state.
   Continuing from the plan: item 1 (Blinx 2 H4 census) first, since it needs no device-mode A/B and the
   `learned.py` route fix is already in place; item 2 (GTA III SYSMEM hold batch) next.
+- **Attempt 3 (2026-10-19 ~10:50 PDT, resumed per addendum 2)**: attempt 2 did not finish the brief because it
+  treated `State: ready` as a stopping point: it ended its session after marking the PR ready with one clean
+  GTA III reading (28.3 hold / 27.1 drive) and two noisier repeats, Blinx 2 parked on the route gap and Fable
+  untouched. The bar is all three titles at 30, so a ready PR is a fold point, not an end (G7). This attempt:
+  merged origin/master (`compat1019b` fold, docs only, no emulator code), took the Nova hold (`hold.sh take`,
+  `wait-idle` 0, nothing in front of this lane), and found the shorter path to Blinx 2 gameplay the route
+  work was standing in for: the owner's Blinx 2 island state (release slot 1, 10-17 22:41) is already copied
+  into the debug package's slot 5 (`.../com.jreinach.hakux.debug/files/x1box/states/4d530065/slot5.hxs`,
+  26114724 bytes, same size as the release slot1), and lane.xbox's `arm2b.sh` loaded it through the pause menu
+  on 10-18 (`captures/lanexbox-fps1018/runs/bc-A`: 21.6 fps idle, 24.1 fps circling, `G 41.0`). So Blinx 2 gets
+  its gameplay budget capture and H4 census from that state, under this lane's hold, before any profile work.
 
 ## Step 0: Already-tried (G1), carried from fpsdata1018
 
