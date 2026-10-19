@@ -6,9 +6,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Right now
 
-| Lane | Model | Running for | Working on |
-|---|---|---|---|
-| `fpsnext1019` | claude-sonnet-5 | 37 min | fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433) |
+No lane session is running.
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -124,12 +122,11 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Work in progress
 
-| Branch | Topic | Tip | Last change |
-|---|---|---|---|
-| `lane/fpsnext1019` | fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433) | `41954af1bc` | 2026-10-19 13:25 |
+No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-19 Fix the 10-19 11:14 master-red: a usage-meter time bomb and a hold-tiers clock race
 - 2026-10-19 fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433)
 - 2026-10-19 fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433)
 - 2026-10-19 Nova priority tiers that actually hold: screening yields to FPS and release-fix work
@@ -139,4 +136,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-19 drive: local tools only, act-observe instead of wait-and-fail, learn what to press
 - 2026-10-19 mkdawhite1018: Mortal Kombat: Deadly Alliance arena floors and walls draw flat white (#1058)
 
-_Updated 2026-10-19 13:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-19 13:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
