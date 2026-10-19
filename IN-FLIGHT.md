@@ -6,12 +6,14 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Right now
 
-No lane session is running.
+| Lane | Model | Running for | Working on |
+|---|---|---|---|
+| `fpsdata1018` | claude-sonnet-5 | 5 min | fpsdata1018: FPS dip causes in the 4-title owner capture, and fixes (#433) |
 
 - **Handhelds:** 2 connected.
-  - Nova: held by `lane.pathfind`
+  - Nova: free for the queue
   - Thor: held by `lane.local`
-- **Device queue:** 5 waiting, 0 running.
+- **Device queue:** 3 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -119,7 +121,9 @@ No lane session is running.
 
 ## Work in progress
 
-No branch is being worked right now.
+| Branch | Topic | Tip | Last change |
+|---|---|---|---|
+| `lane/fpsdata1018` | fpsdata1018: FPS dip causes in the 4-title owner capture, and fixes (#433) | `09ede7c682` | 2026-10-19 02:07 |
 
 ## Recently landed on master
 
@@ -132,4 +136,4 @@ No branch is being worked right now.
 - 2026-10-18 dispatcher: dev_push gets a read-only mode for the Nova's SD-card disc pushes
 - 2026-10-18 home branch root: move chart.svg/chart2.svg/COPYING.LIB under docs (#433)
 
-_Updated 2026-10-19 02:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-19 02:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
