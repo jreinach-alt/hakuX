@@ -1,6 +1,6 @@
 # hakuX status
 
-_updated 2026-10-21 04:27 PDT_
+_updated 2026-10-21 04:58 PDT_
 
 0.6: Measured 268 / 300 · Playable 97 / 110.
 
@@ -18,11 +18,11 @@ Playable **97** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓▓▓░`
 
 | release | Measured target | projected date | Playable target | projected date |
 |---|---|---|---|---|
-| 0.6 | 300 | 2026-10-24 | 110 | 2026-10-24 |
-| 0.7 | 425 | 2026-11-08 | 185 | 2026-11-10 |
-| 0.8 | 575 | 2026-11-26 | 300 | 2026-12-07 |
-| 0.9 | 725 | 2026-12-14 | 480 | 2027-01-18 |
-| 1.0 | 876 | 2027-01-01 | 789 | 2027-03-31 |
+| 0.6 | 300 | 2026-10-25 | 110 | 2026-10-24 |
+| 0.7 | 425 | 2026-11-09 | 185 | 2026-11-12 |
+| 0.8 | 575 | 2026-11-28 | 300 | 2026-12-10 |
+| 0.9 | 725 | 2026-12-17 | 480 | 2027-01-24 |
+| 1.0 | 876 | 2027-01-05 | 789 | 2027-04-12 |
 
 Measured: titles with a frame rate reading taken during gameplay, on either handheld. Playable: titles rated Playable. The charts place each title on the date it first qualified, and the projected dates in the table assume the last 7 days' pace continues.
 
