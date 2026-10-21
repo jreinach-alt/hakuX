@@ -143,4 +143,11 @@ play. That is the device run's job.
 
 ## Full selftest run
 
-Running at the time of this commit. The result will be recorded here before this PR is pushed.
+2026-10-21, on this branch, in two runs:
+
+- **The whole suite**, with a 3000 s timeout. 97 of 159 fragments finished: 2559 passed, 0 failed. The timeout
+  stopped it inside `99-arms-refused-requeue.sh`, which had 11 checks passed and none failed.
+- **The 62 fragments it did not finish** (`SELFTEST_ONLY`, from `99-arms-refused-requeue.sh` on): 1290 passed,
+  0 failed.
+
+Together, all 159 fragments ran: 3849 passed, 0 failed.
