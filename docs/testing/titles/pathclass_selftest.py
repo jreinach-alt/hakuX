@@ -20,6 +20,7 @@ frame-specific -- act() never presses START for state == play or stalled -- and 
 test below checks that a regression there would be caught, not assumed.
 """
 import glob
+import json
 import os
 import sys
 import tempfile
@@ -29,6 +30,7 @@ sys.path.insert(0, HERE)
 import classify  # noqa: E402
 import drive  # noqa: E402
 import learned  # noqa: E402  (drive.py's own import already put pathknow/ on sys.path)
+import pathbook  # noqa: E402
 
 PROF = os.path.join(HERE, "drive-profiles")
 RESULTS = os.path.join(os.environ.get("DISPATCH_DIR", "/home/justin/hakux-work/dispatch"), "results")
@@ -152,15 +154,20 @@ class StubClient:
     """Stands in for pathclass.Client in classify.pathclass_client(): the next answer off a
     list, in call order, no subprocess, no model. In order because SimDevice.capture()
     copies each source frame to an alternating `cap0.png`/`cap1.png` before classify.py
-    ever sees a path, so the original frame's name is gone by the time it gets here."""
+    ever sees a path, so the original frame's name is gone by the time it gets here.
+    An answer is (state, confidence), or a whole pathclass answer dict (top3, action,
+    diff: routebuild1021's lean tests)."""
 
     def __init__(self, answers):
         self.answers = list(answers)
         self.i = 0
 
     def classify(self, frame, prev, context):
-        st, conf = self.answers[self.i]
+        a = self.answers[min(self.i, len(self.answers) - 1)]
         self.i += 1
+        if isinstance(a, dict):
+            return dict({"moving": True, "diff": 0.5}, **a)
+        st, conf = a
         return {"state": st, "confidence": conf, "moving": True, "diff": 0.5}
 
 
@@ -262,7 +269,9 @@ def main(argv):
     print("%s  simpsons run: generic reaches play, marks it, no START in play  %s" %
           ("ok  " if ok else "FAIL", "" if ok else "; ".join(probs)))
     play_inputs = [i for i in drv.inputs if i["state"] == "play"]
-    ok2 = all(i["input"] == "" for i in play_inputs)  # no press at all while playing: hold_play only
+    # hold_play only: generic.toml's play_cycle phases are logged as `hold ...`, and the
+    # run's end releases them (routebuild1021)
+    ok2 = all(i["input"] in ("", "release axes") or i["input"].startswith("hold ") for i in play_inputs)
     fails += not ok2
     print("%s  simpsons run: no presses at all while playing (hold only)  inputs=%s" %
           ("ok  " if ok2 else "FAIL", [i["input"] for i in play_inputs] if not ok2 else "none"))
@@ -347,8 +356,224 @@ def main(argv):
           "result=%s inputs=%d explored=%d" %
           ("ok  " if ok7 else "FAIL", drv.result, len(drv.inputs), len(drv.explored)))
 
+    fails += book_tests(learned_td)
     print("pathclass_selftest: %d failure(s)" % fails)
     return 1 if fails else 0
+
+
+# -- routebuild1021: the lean, the d-pad, the path book -------------------------------
+def lean_answer(do="DOWN", top3=(("main_menu", 0.40), ("submenu", 0.30), ("gameplay", 0.05))):
+    """A low-confidence (0.40, under generic.toml's 0.7 menu floor) answer whose top-3
+    leans menu, with pathclass's own action."""
+    return {"state": top3[0][0], "confidence": top3[0][1], "top3": [list(x) for x in top3],
+            "action": {"do": do, "why": "selftest"}, "diff": 0.0, "moving": False}
+
+
+def sim(answers, frames, seconds, step_s=1.0, env=None, out=None):
+    """One generic.toml run over `frames` with these stub answers. `env`: TITLE_ID /
+    HAKUX_PATHS_DIR for the run (set for the Driver's construction and finish())."""
+    install_stub(answers)
+    old = {k: os.environ.get(k) for k in (env or {})}
+    os.environ.update(env or {})
+    try:
+        with tempfile.TemporaryDirectory() as td:
+            drv = drive.Driver(drive.SimDevice(frames, step_s), classify.load_profile(os.path.join(PROF, "generic.toml")),
+                               out or td, out or td, seconds, mark=True, sim=True)
+            drv.run()
+    finally:
+        for k, v in old.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+    return drv
+
+
+def report(ok, what, got=""):
+    print("%s  %s  %s" % ("ok  " if ok else "FAIL", what, "" if ok else got))
+    return 0 if ok else 1
+
+
+def flat(v):
+    return [[v] * 16 for _ in range(12)]
+
+
+def clear_learned():
+    for f in os.listdir(learned.DIR) if os.path.isdir(learned.DIR) else []:
+        os.remove(os.path.join(learned.DIR, f))
+
+
+def book_tests(learned_td):
+    fails = 0
+    clear_learned()                     # the never-idle case above recorded `changed` for this screen's key
+    fl, d = sim_frames()
+    live = os.path.join(d, "124950-entry.png")
+
+    # The lean: an `unknown` screen whose top-3 leans menu is pressed with pathclass's own
+    # action, not the ladder's first rung (A) -- and DOWN goes out as a hat flick, since
+    # hakuX's d-pad buttons do nothing. The mutant reinstates the button: HAT emptied, DOWN
+    # is sent as `press DOWN`, and the same check must see it.
+    for mutant in (False, True):
+        real_hat = dict(drive.HAT)
+        if mutant:
+            drive.HAT.clear()
+        try:
+            drv = sim([lean_answer()], [live] * 4, 4.0)
+        finally:
+            drive.HAT.update(real_hat)
+        first = next((i for i in drv.inputs if i["why"].startswith("explore")), {})
+        hat = any(s[1:] == ("axis", "HATY", "max") for s in drv.dev.sent)
+        btn = any(s[1:] == ("press", "DOWN") for s in drv.dev.sent)
+        ok = first.get("input") == "DOWN" and "leans menu" in first.get("why", "") and hat and not btn
+        if mutant:
+            fails += report(not ok, "mutant (d-pad as buttons) is caught by the lean/hat check",
+                            "NOT CAUGHT -- the check is vacuous")
+        else:
+            fails += report(ok, "lean: unknown leaning menu presses pathclass's DOWN, sent as HATY max",
+                            "first=%s hat=%s button=%s" % (first, hat, btn))
+
+    # The lean against the learned table: a button whose only record on this screen is
+    # `none` does not outrank the lean (min_rank=2); one that `changed` it does.
+    key = "unknown:pathclass:low-confidence"
+    learned.record("generic", key, None, "X", "none", 1.0, "selftest")
+    drv = sim([lean_answer()], [live] * 4, 4.0)
+    first = next((i for i in drv.inputs if i["why"].startswith("explore")), {})
+    fails += report(first.get("input") == "DOWN", "lean beats a learned button recorded only as `none`",
+                    "first=%s" % first)
+    clear_learned()
+    learned.record("generic", key, None, "X", "none", 1.0, "selftest")
+    real_suggest = learned.suggest
+    learned.suggest = lambda own, glob, k, emb, tried, min_rank=0: real_suggest(own, glob, k, emb, tried)
+    try:
+        drv = sim([lean_answer()], [live] * 4, 4.0)
+    finally:
+        learned.suggest = real_suggest
+    first = next((i for i in drv.inputs if i["why"].startswith("explore")), {})
+    fails += report(first.get("input") != "DOWN", "mutant (min_rank ignored) is caught by the same check",
+                    "NOT CAUGHT -- the check is vacuous")
+    clear_learned()                     # that run's own DOWN was recorded too (no embedding here: `changed`)
+    learned.record("generic", key, None, "Y", "changed", 2.0, "selftest")
+    drv = sim([lean_answer()], [live] * 4, 4.0)
+    first = next((i for i in drv.inputs if i["why"].startswith("explore")), {})
+    fails += report(first.get("input") == "Y" and first["why"].endswith("learned)"),
+                    "a learned button that `changed` this screen beats the lean", "first=%s" % first)
+    clear_learned()
+
+    # A play lean holds the play input and presses nothing; START never goes out on a
+    # screen whose top-3 gives gameplay LEAN_PLAY_START or more.
+    drv = sim([lean_answer(top3=(("gameplay", 0.6), ("cutscene", 0.2), ("main_menu", 0.1)))], [live] * 4, 4.0)
+    presses = [i for i in drv.inputs if not i["input"].startswith(("hold", "release"))]
+    held = any(i["input"].startswith("hold ") for i in drv.inputs)
+    fails += report(not presses and held, "lean play: holds the play input, presses nothing",
+                    "presses=%s held=%s" % (presses, held))
+    drv = sim([lean_answer(do="START", top3=(("title_screen", 0.4), ("main_menu", 0.2), ("gameplay", 0.2)))],
+              [live] * 8, 8.0)
+    starts = [i for i in drv.inputs if "START" in i["input"]]
+    fails += report(not starts and any(i["why"].startswith("explore") for i in drv.inputs),
+                    "lean menu with gameplay at 0.2 of the top-3: START is never sent",
+                    "inputs=%s" % [i["input"] for i in drv.inputs])
+
+    # pathbook.build: same-screen DOWN, DOWN, A is a cursor walk, not a loop; a loop with
+    # no menu step in it (an attract video coming round) is cut; one through a menu is not.
+    A, B, C, D = flat(10), flat(100), flat(200), flat(50)
+
+    def e(t, sig, btn, after, menu, d=90.0, ch=0.5, state="unknown"):
+        return dict(t=t, state=state, cls=None, button=btn, why="", menu=menu, sig=sig, in_play=False,
+                    after_state=after, after_d=d, after_changed=ch)
+    walk = [e(1, A, "DOWN", "main_menu", True, d=1.0, ch=0.03), e(3, A, "DOWN", "main_menu", True, d=1.0, ch=0.03),
+            e(5, A, "A", "main_menu", True), e(7, B, "A", "loading", True),
+            e(8, B, "B", "main_menu", True, d=0.0, ch=0.0)]       # nothing moved: dropped
+    p = pathbook.build(walk, [], dict(title_id="ffff0001", complete=True, time_to_play_s=20.0))
+    acts = [" ".join(s["action"]) for s in p["steps"]]
+    fails += report(acts == ["DOWN", "DOWN", "A", "A"], "pathbook: same-screen DOWN, DOWN, A kept; a dead press dropped",
+                    "got %s" % acts)
+    loop = [e(1, C, "A", "cutscene", False), e(3, D, "A", "cutscene", False), e(5, C, "START", "title", False),
+            e(7, B, "A", "main_menu", True)]
+    acts = [" ".join(s["action"]) for s in pathbook.build(loop, [], {})["steps"]]
+    fails += report(acts == ["START", "A"], "pathbook: a loop with no menu step is cut", "got %s" % acts)
+    mloop = [dict(x, menu=True) for x in loop]
+    acts = [" ".join(s["action"]) for s in pathbook.build(mloop, [], {})["steps"]]
+    fails += report(acts == ["A", "A", "START", "A"], "pathbook: a loop through a menu is kept (the cursor is unseen)",
+                    "got %s" % acts)
+
+    # pathbook.save/load: faster complete replaces; slower or incomplete does not; a
+    # complete pathfind path is not hidden by an incomplete drive one.
+    pd = tempfile.mkdtemp(prefix="pathbook-selftest-")
+    repo = tempfile.mkdtemp(prefix="pathbook-selftest-repo-")
+    real_repo = pathbook.REPO_PATHS
+    pathbook.REPO_PATHS = repo
+    try:
+        mk = lambda secs, done: pathbook.build(walk, [], dict(title_id="FFFF0001", complete=done, time_to_play_s=secs,
+                                                             furthest=3))
+        r1 = pathbook.save(mk(60.0, True), pd)[0]
+        r2 = pathbook.save(mk(90.0, True), pd)[0]
+        r3 = pathbook.save(mk(40.0, False), pd)[0]
+        r4 = pathbook.save(mk(40.0, True), pd)[0]
+        fails += report((r1, r2, r3, r4) == (True, False, False, True),
+                        "pathbook.save: first, slower, incomplete, faster -> written, kept, kept, written",
+                        "got %s" % ((r1, r2, r3, r4),))
+        with open(os.path.join(repo, "FFFF0002.json"), "w") as f:
+            json.dump(dict(title_id="FFFF0002", complete=True, minutes=3.0, steps=[dict(state="title_screen",
+                      action=["START"], sig=A)]), f)
+        with open(os.path.join(pd, "FFFF0002.json"), "w") as f:
+            json.dump(mk(None, False), f)
+        got, f = pathbook.load("ffff0002", [pd, repo])
+        fails += report(f and f.startswith(repo), "pathbook.load: a complete pathfind path beats an incomplete drive one",
+                        "got %s" % f)
+        # An unfinished pathfind path (Blinx 2's 4D530065: `gave-up`, 9 steps) is not
+        # replaced by an unfinished drive run however far that got; a finished one is.
+        with open(os.path.join(repo, "FFFF0003.json"), "w") as f:
+            json.dump(dict(title_id="FFFF0003", complete=False, result="gave-up", steps=[dict(state="title_screen",
+                      action=["START"], sig=A)]), f)
+        mk3 = lambda done: pathbook.build(walk, [], dict(title_id="FFFF0003", complete=done, furthest=6,
+                                                         time_to_play_s=50.0 if done else None))
+        r5, r6 = pathbook.save(mk3(False), pd)[0], pathbook.save(mk3(True), pd)[0]
+        fails += report((r5, r6) == (False, True),
+                        "pathbook.save: an unfinished pathfind path is kept over an unfinished drive run, "
+                        "replaced by a finished one", "got %s" % ((r5, r6),))
+    finally:
+        pathbook.REPO_PATHS = real_repo
+
+    # Replay: a book step whose screen matches is pressed before the policy, by name; a
+    # step that never moves its screen is given up after REPLAY_TRIES presses. The mutant
+    # never gives up (the weaker rule: a stale book holds the run on one screen).
+    sig = pathbook.sig_list(pathbook.signature(live))
+    with open(os.path.join(pd, "FFFF0003.json"), "w") as f:
+        json.dump(dict(title_id="FFFF0003", complete=True, time_to_play_s=5.0, builder="drive",
+                       steps=[dict(state="cutscene", action=["Y"], sig=sig, useful=True)]), f)
+    env = {"TITLE_ID": "ffff0003", "HAKUX_PATHS_DIR": pd}
+    for mutant in (False, True):
+        real = drive.REPLAY_TRIES
+        drive.REPLAY_TRIES = 99 if mutant else real
+        try:
+            drv = sim([("controller_prompt", 0.1)], [live] * 20, 20.0, step_s=1.0, env=env)
+        finally:
+            drive.REPLAY_TRIES = real
+        book = [i for i in drv.inputs if i["why"].startswith("book step")]
+        ok = (len(book) == drive.REPLAY_TRIES and all(i["input"] == "Y" for i in book)
+              and any(i["why"].startswith("explore") for i in drv.inputs))
+        if mutant:
+            fails += report(not ok, "mutant (book step never given up) is caught", "NOT CAUGHT -- the check is vacuous")
+        else:
+            fails += report(ok, "replay: the book's Y pressed %d times on its screen, then the policy takes over"
+                            % drive.REPLAY_TRIES, "book=%s" % [(i["t"], i["input"]) for i in book])
+
+    # End to end: a TITLE_ID run that reaches play saves the title's path; the trail is
+    # written either way.
+    out = tempfile.mkdtemp(prefix="pathbook-selftest-run-")
+    drv = sim(sim_answers_ordered(), fl, 999, step_s=6.0, env={"TITLE_ID": "ffff0004", "HAKUX_PATHS_DIR": pd},
+              out=out)
+    tr = json.load(open(os.path.join(out, "route-trail.json")))
+    saved = pathbook._read(os.path.join(pd, "FFFF0004.json"))
+    fails += report(tr["meta"]["complete"] and saved and saved["complete"] and saved["steps"],
+                    "end to end: a run that marks play writes its trail and saves the title's path",
+                    "complete=%s saved=%s" % (tr["meta"]["complete"], bool(saved)))
+    drv = sim(sim_answers_ordered(), fl, 999, step_s=6.0, env={"TITLE_ID": "ffff0004", "HAKUX_PATHS_DIR": pd})
+    book = [i for i in drv.inputs if i["why"].startswith("book step")]
+    fails += report(book and book[0]["input"] == " ".join(saved["steps"][0]["action"]),
+                    "end to end: the next run of that title replays the saved path from its first step",
+                    "book=%s" % [(i["t"], i["input"], i["why"]) for i in book])
+    return fails
 
 
 if __name__ == "__main__":

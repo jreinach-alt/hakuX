@@ -161,7 +161,9 @@ Admitted unconditionally: `returning`/`any`/no-route runs on a title that
 already has a profile (clause `profile`; a data-only golden counts under
 `any`/no-route, not under `returning` -- SETTINGS_ONLY_FIX), `make-profile`
 (first-run with `mark profile-saved`, making the first profile), `--find-route`
-on a title with no proven route, and anything named by
+on a title with no proven route, the shared `auto` route on a title with no
+proven route (clause `auto-route`, routebuild1021: the dispatcher's own
+route-finding, suggest_route's last resort), and anything named by
 `--remake-profile`/`--path-broken` above. The owner's base rule -- "runs only
 execute when we have a profile" -- is `returning`/`any`/no-route with NO
 golden at all: refused the same way under every one of those states, unless a
@@ -207,6 +209,9 @@ DEVICES = ("nova", "thor")
 VARIANTS = ("first-run", "returning", "survey")
 OBSERVED = ("created", "loaded", "none", "rejected", "unknown")
 STATES = ("returning", "first-run", "any")
+# routes/auto.route: the shared route suggest_route attaches to a title with no route of
+# its own, and admit() lets through with no golden (routebuild1021)
+AUTO_ROUTE = "auto"
 
 
 def root():
@@ -1342,17 +1347,26 @@ def suggest_route(title_id):
     configured route for the title, same field route_path()/single_route()
     already fall back to: recorded, not yet proven, but never invented here.
 
-    Returns (route_name, source) with source "proven" or "target", or
-    (None, note) when nothing is known and nothing is configured -- NOTE
-    names a pathknow success when one exists (closest thing on record, but
-    Addendum 2 is explicit that a pathknow success alone does not prove a
-    route, so it is never returned as a name to attach)."""
+    Short of both, the shared AUTO_ROUTE (routes/auto.route), when the
+    routes tree has one (routebuild1021, owner 2026-10-21: a title with no
+    known path is handed to the dispatcher, not refused): drive.py finds the
+    way into play itself, replaying the title's book (pathbook.py) when an
+    earlier run -- or a pathknow session -- recorded one.
+
+    Returns (route_name, source) with source "proven", "target" or "auto",
+    or (None, note) when nothing is known, nothing is configured and there
+    is no auto route -- NOTE names a pathknow success when one exists
+    (closest thing on record, but Addendum 2 is explicit that a pathknow
+    success alone does not prove a route, so it is never returned as a name
+    to attach)."""
     k = known_path(title_id, broad=False)
     if k["known"] and k["route_name"]:
         return k["route_name"], "proven"
     name = targets().get(title_id, {}).get("route")
     if name:
         return name, "target"
+    if os.path.exists(os.path.join(routes_root(), f"{AUTO_ROUTE}.route")):
+        return AUTO_ROUTE, "auto"
     if pathknow_success(title_id):
         return None, "a pathknow session reached gameplay once, but no route is proven yet"
     return None, "no recorded or proven route"
@@ -1428,8 +1442,8 @@ def admit(title_id, route_name=None, route_text=None, device=None, find_route=No
 
     Returns {"admit", "clause", "refuse", "path", "route_name", "state",
     "golden"}; `refuse` names the way forward, None when admitted. `clause`
-    is one of profile/make-profile/find-route/transition/remake-profile/
-    path-broken when admitted, else None."""
+    is one of profile/make-profile/find-route/auto-route/transition/
+    remake-profile/path-broken when admitted, else None."""
     out = {"admit": False, "clause": None, "refuse": None, "path": None,
            "route_name": route_name, "state": None, "golden": None}
 
@@ -1531,6 +1545,16 @@ def admit(title_id, route_name=None, route_text=None, device=None, find_route=No
     tr = live_transition(route_name)
     if tr:
         return dict(out, admit=True, clause="transition", transition=tr)
+    # AUTO_ROUTE is route-finding the dispatcher does itself (routebuild1021): admitted with no
+    # profile as `--find-route` is, and refused by R3 as `--find-route` is -- a title with a
+    # proven route plays that one (suggest_route never attaches auto over it).
+    if route_name == AUTO_ROUTE:
+        kp = known_path(title_id, broad=False)
+        if kp["known"] and kp["route_name"] != AUTO_ROUTE:
+            out["refuse"] = (f"{title_id} already has a proven route ({kp['route_name']}, reached in "
+                             f"{kp['result_id']}); queue it instead of the auto route")
+            return out
+        return dict(out, admit=True, clause="auto-route")
     if gg:
         out["refuse"] = (f"{title_id} has no profile: golden {gg['save']} was rejected on {device}; "
                          f'`any` meets none either (use --find-route "<why>" to find one blind)')
