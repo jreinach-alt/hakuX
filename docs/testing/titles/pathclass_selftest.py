@@ -143,7 +143,9 @@ AVP_ANSWERS = [
 
 def avp_frames():
     d = os.path.join(RESULTS, AVP_RUN, "route-frames")
-    return [os.path.join(d, f) for f in AVP_FRAMES], d
+    # the stalled title screen three times: the fallen floor names the 0.395 capture before it `unknown`, the
+    # d-pad look flick lands on that one, and START needs a capture after the settle to go out on
+    return [os.path.join(d, f) for f in AVP_FRAMES + AVP_FRAMES[-1:] * 3], d
 
 
 def avp_answers_ordered():
@@ -208,8 +210,8 @@ def problems(drv, tsv):
     if any(i["input"] in ("START", "START+A") and i["state"] == "play" for i in drv.inputs):
         probs.append("START sent in play")
     pre_play = [i for i in drv.inputs if i["state"] != "play" and i["input"]]
-    if any(i["input"] == "START" for i in pre_play):
-        probs.append("START sent before play (generic.toml's ladder is [A] only)")
+    if any(i["input"] == "START" and "; ladder)" in i["why"] for i in pre_play):
+        probs.append("START sent before play by the exploration ladder (generic.toml's ladder is [A] only)")
     if "\tplay\t" not in tsv:
         probs.append("never reached play")
     if "mark gameplay" not in tsv:
@@ -359,6 +361,7 @@ def main(argv):
     fails += book_tests(learned_td)
     fails += probe_tests()
     fails += loading_tests()
+    fails += decay_tests()
     print("pathclass_selftest: %d failure(s)" % fails)
     return 1 if fails else 0
 
@@ -371,16 +374,21 @@ def lean_answer(do="DOWN", top3=(("main_menu", 0.40), ("submenu", 0.30), ("gamep
             "action": {"do": do, "why": "selftest"}, "diff": 0.0, "moving": False}
 
 
-def sim(answers, frames, seconds, step_s=1.0, env=None, out=None):
+NO_DPAD = dict(dpad_probe=0)   # the lean tests below are about the lean: the d-pad rotation has its own (decay_tests)
+
+
+def sim(answers, frames, seconds, step_s=1.0, env=None, out=None, drive_set=None):
     """One generic.toml run over `frames` with these stub answers. `env`: TITLE_ID /
-    HAKUX_PATHS_DIR for the run (set for the Driver's construction and finish())."""
+    HAKUX_PATHS_DIR for the run (set for the Driver's construction and finish()); `drive_set`
+    replaces keys of the profile's [drive] section."""
     install_stub(answers)
     old = {k: os.environ.get(k) for k in (env or {})}
     os.environ.update(env or {})
     try:
         with tempfile.TemporaryDirectory() as td:
-            drv = drive.Driver(drive.SimDevice(frames, step_s), classify.load_profile(os.path.join(PROF, "generic.toml")),
-                               out or td, out or td, seconds, mark=True, sim=True)
+            prof = classify.load_profile(os.path.join(PROF, "generic.toml"))
+            prof["drive"].update(drive_set or {})
+            drv = drive.Driver(drive.SimDevice(frames, step_s), prof, out or td, out or td, seconds, mark=True, sim=True)
             drv.run()
     finally:
         for k, v in old.items():
@@ -420,7 +428,7 @@ def book_tests(learned_td):
         if mutant:
             drive.HAT.clear()
         try:
-            drv = sim([lean_answer()], [live] * 4, 4.0)
+            drv = sim([lean_answer()], [live] * 4, 4.0, drive_set=NO_DPAD)
         finally:
             drive.HAT.update(real_hat)
         first = next((i for i in drv.inputs if i["why"].startswith("explore")), {})
@@ -438,7 +446,7 @@ def book_tests(learned_td):
     # `none` does not outrank the lean (min_rank=2); one that `changed` it does.
     key = "unknown:pathclass:low-confidence"
     learned.record("generic", key, None, "X", "none", 1.0, "selftest")
-    drv = sim([lean_answer()], [live] * 4, 4.0)
+    drv = sim([lean_answer()], [live] * 4, 4.0, drive_set=NO_DPAD)
     first = next((i for i in drv.inputs if i["why"].startswith("explore")), {})
     fails += report(first.get("input") == "DOWN", "lean beats a learned button recorded only as `none`",
                     "first=%s" % first)
@@ -447,7 +455,7 @@ def book_tests(learned_td):
     real_suggest = learned.suggest
     learned.suggest = lambda own, glob, k, emb, tried, min_rank=0: real_suggest(own, glob, k, emb, tried)
     try:
-        drv = sim([lean_answer()], [live] * 4, 4.0)
+        drv = sim([lean_answer()], [live] * 4, 4.0, drive_set=NO_DPAD)
     finally:
         learned.suggest = real_suggest
     first = next((i for i in drv.inputs if i["why"].startswith("explore")), {})
@@ -455,7 +463,7 @@ def book_tests(learned_td):
                     "NOT CAUGHT -- the check is vacuous")
     clear_learned()                     # that run's own DOWN was recorded too (no embedding here: `changed`)
     learned.record("generic", key, None, "Y", "changed", 2.0, "selftest")
-    drv = sim([lean_answer()], [live] * 4, 4.0)
+    drv = sim([lean_answer()], [live] * 4, 4.0, drive_set=NO_DPAD)
     first = next((i for i in drv.inputs if i["why"].startswith("explore")), {})
     fails += report(first.get("input") == "Y" and first["why"].endswith("learned)"),
                     "a learned button that `changed` this screen beats the lean", "first=%s" % first)
@@ -609,8 +617,10 @@ class ReactiveStub:
                 "top3": [["gameplay", 0.6], ["cutscene", 0.2], ["main_menu", 0.1]], "action": {"do": "A", "why": "selftest"}}
 
 
-def probe_run(moves, seconds, conf=0.5, drive_set=None, inp_set=None, make_stub=None):
-    """One generic.toml run against a ReactiveStub (or `make_stub(dev)`); returns (driver, device)."""
+def probe_run(moves, seconds, conf=0.5, drive_set=None, inp_set=None, make_stub=None, prof_set=None):
+    """One generic.toml run against a ReactiveStub (or `make_stub(dev)`); returns (driver, device).
+    `prof_set` replaces top-level profile keys (None removes one); the run's route-state.tsv is
+    left on the driver as `drv.tsv_text`."""
     fl, d = sim_frames()
     live = os.path.join(d, "124950-entry.png")
     dev = drive.SimDevice([live] * (int(seconds) + 10), 1.0)
@@ -620,9 +630,12 @@ def probe_run(moves, seconds, conf=0.5, drive_set=None, inp_set=None, make_stub=
     prof = classify.load_profile(os.path.join(PROF, "generic.toml"))
     prof["drive"].update(drive_set or {})
     prof["input"].update(inp_set or {})
+    for k, v in (prof_set or {}).items():
+        prof.pop(k, None) if v is None else prof.__setitem__(k, v)
     with tempfile.TemporaryDirectory() as td:
         drv = drive.Driver(dev, prof, td, td, seconds, mark=True, sim=True)
         drv.run()
+        drv.tsv_text = open(os.path.join(td, "route-state.tsv")).read()
     return drv, dev
 
 
@@ -822,7 +835,8 @@ def loading_tests():
     clear_learned()
     a_sent = lambda dev: any(s[1:] == ("press", "A") for s in dev.sent)
     presses = lambda dev: [s for s in dev.sent if len(s) > 2 and s[1] == "press"]
-    run = lambda ends, seconds, **ds: probe_run(None, seconds, drive_set=ds, make_stub=lambda dev: LoadingStub(dev, ends))
+    run = lambda ends, seconds, **ds: probe_run(None, seconds, drive_set=dict(dpad_probe=0, **ds),
+                                                make_stub=lambda dev: LoadingStub(dev, ends))
 
     # the HP2 briefing: `loading` for as long as nothing is pressed, gameplay once A is.
     drv, dev = run(a_sent, 200)
@@ -857,6 +871,300 @@ def loading_tests():
     fails += report(bool(into_load(dev4)),
                     "mutant (bar lowered to 30 s) presses into a real load: the check above is not vacuous",
                     "presses=%s" % presses(dev4)[:2])
+
+    # decaydpad1022: the overstay hands the screen to the same policy as any unknown, so with the d-pad
+    # rotation on it opens with UP, DOWN, LEFT, RIGHT -- and the A (which is what ended it) follows them
+    clear_learned()
+    drv5, dev5 = probe_run(None, 200, make_stub=lambda dev: LoadingStub(dev, a_sent))
+    fl5, pr5 = [t for (t, _, _) in hat_flicks(dev5)], presses(dev5)
+    fails += report(len(fl5) >= 4 and min(fl5) >= 90.0 and bool(pr5) and pr5[0][2] == "A" and pr5[0][0] > fl5[3]
+                    and "play" in drv5.seen,
+                    "loading: past the bar the d-pad rotation runs first (UP DOWN LEFT RIGHT), then the A that ends it",
+                    "flicks %s presses %s seen=%s" % (fl5[:5], pr5[:2], drv5.seen))
+    clear_learned()
+    return fails
+
+
+# -- decaydpad1022: the floor falls over a low-confidence stretch, and the d-pad is pressed meanwhile -----
+class DecayStub:
+    """pathclass reading one screen at a fixed confidence (`conf`) as `state`, with a top-3 that
+    leans nowhere (no press from the lean). Its embedding is one-hot on how many HATY flicks the
+    device has been sent, so UP and DOWN move the picture (settle_explore reads a new embedding as
+    `changed`) and LEFT and RIGHT do not; `diff` is 0 so nothing else moves it."""
+
+    def __init__(self, dev, conf, state="main_menu", top3=None):
+        self.dev, self.conf, self.state = dev, conf, state
+        self.top3 = top3 or [["boot", 0.1], ["loading", 0.1], ["logo", 0.1]]
+
+    def classify(self, frame, prev, context):
+        n = sum(1 for s in self.dev.sent if len(s) > 3 and s[1] == "axis" and s[2] == "HATY" and s[3] in ("min", "max"))
+        emb = [0.0] * 16
+        emb[n % 16] = 1.0
+        return {"state": self.state, "confidence": self.conf, "moving": False, "diff": 0.0, "embedding": emb,
+                "top3": self.top3, "action": {"do": "A", "why": "selftest"}}
+
+
+def hat_flicks(dev):
+    """The d-pad flicks sent, in order, as (time, axis, value): a hat axis taken off rest."""
+    return [(s[0], s[2], s[3]) for s in dev.sent if len(s) > 3 and s[1] == "axis" and s[2] in ("HATX", "HATY") and s[3] != "mid"]
+
+
+def tsv_states(drv):
+    rows = [l.split("\t") for l in drv.tsv_text.splitlines()[1:] if l and not l.startswith("#")]
+    return [(float(r[0]), r[1], r[2]) for r in rows]
+
+
+def decay_tests():
+    """The floor in force falls with every capture running that stayed under it (classify.decay_floor,
+    the profile's `classifier_decay_*`), and an unknown stretch opens with the d-pad, UP DOWN LEFT
+    RIGHT (drive.py DPAD_ROTATION), instead of waiting."""
+    fails = 0
+    clear_learned()
+    df = classify.decay_floor
+    HAT_ORDER = [("HATY", "min"), ("HATY", "max"), ("HATX", "min"), ("HATX", "max")]
+    order_of = lambda dev: [(a, v) for (_, a, v) in hat_flicks(dev)]
+
+    def run(conf, seconds, state="main_menu", top3=None, ds=None, ps=None, keep=False):
+        if not keep:
+            clear_learned()     # a run's own presses are recorded, and the next run's first screen would match them
+        return probe_run(None, seconds, drive_set=ds, prof_set=ps, make_stub=lambda dev: DecayStub(dev, conf, state, top3))
+    presses_of = lambda dev: [s for s in dev.sent if len(s) > 2 and s[1] == "press"]
+
+    # the schedule: step 0 is the profile's own floor, step k is steps[k-1], the last entry holds,
+    # and nothing a profile lists can raise a floor above its own
+    steps = [0.55, 0.45, 0.40, 0.35]
+    got = [df(0.7, steps, k) for k in (0, 1, 2, 3, 4, 5, 40)]
+    fails += report(got == [0.7, 0.55, 0.45, 0.40, 0.35, 0.35, 0.35],
+                    "decay: the floor is the profile's at step 0, steps[k-1] at step k, the last entry holds", "got %s" % got)
+    fails += report(df(0.3, [0.9, 0.2], 1) == 0.3 and df(0.7, None, 5) == 0.7 and df(0.7, [], 5) == 0.7,
+                    "decay: a list cannot raise a floor above its own; no list is the floor for ever (a hand-tuned profile)")
+
+    # the shipped numbers: 3-5 steps (owner 2026-10-22), stopping where the held-out set stops giving
+    # answers worth taking (menu: 0.30 jumps wrong-other from 1 to 5; gameplay: no gameplay answer under 0.55)
+    g = classify.load_profile(os.path.join(PROF, "generic.toml"))
+    dm, dg = g["classifier_decay_menu"], g["classifier_decay_gameplay"]
+    fails += report(3 <= len(dm) <= 5 and 3 <= len(dg) <= 5 and dm == sorted(dm, reverse=True) and dg == sorted(dg, reverse=True)
+                    and dm[0] < g["classifier_confidence_menu"] and dg[0] < g["classifier_confidence"]
+                    and min(dm) >= 0.35 and min(dg) >= 0.60,
+                    "decay: generic.toml's lists are 3-5 steep steps that stop at the measured limits (menu 0.35, gameplay 0.60)",
+                    "menu %s gameplay %s" % (dm, dg))
+
+    # a 0.5 menu answer is `unknown` at the profile's 0.7 and at step 1 (0.55), named at step 2 (0.45):
+    # the third capture, not the 45th second
+    drv, dev = run(0.5, 20, ds=dict(dpad_probe=0))
+    st = tsv_states(drv)
+    fails += report(len(st) > 3 and [s for (_, s, _) in st[:2]] == ["unknown", "unknown"] and st[2][1] == "main_menu"
+                    and [src for (_, _, src) in st[:2]] == ["pathclass:low-confidence"] * 2,
+                    "decay: a 0.5 menu answer is unknown for two captures and named on the third", "states %s" % st[:5])
+    # ... and it stays named: the floor stays down until pathclass is sure at its OWN floor
+    fails += report(len(st) > 3 and all(s == "main_menu" for (_, s, _) in st[2:]),
+                    "decay: once named under the fallen floor it stays named (no flip-flop back to unknown)",
+                    "states %s" % [s for (_, s, _) in st])
+    # mutant: the floor does not fall -> never named
+    real_df = classify.decay_floor
+    classify.decay_floor = lambda full, steps, step: full
+    try:
+        drvm, _ = run(0.5, 20, ds=dict(dpad_probe=0))
+    finally:
+        classify.decay_floor = real_df
+    fails += report(not [1 for (_, s, _) in tsv_states(drvm) if s == "main_menu"],
+                    "mutant (floor never falls) leaves the 0.5 screen unknown: the check above is not vacuous")
+    # mutant: the floor resets the moment a lowered floor names the screen -> flip-flop
+    real_cf = classify.classify_frame
+
+    def strip_decayed(*a, **k):
+        r = real_cf(*a, **k)
+        r.pop("decayed", None)
+        return r
+    classify.classify_frame = strip_decayed
+    try:
+        drvf, _ = run(0.5, 20, ds=dict(dpad_probe=0))
+    finally:
+        classify.classify_frame = real_cf
+    sf = [s for (_, s, _) in tsv_states(drvf)]
+    fails += report(sf[2:4] == ["main_menu", "unknown"],
+                    "mutant (floor resets on a decayed acceptance) flip-flops main_menu/unknown: the no-flip-flop check is not vacuous",
+                    "states %s" % sf[:6])
+
+    # the gameplay list is its own: 0.80 is under 0.85 and over 0.75 (step 1), so a gameplay answer
+    # at 0.80 is named on the second capture, and one at 0.5 never is
+    drvg, _ = run(0.80, 12, state="gameplay", ds=dict(dpad_probe=0))
+    sg = tsv_states(drvg)
+    fails += report(len(sg) > 2 and sg[0][1] == "unknown" and sg[1][1] in ("play", "stalled"),
+                    "decay: a 0.80 gameplay answer is named on the second capture (gameplay list 0.75 at step 1)", "states %s" % sg[:3])
+    drvg2, _ = run(0.5, 30, state="gameplay", ds=dict(dpad_probe=0))
+    fails += report(all(s == "unknown" for (_, s, _) in tsv_states(drvg2)),
+                    "decay: a 0.5 gameplay answer is never named, however long it lasts (the list stops at 0.60)")
+
+    # the d-pad: UP, DOWN, LEFT, RIGHT, one per press, as hat flicks, before the ladder's A
+    drv, dev = run(0.1, 40, state="boot")
+    flicks = hat_flicks(dev)
+    presses = presses_of(dev)
+    t4 = flicks[3][0] if len(flicks) >= 4 else 1e9
+    fails += report(order_of(dev)[:4] == HAT_ORDER,
+                    "dpad: an unknown stretch opens with UP, DOWN, LEFT, RIGHT, sent as hat flicks (HATY min/max, HATX min/max)",
+                    "flicks %s" % order_of(dev)[:6])
+    fails += report(bool(presses) and presses[0][2] == "A" and presses[0][0] > t4,
+                    "dpad: the ladder's A comes after the rotation, never before it", "presses %s t4=%s" % (presses[:2], t4))
+    fails += report(drv.result == "window-done", "dpad: a stretch nothing resolves still ends on the budget, never a Fail",
+                    "result=%s" % drv.result)
+    # mutant: the profile does not opt in -> the first press is the ladder's A and no flick leads
+    drvm, devm = run(0.1, 40, state="boot", ds=dict(dpad_probe=0))
+    fails += report(order_of(devm)[:4] != HAT_ORDER and presses_of(devm) and presses_of(devm)[0][2] == "A",
+                    "mutant (dpad_probe = 0) opens with the ladder's A, not UP: the check above is not vacuous",
+                    "flicks %s" % order_of(devm)[:3])
+
+    # what the d-pad found is written down: UP and DOWN moved the picture, LEFT and RIGHT did not
+    verdict = [m for m in dev.log if m.startswith("dpad-probe")]
+    want = {"UP": "changed", "DOWN": "changed", "LEFT": "none", "RIGHT": "none"}
+    fails += report(bool(verdict) and "2/4 moved the picture" in verdict[0] and bool(drv.dpad_log)
+                    and drv.dpad_log[0]["results"] == want and drv.dpad_log[0]["moved"] == 2,
+                    "dpad: the verdict (2 of 4 moved the picture) is logged and kept for route-solution.json",
+                    "log=%s dpad_log=%s" % (verdict[:1], drv.dpad_log[:1]))
+    real_v = drive.Driver.dpad_verdict
+    drive.Driver.dpad_verdict = lambda self: None
+    try:
+        drvv, devv = run(0.1, 40, state="boot")
+    finally:
+        drive.Driver.dpad_verdict = real_v
+    fails += report(not [m for m in devv.log if m.startswith("dpad-probe")],
+                    "mutant (verdict not written) leaves no dpad-probe line: the check above is not vacuous")
+    marks = [m for m in dev.log if m.startswith("input t=") and "dpad probe" in m]
+    fails += report(len(marks) == 4,
+                    "dpad: each flick is an `input` line in logcat, tagged with its step of the rotation (for the fps report)",
+                    "log=%s" % [m for m in dev.log if m.startswith("input t=")][:5])
+
+    # a d-pad press followed by a named screen is a cursor move, not progress: never learned `advanced`
+    class NamedAfterFlick(DecayStub):
+        def classify(self, frame, prev, context):
+            r = DecayStub.classify(self, frame, prev, context)
+            if hat_flicks(self.dev):
+                r.update(state="main_menu", confidence=0.95)
+            return r
+    clear_learned()
+    drvu, _ = probe_run(None, 20, make_stub=lambda dev: NamedAfterFlick(dev, 0.1, "boot"))
+    up = [e for e in drvu.explored if e[1] == "UP"]
+    fails += report(bool(up) and all(e[2] == "changed" for e in up),
+                    "dpad: UP followed by a named screen is learned `changed`, never `advanced`", "explored=%s" % drvu.explored)
+    clear_learned()
+    real_r = drive.Driver.resolve_explore
+
+    def no_downgrade(self, outcome):
+        if self.explore:
+            self.explore["dpad"] = False
+        return real_r(self, outcome)
+    drive.Driver.resolve_explore = no_downgrade
+    try:
+        drvw, _ = probe_run(None, 20, make_stub=lambda dev: NamedAfterFlick(dev, 0.1, "boot"))
+    finally:
+        drive.Driver.resolve_explore = real_r
+    fails += report(any(e[1] == "UP" and e[2] == "advanced" for e in drvw.explored),
+                    "mutant (no downgrade) learns UP `advanced`: the check above is not vacuous", "explored=%s" % drvw.explored)
+
+    # a press resolved because the FLOOR fell is judged by the picture, not by the state change
+    clear_learned()
+    drv, dev = run(0.5, 20, ds=dict(dpad_probe=0))
+    a = [e for e in drv.explored if e[1] == "A"]
+    fails += report(bool(a) and a[0][2] == "none",
+                    "decay: A pressed on a static unknown, then the floor falls and names it, is learned `none` (the picture did not move)",
+                    "explored=%s" % drv.explored)
+    clear_learned()
+    classify.classify_frame = strip_decayed
+    try:
+        drvx, _ = run(0.5, 20, ds=dict(dpad_probe=0))
+    finally:
+        classify.classify_frame = real_cf
+    fails += report(any(e[1] == "A" and e[2] == "advanced" for e in drvx.explored),
+                    "mutant (a decayed acceptance not marked) learns A `advanced` because the bar fell: the check above is not vacuous",
+                    "explored=%s" % drvx.explored)
+
+    # what this title already learned goes first; the rotation is for a screen nothing is known about
+    clear_learned()
+    for _ in range(2):
+        learned.record("generic", "unknown:pathclass:low-confidence", None, "X", "advanced", 1.0, "selftest")
+    drv, dev = run(0.1, 12, state="boot", keep=True)
+    pr, fl = presses_of(dev), hat_flicks(dev)
+    fails += report(bool(pr) and pr[0][2] == "X" and len(fl) >= 1 and fl[0][0] < pr[0][0] and (len(fl) < 2 or fl[1][0] > pr[0][0]),
+                    "dpad: the first flick is the look; a learned answer for this screen is pressed next, before the rest of the rotation",
+                    "press %s flicks %s" % (pr[:1], fl[:2]))
+    real_s = learned.suggest
+    learned.suggest = lambda *a, **k: None
+    try:
+        drvl, devl = run(0.1, 12, state="boot", keep=True)
+    finally:
+        learned.suggest = real_s
+    fl2 = hat_flicks(devl)
+    fails += report(len(fl2) >= 2 and not [p for p in presses_of(devl) if p[2] == "X" and p[0] < fl2[1][0]],
+                    "mutant (learned answers ignored) goes on to DOWN, not the learned X: the check above is not vacuous",
+                    "press %s flicks %s" % (presses_of(devl)[:1], fl2[:2]))
+    clear_learned()
+
+    # a screen that leans PLAY goes to the play probe, never the d-pad: a flick in live play moves a
+    # camera or a weapon. The control: the same confidence on a screen that leans nowhere gets the rotation.
+    drv, dev = probe_run(lambda dev: False, 40, conf=0.5)
+    fails += report(not hat_flicks(dev) and bool(drv.probes),
+                    "dpad: an unknown that leans play is probed with held inputs, never flicked",
+                    "flicks %s probes %s" % (order_of(dev)[:2], outcomes(drv)))
+    drvc, devc = run(0.5, 40, state="gameplay")
+    fails += report(order_of(devc)[:1] == HAT_ORDER[:1],
+                    "control: a 0.5 answer that leans nowhere does get the rotation (the check above is detecting flicks)",
+                    "flicks %s" % order_of(devc)[:2])
+
+    # a hand-tuned profile has no lists and no dpad_probe: unchanged -- the floor never falls, no flick is sent
+    clear_learned()
+    drv, dev = run(0.5, 40, ps=dict(classifier_decay_menu=None, classifier_decay_gameplay=None), ds=dict(dpad_probe=0))
+    fails += report(all(s == "unknown" for (_, s, _) in tsv_states(drv)) and order_of(dev)[:4] != HAT_ORDER,
+                    "decay: a profile with no lists and dpad_probe 0 behaves as before (a 0.5 menu answer stays unknown, no rotation)")
+
+    # the lists are validated, not trusted: a list that rises, is empty or holds a non-number stops the run
+    def bad(**ps):
+        try:
+            run(0.5, 3, ps=ps)
+        except SystemExit as e:
+            return str(e)
+        return None
+    msgs = [bad(classifier_decay_menu=[0.3, 0.5]), bad(classifier_decay_menu=[]), bad(classifier_decay_gameplay=[1.5]),
+            bad(classifier_decay_menu="0.5"), bad(classifier_decay_gameplay=[True])]
+    fails += report(all(m and "classifier_decay" in m for m in msgs),
+                    "decay: a decay list that rises, is empty, is out of range or is not a list of numbers is refused",
+                    "got %s" % msgs)
+    fails += report(bad(classifier_decay_menu=[0.5, 0.5, 0.4]) is None,
+                    "decay: a flat step (equal floors) is a valid list")
+
+    # the guard: under the fallen floor a non-gameplay answer is not taken while the top-3 still gives
+    # gameplay as much as drive.LEAN_PLAY_START -- a menu press on a frame that might be live play (the
+    # held-out set: zero such presses at every step with it, one at 0.55 without it)
+    fails += report(classify.DECAY_PLAY_MASS == drive.LEAN_PLAY_START,
+                    "decay guard: the gameplay mass that refuses a decayed menu answer is the lean's own START limit",
+                    "%s vs %s" % (classify.DECAY_PLAY_MASS, drive.LEAN_PLAY_START))
+    leans_play = [["main_menu", 0.5], ["gameplay", 0.2], ["submenu", 0.1]]
+    leans_menu = [["main_menu", 0.5], ["gameplay", 0.05], ["submenu", 0.1]]
+    drvp, _ = run(0.5, 20, top3=leans_play, ds=dict(dpad_probe=0))
+    drvq, _ = run(0.5, 20, top3=leans_menu, ds=dict(dpad_probe=0))
+    fails += report(all(s == "unknown" for (_, s, _) in tsv_states(drvp)) and "main_menu" in [s for (_, s, _) in tsv_states(drvq)],
+                    "decay guard: a 0.5 menu answer with gameplay 0.2 in its top-3 stays unknown; with gameplay 0.05 it is named",
+                    "0.2: %s; 0.05: %s" % ([s for (_, s, _) in tsv_states(drvp)][:6], [s for (_, s, _) in tsv_states(drvq)][:6]))
+    real_m = classify.DECAY_PLAY_MASS
+    classify.DECAY_PLAY_MASS = 2.0
+    try:
+        drvr, _ = run(0.5, 20, top3=leans_play, ds=dict(dpad_probe=0))
+    finally:
+        classify.DECAY_PLAY_MASS = real_m
+    fails += report("main_menu" in [s for (_, s, _) in tsv_states(drvr)],
+                    "mutant (no guard) names the gameplay-leaning 0.5 screen a menu: the check above is not vacuous")
+
+    # the look and the lean: a screen whose top-3 leans menu still gets the free look first (UP), and its own
+    # lean press (pathclass's DOWN) on the capture after, ahead of the rest of the rotation
+    clear_learned()
+    fl_, d_ = sim_frames()
+    live = os.path.join(d_, "124950-entry.png")
+    # (an embedding that never changes: the look flick leaves the picture as it was, so it is learned `none`)
+    drvk = sim([dict(lean_answer(), embedding=[1.0] + [0.0] * 15)], [live] * 8, 8.0)
+    ex = [i for i in drvk.inputs if i["why"].startswith("explore")]
+    fails += report(len(ex) >= 2 and ex[0]["input"] == "UP" and "dpad probe 1/4" in ex[0]["why"]
+                    and ex[1]["input"] == "DOWN" and "leans menu" in ex[1]["why"],
+                    "dpad: the first flick is the look, the lean's own press comes next, before LEFT and RIGHT",
+                    "explore=%s" % [(i["t"], i["input"], i["why"]) for i in ex[:3]])
     clear_learned()
     return fails
 

@@ -44,10 +44,46 @@
 # the prompt hidden) correctly stay `unknown` -- genuinely ambiguous, not a
 # case this floor is meant to rescue.
 
+# The floors FALL while a screen stays unknown (decaydpad1022; owner 2026-10-22: "the threshold you're
+# using before declaring things unknown is way too high ... lower over time ... a pretty steep drop off,
+# maybe 3-5 steps", and "sitting there and waiting is counterproductive"). pathclass answers every
+# 1.3-3 s and a frame that does not change scores the same each time, so the waiting is spent on d-pad
+# flicks (dpad_probe, drive.py) and on a lower bar: capture k of a stretch under the floor is judged
+# at list[k-1], the last entry holds, and the floor goes back up only when pathclass is sure at its OWN
+# floor again. Measured on the held-out set's 117 scored frames (black frames are the luma check's),
+# menu_seen=True, raw head + OCR, the guard below in force:
+#
+#   menu-class answers      acted  right  errant on true gameplay  wrong, other truth
+#     0.70 (today)            49     49            0                      0
+#     0.55                    61     61            0                      0
+#     0.45                    64     64            0                      0
+#     0.40                    67     66            0                      1
+#     0.35                    69     68            0                      1
+#     0.30                    73     68            0                      5     <- not below this
+#
+#   gameplay answers        said   true  FALSE     (16 frames are true gameplay)
+#     0.85 (today)             4      4      0
+#     0.75                    10      9      1     PGR attract, 0.78
+#     0.65                    13     10      3     + Burnout replay 0.72, ToeJam attract 0.65
+#     0.60                    14     11      3
+#     0.55 and below          15     11      4     + Burnout Game Over overlay 0.57; no gameplay
+#                                                    answers exist under 0.55, so the list stops at 0.6
+#
+# THE GUARD (classify.DECAY_PLAY_MASS = drive.LEAN_PLAY_START = 0.1): an answer taken below its full floor
+# is refused while the top-3 still gives `gameplay` 0.1 or more, the same test the lean applies before it
+# will send START. Without it the 0.55-0.35 rows each carry one errant press on a gameplay frame (a Buffy
+# `controller_prompt`); with it none does, at the cost of one to three answers. It cannot see a menu overlay on live
+# play that pathclass reads as a menu with no gameplay in the top-3 (SH&R's tutorial dialog reads
+# `controller_prompt` at 0.46-0.56 with gameplay far down): that one is named `title` and gets a START.
+#
+# The gameplay column is a real price: the false claims are moving attract/replay pictures. Set
+# classifier_decay_gameplay to [0.85] to give the gameplay claim back its old floor.
 name = "generic"
 classifier = "pathclass"
 classifier_confidence = 0.85
 classifier_confidence_menu = 0.7
+classifier_decay_menu = [0.55, 0.45, 0.40, 0.35]
+classifier_decay_gameplay = [0.75, 0.65, 0.60, 0.60]
 order = ["boot", "logo", "intro_video", "title", "profile", "main_menu", "loading", "cutscene", "play"]
 
 [drive]
@@ -72,6 +108,9 @@ probe_idle_s = 8.0
 # probe. A real load longer than this takes a few presses (A first) that it ignores; the first press
 # that moves the screen is learned. 0 = wait for ever, as before.
 loading_stuck_s = 90.0
+# An unknown stretch opens with the d-pad (UP DOWN LEFT RIGHT, one flick a capture) instead of a free
+# look; the result (how many flicks moved the picture) is logged as `dpad-probe` (decaydpad1022).
+dpad_probe = 1
 
 [input]
 # Play (routebuild1021): a title this profile has never seen, so nothing title-specific.
