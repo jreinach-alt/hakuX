@@ -126,6 +126,7 @@ No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-22 hangplay1022: a dark screen that lasts is a hang, and a screen held as leaning play stays so (#433)
 - 2026-10-22 decaydpad1022: the classifier floor falls over an unknown stretch, and the d-pad is pressed while it does (#433)
 - 2026-10-22 loadstuck1021: a `loading` that never ends is handled as `unknown`, so the driver presses and the play probe gets a screen (#433)
 - 2026-10-22 playprobe1021: the driver finds the input that makes the game move, and every input is attributable to an fps dip (#433)
@@ -137,6 +138,5 @@ No branch is being worked right now.
 - 2026-10-19 Nova priority tiers that actually hold: screening yields to FPS and release-fix work
 - 2026-10-19 The compatibility page adds Pro Evolution Soccer 5 (Europe), The Wild Rings and Knights of the Temple II to Playable (94 -> 97)
 - 2026-10-19 fpsdata1018: FPS dip causes in the 4-title owner capture, and fixes (#433)
-- 2026-10-19 foldjam1018: fix the three silent causes of the 2026-10-18 fold jam so they can't recur
 
-_Updated 2026-10-22 11:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-22 11:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
