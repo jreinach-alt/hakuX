@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 319
-updated_utc = '2026-10-19T22:12:42Z'
+wave = 320
+updated_utc = '2026-10-22T00:35:21Z'
 
 [lane.alwaystelemetry]
 issues = ["433"]
@@ -99,6 +99,13 @@ standing = false
 files = ["docs/frontends/**", "docs/releases/v0.5.1.md", "docs/lanes/frontends1016c/**"]
 released = ["docs/frontends/**", "docs/releases/v0.5.1.md", "docs/lanes/frontends1016c/**"]
 note = "RELEASED at ready (lane.local 2026-10-16 21:00 PDT; PR.md ready, no device, no selftest needed). || STARTED lane.local 2026-10-16 20:57 PDT (docs, no device): owner 10-16 ~20:40 PDT: stock launcher tested on the Nova (Retroid launcher) and Daijisho rewritten as user-facing add-as-an-app steps. One line in docs/releases/v0.5.1.md (Retroid variant now tested). Follow-up to lane.frontends1016b (folded). No brief."
+
+[lane.routebuild1021]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/routebuild1021/**", "docs/testing/dispatcher.sh", "docs/testing/jobs/selftest.d/97-dispatch-snapshot-drive.sh", "docs/testing/jobs/selftest.d/99-auto-route.sh", "docs/testing/titles/drive-profiles/generic.toml", "docs/testing/titles/drive.py", "docs/testing/titles/pathbook.py", "docs/testing/titles/pathclass_selftest.py", "docs/testing/titles/pathknow/learned.py", "docs/testing/titles/routes/auto.route", "docs/testing/titles/titlestate.py"]
+released = ["docs/lanes/routebuild1021/**", "docs/testing/dispatcher.sh", "docs/testing/jobs/selftest.d/97-dispatch-snapshot-drive.sh", "docs/testing/jobs/selftest.d/99-auto-route.sh", "docs/testing/titles/drive-profiles/generic.toml", "docs/testing/titles/drive.py", "docs/testing/titles/pathbook.py", "docs/testing/titles/pathclass_selftest.py", "docs/testing/titles/pathknow/learned.py", "docs/testing/titles/routes/auto.route", "docs/testing/titles/titlestate.py"]
+note = "CLAIMED AND RELEASED AT READY (lane.local, owner order 2026-10-21 'Go ahead and push and merge it'): lane/routebuild1021 was built in the interactive session (owner 10-21: 'Drop the Conker request and let's build it here'), so it has no unit and its PR.md is State: ready with the full selftest green (159 fragments, 0 failed). Every file is released in the same commit, so no file is held by two rows: dispatcher.sh stays held only by [lane.savestate-req1019] (draft, stopped by the owner 10-19), and drive.py, pathclass_selftest.py and pathknow/learned.py only by [lane.localdrive1018] (folded, unit inactive). dispatcher.sh was checked against lane/savestate-req1019: their adjacent insertions at the soak launch conflicted, so this branch moved its comment and git merge-tree of the two branches is now clean. The other overlapping holders (soakvideo1011, profilegate1011, dispatchpush1018) had already released their files. The new paths are in no row and are not exact-string entries in [free]."
 
 [retired.compatpage1012]
 issues = ["433"]
