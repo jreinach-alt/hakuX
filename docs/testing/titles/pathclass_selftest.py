@@ -357,6 +357,7 @@ def main(argv):
           ("ok  " if ok7 else "FAIL", drv.result, len(drv.inputs), len(drv.explored)))
 
     fails += book_tests(learned_td)
+    fails += probe_tests()
     print("pathclass_selftest: %d failure(s)" % fails)
     return 1 if fails else 0
 
@@ -573,6 +574,227 @@ def book_tests(learned_td):
     fails += report(book and book[0]["input"] == " ".join(saved["steps"][0]["action"]),
                     "end to end: the next run of that title replays the saved path from its first step",
                     "book=%s" % [(i["t"], i["input"], i["why"]) for i in book])
+    return fails
+
+
+# -- playprobe1021: the play probe ------------------------------------------------------
+def held_now(dev):
+    """The sim device's pad as the game would see it: buttons down, last value per axis,
+    replayed from what it was sent (SimDevice records, it does not react)."""
+    btn, axis = set(), {}
+    for s in dev.sent:
+        if s[1] == "hold":
+            btn.add(s[2])
+        elif s[1] == "release":
+            btn.discard(s[2])
+        elif s[1] == "axis":
+            axis[s[2]] = s[3]
+    return btn, axis
+
+
+class ReactiveStub:
+    """pathclass, but the picture answers the pad: `moves(dev)` says whether the screen
+    changes on this capture, given what the device has been sent so far. The recorded-answer
+    stub cannot show a probe working -- nothing it is sent changes what it says next.
+    confidence 0.5 is under the gameplay floor (an `unknown` leaning play, HP2's case);
+    0.9 is a confident gameplay, `play` when the screen moves and `stalled` when it does not."""
+
+    def __init__(self, dev, moves, conf=0.5):
+        self.dev, self.moves, self.conf = dev, moves, conf
+
+    def classify(self, frame, prev, context):
+        d = 0.3 if self.moves(self.dev) else 0.0
+        return {"state": "gameplay", "confidence": self.conf, "moving": d >= 0.05, "diff": d,
+                "top3": [["gameplay", 0.6], ["cutscene", 0.2], ["main_menu", 0.1]], "action": {"do": "A", "why": "selftest"}}
+
+
+def probe_run(moves, seconds, conf=0.5, drive_set=None, inp_set=None):
+    """One generic.toml run against a ReactiveStub; returns (driver, device)."""
+    fl, d = sim_frames()
+    live = os.path.join(d, "124950-entry.png")
+    dev = drive.SimDevice([live] * (int(seconds) + 10), 1.0)
+    stub = ReactiveStub(dev, moves, conf)
+    classify._PATHCLASS_CLIENT = stub
+    classify.pathclass_client = lambda: stub
+    prof = classify.load_profile(os.path.join(PROF, "generic.toml"))
+    prof["drive"].update(drive_set or {})
+    prof["input"].update(inp_set or {})
+    with tempfile.TemporaryDirectory() as td:
+        drv = drive.Driver(dev, prof, td, td, seconds, mark=True, sim=True)
+        drv.run()
+    return drv, dev
+
+
+def outcomes(drv):
+    return [(p["input"], p["outcome"]) for p in drv.probes]
+
+
+def probe_tests():
+    fails = 0
+    clear_learned()
+    real = dict(mark_input=drive.Driver.mark_input, probe_axes=drive.Driver.probe_axes,
+                probe_release=drive.Driver.probe_release, suggest=learned.suggest, matches=learned._matches)
+
+    # HP2: the gas is not on the stick. Nothing in the base cycle moves the screen; only R1
+    # held does. The probe holds A, X, Y (misses), then R1, which moves it on two captures
+    # running, and R1 stays held; it is let go when the run ends.
+    gas_r1 = lambda dev: "R1" in held_now(dev)[0]
+    drv, dev = probe_run(gas_r1, 70)
+    want = [("A", "missed"), ("X", "missed"), ("Y", "missed"), ("R1", "won")]
+    fails += report(outcomes(drv) == want and drv.result == "window-done",
+                    "probe: A, X, Y miss and R1 is held until the screen moves; the run is not failed",
+                    "got %s result=%s" % (outcomes(drv), drv.result))
+    r1 = [s[1] for s in dev.sent if len(s) > 2 and s[2] == "R1"]
+    fails += report(r1 == ["hold", "release"] and not drv.pheld and held_now(dev)[0] == set(),
+                    "probe: the winner stays down through the run (one hold) and is let go at the end",
+                    "R1 events=%s pheld=%s" % (r1, drv.pheld))
+    recs = [(r["button"], r["outcome"]) for r in learned.load("generic")[0] if r.get("kind") == "play"]
+    fails += report(recs == [("A", "none"), ("X", "none"), ("Y", "none"), ("R1", "advanced")],
+                    "probe: each probe is a learned record of kind `play` (screen, input, motion)", "got %s" % recs)
+    rec = next((r for r in learned.load("generic")[0] if r.get("button") == "R1"), {})
+    fails += report(rec.get("key") == drive.PROBE_KEY and rec.get("motion", 0) >= classify.MOVING_BAR
+                    and rec.get("before") == 0.0 and rec.get("held_s", 0) > 0,
+                    "probe: the record carries the motion before and under the hold and how long it was held",
+                    "rec=%s" % rec)
+    marks = [m for m in dev.log if m.startswith(("input t=", "play-probe"))]
+    fails += report(any(m.startswith("play-probe won R1") for m in marks)
+                    and sum(m.startswith("play-probe missed") for m in marks) == 3
+                    and any(m.startswith("input t=") and "probe hold R1" in m for m in marks)
+                    and any(m.startswith("input t=") and "hold LY min RT max" in m for m in marks),
+                    "probe: every probe and every play input goes to logcat, where the fps lines are",
+                    "marks=%s" % marks[:6])
+    drive.Driver.mark_input = lambda *a: None
+    try:
+        drv2, dev2 = probe_run(gas_r1, 70)
+    finally:
+        drive.Driver.mark_input = real["mark_input"]
+    fails += report(not any(m.startswith("input t=") for m in dev2.log),
+                    "mutant (inputs not written to logcat) is caught by the same check", "NOT CAUGHT -- vacuous")
+
+    # The weaker rule: probe off. The leans-play branch holds the stick and RT and nothing
+    # else, which is the 100 s at 0 MPH. The same check must see it.
+    clear_learned()
+    drv3, dev3 = probe_run(gas_r1, 70, drive_set={"probe_idle_s": 0.0})
+    fails += report(not drv3.probes and "R1" not in held_now(dev3)[0] and not any(s[1:] == ("hold", "R1") for s in dev3.sent),
+                    "mutant (probe off) never holds R1: the check on the winner above is not vacuous",
+                    "probes=%s" % outcomes(drv3))
+
+    # A second run of the title tries what moved a screen like this one first.
+    clear_learned()
+    probe_run(gas_r1, 70)
+    drv4, _ = probe_run(gas_r1, 70)
+    fails += report(outcomes(drv4)[:1] == [("R1", "won")] and drv4.probes[0]["origin"] == "learned",
+                    "probe: the next run tries the learned input first and wins on it", "got %s" % drv4.probes[:1])
+    learned.suggest = lambda *a, **k: None
+    try:
+        drv5, _ = probe_run(gas_r1, 70)
+    finally:
+        learned.suggest = real["suggest"]
+    fails += report(outcomes(drv5)[:1] == [("A", "missed")],
+                    "mutant (learned play inputs ignored) is caught by the same check", "got %s" % outcomes(drv5)[:1])
+
+    # A play record is never an explore answer: its embedding can sit near a menu's.
+    clear_learned()
+    e1 = [1.0, 0.0]
+    learned.record("generic", drive.PROBE_KEY, e1, "R1", "advanced", 1.0, "selftest", kind="play", motion=0.3)
+    own, glob = learned.load("generic")
+    ex = learned.suggest(own, glob, "unknown:pathclass:low-confidence", e1, [])
+    pl = learned.suggest(own, glob, drive.PROBE_KEY, e1, [], min_rank=3, kind="play")
+    fails += report(ex is None and pl == "R1", "learned: a play record is suggested to a probe and never to explore",
+                    "explore=%s play=%s" % (ex, pl))
+    both = lambda recs, k, e, kind="explore": real["matches"](recs, k, e, "explore") + real["matches"](recs, k, e, "play")
+    learned._matches = both
+    try:
+        ex2 = learned.suggest(own, glob, "unknown:pathclass:low-confidence", e1, [])
+    finally:
+        learned._matches = real["matches"]
+    fails += report(ex2 == "R1", "mutant (kind ignored) is caught by the same check", "NOT CAUGHT -- vacuous")
+    clear_learned()
+
+    # One moving capture is not motion: a hold that makes the picture blink (a camera cut, a
+    # button's flash) must not be taken for the player moving. probe_hits=2 rejects it; the
+    # mutant at 1 takes it.
+    def blink(dev, seen={"set": None}):
+        cur = frozenset(held_now(dev)[0])
+        if cur != seen["set"]:
+            seen["set"] = cur
+            return bool(cur)
+        return False
+    drv6, _ = probe_run(blink, 200)
+    fails += report(drv6.probes and all(o == "missed" for _, o in outcomes(drv6)),
+                    "probe: a single moving capture under a hold is not a win", "got %s" % outcomes(drv6)[:3])
+    clear_learned()
+    drv7, _ = probe_run(blink, 200, drive_set={"probe_hits": 1})
+    fails += report(any(o == "won" for _, o in outcomes(drv7)),
+                    "mutant (one moving capture wins) is caught by the same check", "NOT CAUGHT -- vacuous")
+
+    # Nothing moves it: the step FAILS, naming the probe, after probe_rounds empty rounds --
+    # for a screen the classifier calls confident gameplay (`stalled`) as for one it only
+    # leans to. The 40 s stall Fail and the blind stall_cycle do not run ahead of the probe.
+    clear_learned()
+    never = lambda dev: False
+    for conf, what in ((0.5, "unknown leaning play"), (0.9, "stalled gameplay")):
+        drv8, dev8 = probe_run(never, 400, conf=conf)
+        fails += report("play probe: 3 rounds" in (drv8.result or "") and drv8.t() > 60 and not drv8.pheld
+                        and drv8.escapes == 0 and len(drv8.probes) == 3 * len(drive.PROBE_LADDER),
+                        "probe: nothing moves a %s screen -> ROUTE FAIL naming the probe, nothing left held" % what,
+                        "result=%s t=%.0f probes=%d escapes=%d" % (drv8.result, drv8.t(), len(drv8.probes), drv8.escapes))
+    drv9, _ = probe_run(never, 400, conf=0.9, drive_set={"probe_idle_s": 0.0})
+    fails += report("stalled" in (drv9.result or "") and "play probe" not in (drv9.result or ""),
+                    "probe off: a stalled screen still ends in the old stall Fail (a profile that does not opt in is unchanged)",
+                    "result=%s" % drv9.result)
+
+    # After a win, the screen going still again (a wall) starts a new round: the old winner
+    # is let go first and tried last, and the input that works now wins.
+    clear_learned()
+    wall = lambda dev: (("A" in held_now(dev)[0]) if dev.clock < 30 else ("X" in held_now(dev)[0]))
+    drv10, dev10 = probe_run(wall, 90)
+    ev = [(s[1], s[2]) for s in dev10.sent if len(s) > 2 and s[1] in ("hold", "release") and s[2] in ("A", "X")]
+    fails += report(outcomes(drv10)[:2] == [("A", "won"), ("X", "won")] and [p["round"] for p in drv10.probes[:2]] == [1, 2]
+                    and ev.index(("release", "A")) < ev.index(("hold", "X")),
+                    "probe: when the winner stops moving the screen a new round lets it go and finds the one that does",
+                    "got %s events=%s" % (outcomes(drv10)[:3], ev))
+    drive.Driver.probe_release = lambda self, tok: None
+    try:
+        drv11, dev11 = probe_run(wall, 90)
+    finally:
+        drive.Driver.probe_release = real["probe_release"]
+    fails += report(not any(s[1] == "release" for s in dev11.sent if len(s) > 2),
+                    "mutant (nothing is ever released) is caught by the same checks", "NOT CAUGHT -- vacuous")
+
+    # A stick candidate must beat the play cycle for its axis: the cycle holds LY min and
+    # re-sends it every capture, so a probe holding LY max moves nothing unless hold_play
+    # steps aside.
+    clear_learned()
+    reverse = lambda dev: held_now(dev)[1].get("LY") == "max"
+    def ly_after_win(dev):
+        vals = [s[3] for s in dev.sent if s[1] == "axis" and s[2] == "LY"]
+        return vals[vals.index("max"):-1] if "max" in vals else None   # the last is the end-of-run release
+
+    drv12, dev12 = probe_run(reverse, 90)
+    tail = ly_after_win(dev12)
+    fails += report(outcomes(drv12)[-1:] == [("LY:max", "won")] and tail and set(tail) == {"max"},
+                    "probe: a held stick candidate is not overwritten by the play cycle (LY stays max once held)",
+                    "got %s LY after=%s" % (outcomes(drv12)[-2:], tail and sorted(set(tail))))
+    clear_learned()          # else the mutant starts on the learned LY:max, at a cycle phase that happens to suit it
+    drive.Driver.probe_axes = lambda self: set()
+    try:
+        drv13, dev13 = probe_run(reverse, 90)
+    finally:
+        drive.Driver.probe_axes = real["probe_axes"]
+    tail13 = ly_after_win(dev13)
+    fails += report(("LY:max", "won") not in outcomes(drv13) and (tail13 is None or set(tail13) != {"max"}),
+                    "mutant (the cycle keeps its axis) is caught by the same check", "NOT CAUGHT -- vacuous")
+    clear_learned()
+
+    # A profile's own list is checked like play_tap: START pauses live play, B backs out of a
+    # menu the classifier may have miscalled as play.
+    for bad in ("START", "B", "SELECT"):
+        try:
+            probe_run(never, 5, inp_set={"probe": ["A", bad]})
+            fails += report(False, "probe: input.probe naming %s is refused" % bad, "no SystemExit")
+        except SystemExit:
+            fails += report(True, "probe: input.probe naming %s is refused" % bad)
     return fails
 
 

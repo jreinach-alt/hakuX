@@ -216,6 +216,15 @@ LEAN_BUTTONS = ("A", "START", "UP", "DOWN", "LEFT", "RIGHT")   # pathclass actio
 # Measured prior, pathknow's 164 complete paths: menus take A, a title START; B is rare.
 MENU_FOLLOW = 6
 MENU_ROTATE = ("A", "START", "DOWN", "X", "B")
+# The play probe (playprobe1021). Playing is more than holding the stick forward: HP2's gas
+# is A, so the leans-play branch held the stick and RT for 100 s with the car at 0 MPH. When
+# the screen has not moved for probe_idle_s, each candidate below is HELD in turn on top of
+# the play cycle (a button by `pad hold`, `AXIS:value` by `pad axis`) until the picture moves
+# on two captures running or probe_hold_s runs out. A winner stays held until the screen goes
+# idle again. Never START (pauses live play), B (backs out of a menu the classifier may have
+# miscalled as play) or BACK/SELECT.
+PROBE_LADDER = ("A", "X", "Y", "R1", "L1", "LY:max")
+PROBE_KEY = "play:static"     # the learned table's key for a probe (kind "play"; explore never sees it)
 REPLAY_TRIES = 3              # presses of one book step on an unchanged screen before the policy takes it
 BOOK_STICK = {"up": ("LY", "min"), "down": ("LY", "max"), "left": ("LX", "min"), "right": ("LX", "max")}
 BOOK_BUTTONS = ("A", "B", "X", "Y", "START", "L1", "R1", "L3", "R3", "START+A") + tuple(HAT)
@@ -226,6 +235,7 @@ DEFAULTS = dict(
     find_play_s=20.0, confirm_play_s=6.0, keep_every_s=30.0, screencap_fail_s=60.0,
     hud_memory_s=20.0, escape_max=6, escape_capture_s=0.0, escape_reset_s=0.0,
     progress_bar=0.0, progress_window_s=10.0, stall_clear_s=0.0, keep_all=0,
+    probe_idle_s=0.0, probe_hold_s=5.0, probe_hits=2, probe_rounds=3,   # probe_idle_s 0 = off (PROBE_LADDER)
 )
 
 
@@ -450,6 +460,10 @@ class Driver:
         self.replay = None               # the pending book press: dict(j, sig, menu, tries)
         self.menu_screen = None          # (sig, id): a pathclass menu's press counter resets on a new screen
         self.stalled_since = None
+        self.probe = dict(idle_since=None, cur=None, queue=[], winner=None, last_winner=None, round=0, fruitless=0,
+                          n_learned=0)
+        self.pheld = []                  # probe inputs held right now: a candidate, else the winner
+        self.probes = []                 # every probe's outcome, for finish()'s `play_probes`
         self.escapes = 0                 # stall_cycle runs so far
         self.esc_frames = 0
         self.esc_phase = 0
@@ -503,6 +517,10 @@ class Driver:
                         raise SystemExit("drive.py: profile stall_cycle (mode %s) sends %s: START in live play "
                                          "pauses it" % (mode, b))
         self.mode = None
+        for tok in self.inp.get("probe", []):
+            if tok.split(":")[0].split("/")[0] in ("START", "SELECT", "BACK", "B"):
+                raise SystemExit("drive.py: profile input.probe holds %s: START pauses live play and B backs out "
+                                 "of a menu the classifier may have miscalled" % tok)
         for k, v in self.inp.items():
             if k.startswith("play") or k in ("stall_cycle", "stall_cycles"):
                 continue
@@ -530,6 +548,7 @@ class Driver:
         if not self.dev.foreground():
             raise Fail("hakuX is not the focused app: no press sent (the emulator exited, or another window "
                        "took the screen)")
+        self.mark_input(btn, why)
         for k, b in enumerate(btn.split()):
             if k:
                 self.sleep(0.3)
@@ -541,6 +560,13 @@ class Driver:
                                sig=None if self.cur_sig is None else pathbook.sig_list(self.cur_sig),
                                in_play=self.play_at is not None))
         return "press %s (%s)" % (btn, why)
+
+    def mark_input(self, what, why):
+        """Every input drive.py sends is written to the device's logcat (tag hakuX-route) the
+        moment before it goes, so a dip in the `hakuX-perf gfps=` lines can be laid against
+        the input that preceded it (playprobe_report.py). The device stamps the line itself;
+        `t` is the route clock, for reading it against route-state.tsv."""
+        self.dev.logcat("input t=%.1f %s why=%s" % (self.t(), what.replace("'", ""), why.replace("'", "")))
 
     def send(self, btn):
         if btn == "START+A":
@@ -629,6 +655,7 @@ class Driver:
             self.escape_scene = self.cur_scene
         self.escapes += 1
         self.mode_escapes[self.mode] = self.mode_escapes.get(self.mode, 0) + 1
+        self.mark_input("stall escape %d" % self.escapes, "stall")
         steering = self.steer_on.is_set()
         if steering:                     # the escape owns the stick and pedals while it plays
             self.steer_on.clear()
@@ -721,14 +748,17 @@ class Driver:
             # [steer] owns LX and the pedals while the race HUD is up.
             want = [w for w in want if w[0] not in self.STEER_AXES]
             self.steering(True)
+        pax = self.probe_axes()          # an axis the probe holds is the probe's, not the cycle's
+        want = [w for w in want if w[0] not in pax]
         for ax, _ in self.held:
-            if ax not in [a for a, _ in want]:
+            if ax not in [a for a, _ in want] and ax not in pax:
                 self.dev.pad("axis", ax, rest(ax))
         for ax, val in want:
             self.dev.pad("axis", ax, str(val))
         if want and self.held != want:
-            self.inputs.append(dict(t=round(self.t(), 1), state=self.state,
-                                    input="hold " + " ".join("%s %s" % a for a in want), why="play"))
+            what = "hold " + " ".join("%s %s" % a for a in want)
+            self.mark_input(what, "play")
+            self.inputs.append(dict(t=round(self.t(), 1), state=self.state, input=what, why="play"))
         self.held = want
 
     STEER_AXES = ("LX", "RT", "LT")
@@ -799,6 +829,157 @@ class Driver:
         if self.held:
             self.inputs.append(dict(t=round(self.t(), 1), state=self.state, input="release axes", why="left play"))
         self.held = []
+        self.probe_let_go()
+
+    # -- the play probe (playprobe1021) ---------------------------------------
+    def probe_on(self):
+        return self.cfg["probe_idle_s"] > 0
+
+    def probe_axes(self):
+        return {tok.split(":")[0] for tok in self.pheld if ":" in tok}
+
+    def probe_hold(self, tok):
+        """Hold one probe input: `AXIS:value` is an axis, anything else a button."""
+        if ":" in tok:
+            ax, val = tok.split(":", 1)
+            self.dev.pad("axis", ax, val)
+        else:
+            self.dev.pad("hold", tok)
+        self.pheld.append(tok)
+
+    def probe_release(self, tok):
+        if ":" in tok:
+            self.dev.pad("axis", tok.split(":")[0], rest(tok.split(":")[0]))
+        else:
+            self.dev.pad("release", tok)
+        if tok in self.pheld:
+            self.pheld.remove(tok)
+
+    def probe_let_go(self):
+        """Left play, or the run ended: nothing the probe holds may stay down on the device.
+        The winner is remembered and held again when play resumes; a candidate in flight
+        is abandoned without a record (its screen changed for another reason)."""
+        for tok in list(self.pheld):
+            self.probe_release(tok)
+        pr = self.probe
+        if pr["cur"] is not None:
+            self.dev.logcat("play-probe abandoned %s t=%.1f" % (pr["cur"]["tok"], self.t()))
+        pr["cur"], pr["queue"], pr["idle_since"] = None, [], None
+
+    def probe_candidates(self, r):
+        """This round's queue. What the learned table says moved a screen like this one
+        goes first (this title's, then every title's -- only when there is an embedding to
+        match on: without one the key alone would match any title's), then the profile's
+        `probe` list or PROBE_LADDER. The last winner goes to the back: it already stopped
+        moving the screen once."""
+        embedding = (r.get("pathclass") or {}).get("embedding")
+        own, glob = self.learned_tables()
+        queue = []
+        for records in ([own, glob] if embedding is not None else [own]):
+            while True:
+                b = learned.suggest(records, [], PROBE_KEY, embedding, queue, min_rank=3, kind="play")
+                if b is None:
+                    break
+                queue.append(b)
+        n_learned = len(queue)
+        for tok in self.inp_for("probe", list(PROBE_LADDER)):
+            if tok not in queue:
+                queue.append(tok)
+        last = self.probe["last_winner"]
+        if last in queue:
+            queue.remove(last)
+            queue.append(last)
+        return queue, n_learned
+
+    def probe_log(self, cur, outcome, t):
+        """One probe's outcome, to the run's list, the learned table (kind "play": the
+        (screen embedding, input, motion change) tuple a later play-input head trains on)
+        and the logcat, where it sits among the `hakuX-perf gfps=` lines."""
+        held_s = round(t - cur["since"], 1)
+        self.probes.append(dict(t=round(cur["since"], 1), round=self.probe["round"], input=cur["tok"], outcome=outcome,
+                                origin=cur["origin"], state=self.state, cls=self.cur_cls, before=cur["before"],
+                                motion=round(cur["motion"], 3), captures=cur["caps"], held_s=held_s))
+        own, glob = self.learned_tables()
+        rec = learned.record(self.ltitle, PROBE_KEY, cur["embedding"], cur["tok"],
+                             "advanced" if outcome == "won" else "none", cur["since"], os.path.basename(self.out),
+                             kind="play", before=cur["before"], motion=round(cur["motion"], 3), held_s=held_s)
+        own.append(rec)
+        glob.append(rec)
+        self.dev.logcat("play-probe %s %s motion=%.3f before=%.3f held=%.1fs round=%d t=%.1f" % (
+            outcome, cur["tok"], cur["motion"], cur["before"], held_s, self.probe["round"], t))
+
+    def probe_next(self, r, t):
+        """Hold the round's next candidate, or end a round that found nothing. A run whose
+        rounds all found nothing FAILS here, loudly: the play input is not reaching the game
+        (or the screen is one that never moves), and holding on for the rest of the soak
+        would only look like a measurement."""
+        pr = self.probe
+        if not pr["queue"]:
+            pr["fruitless"] += 1
+            pr["idle_since"] = t
+            self.dev.logcat("play-probe round %d found nothing t=%.1f" % (pr["round"], t))
+            if pr["fruitless"] >= self.cfg["probe_rounds"]:
+                tried = sorted({p["input"] for p in self.probes})
+                raise Fail("play probe: %d rounds, nothing moved the screen (held %s): the play input is not "
+                           "reaching the game, or this screen never moves" % (pr["fruitless"], " ".join(tried)))
+            return " probe round %d empty" % pr["round"]
+        tok = pr["queue"].pop(0)
+        origin = "learned" if pr["n_learned"] > 0 else "ladder"
+        pr["n_learned"] = max(0, pr["n_learned"] - 1)
+        self.probe_hold(tok)
+        pr["cur"] = dict(tok=tok, since=t, caps=0, hits=0, motion=0.0, before=round(self.cur_diff or 0.0, 3),
+                         origin=origin, embedding=(r.get("pathclass") or {}).get("embedding"))
+        self.mark_input("probe hold %s" % tok, "play-probe round %d" % pr["round"])
+        self.inputs.append(dict(t=round(t, 1), state=self.state, input="probe hold " + tok,
+                                why="play-probe round %d" % pr["round"]))
+        return " probe %s" % tok
+
+    def probe_tick(self, r, t, state):
+        """Called with every capture that holds the play input. Tracks how long the screen
+        has been still; at probe_idle_s, starts a round of candidates, each held until the
+        picture moves on probe_hits captures running or probe_hold_s is up. Returns the
+        text to add to the capture's action. Motion is pathclass's changed fraction against
+        the capture before (classify's MOVING_BAR): it says the SCREEN moves, not that the
+        player did -- a camera or an attract loop moves it too -- which is why a single
+        moving capture does not count."""
+        if not self.probe_on():
+            return ""
+        pr = self.probe
+        moving = (self.cur_diff >= classify.MOVING_BAR) if self.cur_diff is not None else state == "play"
+        cur = pr["cur"]
+        if cur is None:
+            winner = pr["winner"]
+            if winner and winner not in self.pheld:
+                self.probe_hold(winner)          # play resumed after a menu or a load
+                self.mark_input("hold %s" % winner, "play-probe winner")
+            if moving:
+                pr["idle_since"] = None
+                return ""
+            if pr["idle_since"] is None:
+                pr["idle_since"] = t
+            if t - pr["idle_since"] < self.cfg["probe_idle_s"]:
+                return ""
+            pr["round"] += 1
+            if winner:                           # it stopped working: take it off for a fair round
+                self.probe_release(winner)
+                pr["last_winner"], pr["winner"] = winner, None
+            pr["queue"], pr["n_learned"] = self.probe_candidates(r)
+            self.dev.logcat("play-probe round %d start idle=%.1fs queue=%s t=%.1f" % (
+                pr["round"], t - pr["idle_since"], ",".join(pr["queue"]), t))
+            return self.probe_next(r, t)
+        cur["caps"] += 1
+        cur["motion"] = max(cur["motion"], self.cur_diff or 0.0)
+        cur["hits"] = cur["hits"] + 1 if moving else 0
+        if cur["hits"] >= self.cfg["probe_hits"]:
+            self.probe_log(cur, "won", t)
+            pr["winner"], pr["cur"], pr["idle_since"], pr["fruitless"] = cur["tok"], None, None, 0
+            return " probe %s won (motion %.2f)" % (cur["tok"], cur["motion"])
+        if t - cur["since"] >= self.cfg["probe_hold_s"]:
+            self.probe_log(cur, "missed", t)
+            self.probe_release(cur["tok"])
+            pr["cur"] = None
+            return " probe %s missed" % cur["tok"] + self.probe_next(r, t)
+        return " probe %s %d/%d" % (cur["tok"], cur["hits"], self.cfg["probe_hits"])
 
     def keep(self, frame, tag):
         name = "%s-%03d-%s.png" % (time.strftime("%H%M%S"), self.n, tag)
@@ -910,6 +1091,7 @@ class Driver:
             last = getattr(self, "_tap_" + btn, -1e9)
             if t - last >= every:
                 setattr(self, "_tap_" + btn, t)
+                self.mark_input("tap %s%s" % (b, "x%d" % n if n > 1 else ""), "play")
                 for k in range(n):
                     if k:
                         self.sleep(gap)
@@ -989,15 +1171,15 @@ class Driver:
             # game as a "menu"). So hold the play input as the probe. Inside
             # a play stretch this neither ends the stretch nor counts toward it.
             self.hold_play()
-            return "hold (hud up, motion not yet play)"
+            return "hold (hud up, motion not yet play)" + self.probe_tick(r, t, state)
         lean = self.lean(r) if state == "unknown" else None
         if lean and lean[0] == "play":
             # pathclass leans gameplay, under its 0.85 floor: the same probe as the HUD case
             # above, for a profile with no HUD crop. Nothing is pressed, so nothing is explored.
             self.settle_explore(r)
             self.hold_play()
-            return "hold (unknown, leans play %.2f)" % lean[1]
-        if state != "play" and state != "stalled" and (self.held or self.steer_on.is_set()):
+            return "hold (unknown, leans play %.2f)" % lean[1] + self.probe_tick(r, t, state)
+        if state != "play" and state != "stalled" and (self.held or self.pheld or self.steer_on.is_set()):
             self.release_play()
         if state != "stalled":
             self.stalled_since = None
@@ -1078,23 +1260,24 @@ class Driver:
             return self.press(seq[n % len(seq)], "%s %d" % (state, n + 1))
 
         if state in ("play", "stalled"):
-            if (state == "stalled" and not r.get("recovering") and self.stall_cycles()
+            if (state == "stalled" and not r.get("recovering") and self.stall_cycles() and not self.probe_on()
                     and (self.escapes < cfg["escape_max"] or self.new_site())):
                 self.start_escape()
                 self.last_press_t = self.t()     # the next capture comes at the fast rate
                 self.stalled_since = None
                 return "stall escape %d" % self.escapes
             self.hold_play()
+            pk = self.probe_tick(r, t, state)    # armed: it ends a stall that no input moves (Fail), not stall_fail_s
             if state == "stalled":
                 if self.stalled_since is None:
                     self.stalled_since = t
-                if t - self.stalled_since >= cfg["stall_fail_s"]:
+                if t - self.stalled_since >= cfg["stall_fail_s"] and not self.probe_on():
                     raise Fail("stalled %.0f s: the play HUD is up and nothing moves -- "
                                "the play input is not reaching the game, or a pause the profile cannot see"
                                % (t - self.stalled_since))
                 if r.get("recovering"):     # moving again after a stall: play's inputs, not yet play
-                    return "hold (recovering, stalled %.0f s)%s" % (t - self.stalled_since, self.play_taps(t))
-                return "hold (stalled %.0f s)" % (t - self.stalled_since)
+                    return "hold (recovering, stalled %.0f s)%s" % (t - self.stalled_since, self.play_taps(t)) + pk
+                return "hold (stalled %.0f s)" % (t - self.stalled_since) + pk
             self.last_play_luma = r["luma"]
             if self.play_since is None:
                 self.play_since = t
@@ -1106,7 +1289,7 @@ class Driver:
                 act_reset = " (escape budget reset)"
             else:
                 act_reset = ""
-            return "hold" + self.play_taps(t) + act_reset
+            return "hold" + self.play_taps(t) + act_reset + pk
 
         # unknown (#433 Part B): never wait-then-fail. Resolve whatever press is still
         # awaiting an outcome from the LAST capture (the screen stayed `unknown`, so it's
@@ -1238,7 +1421,7 @@ class Driver:
 
     def interval(self):
         cfg = self.cfg
-        if self.find or self.state != "play" or self.play_since is None:
+        if self.find or self.state != "play" or self.play_since is None or self.probe["cur"] is not None:
             return cfg["fast_s"]
         if self.t() - self.play_since < cfg["confirm_play_s"] or self.t() - self.last_press_t < cfg["fast_s"]:
             return cfg["fast_s"]
@@ -1366,15 +1549,15 @@ class Driver:
                    result=res, seconds=round(t, 1), time_to_title_s=self.time_to.get("title"),
                    time_to_play_s=self.time_to.get("play"), states_seen=self.seen, skips=self.skips,
                    inputs=self.inputs, anomalies=self.anomalies, classifier_sources=self.sources,
-                   play_stretch_frames=self.play_frames, explored=self.explored,
+                   play_stretch_frames=self.play_frames, explored=self.explored, play_probes=self.probes,
                    written_utc=dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
         tmp = os.path.join(self.out, ".route-solution.json.tmp")
         with open(tmp, "w") as f:
             json.dump(sol, f, indent=1)
         os.replace(tmp, os.path.join(self.out, "route-solution.json"))
-        print("drive: %s after %.0f s; title at %s s, play at %s s; %d inputs, %d skips, %d explored"
+        print("drive: %s after %.0f s; title at %s s, play at %s s; %d inputs, %d skips, %d explored, %d probes"
               % (res, t, self.time_to.get("title"), self.time_to.get("play"), len(self.inputs),
-                 len(self.skips), len(self.explored)))
+                 len(self.skips), len(self.explored), len(self.probes)))
         # The trail, and from it this title's path (pathbook.py): kept only if it beats the
         # one this run replayed. A failure here must not cost the run its other results.
         meta = dict(title_id=self.tid, name=os.environ.get("TITLE_NAME") or self.p.get("title") or self.p.get("name"),
