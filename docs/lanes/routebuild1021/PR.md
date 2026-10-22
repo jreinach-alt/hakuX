@@ -151,3 +151,12 @@ play. That is the device run's job.
   0 failed.
 
 Together, all 159 fragments ran: 3849 passed, 0 failed.
+
+**After that run, one comment moved.** `lane/savestate-req1019` (a draft, stopped by the owner 10-19) also edits
+`dispatcher.sh`. Its `start_scene_watch` line and this branch's soak comment were adjacent insertions after
+`start_soak_video`, so `git merge-tree` of the two branches conflicted. The comment now sits above
+`start_frame_capture`, and both merges are clean: with master and with that branch.
+
+The change is comment-only (`bash -n` ok). The fragments that read that block were rerun: `61-soakvideo1011`,
+`62-routerefs-soakvideo1011`, `97-dispatch-snapshot-drive`, `97-dispatch-deploy` and `99-auto-route` gave
+118 passed, 0 failed.

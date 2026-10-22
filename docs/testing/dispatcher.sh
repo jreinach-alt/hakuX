@@ -2443,13 +2443,13 @@ except Exception: print("")' "$rdir/profile-backup.json" 2>/dev/null)
             restore_hdd_pref
             mv "$req" "$rdir/request.json"; return 0
         }
+        # The soak below passes TITLE_ID/TITLE_NAME and the two dirs to drive.py
+        # through route.sh (routebuild1021): the title's book is read from, and
+        # written back to, $D/paths (pathbook.py; the repo's pathfind paths ship
+        # in the snapshot, read-only), and what drive.py learns on unnamed
+        # screens goes to $D/learned -- both outside $SNAP, which is rebuilt.
         start_frame_capture "$rdir" "$frames_every" "$seconds"
         start_soak_video "$rdir" "$video_seconds" "$video_after" "$([ -s "$rdir/route.txt" ] && echo 1 || echo 0)" "$seconds"
-        # TITLE_ID/TITLE_NAME and the two dirs reach drive.py through route.sh
-        # (routebuild1021): the title's book is read from, and written back
-        # to, $D/paths (pathbook.py; the repo's pathfind paths ship in the
-        # snapshot, read-only), and what drive.py learns on unnamed screens
-        # goes to $D/learned -- both outside $SNAP, which is rebuilt.
         SERIAL="$SERIAL" CAPTURE_LOG="$rdir/logcat.txt" \
             PULL_GLOB="$pull_glob" PULL_DEST="$rdir/pulled" \
             AUDIO_CAPTURE_MB="$audio_capture" \
