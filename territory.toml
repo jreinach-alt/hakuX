@@ -121,6 +121,13 @@ files = ["docs/lanes/loadstuck1021/**", "docs/testing/titles/drive-profiles/gene
 released = ["docs/lanes/loadstuck1021/**", "docs/testing/titles/drive-profiles/generic.toml", "docs/testing/titles/drive.py", "docs/testing/titles/pathclass_selftest.py"]
 note = "CLAIMED AND RELEASED AT READY (lane.local, owner order 2026-10-21 'Then rerun HP2 on the Nova through the dispatcher.'): lane/loadstuck1021 was built in the interactive session, so it has no unit and its PR.md is State: ready with the full selftest result recorded in it. Every file is released in the same commit, so no file is held by this lane. The first HP2 rerun after playprobe1021 sat 530 s in a confidently-wrong `loading` (the Career briefing) with nothing pressed, so the play probe never ran; drive.py now hands a `loading` older than loading_stuck_s (90 s in generic.toml) to the unknown branch."
 
+[lane.decaydpad1022]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/decaydpad1022/**", "docs/testing/titles/classify.py", "docs/testing/titles/drive-profiles/generic.toml", "docs/testing/titles/drive.py", "docs/testing/titles/pathclass_selftest.py"]
+released = ["docs/lanes/decaydpad1022/**", "docs/testing/titles/classify.py", "docs/testing/titles/drive-profiles/generic.toml", "docs/testing/titles/drive.py", "docs/testing/titles/pathclass_selftest.py"]
+note = "CLAIMED AND RELEASED AT READY (lane.local, owner order 2026-10-22 'Build this first, cancel the run'): lane/decaydpad1022 was built in the interactive session, so it has no unit and its PR.md is State: ready with the full selftest result recorded in it. Every file is released in the same commit, so no file is held by this lane. Owner 10-22 on the 007/Def Jam pilot: the threshold before declaring `unknown` is too high, lower it over time in 3-5 steps, and do not sit still while it does -- press the d-pad UP DOWN LEFT RIGHT and read what moves. classify.py: classifier_decay_menu / classifier_decay_gameplay (the floor in force falls with each capture under it; a gameplay-mass guard refuses a decayed menu answer when the top-3 still gives gameplay 0.1); drive.py: dpad_probe (the rotation, hat flicks, learned `changed` not `advanced`, a `dpad-probe` verdict logged and kept); generic.toml: the lists and the measured tables."
+
 [retired.compatpage1012]
 issues = ["433"]
 retired_utc = "2026-10-13T18:25:00Z"
