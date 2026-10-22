@@ -46,7 +46,7 @@ env_vars pref is left on the shipped setting:
 | title | A (=0) | B (=1) | GPU R/flip B/A | verdict |
 |---|---|---|---|---|
 | Blinx 2 | 1-1792703349-p1zeta1022-1980285, 1-1792704960-p1zeta1022-2079841, 1-1792704963-p1zeta1022-2080106 | 1-1792703350-p1zeta1022-1980392, 1-1792704962-p1zeta1022-2080002 | 0.996 (q1 0.944, q3 1.056), 245 of 245 gameplay windows matched | falsified: not tabled |
-| Fable | | | | |
+| Fable | 1-1792704964-p1zeta1022-2080209, 1-1792704966-p1zeta1022-2080418 | 1-1792704965-p1zeta1022-2080314 | 1.000 (q1 1.000, q3 1.053), 12 A and 101 B windows in the one scene both arms reached | falsified: not tabled |
 
 ### Blinx 2
 
@@ -65,3 +65,30 @@ The median of each B window's R over its matched A windows is 0.996. The falsifi
 pass does not replay across two tiles under D32S8, so D24 removes nothing there. In menu windows (`full` 200-400)
 the phase `GPU X` (passes other than the main one) is 1.9-2.8 ms/flip under =0 and 0.1 under =1, but those windows
 run at 60 fps either way. Blinx 2 is not in the table.
+
+### Fable
+
+All three runs logged `PurpleVK` and the arm's init line. The generated route settles in a different place each
+run, and each place holds steady for the rest of the run:
+
+| run | arm | settled from | full/flip | rp/flip | GPU R | GPU X | GPU | fps |
+|---|---|---|---|---|---|---|---|---|
+| 2080209 | A1 (=0) | 300 s | 261 | 82 | 7.2 | 2.9 | 10.1 | 30.0 |
+| 2080418 | A2 (=0) | 300 s | 548 | 245 | 6.6 | 8.6 | 15.2 | 27.8 |
+| 2080314 | B (=1) | 180 s | 683 | 395 | 1.9 | 16.1 | 18.0 | 23.8 |
+
+The run medians therefore compare places, not arms. A1 passed through B's place between 180 and 240 s, and that is
+the only comparison of like with like (`full` 639-721):
+
+| arm | windows | rp/flip | GPU R | GPU X | GPU | Tot | fps |
+|---|---|---|---|---|---|---|---|
+| A (=0) | 12 | 392 | 1.90 | 16.20 | 18.10 | 31.75 | 23.7 |
+| B (=1) | 101 | 395 | 1.90 | 16.10 | 18.00 | 31.60 | 23.8 |
+
+The falsifier (> 0.85 over >= 10 windows) fires at 1.000. In that place almost all the GPU time is outside the
+main pass (X 16 ms), which D24 does not change; the two other places were measured under =0 only. Fable is not in
+the table.
+
+P4 (`HAKUX_SU_SPLICE`) splices only D24S8/D16 surfaces, so on Fable it needs `HAKUX_ZETA_D24=1`; its A/B runs both
+arms under =1. The result above is that =1 costs Fable no GPU time in the place measured (pixels were not
+compared). If P4 passes on Fable, P4's branch adds Fable to this table with its own measurement.
