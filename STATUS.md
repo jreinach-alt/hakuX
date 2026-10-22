@@ -1,6 +1,6 @@
 # hakuX status
 
-_updated 2026-10-22 06:47 PDT_
+_updated 2026-10-22 07:19 PDT_
 
 0.6: Measured 268 / 300 · Playable 97 / 110.
 
@@ -305,7 +305,7 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | **XIII USA Europe En Fr De Es It** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 7 |
 | **Yetisports Arctic Adventures Europe** | 🔵 Measured, not rated yet | **35.1**<br>Nova, Oct 16 |
 
-<details><summary>355 titles not tested yet</summary>
+<details><summary>356 titles not tested yet</summary>
 
 | Title |
 |---|
@@ -443,6 +443,7 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | Disney s Chicken Little |
 | Disney s Extreme Skate Adventure |
 | Disney s The Haunted Mansion |
+| DJFFNY |
 | Doom 3 |
 | Doom 3 Resurrection of Evil |
 | Dr Seuss The Cat in the Hat |
@@ -667,5 +668,5 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 
 </details>
 
-625 titles: 97 Playable, 8 below 30 fps, 16 crash or hang, 149 measured but not rated yet, 355 not tested yet.
+626 titles: 97 Playable, 8 below 30 fps, 16 crash or hang, 149 measured but not rated yet, 356 not tested yet.
 
