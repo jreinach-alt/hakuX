@@ -58,6 +58,14 @@ order = ["boot", "logo", "intro_video", "title", "profile", "main_menu", "loadin
 stall_fail_s = 40.0
 escape_max = 6
 ladder = ["A"]
+# The play probe (playprobe1021, PROBE_LADDER in drive.py). NFS Hot Pursuit 2 reached its race
+# start and sat at 0 MPH for the rest of the soak: its gas is A, and nothing here pressed A.
+# Once the picture has not moved for 8 s, each candidate input is HELD for up to 5 s (until
+# the picture moves on 2 captures running) and the one that moves it stays held. Three empty
+# rounds fail the step, which replaces stall_fail_s and the blind stall_cycle below while the
+# probe is on. Every hold is logged to logcat (tag hakuX-route, `play-probe`) and to the
+# learned table (kind "play").
+probe_idle_s = 8.0
 
 [input]
 # Play (routebuild1021): a title this profile has never seen, so nothing title-specific.

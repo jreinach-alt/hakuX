@@ -18,6 +18,13 @@ Every record goes to two files: `learned/<title>.jsonl` (this title only) and
 `learned/_global.jsonl` (every title, read-only fallback for one this lane has never
 seen before) -- `suggest()` is given both, title's own records ranked first.
 
+`kind` (playprobe1021) names what the press was for: "explore" (a press on an `unknown` screen;
+a record with no `kind` is one) or "play" (an input HELD on a play screen that stopped moving,
+with `before`/`motion`/`held_s`: the picture's changed fraction before the hold, the most it
+reached under it, and how long the hold lasted). `suggest()` only matches its own kind, so a
+play record can never be pressed as an explore answer: a play screen's embedding sits near
+many menus' by chance, and `A` held for 5 s is not `A` pressed once.
+
 VETO (owner, #433): a button that ever `regressed` a screen this close to this one is
 never suggested again for it, no matter how many times another button `advanced` from
 there. A raw count or a recency-only pick would let a bad-but-frequent answer outvote one
@@ -64,11 +71,14 @@ def load(title):
     return _read(path_for(title)), _read(GLOBAL_PATH)
 
 
-def record(title, key, embedding, button, outcome, t, run):
+def record(title, key, embedding, button, outcome, t, run, kind=None, **extra):
     if outcome not in OUTCOME_RANK and outcome != "regressed":
         raise ValueError("learned.py: bad outcome %r" % outcome)
     rec = {"title": title, "key": key, "embedding": embedding, "button": button,
            "outcome": outcome, "t": round(t, 1), "run": run}
+    if kind:
+        rec["kind"] = kind
+    rec.update(extra)
     os.makedirs(DIR, exist_ok=True)
     line = json.dumps(rec) + "\n"
     own = path_for(title)
@@ -86,9 +96,11 @@ def cosine(a, b):
     return sum(x * y for x, y in zip(a, b))
 
 
-def _matches(records, key, embedding):
+def _matches(records, key, embedding, kind="explore"):
     out = []
     for rec in records:
+        if rec.get("kind", "explore") != kind:
+            continue
         if embedding is not None and rec.get("embedding") is not None:
             if cosine(embedding, rec["embedding"]) >= SIM_BAR:
                 out.append(rec)
@@ -97,14 +109,15 @@ def _matches(records, key, embedding):
     return out
 
 
-def suggest(own_records, global_records, key, embedding, tried, min_rank=0):
+def suggest(own_records, global_records, key, embedding, tried, min_rank=0, kind="explore"):
     """The best button to press again for this screen, or None (nothing learned, or
     everything learned is either vetoed or already tried this visit -- the caller falls
     back to the next untried rung of the hardcoded explore ladder either way).
     `min_rank` drops a best answer ranked under it: drive.py passes 2 so a button whose
-    only record is `none` is not chosen over the classifier's own lean."""
+    only record is `none` is not chosen over the classifier's own lean. `kind` picks the
+    records asked of ("explore", the default, or "play")."""
     for records in (own_records, global_records):
-        matches = _matches(records, key, embedding)
+        matches = _matches(records, key, embedding, kind)
         if not matches:
             continue
         by_button = {}
