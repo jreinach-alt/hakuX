@@ -22,6 +22,7 @@ test below checks that a regression there would be caught, not assumed.
 import glob
 import json
 import os
+import shutil
 import sys
 import tempfile
 
@@ -362,6 +363,7 @@ def main(argv):
     fails += probe_tests()
     fails += loading_tests()
     fails += decay_tests()
+    fails += hangplay_tests()
     print("pathclass_selftest: %d failure(s)" % fails)
     return 1 if fails else 0
 
@@ -617,13 +619,13 @@ class ReactiveStub:
                 "top3": [["gameplay", 0.6], ["cutscene", 0.2], ["main_menu", 0.1]], "action": {"do": "A", "why": "selftest"}}
 
 
-def probe_run(moves, seconds, conf=0.5, drive_set=None, inp_set=None, make_stub=None, prof_set=None):
+def probe_run(moves, seconds, conf=0.5, drive_set=None, inp_set=None, make_stub=None, prof_set=None, make_dev=None):
     """One generic.toml run against a ReactiveStub (or `make_stub(dev)`); returns (driver, device).
-    `prof_set` replaces top-level profile keys (None removes one); the run's route-state.tsv is
-    left on the driver as `drv.tsv_text`."""
+    `prof_set` replaces top-level profile keys (None removes one); `make_dev(live_frame)` replaces the
+    sim device; the run's route-state.tsv is left on the driver as `drv.tsv_text`."""
     fl, d = sim_frames()
     live = os.path.join(d, "124950-entry.png")
-    dev = drive.SimDevice([live] * (int(seconds) + 10), 1.0)
+    dev = make_dev(live) if make_dev else drive.SimDevice([live] * (int(seconds) + 10), 1.0)
     stub = make_stub(dev) if make_stub else ReactiveStub(dev, moves, conf)
     classify._PATHCLASS_CLIENT = stub
     classify.pathclass_client = lambda: stub
@@ -1165,6 +1167,186 @@ def decay_tests():
                     and ex[1]["input"] == "DOWN" and "leans menu" in ex[1]["why"],
                     "dpad: the first flick is the look, the lean's own press comes next, before LEFT and RIGHT",
                     "explore=%s" % [(i["t"], i["input"], i["why"]) for i in ex[:3]])
+    clear_learned()
+    return fails
+
+
+# -- hangplay1022: a dark stretch is a hang; a screen that leans play stays leaning play ---------------
+class DarkDevice(drive.SimDevice):
+    """The sim device with a screen that is black while `dark(dev)` says so and the live frame otherwise
+    (dev.clock is the route clock, dev.sent what it has been sent: a press can bring the picture)."""
+
+    def __init__(self, black, live, dark):
+        drive.SimDevice.__init__(self, [live], 1.0)
+        self.black, self.live, self.dark = black, live, dark
+
+    def capture(self, path):
+        shutil.copyfile(self.black if self.dark(self) else self.live, path)
+        return True, 0.0
+
+
+class FadingLeanStub:
+    """A gameplay HUD pathclass is unsure of (0.5, under every gameplay floor), whose top-3 reads `before` until
+    the route clock reaches `t_drop` and `after` from then on: the 007 proof's 0.47-0.61 falling under 0.45."""
+
+    def __init__(self, dev, t_drop, before, after, state_after="gameplay"):
+        self.dev, self.t_drop, self.before, self.after, self.state_after = dev, t_drop, before, after, state_after
+
+    def classify(self, frame, prev, context):
+        late = self.dev.clock >= self.t_drop
+        top3 = self.after if late else self.before
+        return {"state": self.state_after if late else "gameplay", "confidence": 0.5, "moving": False, "diff": 0.0,
+                "top3": top3, "action": {"do": "A", "why": "selftest"}}
+
+
+def hangplay_tests():
+    """A `boot`/`black` stretch is waited out for dark_grace_s, pressed after it and ROUTE FAIL at dark_fail_s
+    (owner 2026-10-22: "a black screen for 30 seconds sounds like a hang"); and a screen already held as leaning
+    play stays leaning play down to drive.LEAN_PLAY_KEEP, so the exploration ladder is not pressed into live play."""
+    fails = 0
+    clear_learned()
+    from PIL import Image
+    g = classify.load_profile(os.path.join(PROF, "generic.toml"))["drive"]
+    grace, dfail = g.get("dark_grace_s"), g.get("dark_fail_s")
+    fails += report(grace == 10.0 and dfail == 30.0 and 9.7 < grace < dfail,
+                    "dark: generic.toml waits 10 s (the longest dark stretch of a run that reached play was 9.7 s) and fails at 30",
+                    "grace %s fail %s" % (grace, dfail))
+
+    with tempfile.TemporaryDirectory() as td:
+        black = os.path.join(td, "black.png")
+        Image.new("RGB", (640, 480), (0, 0, 0)).save(black)
+        live_stub = lambda dev: DecayStub(dev, 0.95, "main_menu")
+
+        def dark_run(dark, seconds, ds=None, ps=None):
+            clear_learned()
+            drv, dev = probe_run(None, seconds, drive_set=dict(dpad_probe=0, menu_max_presses=999, **(ds or {})), prof_set=ps,
+                                 make_stub=live_stub,
+                                 make_dev=lambda live: DarkDevice(black, live, dark))
+            return drv, dev, [s for s in dev.sent if len(s) > 2 and s[1] == "press"]
+        rows = lambda drv: [l.split("\t") for l in drv.tsv_text.splitlines()[1:] if l and not l.startswith("#")]
+        dark_inputs = lambda drv: [i for i in drv.inputs if i["why"].startswith("dark ")]
+        dark_fail = lambda drv: "dark for" in str(drv.result)
+
+        # a screen that never draws: boot for 10 s, the ladder's A first, then ROUTE FAIL at 30 s with the evidence
+        drv, dev, pr = dark_run(lambda dev: True, 120)
+        last = rows(drv)[-1] if rows(drv) else None
+        fails += report(str(drv.result).startswith("ROUTE FAIL") and "dark for 3" in drv.result and "luma" in drv.result
+                        and last is not None and 30.0 <= float(last[0]) <= 36.0,
+                        "dark: a screen that never draws is ROUTE FAIL at 30 s, naming the dwell, the luma and the presses",
+                        "result=%s last=%s" % (drv.result, last and last[:3]))
+        fails += report(bool(pr) and pr[0][2] == "A" and 10.0 <= pr[0][0] <= 14.0 and len(pr) >= 4
+                        and not [p for p in pr if p[0] < 10.0],
+                        "dark: nothing is pressed inside the 10 s grace; then A first, one rung a capture",
+                        "presses %s" % [(p[0], p[2]) for p in pr[:5]])
+        fails += report(all(i["why"].startswith("dark ") for i in drv.inputs) and not drv.explored,
+                        "dark: its presses are labelled `dark` and nothing is learned from them (a black frame has no embedding)",
+                        "inputs %s explored %s" % ([i["why"] for i in drv.inputs[:2]], drv.explored[:2]))
+        # mutant: the profile turns the Fail off -> waited out for ever, nothing pressed (the old behaviour)
+        drvm, devm, prm = dark_run(lambda dev: True, 120, ds=dict(dark_grace_s=0.0, dark_fail_s=0.0))
+        fails += report(not str(drvm.result).startswith("ROUTE FAIL") and not prm,
+                        "mutant (dark_fail_s = 0) waits for ever and presses nothing: the check above is not vacuous",
+                        "result=%s presses=%s" % (drvm.result, prm[:2]))
+
+        # a dark stretch that ends inside the grace gets nothing
+        drv, dev, pr = dark_run(lambda dev: dev.clock < 6.0, 60)
+        fails += report(not dark_fail(drv) and not dark_inputs(drv),
+                        "dark: a 6 s boot is left alone (no dark press, no Fail)",
+                        "result=%s inputs=%s" % (drv.result, dark_inputs(drv)[:2]))
+        drvm, devm, prm = dark_run(lambda dev: dev.clock < 6.0, 60, ds=dict(dark_grace_s=2.0))
+        fails += report(bool(dark_inputs(drvm)),
+                        "mutant (grace 2 s) presses into a 6 s boot: the check above is not vacuous", "inputs=%s" % dark_inputs(drvm)[:2])
+
+        # a press that brings the picture ends the stretch for good, and a LATER dark stretch gets a fresh clock
+        lifted = lambda dev: any(s[1:] == ("press", "A") for s in dev.sent)
+        drv, dev, pr = dark_run(lambda dev: not lifted(dev) or 80.0 <= dev.clock < 100.0, 140)
+        d2 = [i for i in dark_inputs(drv) if i["t"] >= 80.0]
+        fails += report(not dark_fail(drv) and dark_inputs(drv) and dark_inputs(drv)[0]["input"] == "A" and "main_menu" in drv.seen
+                        and d2 and d2[0]["t"] >= 90.0,
+                        "dark: an A that brings the picture ends it; a second 20 s dark stretch at 80 s waits its own 10 s, then is not a Fail",
+                        "result=%s dark inputs=%s seen=%s" % (drv.result, [(i["t"], i["input"]) for i in dark_inputs(drv)][:4], drv.seen))
+        real_enter = drive.Driver.enter
+
+        first_dark = []
+
+        def stale_clock(self, state, r, frame):
+            real_enter(self, state, r, frame)
+            if state in drive.DARK and self.dark_since is not None:
+                # the clock of the first stretch is never reset: every later stretch is counted from it
+                self.dark_since = first_dark[0] if first_dark else first_dark.append(self.dark_since) or self.dark_since
+        drive.Driver.enter = stale_clock
+        try:
+            drvs, devs, prs = dark_run(lambda dev: not lifted(dev) or 80.0 <= dev.clock < 100.0, 140)
+        finally:
+            drive.Driver.enter = real_enter
+        fails += report(dark_fail(drvs),
+                        "mutant (the dark clock is never reset) fails the 20 s second stretch: the check above is not vacuous",
+                        "result=%s" % drvs.result)
+
+        # `black` (after a named screen) is the same stretch as `boot`: counted from the moment the picture went
+        drv, dev, pr = dark_run(lambda dev: dev.clock >= 20.0, 100)
+        t_fail = float(rows(drv)[-1][0]) if rows(drv) else None
+        fails += report(str(drv.result).startswith("ROUTE FAIL") and "black" in " ".join(r[1] for r in rows(drv))
+                        and t_fail is not None and 50.0 <= t_fail <= 56.0,
+                        "dark: a screen that goes black after a menu is failed 30 s after it went dark, not 30 s into the run",
+                        "result=%s t_fail=%s" % (drv.result, t_fail))
+
+        # the profile is checked: a grace at or over the fail time is refused
+        def bad_dark(**ds):
+            try:
+                dark_run(lambda dev: True, 3, ds=ds)
+            except SystemExit as e:
+                return str(e)
+            return None
+        msgs = [bad_dark(dark_grace_s=30.0, dark_fail_s=30.0), bad_dark(dark_grace_s=40.0, dark_fail_s=30.0)]
+        fails += report(all(m and "dark_grace_s" in m for m in msgs) and bad_dark(dark_grace_s=0.0, dark_fail_s=20.0) is None,
+                        "dark: a grace at or over dark_fail_s is refused; a fail time with no grace is valid", "got %s" % msgs)
+
+    # -- the lean keeps ---------------------------------------------------------------------------------
+    HUD = [["gameplay", 0.5], ["cutscene", 0.2], ["main_menu", 0.1]]
+    WEAK = [["gameplay", 0.30], ["submenu", 0.25], ["cutscene", 0.2]]          # play still the biggest family, 0.30 < 0.45
+    MENU = [["main_menu", 0.6], ["gameplay", 0.30], ["submenu", 0.05]]         # a menu family takes the screen
+    explore_after = lambda drv, t: [i for i in drv.inputs if i["why"].startswith("explore") and i["t"] >= t]
+
+    def lean_run(before, after, state_after="gameplay", seconds=120, t_drop=40.0):
+        clear_learned()
+        return probe_run(None, seconds, make_stub=lambda dev: FadingLeanStub(dev, t_drop, before, after, state_after))
+    drv, dev = lean_run(HUD, WEAK)
+    fails += report(not explore_after(drv, 40.0) and not hat_flicks(dev) and bool(drv.probes),
+                    "lean: a screen held as leaning play (0.5) stays so when the read falls to 0.30 -- no ladder, no d-pad into live play",
+                    "explore %s flicks %s" % ([(i["t"], i["input"]) for i in explore_after(drv, 40.0)][:4], hat_flicks(dev)[:2]))
+    real_k = drive.LEAN_PLAY_KEEP
+    drive.LEAN_PLAY_KEEP = drive.LEAN_MASS
+    try:
+        drvm, devm = lean_run(HUD, WEAK)
+    finally:
+        drive.LEAN_PLAY_KEEP = real_k
+    fails += report(bool(explore_after(drvm, 40.0)),
+                    "mutant (keep bar = entry bar, 0.45) presses the ladder into the same play: the check above is not vacuous",
+                    "explore %s" % explore_after(drvm, 40.0)[:3])
+    # the entry bar is unchanged: a screen that never leaned play does not start to at 0.30
+    drvc, devc = lean_run(WEAK, WEAK)
+    fails += report(bool(explore_after(drvc, 0.0)) and not drvc.probes,
+                    "control: the same 0.30 read from the start is not a lean (entry stays 0.45): it gets the rotation and the ladder",
+                    "explore %s probes %s" % (explore_after(drvc, 0.0)[:2], outcomes(drvc)))
+    # ... and it gives way when another family clearly takes the screen
+    drvy, devy = lean_run(HUD, MENU, state_after="main_menu")
+    fails += report(bool([i for i in explore_after(drvy, 40.0) if "leans menu" in i["why"]]),
+                    "lean: a menu family holding 0.45 of the top-3 takes the screen from a held play lean (its own press goes out)",
+                    "explore %s" % [(i["t"], i["input"], i["why"]) for i in explore_after(drvy, 40.0)][:3])
+    real_y = drive.LEAN_PLAY_YIELD
+    drive.LEAN_PLAY_YIELD = 2.0
+    try:
+        drvz, devz = lean_run(HUD, MENU, state_after="main_menu")
+    finally:
+        drive.LEAN_PLAY_YIELD = real_y
+    fails += report(not [i for i in explore_after(drvz, 40.0) if "leans menu" in i["why"]],
+                    "mutant (a held play lean never yields) keeps holding through the menu: the check above is not vacuous",
+                    "explore %s" % [(i["t"], i["input"], i["why"]) for i in explore_after(drvz, 40.0)][:3])
+    # under the keep bar it is not a lean any more
+    drvl, devl = lean_run(HUD, [["gameplay", 0.15], ["submenu", 0.15], ["cutscene", 0.1]])
+    fails += report(bool(explore_after(drvl, 40.0)),
+                    "lean: gameplay at 0.15 of the top-3 (under the 0.25 keep bar) is no longer held as play",
+                    "explore %s" % explore_after(drvl, 40.0)[:3])
     clear_learned()
     return fails
 
