@@ -4311,6 +4311,11 @@ static void flush_memory_buffer(PGRAPHState *pg, VkCommandBuffer cmd)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
 
+    /* #433 HAKUX_VTXHZ_BUMP: the fresh copies past vertex RAM's own bytes */
+    if (unlikely(r->vtxhz_bump_cap)) {
+        pgraph_vk_vtxhz_bump_flush(r, cmd);
+    }
+
     FrameStagingState *fs = &r->frame_staging[r->current_frame];
     if (fs->vertex_ram_flush_min >= fs->vertex_ram_flush_max) {
         return;
@@ -5680,6 +5685,11 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
     case VK_FINISH_REASON_FLIP_STALL: OPT_STAT_INC(finish_flip); break;
     case VK_FINISH_REASON_FLUSH: OPT_STAT_INC(finish_flush); break;
     case VK_FINISH_REASON_STALLED: OPT_STAT_INC(finish_stalled); break;
+    }
+    if (finish_reason == VK_FINISH_REASON_NEED_BUFFER_SPACE) {
+        /* #433: on vk/vertex.c's vtx_hazard line, next to the hazard
+         * finishes HAKUX_VTXHZ_BUMP trades for staging space */
+        pg->vk_renderer_state->vtxhz_buf_finishes++;
     }
     {
         PGRAPHVkState *r_rw = pg->vk_renderer_state;
@@ -8777,6 +8787,11 @@ static void snapshot_vertex_buffers(PGRAPHState *pg, ReorderWindowEntry *e,
                                                           BUFFER_VERTEX_RAM;
         e->vertex_buffers[i] = get_staging_buffer(r, buffer_idx)->buffer;
         e->vertex_offsets[i] = offset + r->vertex_attribute_offsets[attr_idx];
+        /* #433 HAKUX_VTXHZ_BUMP: the newest copy of the attribute's bytes */
+        if (unlikely(r->vtxhz_bump_n) && buffer_idx == BUFFER_VERTEX_RAM) {
+            e->vertex_offsets[i] =
+                pgraph_vk_vtxhz_bump_offset(r, attr_idx, e->vertex_offsets[i]);
+        }
     }
 }
 
@@ -9120,6 +9135,19 @@ static void drawrec_tick(PGRAPHVkState *r)
 static inline bool has_dirty_vertex_pages(PGRAPHVkState *r)
 {
     ram_addr_t ram_base = r->vram_ram_addr;
+
+    /* #433 HAKUX_VTXHZ_BUMP: a range no one copy holds the newest bytes of
+     * is owed an upload as much as a dirty one, so that the bind finds it in
+     * one copy (pgraph_vk_vtxhz_bump_offset) */
+    if (unlikely(r->vtxhz_bump_n)) {
+        for (int i = 0; i < r->num_vertex_ram_buffer_syncs; i++) {
+            if (pgraph_vk_vtxhz_bump_needs_copy(
+                    r, r->vertex_ram_buffer_syncs[i].addr,
+                    r->vertex_ram_buffer_syncs[i].size)) {
+                return true;
+            }
+        }
+    }
 
     if (drawrec_vtx_on(r)) {
         for (int i = 0; i < r->num_vertex_ram_buffer_syncs; i++) {
@@ -10202,6 +10230,9 @@ static void sync_vertex_ram_buffer(PGRAPHState *pg)
                 page += num;
             }
             bool dirty = gpu_stale || cpu_dirty || redo;
+            /* #433 HAKUX_VTXHZ_BUMP: see has_dirty_vertex_pages */
+            dirty = dirty || (unlikely(r->vtxhz_bump_n) &&
+                              pgraph_vk_vtxhz_bump_needs_copy(r, addr, size));
 
             if (gpu_stale) {
                 NV2A_VK_DPRINTF("Range overlaps GPU-written surface data. "
@@ -10905,6 +10936,10 @@ static void bind_vertex_buffer(PGRAPHState *pg, uint16_t inline_map,
                                                           BUFFER_VERTEX_RAM;
         buffers[i] = get_staging_buffer(r, buffer_idx)->buffer;
         offsets[i] = offset + r->vertex_attribute_offsets[attr_idx];
+        /* #433 HAKUX_VTXHZ_BUMP: the newest copy of the attribute's bytes */
+        if (unlikely(r->vtxhz_bump_n) && buffer_idx == BUFFER_VERTEX_RAM) {
+            offsets[i] = pgraph_vk_vtxhz_bump_offset(r, attr_idx, offsets[i]);
+        }
     }
 
     vkCmdBindVertexBuffers(r->command_buffer, 0,

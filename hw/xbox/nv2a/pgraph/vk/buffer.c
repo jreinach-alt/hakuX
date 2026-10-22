@@ -441,6 +441,10 @@ bool pgraph_vk_init_buffers(NV2AState *d, Error **errp)
     uni_max = MIN(uni_max, mb.perframe_uni_cap);
     stg_max = MIN(stg_max, mb.perframe_stg_cap);
 
+    /* #433 HAKUX_VTXHZ_BUMP: room past vertex RAM's bytes for the fresh
+     * copies (vk/vertex.c); 0 when off */
+    VkDeviceSize vtxhz_bump_extra = pgraph_vk_vtxhz_bump_init(r, vram_size);
+
     for (int i = 0; i < NUM_SUBMIT_FRAMES; i++) {
         FrameStagingState *fs = &r->frame_staging[i];
 
@@ -476,7 +480,7 @@ bool pgraph_vk_init_buffers(NV2AState *d, Error **errp)
         fs->vertex_ram = (StorageBuffer){
             .alloc_info = host_alloc_create_info,
             .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-            .buffer_size = memory_region_size(d->vram),
+            .buffer_size = memory_region_size(d->vram) + vtxhz_bump_extra,
         };
         fs->vertex_ram_flush_min = VK_WHOLE_SIZE;
         fs->vertex_ram_flush_max = 0;
