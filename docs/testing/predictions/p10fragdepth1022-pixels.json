@@ -1,0 +1,37 @@
+{
+  "registered_utc": "2026-10-22T23:50:36Z",
+  "who": "p10fragdepth1022",
+  "issue": "433",
+  "prediction": "#433 P10 arm B, HAKUX_FRAGDEPTH=off (lane/p10fragdepth1022 31770d97e5, PR.md 'Device A/B'), pair 1: Z24S8 on the default D32_SFLOAT_S8 storage. Same binary; A --env HAKUX_FRAGDEPTH=on (logcat 'fragdepth: HAKUX_FRAGDEPTH=on: gl_FragDepth written on every depth draw'), B --env HAKUX_FRAGDEPTH=off (logcat '... omitted where fixed-function depth stands in (P10 arm B)'); an arm without its line, or B with 'has no effect', is VOID. B queued first, A last. MACHINE LEG: must_not_move -- every capture whose depth draws are all kept (F24/F16 FZy, w-buffer, Depth_function and the z24 Depth_buffer_fixed_function captures that set CLIP_MAX 16777216 so saturate) is unchanged. HAND-READ LEGS, B against A: (1) no capture is blank in B that is not blank in A; (2) no capture's differing px is higher in B than in A beyond the A-A noise of drawrec1010; (3) where fixed function stands in (Depth_buffer z16/z24 FZn _ZB, Depth_Clamp depth_clamp_W0_C0_ZB0_*), every decoded depth word is within one unit of A's. Any leg failing means arm B does not ship.",
+  "a_ref": "31770d97e5",
+  "b_ref": "31770d97e5",
+  "must_not_move": [
+    "Depth_buffer/DepthFmt_*_FZy_*",
+    "Depth_buffer_fixed_function/*_FZy_*",
+    "Depth_buffer_fixed_function/z24_*",
+    "Depth_function/*",
+    "Depth_Clamp/depth_clamp_W1_*",
+    "Depth_Clamp/depth_equal_WBuf_*",
+    "W_buffering/*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Clear",
+      "Color zeta overlap",
+      "Depth Clamp",
+      "Depth buffer",
+      "Depth buffer fixed function",
+      "Depth function",
+      "Stencil",
+      "Stencil func",
+      "W buffering",
+      "ZPass pixel count"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}
