@@ -1492,7 +1492,7 @@ bool xemu_get_frame_skip(void)
 }
 
 /* HAKUX_SUBMIT_FRAMES=N (#433, lane.coldstart1010; off by default): the
- * command-buffer ring depth, 1..NUM_SUBMIT_FRAMES, over the submit_frames
+ * command-buffer ring depth, 1..SUBMIT_FRAMES_PREF_MAX, over the submit_frames
  * pref (the Android default is 2). At depth 2 every finish's slot rotation
  * waits for the command buffer submitted at the finish before it; NFS MW's
  * cold race start takes STALLED finishes under pfifo.lock 4-6 times a frame,
@@ -1504,13 +1504,34 @@ static int submit_frames_env(void)
     if (v < 0) {
         const char *e = getenv("HAKUX_SUBMIT_FRAMES");
         int n = e ? atoi(e) : 0;
-        v = (n >= 1 && n <= NUM_SUBMIT_FRAMES) ? n : 0;
+        v = (n >= 1 && n <= SUBMIT_FRAMES_PREF_MAX) ? n : 0;
+    }
+    return v;
+}
+
+/* HAKUX_RING=N (#433; off by default): the submit ring length, 2..
+ * SUBMIT_RING_CAP, for the whole run. It replaces the submit_frames pref and
+ * HAKUX_SUBMIT_FRAMES, and only N slots get staging (renderer.h, ring_alloc).
+ * Unset or out of range: 0, and the pref decides within
+ * 1..SUBMIT_FRAMES_PREF_MAX as before. Read once. */
+int xemu_submit_ring_env(void)
+{
+    static int v = -1;
+    if (v < 0) {
+        const char *e = getenv("HAKUX_RING");
+        int n = e ? atoi(e) : 0;
+        v = (n >= 2 && n <= SUBMIT_RING_CAP) ? n : 0;
     }
     return v;
 }
 
 void xemu_set_submit_frames(int count)
 {
+    int ring = xemu_submit_ring_env();
+    if (ring) {
+        g_xemu_submit_frames = ring;
+        return;
+    }
     int e = submit_frames_env();
     if (e) {
 #ifdef __ANDROID__
@@ -1521,13 +1542,14 @@ void xemu_set_submit_frames(int count)
         count = e;
     }
     if (count < 1) count = 1;
-    if (count > NUM_SUBMIT_FRAMES) count = NUM_SUBMIT_FRAMES;
+    if (count > SUBMIT_FRAMES_PREF_MAX) count = SUBMIT_FRAMES_PREF_MAX;
     g_xemu_submit_frames = count;
 }
 
 int xemu_get_submit_frames(void)
 {
-    return g_xemu_submit_frames;
+    int ring = xemu_submit_ring_env();
+    return ring ? ring : g_xemu_submit_frames;
 }
 
 void pgraph_vk_draw_begin(NV2AState *d)
@@ -1627,7 +1649,7 @@ static VkPrimitiveTopology get_primitive_topology(PGRAPHState *pg)
  * fixing anything (#426). vkDestroyPipeline requires every submitted command
  * buffer that uses the pipeline to have completed. pipeline_cache_pre_evict()
  * protects only the command buffer being recorded, and a flip or a present is
- * submitted without waiting for its fence, so up to NUM_SUBMIT_FRAMES - 1
+ * submitted without waiting for its fence, so up to num_active_frames - 1
  * earlier command buffers can still be in flight.
  */
 #define PIPELINE_NOTE_BIND(r, b) do { \
@@ -1985,7 +2007,7 @@ void pgraph_vk_init_pipelines(PGRAPHState *pg)
         .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
     };
 
-    for (int i = 0; i < NUM_SUBMIT_FRAMES; i++) {
+    for (int i = 0; i < r->ring_alloc; i++) {
         VK_CHECK(vkCreateFence(r->device, &fence_info, NULL,
                                &r->frame_fences[i]));
     }
@@ -2017,7 +2039,7 @@ void pgraph_vk_finalize_pipelines(PGRAPHState *pg)
 #endif
 
     pgraph_vk_render_thread_wait_idle(r);
-    for (int i = 0; i < NUM_SUBMIT_FRAMES; i++) {
+    for (int i = 0; i < r->ring_alloc; i++) {
         r->frame_enqueued[i] = false;
         if (r->frame_submitted[i]) {
             VK_CHECK(vkWaitForFences(r->device, 1, &r->frame_fences[i],
@@ -4610,12 +4632,12 @@ static struct {
     VkQueryPool pool;
     int depth;
     unsigned long dropped;
-    int ops[NUM_SUBMIT_FRAMES];
-    uint8_t cat[NUM_SUBMIT_FRAMES][XFR_MAX_OPS];
-    uint32_t site[NUM_SUBMIT_FRAMES][XFR_MAX_OPS];
+    int ops[SUBMIT_RING_CAP];
+    uint8_t cat[SUBMIT_RING_CAP][XFR_MAX_OPS];
+    uint32_t site[SUBMIT_RING_CAP][XFR_MAX_OPS];
     uint64_t results[XFR_QUERIES_PER_CB];
     /* outer render-pass pairs: recorded, and whether one is open */
-    int rpo[NUM_SUBMIT_FRAMES];
+    int rpo[SUBMIT_RING_CAP];
     bool rpo_open;
     unsigned long rpo_dropped;
     /* the current window of frames, as xemu-gpu's */
@@ -4635,10 +4657,10 @@ static struct {
     XfrSite sites[XFR_MAX_SITES];
     int nsites;
     /* render-pass census: per slot, per outer-stamped pass */
-    XfrPass pass[NUM_SUBMIT_FRAMES][XFR_MAX_RP];
-    uint64_t ser[NUM_SUBMIT_FRAMES];    /* recording serial of the slot */
+    XfrPass pass[SUBMIT_RING_CAP][XFR_MAX_RP];
+    uint64_t ser[SUBMIT_RING_CAP];    /* recording serial of the slot */
     uint64_t ser_next;
-    bool read[NUM_SUBMIT_FRAMES];       /* slot read back since recorded */
+    bool read[SUBMIT_RING_CAP];       /* slot read back since recorded */
     int cur;                            /* open census pass, or -1 */
     const SurfaceBinding *cur_c, *cur_z;
     XfrSurf surf[XFR_MAX_SURF];
@@ -5003,7 +5025,7 @@ static void gpu_xfr_frame_begin(PGRAPHState *pg)
         VkQueryPoolCreateInfo ci = {
             .sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,
             .queryType = VK_QUERY_TYPE_TIMESTAMP,
-            .queryCount = XFR_QUERIES_PER_CB * NUM_SUBMIT_FRAMES,
+            .queryCount = XFR_QUERIES_PER_CB * r->ring_alloc,
         };
         VK_CHECK(vkCreateQueryPool(r->device, &ci, NULL, &xfr.pool));
     }
@@ -5291,7 +5313,7 @@ static void gpu_xfr_frame(PGRAPHVkState *r, int frame, int64_t total_ns,
  * recorded again and read it a second time: each such command buffer counted
  * twice in the GPU phase stats. Cleared when the slot's command buffer begins.
  */
-static bool gpu_ts_read[NUM_SUBMIT_FRAMES];
+static bool gpu_ts_read[SUBMIT_RING_CAP];
 
 /* A skipped second readback, counted on the XFR rp line. */
 static void gpu_ts_dup(PGRAPHVkState *r, int frame)
@@ -5413,7 +5435,7 @@ void pgraph_vk_flush_all_frames(PGRAPHState *pg)
     DW_T0(dw_fa0);
 #endif
     pgraph_vk_render_thread_wait_idle(r);
-    for (int i = 0; i < NUM_SUBMIT_FRAMES; i++) {
+    for (int i = 0; i < r->ring_alloc; i++) {
         r->frame_enqueued[i] = false;
         if (r->frame_submitted[i]) {
             VK_CHECK(vkWaitForFences(r->device, 1, &r->frame_fences[i],
@@ -5722,7 +5744,8 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
 #endif
     PGRAPHVkState *r = pg->vk_renderer_state;
 
-    int desired_frames = g_xemu_submit_frames;
+    /* Never past the slots that own resources (renderer.h, ring_alloc). */
+    int desired_frames = MIN(xemu_get_submit_frames(), r->ring_alloc);
     if (desired_frames != r->num_active_frames) {
         pgraph_vk_flush_all_frames(pg);
         r->num_active_frames = desired_frames;

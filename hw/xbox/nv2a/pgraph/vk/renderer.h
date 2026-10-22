@@ -1290,18 +1290,38 @@ typedef struct PGRAPHVkState {
     VmaAllocator allocator;
     uint32_t allocator_last_submit_index;
 
-#define NUM_SUBMIT_FRAMES 3
+/*
+ * Submit ring. Three numbers describe it:
+ *
+ *   SUBMIT_RING_CAP     compile-time capacity: the bound of every per-slot
+ *                       array below. Nothing is allocated per slot from it.
+ *   ring_alloc          slots that own GPU resources (command buffers,
+ *                       fences, staging buffers, query ranges, release
+ *                       lists), fixed at init: HAKUX_RING when set, else
+ *                       SUBMIT_FRAMES_PREF_MAX so the submit_frames pref can
+ *                       still move the length at runtime.
+ *   num_active_frames   ring length: the rotation modulus, the retirement
+ *                       distance and every wait-all loop. 1..ring_alloc.
+ *
+ * Every slot index in use (current_frame, invalidation_frame,
+ * deferred_downloads_frame, a held download's frame) is < num_active_frames
+ * at the time it is recorded, so < ring_alloc; loops that reach a slot's
+ * resources run to ring_alloc.
+ */
+#define SUBMIT_RING_CAP 8
+#define SUBMIT_FRAMES_PREF_MAX 3 /* submit_frames pref, HAKUX_SUBMIT_FRAMES */
     int num_active_frames;
+    int ring_alloc;
     VkQueue queue;
     VkCommandPool command_pool;
-    VkCommandBuffer command_buffers[NUM_SUBMIT_FRAMES * 2];
-    VkFence frame_fences[NUM_SUBMIT_FRAMES];
-    bool frame_submitted[NUM_SUBMIT_FRAMES];
-    bool frame_enqueued[NUM_SUBMIT_FRAMES];
+    VkCommandBuffer command_buffers[SUBMIT_RING_CAP * 2];
+    VkFence frame_fences[SUBMIT_RING_CAP];
+    bool frame_submitted[SUBMIT_RING_CAP];
+    bool frame_enqueued[SUBMIT_RING_CAP];
 #if NV2A_PERF_LOG
     /* Serial of every command_buffer begun, and the last one per slot */
     uint64_t cb_serial;
-    uint64_t frame_cb_serial[NUM_SUBMIT_FRAMES];
+    uint64_t frame_cb_serial[SUBMIT_RING_CAP];
 #endif
     VkSemaphore stall_chain_semaphore;
     bool stall_chain_pending;
@@ -1340,10 +1360,10 @@ typedef struct PGRAPHVkState {
     int fb_cache_count;
     VkFramebuffer current_framebuffer;
 
-    VkFramebuffer deferred_framebuffers[NUM_SUBMIT_FRAMES][MAX_FRAMEBUFFERS];
-    int deferred_framebuffer_count[NUM_SUBMIT_FRAMES];
-    GArray *deferred_texture_releases[NUM_SUBMIT_FRAMES]; /* DeferredTextureRelease */
-    GArray *deferred_surface_releases[NUM_SUBMIT_FRAMES]; /* DeferredSurfaceRelease, surface.c */
+    VkFramebuffer deferred_framebuffers[SUBMIT_RING_CAP][MAX_FRAMEBUFFERS];
+    int deferred_framebuffer_count[SUBMIT_RING_CAP];
+    GArray *deferred_texture_releases[SUBMIT_RING_CAP]; /* DeferredTextureRelease */
+    GArray *deferred_surface_releases[SUBMIT_RING_CAP]; /* DeferredSurfaceRelease, surface.c */
 
     VkRenderPass render_pass;
     VkRenderPass begin_render_pass;
@@ -1411,7 +1431,7 @@ typedef struct PGRAPHVkState {
 
     ReorderWindow reorder_window;
 
-    FrameStagingState frame_staging[NUM_SUBMIT_FRAMES];
+    FrameStagingState frame_staging[SUBMIT_RING_CAP]; /* [0, ring_alloc) */
 
     MemorySyncRequirement vertex_ram_buffer_syncs[NV2A_VERTEXSHADER_ATTRIBUTES];
     size_t num_vertex_ram_buffer_syncs;
@@ -1615,7 +1635,7 @@ typedef struct PGRAPHVkState {
     bool gpu_ts_supported;
     float gpu_ts_period_ns;
     int gpu_ts_rp_index;
-    int gpu_ts_rp_counts[NUM_SUBMIT_FRAMES];
+    int gpu_ts_rp_counts[SUBMIT_RING_CAP];
     uint64_t gpu_ts_results[GPU_TS_QUERIES_PER_CB];
     bool new_query_needed;
     bool query_in_flight;
@@ -2060,6 +2080,8 @@ void pgraph_vk_draw_begin(NV2AState *d);
 void pgraph_vk_draw_end(NV2AState *d);
 void pgraph_vk_finish(PGRAPHState *pg, FinishReason why);
 void pgraph_vk_flush_all_frames(PGRAPHState *pg);
+int xemu_submit_ring_env(void);
+int xemu_get_submit_frames(void);
 void end_render_pass(PGRAPHVkState *r);
 void pgraph_vk_flush_draw(NV2AState *d);
 void pgraph_vk_flush_draw_queue(NV2AState *d);

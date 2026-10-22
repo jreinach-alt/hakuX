@@ -6862,7 +6862,7 @@ void pgraph_vk_init_surfaces(PGRAPHState *pg)
     QTAILQ_INIT(&r->surfaces);
     QTAILQ_INIT(&r->invalid_surfaces);
     QTAILQ_INIT(&r->shelved_surfaces);
-    for (int i = 0; i < NUM_SUBMIT_FRAMES; i++) {
+    for (int i = 0; i < r->ring_alloc; i++) {
         r->deferred_surface_releases[i] =
             g_array_new(FALSE, FALSE, sizeof(DeferredSurfaceRelease));
     }
@@ -6886,7 +6886,7 @@ void pgraph_vk_finalize_surfaces(PGRAPHState *pg)
     pgraph_vk_surface_flush(container_of(pg, NV2AState, pgraph));
     /* The flush retired every surface and waited for the GPU behind any
      * download; destroy them now, then empty the pool they land in. */
-    for (int i = 0; i < NUM_SUBMIT_FRAMES; i++) {
+    for (int i = 0; i < r->ring_alloc; i++) {
         pgraph_vk_drain_deferred_surface_releases(r, i);
         g_array_free(r->deferred_surface_releases[i], TRUE);
         r->deferred_surface_releases[i] = NULL;

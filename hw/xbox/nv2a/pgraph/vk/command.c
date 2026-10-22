@@ -46,21 +46,33 @@ static void create_command_buffers(PGRAPHState *pg)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
 
+    /*
+     * The ring is sized here, before anything else that keeps per-slot
+     * resources is created (buffers, fences, release lists, query pools):
+     * those all allocate ring_alloc slots. HAKUX_RING fixes both numbers;
+     * without it the submit_frames pref may move the length at runtime
+     * within 1..SUBMIT_FRAMES_PREF_MAX, so that many slots are kept.
+     */
+    int ring = xemu_submit_ring_env();
+    r->ring_alloc = ring ? ring : SUBMIT_FRAMES_PREF_MAX;
+    r->num_active_frames = MIN(xemu_get_submit_frames(), r->ring_alloc);
+    VK_LOG_ERROR("[submitring] ring=%d src=%s slots=%d cap=%d",
+                 r->num_active_frames, ring ? "HAKUX_RING" : "submit_frames",
+                 r->ring_alloc, SUBMIT_RING_CAP);
+
     VkCommandBufferAllocateInfo alloc_info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
         .commandPool = r->command_pool,
         .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-        .commandBufferCount = ARRAY_SIZE(r->command_buffers),
+        .commandBufferCount = r->ring_alloc * 2,
     };
     VK_CHECK(
         vkAllocateCommandBuffers(r->device, &alloc_info, r->command_buffers));
 
-    extern int xemu_get_submit_frames(void);
     r->current_frame = 0;
-    r->num_active_frames = xemu_get_submit_frames();
     r->command_buffer = r->command_buffers[0];
     r->aux_command_buffer = r->command_buffers[1];
-    for (int i = 0; i < NUM_SUBMIT_FRAMES; i++) {
+    for (int i = 0; i < SUBMIT_RING_CAP; i++) {
         r->frame_submitted[i] = false;
         r->deferred_framebuffer_count[i] = 0;
     }
@@ -70,8 +82,8 @@ static void destroy_command_buffers(PGRAPHState *pg)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
 
-    vkFreeCommandBuffers(r->device, r->command_pool,
-                         ARRAY_SIZE(r->command_buffers), r->command_buffers);
+    vkFreeCommandBuffers(r->device, r->command_pool, r->ring_alloc * 2,
+                         r->command_buffers);
 
     r->command_buffer = VK_NULL_HANDLE;
     r->aux_command_buffer = VK_NULL_HANDLE;

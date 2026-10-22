@@ -156,9 +156,8 @@ static MemoryBudget compute_memory_budget(PGRAPHVkState *r)
      * refusing.
      */
     if (g_texture_cache_size_override > 0) {
-        extern int xemu_get_submit_frames(void);
-        size_t min_entries =
-            (size_t)NV2A_MAX_TEXTURES * (xemu_get_submit_frames() + 1);
+        /* ring_alloc: the longest num_active_frames can get in this run. */
+        size_t min_entries = (size_t)NV2A_MAX_TEXTURES * (r->ring_alloc + 1);
         b.texture_cache_entries = g_texture_cache_size_override;
         if (b.texture_cache_entries < min_entries) {
             VK_LOG_ERROR("texture_cache_size=%d is below the %zu entries one "
@@ -363,7 +362,6 @@ bool pgraph_vk_init_buffers(NV2AState *d, Error **errp)
         .buffer_size = vertex_inline_size,
     };
 
-    extern int xemu_get_submit_frames(void);
     int nframes = xemu_get_submit_frames();
 
     size_t uniform_size;
@@ -441,7 +439,7 @@ bool pgraph_vk_init_buffers(NV2AState *d, Error **errp)
     uni_max = MIN(uni_max, mb.perframe_uni_cap);
     stg_max = MIN(stg_max, mb.perframe_stg_cap);
 
-    for (int i = 0; i < NUM_SUBMIT_FRAMES; i++) {
+    for (int i = 0; i < r->ring_alloc; i++) {
         FrameStagingState *fs = &r->frame_staging[i];
 
         size_t idx_cap = MIN(r->storage_buffers[BUFFER_INDEX].buffer_size,
@@ -526,9 +524,10 @@ bool pgraph_vk_init_buffers(NV2AState *d, Error **errp)
         bitmap_clear(fs->uploaded_bitmap, 0, r->bitmap_size);
     }
     VK_LOG_ERROR("buffer_init: per-frame staging created (%d frames, "
-                 "idx=%zuMB vtx=%zuMB uni=%zuMB stg=%zuMB per-frame)",
+                 "idx=%zuMB vtx=%zuMB uni=%zuMB stg=%zuMB per-frame, "
+                 "%d slots)",
                  nframes, idx_max >> 20, vtx_max >> 20, uni_max >> 20,
-                 stg_max >> 20);
+                 stg_max >> 20, r->ring_alloc);
 
     pgraph_prim_rewrite_init(&r->prim_rewrite_buf);
 
@@ -537,7 +536,7 @@ bool pgraph_vk_init_buffers(NV2AState *d, Error **errp)
     return true;
 
 fail:
-    for (int i = 0; i < NUM_SUBMIT_FRAMES; i++) {
+    for (int i = 0; i < r->ring_alloc; i++) {
         FrameStagingState *fs = &r->frame_staging[i];
         StorageBuffer *bufs[] = {
             &fs->index_staging, &fs->vertex_inline_staging,
@@ -571,7 +570,7 @@ void pgraph_vk_finalize_buffers(NV2AState *d)
     PGRAPHState *pg = &d->pgraph;
     PGRAPHVkState *r = pg->vk_renderer_state;
 
-    for (int i = 0; i < NUM_SUBMIT_FRAMES; i++) {
+    for (int i = 0; i < r->ring_alloc; i++) {
         FrameStagingState *fs = &r->frame_staging[i];
         StorageBuffer *bufs[] = {
             &fs->index_staging, &fs->vertex_inline_staging,

@@ -92,7 +92,7 @@ static struct {
     RaBatch *head, *tail;
     bool busy, quit;
     /* batches queued or running that will read a slot's fence and queries */
-    int pending[NUM_SUBMIT_FRAMES];
+    int pending[SUBMIT_RING_CAP];
     /* the slot, query range and slot count the open command buffer uses */
     int cur_slot, cur_base, cur_nframes;
     /* the running count, 32 bits as zpass_pixel_count_result; the reader's
@@ -473,8 +473,8 @@ static void ra_start(PGRAPHVkState *r)
     qemu_thread_create(&ra.thread, "nv2a.vk.reports", ra_reader, NULL,
                        QEMU_THREAD_JOINABLE);
     ra.started = true;
-    RA_LOG("[reportasync] on: %d slots of %d queries", NUM_SUBMIT_FRAMES,
-           RA_SLOT_QUERIES);
+    RA_LOG("[reportasync] on: %d slots of %d queries (ring %d)",
+           r->ring_alloc, RA_SLOT_QUERIES, r->num_active_frames);
 }
 
 void pgraph_vk_init_reports(PGRAPHState *pg)
@@ -510,7 +510,7 @@ void pgraph_vk_init_reports(PGRAPHState *pg)
     VkQueryPoolCreateInfo pool_create_info = (VkQueryPoolCreateInfo){
         .sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,
         .queryType = VK_QUERY_TYPE_OCCLUSION,
-        .queryCount = ra.on ? NUM_SUBMIT_FRAMES * RA_SLOT_QUERIES
+        .queryCount = ra.on ? r->ring_alloc * RA_SLOT_QUERIES
                             : r->max_queries_in_flight,
     };
     r->query_serial_of =
@@ -937,8 +937,8 @@ static void *ra_reader(void *opaque)
  * The slot is not used again until its batch is done: the gate below waits
  * for every batch reading the slot the next command buffer will record into,
  * before that command buffer can reset the slot's queries or its finish reset
- * the slot's fence. With three slots the rotation has already waited for that
- * fence (pgraph_vk_finish), so the gate waits only for the read; a finish on
+ * the slot's fence. At any ring length the rotation has already waited for
+ * that fence (pgraph_vk_finish), so the gate waits only for the read; a finish on
  * the render thread, which does not rotate, waits for its own batch.
  *
  * If the slot count changed under the open command buffer (the submit-frames

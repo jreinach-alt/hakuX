@@ -493,7 +493,7 @@ static void pgraph_vk_init(NV2AState *d, Error **errp)
             VkQueryPoolCreateInfo ts_ci = {
                 .sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,
                 .queryType = VK_QUERY_TYPE_TIMESTAMP,
-                .queryCount = GPU_TS_QUERIES_PER_CB * NUM_SUBMIT_FRAMES,
+                .queryCount = GPU_TS_QUERIES_PER_CB * r->ring_alloc,
             };
             VK_CHECK(vkCreateQueryPool(r->device, &ts_ci, NULL,
                                        &r->gpu_ts_pool));
