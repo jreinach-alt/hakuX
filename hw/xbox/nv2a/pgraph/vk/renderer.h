@@ -226,6 +226,31 @@ struct OptBisectStats {
     int txr_s2td;               /* direct binds made: the view changed; a
                                  * reused view is not counted */
     int txr_why[TXDL__N];       /* txr_dl, by reason (async794) */
+    /*
+     * HAKUX_SD_BATCH (surface.c, sd_batch_*): downloads left in the deferred
+     * batch that the default path would have completed with a SURFACE_DOWN
+     * finish. ovl/exp: a shelved or expired surface whose download stays
+     * pending (the binding is kept on invalid_surfaces until it completes),
+     * or an expired active one whose download expiry no longer completes;
+     * ev: a download_surface_deferred record (eviction, active overlap,
+     * range lookup) made after a SURFACE_DOWN_FLUSH emptied a full batch,
+     * where the default path completes the batch with a SURFACE_DOWN
+     * finish; flush: those flushes (finish_surf_down counts them too); dup:
+     * a record skipped because the batch already holds that generation.
+     */
+    int sd_batched_ovl;
+    int sd_batched_exp;
+    int sd_batched_ev;
+    int sd_batched_flush;
+    int sd_batched_dup;
+    /*
+     * SURFACE_DOWN finishes issued from surface.c, by why the bytes were
+     * needed: access (CPU access callback / pending-download kick),
+     * overflow (deferred batch full), other (everything else).
+     */
+    int sd_sync_access;
+    int sd_sync_overflow;
+    int sd_sync_other;
 #endif
 };
 extern struct OptBisectStats g_opt_stats;
@@ -418,7 +443,13 @@ typedef struct SurfaceBinding {
     int invalidation_frame;
 } SurfaceBinding;
 
-#define MAX_DEFERRED_DOWNLOADS 64
+/*
+ * Capacity of the deferred download arrays. The batch is capped at
+ * DEFERRED_DOWNLOADS_DEFAULT_CAP unless HAKUX_SD_BATCH=1, which lets it fill
+ * the whole array (surface.c, deferred_downloads_cap()).
+ */
+#define MAX_DEFERRED_DOWNLOADS 128
+#define DEFERRED_DOWNLOADS_DEFAULT_CAP 64
 
 typedef struct DeferredSurfaceDownload {
     VkDeviceSize staging_offset;

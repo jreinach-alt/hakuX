@@ -490,6 +490,85 @@ static bool deferred_downloads_overlap_range(NV2AState *d, hwaddr start,
 }
 
 /*
+ * HAKUX_SD_BATCH=1 (off by default; read once in pgraph_vk_init_surfaces).
+ * The downloads an overlap or an expiry takes from a shelved binding stay in
+ * the deferred batch instead of completing with a SURFACE_DOWN finish of
+ * their own (sd_batch_retire_shelved), expiry no longer completes the batch,
+ * and a full batch is submitted with one deferred SURFACE_DOWN_FLUSH instead
+ * of a SURFACE_DOWN finish and wait (sd_batch_record). Without TCG there is no
+ * CPU-access watch to complete a pending download on demand, so the switch
+ * reads as off there.
+ */
+static bool g_sd_batch;
+
+static bool sd_batch_on(void)
+{
+    return g_sd_batch && tcg_enabled();
+}
+
+/* Downloads one batch holds: the arrays are sized for the switch. */
+static int deferred_downloads_cap(void)
+{
+    return sd_batch_on() ? MAX_DEFERRED_DOWNLOADS :
+                           DEFERRED_DOWNLOADS_DEFAULT_CAP;
+}
+
+/*
+ * Whether the batch, the held one included, already holds a full download of
+ * this surface at its current generation into `pixels`: the bytes are on
+ * their way, and a second record would land them again behind every download
+ * recorded since. The same test as the splice's dedup in
+ * download_surface_record_deferred.
+ */
+static bool deferred_downloads_hold_current(PGRAPHVkState *r,
+                                            SurfaceBinding const *surface,
+                                            uint8_t const *pixels)
+{
+    for (int i = 0; i < r->num_deferred_downloads + g_sg_held.n; i++) {
+        DeferredSurfaceDownload const *dl =
+            i < g_sg_held.n ? &g_sg_held.dl[i] :
+            &r->deferred_downloads[i - g_sg_held.n];
+        if (dl->surface == surface && !dl->partial && dl->dest_ptr == pixels &&
+            dl->draw_generation == surface->draw_generation) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/*
+ * sd_sync_reason on the hakuX-stall line: why a SURFACE_DOWN finish issued
+ * from this file needed its bytes now. `access` is
+ * pgraph_vk_process_pending_downloads (a trapped CPU access, or the scanout's
+ * download request); `overflow` is a full deferred batch's fallback; `other`
+ * is everything else. Perflog builds only. The PFIFO and the render thread
+ * both run these paths and the tag is one variable, so the split is an
+ * attribution, not an exact count.
+ */
+#if NV2A_PERF_LOG
+enum { SDW_OTHER, SDW_ACCESS, SDW_OVERFLOW };
+static int g_sdw = SDW_OTHER;
+
+static void sdw_count(int why)
+{
+    if (why == SDW_ACCESS) {
+        g_opt_stats.sd_sync_access++;
+    } else if (why == SDW_OVERFLOW) {
+        g_opt_stats.sd_sync_overflow++;
+    } else {
+        g_opt_stats.sd_sync_other++;
+    }
+}
+#define SDW_COUNT(why) sdw_count(why)
+#define SDW_BEGIN(why) int sdw_saved_ = g_sdw; g_sdw = (why)
+#define SDW_END() (g_sdw = sdw_saved_)
+#else
+#define SDW_COUNT(why) do { } while (0)
+#define SDW_BEGIN(why) do { } while (0)
+#define SDW_END() do { } while (0)
+#endif
+
+/*
  * #433, HAKUX_SURFSPLICE=1 (off by default): a binding that uploads from VRAM
  * bytes a pending download is about to write takes those bytes from the
  * download's staging copy on the GPU, instead of completing the download first.
@@ -1216,7 +1295,7 @@ static bool download_surface_record_deferred(NV2AState *d,
         dl_row_count = surface->download_row_count;
     }
 
-    if (r->num_deferred_downloads >= MAX_DEFERRED_DOWNLOADS) {
+    if (r->num_deferred_downloads >= deferred_downloads_cap()) {
         return false;
     }
 
@@ -2203,6 +2282,7 @@ static void download_surface_complete_deferred_at(NV2AState *d, int caller,
         wait_frame_fence(d, r->deferred_downloads_frame, release_lock);
     } else {
         OPT_STAT_INC(sd_complete_def);
+        SDW_COUNT(g_sdw);
         pgraph_vk_finish(pg, VK_FINISH_REASON_SURFACE_DOWN);
     }
 
@@ -2761,6 +2841,7 @@ static void download_surface_to_buffer(NV2AState *d, SurfaceBinding *surface,
 #if OPT_SURF_TO_TEX_INLINE
     pgraph_vk_end_nondraw_commands(pg, cmd);
     OPT_STAT_INC(sd_dl_to_buf);
+    SDW_COUNT(g_sdw);
     pgraph_vk_finish(pg, VK_FINISH_REASON_SURFACE_DOWN);
 #else
     pgraph_vk_end_single_time_commands(pg, cmd);
@@ -2841,6 +2922,34 @@ static void download_surface(NV2AState *d, SurfaceBinding *surface, bool force)
 }
 
 /*
+ * HAKUX_SD_BATCH: record a download, and when the batch is full, submit it
+ * with one SURFACE_DOWN_FLUSH and record into the next one. That finish is a
+ * deferred one (vk/draw.c): the PFIFO thread waits for the submit, not for the
+ * GPU. The submitted batch then completes as a flip's does -- held aside with
+ * its fence under HAKUX_SURFGPU, else waited for by the next record
+ * (complete_submitted_downloads) -- and the rotation into its frame slot
+ * retires it at the latest. The render thread's finishes are synchronous, so
+ * there it is left to the caller's fallback. Returns 0 if nothing was
+ * recorded, 1 if it was, 2 if it was after a flush.
+ */
+static int sd_batch_record(NV2AState *d, SurfaceBinding *surface)
+{
+    PGRAPHVkState *r = d->pgraph.vk_renderer_state;
+    uint8_t *pixels = d->vram_ptr + surface->vram_addr;
+
+    if (download_surface_record_deferred(d, surface, pixels)) {
+        return 1;
+    }
+    if (!r->in_command_buffer || r->is_render_thread_context ||
+        r->num_deferred_downloads == 0 || r->deferred_downloads_frame >= 0) {
+        return 0;
+    }
+    OPT_STAT_INC(sd_batched_flush);
+    pgraph_vk_finish(&d->pgraph, VK_FINISH_REASON_SURFACE_DOWN_FLUSH);
+    return download_surface_record_deferred(d, surface, pixels) ? 2 : 0;
+}
+
+/*
  * Like download_surface but uses the deferred path to avoid a finish.
  * The caller MUST ensure pgraph_vk_download_surface_complete_deferred() is called
  * before the surface is invalidated or freed.
@@ -2865,23 +2974,84 @@ static void download_surface_deferred(NV2AState *d, SurfaceBinding *surface)
 
     /* Try deferred path — records download into nondraw CB without
      * finishing. Multiple deferred downloads are batched into a single
-     * finish call when pgraph_vk_download_surface_complete_deferred() runs. */
-    if (download_surface_record_deferred(
-            d, surface, d->vram_ptr + surface->vram_addr)) {
+     * finish call when pgraph_vk_download_surface_complete_deferred() runs.
+     * HAKUX_SD_BATCH: a range lookup can find a binding an eviction or an
+     * overlap retired with its download still pending, which is on its way
+     * already; and a full batch is flushed, not completed (sd_batch_record). */
+    if (sd_batch_on()) {
+        if (deferred_downloads_hold_current(
+                d->pgraph.vk_renderer_state, surface,
+                d->vram_ptr + surface->vram_addr)) {
+            OPT_STAT_INC(sd_batched_dup);
+            return;
+        }
+        int rec = sd_batch_record(d, surface);
+        if (rec) {
+            if (rec == 2) {
+                OPT_STAT_INC(sd_batched_ev);
+            }
+            return;
+        }
+    } else if (download_surface_record_deferred(
+                   d, surface, d->vram_ptr + surface->vram_addr)) {
         return;
     }
 
     /* Deferred path failed (buffer full or limit reached). Complete pending
      * deferred downloads first, then retry. */
+    SDW_BEGIN(SDW_OVERFLOW);
     download_surface_complete_deferred(d, SDC_DEFER_FULL);
     if (download_surface_record_deferred(
             d, surface, d->vram_ptr + surface->vram_addr)) {
+        SDW_END();
         return;
     }
 
     /* Still failed — fall back to synchronous download. */
     OPT_STAT_INC(dl_from_def_fb);
     download_surface(d, surface, true);
+    SDW_END();
+}
+
+/*
+ * HAKUX_SD_BATCH: an overlap or an expiry is retiring shelved binding `s`.
+ * The default path downloads it inline (pgraph_vk_surface_download_if_dirty:
+ * complete the batch, then a SURFACE_DOWN finish of its own) and frees it, on
+ * the grounds that its VkImage is destroyed there. Since #29 the image is
+ * retired behind the frame fence (destroy_surface_image), so a copy recorded
+ * from it stays valid. What freeing the struct still loses is the CPU-access
+ * watch over the bytes the download will write, and the struct its completion
+ * retires (deferred_downloads_reference). So the download stays in the batch,
+ * and the binding moves to invalid_surfaces as invalidate_surface leaves an
+ * evicted one: its watch stays (it is draw-dirty, see
+ * unregister_cpu_access_callback_if_clean), prune and reuse skip it while the
+ * download names it, and a CPU access, a range lookup, or an upload over the
+ * range completes the download before reading VRAM.
+ *
+ * Returns true if the binding was kept. False when the caller downloads and
+ * frees it as before: the switch is off, or nothing is pending for it (it was
+ * clean, or a full batch the flush could not empty took the synchronous
+ * fallback).
+ */
+static bool sd_batch_retire_shelved(NV2AState *d, SurfaceBinding *s)
+{
+    PGRAPHVkState *r = d->pgraph.vk_renderer_state;
+
+    if (!sd_batch_on()) {
+        return false;
+    }
+    download_surface_deferred(d, s);
+    if (!deferred_downloads_reference(r, s)) {
+        return false;
+    }
+    QTAILQ_REMOVE(&r->shelved_surfaces, s, entry);
+    s->shelved_dirty = false;
+    /* Conservative: the image may have been drawn in this command buffer
+     * before it was shelved. Cleared when this slot's releases drain. */
+    s->invalidation_frame = r->in_command_buffer ? r->current_frame : -1;
+    QTAILQ_INSERT_HEAD(&r->invalid_surfaces, s, entry);
+    r->surface_list_gen++;
+    return true;
 }
 
 /*
@@ -3010,7 +3180,18 @@ void pgraph_vk_wait_for_surface_download(SurfaceBinding *surface)
     }
 }
 
+static void process_pending_downloads(NV2AState *d);
+
+/* A trapped CPU access or the scanout needs these bytes now: sd_sync_reason
+ * counts its finishes as `access`. */
 void pgraph_vk_process_pending_downloads(NV2AState *d)
+{
+    SDW_BEGIN(SDW_ACCESS);
+    process_pending_downloads(d);
+    SDW_END();
+}
+
+static void process_pending_downloads(NV2AState *d)
 {
     PGRAPHState *pg = &d->pgraph;
     PGRAPHVkState *r = pg->vk_renderer_state;
@@ -3033,7 +3214,7 @@ void pgraph_vk_process_pending_downloads(NV2AState *d)
         return;
     }
 
-    if (pending_count > MAX_DEFERRED_DOWNLOADS) {
+    if (pending_count > deferred_downloads_cap()) {
         can_defer = false;
     }
 
@@ -3063,6 +3244,7 @@ void pgraph_vk_process_pending_downloads(NV2AState *d)
     }
 
     OPT_STAT_INC(sd_pending_dl);
+    SDW_COUNT(g_sdw);
     pgraph_vk_finish(pg, VK_FINISH_REASON_SURFACE_DOWN);
 
     pgraph_vk_complete_staged_downloads(d, r);
@@ -3117,7 +3299,7 @@ void pgraph_vk_download_dirty_surfaces(NV2AState *d)
         return;
     }
 
-    if (pending_count > MAX_DEFERRED_DOWNLOADS) {
+    if (pending_count > deferred_downloads_cap()) {
         can_defer = false;
     }
 
@@ -3147,6 +3329,7 @@ void pgraph_vk_download_dirty_surfaces(NV2AState *d)
     }
 
     OPT_STAT_INC(sd_dirty_dl);
+    SDW_COUNT(g_sdw);
     pgraph_vk_finish(pg, VK_FINISH_REASON_SURFACE_DOWN);
 
     pgraph_vk_complete_staged_downloads(d, r);
@@ -4058,7 +4241,8 @@ static void invalidate_overlapping_surfaces(NV2AState *d,
         }
     }
 
-    /* Shelved surfaces: use inline path since images are destroyed here. */
+    /* Shelved surfaces: use inline path since images are destroyed here.
+     * HAKUX_SD_BATCH keeps the download pending: sd_batch_retire_shelved. */
     QTAILQ_FOREACH_SAFE (other_surface, &r->shelved_surfaces, entry,
                           next_surface) {
         if (other_surface->vram_addr == surface->vram_addr) {
@@ -4069,6 +4253,13 @@ static void invalidate_overlapping_surfaces(NV2AState *d,
             ovl1018_record(other_surface, surface, true);
             if (other_surface->shelved_dirty) {
                 OPT_STAT_INC(sd_shelved_lazy_dl);
+            }
+            bool was_dirty = other_surface->draw_dirty;
+            if (sd_batch_retire_shelved(d, other_surface)) {
+                if (was_dirty) {
+                    OPT_STAT_INC(sd_batched_ovl);
+                }
+                continue;
             }
             pgraph_vk_surface_download_if_dirty(d, other_surface);
             QTAILQ_REMOVE(&r->shelved_surfaces, other_surface, entry);
@@ -4559,13 +4750,21 @@ static void expire_old_surfaces(NV2AState *d)
      */
     SurfaceBinding *s, *next;
     bool expired = false;
+    bool batch = sd_batch_on();
     QTAILQ_FOREACH_SAFE(s, &r->surfaces, entry, next) {
         int last_used = d->pgraph.frame_time - s->frame_time;
         if (last_used >= max_surface_frame_time_delta) {
             expired = true;
             trace_nv2a_pgraph_surface_evict_reason("old", s->vram_addr);
             OPT_STAT_INC(dif_expire);
-            if (s->draw_dirty) {
+            if (s->draw_dirty && batch) {
+                /* Left pending: invalidate_surface keeps the image and,
+                 * while it is draw-dirty, the watch. */
+                download_surface_deferred(d, s);
+                if (s->draw_dirty && deferred_downloads_reference(r, s)) {
+                    OPT_STAT_INC(sd_batched_exp);
+                }
+            } else if (s->draw_dirty) {
                 if (!download_surface_record_deferred(
                         d, s, d->vram_ptr + s->vram_addr)) {
                     pgraph_vk_surface_download_if_dirty(d, s);
@@ -4579,8 +4778,11 @@ static void expire_old_surfaces(NV2AState *d)
      * surfaces, which destroy their VkImages on free. Only when something
      * expires: this runs at the end of every surface_update, and completing
      * unconditionally here would submit the finish that
-     * surface_update_may_defer_downloads just declined (#414). */
-    if (expired) {
+     * surface_update_may_defer_downloads just declined (#414).
+     * HAKUX_SD_BATCH: not at all. The images are retired behind the frame
+     * fence (#29), and a shelved binding a download still names is kept
+     * (sd_batch_retire_shelved). */
+    if (expired && !batch) {
         download_surface_complete_deferred(d, SDC_EXPIRE);
     }
 
@@ -4592,11 +4794,20 @@ static void expire_old_surfaces(NV2AState *d)
             shelved_count >= max_shelved_surfaces) {
             if (!expired) {
                 expired = true;
-                download_surface_complete_deferred(d, SDC_EXPIRE);
+                if (!batch) {
+                    download_surface_complete_deferred(d, SDC_EXPIRE);
+                }
             }
             OPT_STAT_INC(dif_expire_sh);
             if (s->shelved_dirty) {
                 OPT_STAT_INC(sd_shelved_lazy_dl);
+            }
+            bool was_dirty = s->draw_dirty;
+            if (sd_batch_retire_shelved(d, s)) {
+                if (was_dirty) {
+                    OPT_STAT_INC(sd_batched_exp);
+                }
+                continue;
             }
             pgraph_vk_surface_download_if_dirty(d, s);
             QTAILQ_REMOVE(&r->shelved_surfaces, s, entry);
@@ -6858,6 +7069,13 @@ void pgraph_vk_init_surfaces(PGRAPHState *pg)
                 .vk_format,
             pg->zeta_stored_as_float ? "float" : "unorm",
             zeta_d24_first ? " (HAKUX_ZETA_D24)" : "");
+
+    /* #433 P7: see sd_batch_on. */
+    const char *sd_batch_env = getenv("HAKUX_SD_BATCH");
+    g_sd_batch = sd_batch_env && sd_batch_env[0] == '1';
+    fprintf(stderr, "nv2a: HAKUX_SD_BATCH=%d, deferred download cap %d%s\n",
+            g_sd_batch, deferred_downloads_cap(),
+            g_sd_batch && !tcg_enabled() ? " (no TCG: off)" : "");
 
     QTAILQ_INIT(&r->surfaces);
     QTAILQ_INIT(&r->invalid_surfaces);

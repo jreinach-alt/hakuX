@@ -996,7 +996,7 @@ static void opt_stats_log_and_reset(void)
                 g_opt_stats.draws_skipped_no_pipeline,
                 g_opt_stats.draws_skipped_null_pipeline);
         __android_log_print(ANDROID_LOG_INFO, "hakuX-stall",
-                "RPBreaks:%d Finish:%d(vtx%d sc%d sd%d buf%d fb%d pres%d flip%d flu%d stl%d stlDef%d stlBat%d) InlClr:%d/%d PreDL:%d sd[ev%d noCb%d dl%d cDef%d cDefC%d pDl%d dDl%d] dlSrc[defFb%d ppdFb%d dirtyIf%d] dif[ovl%d ovlSh%d exp%d expSh%d blt%d flu%d dds%d oth%d]",
+                "RPBreaks:%d Finish:%d(vtx%d sc%d sd%d buf%d fb%d pres%d flip%d flu%d stl%d stlDef%d stlBat%d) InlClr:%d/%d PreDL:%d sd[ev%d noCb%d dl%d cDef%d cDefC%d pDl%d dDl%d] dlSrc[defFb%d ppdFb%d dirtyIf%d] dif[ovl%d ovlSh%d exp%d expSh%d blt%d flu%d dds%d oth%d] sd_batched[ovl%d exp%d ev%d flush%d dup%d] sd_sync_reason=access%d/overflow%d/other%d",
                 g_opt_stats.render_pass_breaks,
                 g_opt_stats.finish_calls,
                 g_opt_stats.finish_vtx_dirty,
@@ -1030,7 +1030,15 @@ static void opt_stats_log_and_reset(void)
                 g_opt_stats.dif_blit,
                 g_opt_stats.dif_flush,
                 g_opt_stats.dif_dds_fb,
-                g_opt_stats.dif_other);
+                g_opt_stats.dif_other,
+                g_opt_stats.sd_batched_ovl,
+                g_opt_stats.sd_batched_exp,
+                g_opt_stats.sd_batched_ev,
+                g_opt_stats.sd_batched_flush,
+                g_opt_stats.sd_batched_dup,
+                g_opt_stats.sd_sync_access,
+                g_opt_stats.sd_sync_overflow,
+                g_opt_stats.sd_sync_other);
         __android_log_print(ANDROID_LOG_INFO, "hakuX-stall",
                 "evict[dl:%d unshelve:%d stale:%d dl:%d]",
                 g_opt_stats.sd_eviction_dl,
