@@ -358,6 +358,7 @@ def main(argv):
 
     fails += book_tests(learned_td)
     fails += probe_tests()
+    fails += loading_tests()
     print("pathclass_selftest: %d failure(s)" % fails)
     return 1 if fails else 0
 
@@ -608,12 +609,12 @@ class ReactiveStub:
                 "top3": [["gameplay", 0.6], ["cutscene", 0.2], ["main_menu", 0.1]], "action": {"do": "A", "why": "selftest"}}
 
 
-def probe_run(moves, seconds, conf=0.5, drive_set=None, inp_set=None):
-    """One generic.toml run against a ReactiveStub; returns (driver, device)."""
+def probe_run(moves, seconds, conf=0.5, drive_set=None, inp_set=None, make_stub=None):
+    """One generic.toml run against a ReactiveStub (or `make_stub(dev)`); returns (driver, device)."""
     fl, d = sim_frames()
     live = os.path.join(d, "124950-entry.png")
     dev = drive.SimDevice([live] * (int(seconds) + 10), 1.0)
-    stub = ReactiveStub(dev, moves, conf)
+    stub = make_stub(dev) if make_stub else ReactiveStub(dev, moves, conf)
     classify._PATHCLASS_CLIENT = stub
     classify.pathclass_client = lambda: stub
     prof = classify.load_profile(os.path.join(PROF, "generic.toml"))
@@ -795,6 +796,68 @@ def probe_tests():
             fails += report(False, "probe: input.probe naming %s is refused" % bad, "no SystemExit")
         except SystemExit:
             fails += report(True, "probe: input.probe naming %s is refused" % bad)
+    return fails
+
+
+class LoadingStub:
+    """pathclass calling a screen `loading` at 0.9 (over generic.toml's 0.7 menu floor), the
+    way it called NFS Hot Pursuit 2's "A Advance" briefing for 530 s. `ends(dev)` says when it
+    stops being one: the game's own load finishing, or a button that advances it; then it is a
+    confident gameplay on a moving picture."""
+
+    def __init__(self, dev, ends):
+        self.dev, self.ends = dev, ends
+
+    def classify(self, frame, prev, context):
+        if self.ends(self.dev):
+            return {"state": "gameplay", "confidence": 0.95, "moving": True, "diff": 0.3,
+                    "top3": [["gameplay", 0.9], ["cutscene", 0.05], ["main_menu", 0.03]], "action": {"do": "A", "why": "selftest"}}
+        return {"state": "loading", "confidence": 0.9, "moving": True, "diff": 0.05,
+                "top3": [["loading", 0.9], ["main_menu", 0.05], ["gameplay", 0.02]], "action": {"do": "A", "why": "selftest"}}
+
+
+def loading_tests():
+    """loadstuck1021: a `loading` that never ends is handled as `unknown` after loading_stuck_s."""
+    fails = 0
+    clear_learned()
+    a_sent = lambda dev: any(s[1:] == ("press", "A") for s in dev.sent)
+    presses = lambda dev: [s for s in dev.sent if len(s) > 2 and s[1] == "press"]
+    run = lambda ends, seconds, **ds: probe_run(None, seconds, drive_set=ds, make_stub=lambda dev: LoadingStub(dev, ends))
+
+    # the HP2 briefing: `loading` for as long as nothing is pressed, gameplay once A is.
+    drv, dev = run(a_sent, 200)
+    first = presses(dev)[0] if presses(dev) else None
+    fails += report(first is not None and first[2] == "A" and 90.0 <= first[0] <= 100.0 and "play" in drv.seen,
+                    "loading: a `loading` that outlasts loading_stuck_s (90) gets an A, and the run reaches play",
+                    "first press %s seen=%s" % (first, drv.seen))
+    fails += report(not [s for s in presses(dev) if s[0] < 90.0],
+                    "loading: nothing is pressed before the bar", "early presses %s" % [s for s in presses(dev) if s[0] < 90.0])
+    fails += report(any(m.startswith("loading-overstay") for m in dev.log),
+                    "loading: the overstay is written to logcat, so a long wait is visible", "log=%s" % dev.log[:4])
+    fails += report(("unknown:pathclass:loading", "A", "advanced") in drv.explored,
+                    "loading: the press that ended it is a learned record (screen, A, advanced)", "explored=%s" % drv.explored)
+
+    # the weaker rule: no bar. The same screen is waited on for the whole run -- the 530 s.
+    clear_learned()
+    drv2, dev2 = run(a_sent, 200, loading_stuck_s=0.0)
+    fails += report(not presses(dev2) and "play" not in drv2.seen,
+                    "mutant (loading waited out for ever) never presses: the check above is not vacuous",
+                    "presses=%s seen=%s" % (presses(dev2)[:2], drv2.seen))
+
+    # a real load that ends by itself inside the bar is left alone.
+    clear_learned()
+    ends60 = lambda dev: dev.clock >= 60.0
+    # (play's own A tap starts once the load is over, so only presses before 60 s are into the load)
+    into_load = lambda dev: [s for s in presses(dev) if s[0] < 60.0]
+    drv3, dev3 = run(ends60, 200)
+    fails += report(not into_load(dev3) and "play" in drv3.seen,
+                    "loading: a load that ends on its own inside the bar gets no press", "presses=%s seen=%s" % (into_load(dev3)[:2], drv3.seen))
+    clear_learned()
+    drv4, dev4 = run(ends60, 200, loading_stuck_s=30.0)
+    fails += report(bool(into_load(dev4)),
+                    "mutant (bar lowered to 30 s) presses into a real load: the check above is not vacuous",
+                    "presses=%s" % presses(dev4)[:2])
+    clear_learned()
     return fails
 
 
