@@ -587,6 +587,15 @@ static bool g_surfsplice_armed;
  * on the [surfgpu] line as dedup=. */
 static unsigned long g_spl_dedup;
 
+/*
+ * HAKUX_SU_SPLICE (0/1, read once in pgraph_vk_init_surfaces; default 0): an
+ * uploading surface_update whose binding reads bytes a pending download still
+ * owes takes them from the download's source image with a vkCmdCopyImage
+ * instead of completing the batch (su_splice_try). Off, the update completes
+ * the batch as before.
+ */
+static bool g_su_splice;
+
 /* Downloads placed back at the start of the staging buffer, past a held
  * batch's rows (surfgpu_staging_fits). Printed there as wrap=. */
 static unsigned long g_sg_wrap;
@@ -1185,8 +1194,10 @@ static bool download_surface_record_deferred(NV2AState *d,
      * the backbuffer's clear, recorded when the subsurface evicted it, landed
      * again over the subsurface's download (lane.surfgpu1009 NOTES 9).
      * The held batch completes before this one, so its downloads count too.
+     * HAKUX_SU_SPLICE leaves the download pending the same way (the image
+     * copy feeds the upload and the batch stays), so it needs the same test.
      */
-    if (surfsplice_on()) {
+    if (surfsplice_on() || g_su_splice) {
         for (int i = 0; i < r->num_deferred_downloads + g_sg_held.n; i++) {
             DeferredSurfaceDownload const *dl =
                 i < g_sg_held.n ? &g_sg_held.dl[i] :
@@ -1871,6 +1882,9 @@ enum {
     UPW_NONE, UPW_NEW, UPW_INVALID, UPW_STALE, UPW_HANDOFF, UPW_CPUW, UPW_GAP,
     UPW__COUNT
 };
+/* HAKUX_SU_SPLICE: why an uploading update with a pending download over a
+ * binding's bytes still completed the batch (su_plan_binding). */
+enum { SUFB_PARTIAL, SUFB_CPUW, SUFB_FMT, SUFB_SRC, SUFB_SUB, SUFB__COUNT };
 #if NV2A_PERF_LOG && defined(__ANDROID__)
 static struct {
     int frame0;
@@ -1899,6 +1913,12 @@ static struct {
      * uploads that spliced, the downloads and KiB spliced, and the uploads
      * that completed the downloads themselves (one could not be spliced). */
     unsigned long spl_defer, spl_up, spl_dl, spl_kb, spl_cmpl;
+    /* HAKUX_SU_SPLICE: image copies that fed a binding (cp), updates that
+     * skipped the completion with no pending download over any uploading
+     * binding (nov), and updates that completed it anyway, by the first
+     * reason found (splfb, SUFB_*). */
+    unsigned long spl_cp, spl_nov;
+    unsigned long splfb[SUFB__COUNT];
     /* HAKUX_SURFGPU: reuse completions it detached instead, and flip batches
      * it marked with no display surface. Printed on a [surfgpu] line. With
      * them the held batch (g_sg_held): submitted batches held instead of
@@ -2008,7 +2028,7 @@ static void sdcall_log(PGRAPHState *pg)
     if (frames < 60) {
         return;
     }
-    char buf[800];
+    char buf[1024];
     int n = snprintf(buf, sizeof(buf), "[sdcall] frames=%d", frames);
     for (int i = 0; i < SDC__COUNT && n < (int)sizeof(buf); i++) {
         if (!g_sdcall.fin[i] && !g_sdcall.fence[i] && !g_sdcall.pre[i]) {
@@ -2023,14 +2043,19 @@ static void sdcall_log(PGRAPHState *pg)
         snprintf(buf + n, sizeof(buf) - n,
                  " su_upl=%lu su_deferred=%lu why=new%lu/inv%lu/stale%lu/"
                  "hoff%lu/cpuw%lu/gap%lu/oth%lu clr=%lu clrfull=%lu "
-                 "clrskip=%lu spl=def%lu/up%lu/dl%lu/%lukB/cmpl%lu",
+                 "clrskip=%lu spl=def%lu/up%lu/dl%lu/%lukB/cmpl%lu/cp%lu/"
+                 "nov%lu spl_fallback=partial%lu/cpuw%lu/fmt%lu/src%lu/sub%lu",
                  g_sdcall.su_upl, g_sdcall.su_deferred,
                  g_sdcall.why[UPW_NEW], g_sdcall.why[UPW_INVALID],
                  g_sdcall.why[UPW_STALE], g_sdcall.why[UPW_HANDOFF],
                  g_sdcall.why[UPW_CPUW], g_sdcall.why[UPW_GAP],
                  g_sdcall.why[UPW_NONE], g_sdcall.clr, g_sdcall.clrfull,
                  g_sdcall.clrskip, g_sdcall.spl_defer, g_sdcall.spl_up,
-                 g_sdcall.spl_dl, g_sdcall.spl_kb, g_sdcall.spl_cmpl);
+                 g_sdcall.spl_dl, g_sdcall.spl_kb, g_sdcall.spl_cmpl,
+                 g_sdcall.spl_cp, g_sdcall.spl_nov,
+                 g_sdcall.splfb[SUFB_PARTIAL], g_sdcall.splfb[SUFB_CPUW],
+                 g_sdcall.splfb[SUFB_FMT], g_sdcall.splfb[SUFB_SRC],
+                 g_sdcall.splfb[SUFB_SUB]);
     }
     SURF92_LOG("%s", buf);
     if (g_sdcall.edl_dl) {
@@ -2801,6 +2826,19 @@ static void download_surface(NV2AState *d, SurfaceBinding *surface, bool force)
     if (!(surface->download_pending || force) || !surface->width ||
         !surface->height) {
         return;
+    }
+
+    /*
+     * HAKUX_SU_SPLICE: a surface whose download the image copy left pending
+     * still reads dirty, and download_surface_to_buffer completes the batch
+     * only after the test below. That completion credits the surface at the
+     * generation the batch captured, and the copy here then writes the
+     * surface again over any download recorded after its own -- bytes the
+     * completion at the update would have left in VRAM. Completing first lets
+     * the test see the credit, as it would have after that completion.
+     */
+    if (g_su_splice && deferred_downloads_reference(r, surface)) {
+        download_surface_complete_deferred(d, SDC_TO_BUFFER);
     }
 
     /* Skip if surface was already downloaded at current generation. This
@@ -6241,6 +6279,420 @@ static void surface_drop_covered_upload(NV2AState *d, SurfaceBinding *s)
     SDCALL_DO(g_sdcall.clrskip++);
 }
 
+/*
+ * HAKUX_SU_SPLICE (#433, fps30 P4). An uploading update whose binding reads
+ * VRAM that a pending, unsubmitted download still owes completes the batch
+ * first: a finish and a CPU wait for the whole frame so far (Fable's zeta,
+ * reshaped 128x128 -> 64x64 -> 32x32 at one address, `why=inv`). The bytes the
+ * upload would read are the download's, and the download's are its source
+ * image's at the generation it captured, so the binding can take them from
+ * that image on the GPU: one vkCmdCopyImage in the nondraw command buffer,
+ * after the download's own copy. The download stays pending for the CPU
+ * readers it was recorded for, and completes where it would have without
+ * this update (surface_update_may_defer_downloads lists them).
+ *
+ * The copy is equivalent to complete-then-upload only when the upload
+ * would round-trip the bytes unchanged and every byte the upload reads is
+ * the download's. Anything else takes today's completion, counted on the
+ * [sdcall] line as spl_fallback=, by the first reason found:
+ *
+ *   partial  the last download over the binding's bytes does not cover them
+ *            all, or covers only some rows of its surface;
+ *   cpuw     a CPU access may sit between the download and the upload: no
+ *            TCG (no watch, VRAM must be current), a trapped access waiting
+ *            for the downloads, or the source's or binding's watch down;
+ *   fmt      the copy cannot express the mapping or the conversion: format,
+ *            bytes per pixel, colour with a host size the upload converts,
+ *            D32_SFLOAT_S8_UINT (its float round trip is not exact; lane
+ *            surfgpu1009 NOTES section 3), scaled images, a linear pitch
+ *            change, swizzle masks that do not nest;
+ *   src      the source image is not provably what the download captured;
+ *   sub      the batch is submitted, pre-recorded at a flip, or a held
+ *            HAKUX_SURFGPU batch overlaps: a fence wait, not this path.
+ */
+#define SU_NONE (-1)
+#define SU_COPY SUFB__COUNT
+
+typedef struct SuPlan {
+    int kind;            /* SU_NONE, SU_COPY or a SUFB_ reason */
+    SurfaceBinding *src; /* SU_COPY: the download's source */
+    unsigned int x0, y0; /* SU_COPY: the binding's (0, 0) in src */
+} SuPlan;
+
+static bool su_pow2(unsigned int v)
+{
+    return v && !(v & (v - 1));
+}
+
+/* swizzle.c's generate_swizzle_masks() for a 2D surface. */
+static void su_swizzle_masks(unsigned int width, unsigned int height,
+                             uint32_t *mask_x, uint32_t *mask_y)
+{
+    uint32_t x = 0, y = 0, mask_bit = 1;
+    for (uint32_t bit = 1; bit < width || bit < height; bit <<= 1) {
+        if (bit < width) {
+            x |= mask_bit;
+            mask_bit <<= 1;
+        }
+        if (bit < height) {
+            y |= mask_bit;
+            mask_bit <<= 1;
+        }
+    }
+    *mask_x = x;
+    *mask_y = y;
+}
+
+/* The lowest n set bits of m. */
+static uint32_t su_low_set_bits(uint32_t m, int n)
+{
+    uint32_t out = 0;
+    while (m && n-- > 0) {
+        uint32_t b = m & (~m + 1);
+        out |= b;
+        m &= m - 1;
+    }
+    return out;
+}
+
+static SuPlan su_plan_binding(NV2AState *d, SurfaceBinding *s)
+{
+    PGRAPHState *pg = &d->pgraph;
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    SuPlan p = { .kind = SU_NONE };
+
+    if (!s || !s->upload_pending || !s->width || !s->height) {
+        return p;
+    }
+
+    /* Every byte the upload reads: pitch * height linear, width * height *
+     * bpp swizzled; size covers both. */
+    unsigned int bpp = s->fmt.bytes_per_pixel;
+    hwaddr lo = s->vram_addr;
+    hwaddr hi = lo + MAX(MAX((hwaddr)s->size,
+                             (hwaddr)s->width * s->height * bpp),
+                         (hwaddr)s->pitch * s->height);
+
+    for (int i = 0; i < g_sg_held.n; i++) {
+        if (deferred_download_overlaps(d, &g_sg_held.dl[i], lo, hi)) {
+            p.kind = SUFB_SUB;
+            return p;
+        }
+    }
+
+    /* Completion copies in record order, so the last download over the range
+     * is the one whose bytes the upload would read wherever it writes. */
+    DeferredSurfaceDownload const *dl = NULL;
+    for (int i = r->num_deferred_downloads - 1; i >= 0; i--) {
+        if (deferred_download_overlaps(d, &r->deferred_downloads[i], lo, hi)) {
+            dl = &r->deferred_downloads[i];
+            break;
+        }
+    }
+    if (!dl) {
+        /* VRAM is already what the upload needs, as the buffer splice's
+         * nothing-to-splice case (surfsplice_upload_ok). */
+        return p;
+    }
+    if (dl->partial) {
+        p.kind = SUFB_PARTIAL;
+        return p;
+    }
+
+    /*
+     * The source image holds the download's bytes: the same surface at the
+     * generation the copy captured (draws bump it), not uploading, not bound
+     * (so this update's draws cannot reach it), with no queued draw, and its
+     * geometry still the download's.
+     */
+    SurfaceBinding *src = dl->surface;
+    hwaddr dl_start = dl->dest_ptr - d->vram_ptr;
+    if (!src || src == s || src == r->color_binding ||
+        src == r->zeta_binding || !src->image || !s->image ||
+        src->image == s->image ||
+        src->draw_generation != dl->draw_generation || src->upload_pending ||
+        src->width != dl->width || src->height != dl->height ||
+        src->pitch != dl->pitch || src->swizzle != dl->swizzle ||
+        src->vram_addr != dl_start ||
+        src->host_fmt.vk_format != dl->host_fmt.vk_format ||
+        src->image_layout == VK_IMAGE_LAYOUT_UNDEFINED ||
+        src->image_layout == VK_IMAGE_LAYOUT_PREINITIALIZED ||
+        r->reorder_window.count > 0 || r->draw_queue.count > 0) {
+        p.kind = SUFB_SRC;
+        return p;
+    }
+
+    /*
+     * A CPU write to the download's range traps on the source's watch and
+     * completes the batch before it lands (surface_access_callback), so a
+     * live watch means VRAM there is still the download's. A trap already
+     * waiting (downloads_pending) is the access the completion serves. A
+     * suspended watch on the binding would be re-armed below with a hash of
+     * VRAM from before the download lands, and the gap check would read the
+     * landing as a guest write.
+     */
+    bool watched;
+    qemu_rec_mutex_lock(&surface_watch_lock);
+    watched = src->access_cb != NULL &&
+              !(surface_watch_suspended &&
+                (g_hash_table_contains(surface_watch_suspended, src) ||
+                 g_hash_table_contains(surface_watch_suspended, s)));
+    qemu_rec_mutex_unlock(&surface_watch_lock);
+    if (qatomic_read(&r->downloads_pending) || !watched) {
+        p.kind = SUFB_CPUW;
+        return p;
+    }
+
+    /*
+     * The upload and the download are bit copies for colour whose host size
+     * is the guest's (the upload asserts no conversion), for D16, and for
+     * D24S8 (integer pack/unpack, surface-compute.c). D32_SFLOAT_S8_UINT goes
+     * through float and is not.
+     */
+    if (src->color != s->color || dl->color != s->color ||
+        dl->host_fmt.vk_format != s->host_fmt.vk_format ||
+        dl->bytes_per_pixel != (int)bpp ||
+        src->fmt.bytes_per_pixel != bpp ||
+        (s->color ? s->host_fmt.host_bytes_per_pixel != bpp :
+                    (s->host_fmt.vk_format != VK_FORMAT_D16_UNORM &&
+                     s->host_fmt.vk_format != VK_FORMAT_D24_UNORM_S8_UINT)) ||
+        pg->surface_scale_factor != 1 || src->image_scale != 1 ||
+        s->image_scale != 1 || src->swizzle != s->swizzle) {
+        p.kind = SUFB_FMT;
+        return p;
+    }
+
+    if (!s->swizzle) {
+        /* One pitch: the binding is a rectangle of the source's texels. */
+        if (dl->pitch != s->pitch || s->pitch < s->width * bpp ||
+            dl->pitch < dl->width * bpp) {
+            p.kind = SUFB_FMT;
+            return p;
+        }
+        if (s->vram_addr < dl_start) {
+            p.kind = SUFB_PARTIAL;
+            return p;
+        }
+        hwaddr off = s->vram_addr - dl_start;
+        if ((off % s->pitch) % bpp) {
+            p.kind = SUFB_FMT;
+            return p;
+        }
+        p.x0 = (off % s->pitch) / bpp;
+        p.y0 = off / s->pitch;
+        if ((hwaddr)p.x0 + s->width > dl->width ||
+            (hwaddr)p.y0 + s->height > dl->height) {
+            p.kind = SUFB_PARTIAL;
+            return p;
+        }
+    } else {
+        /*
+         * Swizzled: texel (x, y) of the binding is at the source's offset for
+         * (x, y) when each of the binding's masks is the low bits of the
+         * source's -- a mip-style shrink at one address.
+         */
+        if (s->vram_addr != dl_start || !su_pow2(s->width) ||
+            !su_pow2(s->height) || !su_pow2(dl->width) ||
+            !su_pow2(dl->height)) {
+            p.kind = SUFB_FMT;
+            return p;
+        }
+        if (s->width > dl->width || s->height > dl->height) {
+            p.kind = SUFB_PARTIAL;
+            return p;
+        }
+        uint32_t old_x, old_y, new_x, new_y;
+        su_swizzle_masks(dl->width, dl->height, &old_x, &old_y);
+        su_swizzle_masks(s->width, s->height, &new_x, &new_y);
+        if (su_low_set_bits(old_x, ctpop32(new_x)) != new_x ||
+            su_low_set_bits(old_y, ctpop32(new_y)) != new_y) {
+            p.kind = SUFB_FMT;
+            return p;
+        }
+    }
+
+    p.kind = SU_COPY;
+    p.src = src;
+    return p;
+}
+
+/*
+ * dst's whole image from src's texels at (x0, y0). Explicit barriers rather
+ * than pgraph_vk_transition_image_layout, whose access masks are fixed per
+ * layout pair: src may be in GENERAL or TRANSFER_SRC, dst in anything. src
+ * goes back to its layout and dst ends where the upload leaves it.
+ */
+static void su_splice_copy(NV2AState *d, SurfaceBinding *src,
+                           SurfaceBinding *dst, unsigned int x0,
+                           unsigned int y0)
+{
+    PGRAPHState *pg = &d->pgraph;
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    VkImageAspectFlags aspect = dst->host_fmt.aspect;
+    VkImageLayout src_layout = src->image_layout;
+    VkImageLayout src_copy = (src->color &&
+                              src_layout == VK_IMAGE_LAYOUT_GENERAL) ?
+        VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    VkImageLayout dst_copy = (dst->color &&
+                              dst->image_layout == VK_IMAGE_LAYOUT_GENERAL) ?
+        VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    VkImageLayout dst_final = dst->color ?
+        VK_IMAGE_LAYOUT_GENERAL :
+        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    VkImageSubresourceRange range = {
+        aspect, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS,
+    };
+
+    VkCommandBuffer cmd = pgraph_vk_begin_nondraw_commands(pg);
+    pgraph_vk_begin_debug_marker(r, cmd, RGBA_RED, __func__);
+    int xfr_tok = pgraph_vk_xfr_begin(pg, cmd, "surf_up", 6342);
+    pgraph_vk_xfr_surf(src, XFR_SURF_READ);
+    pgraph_vk_xfr_surf(dst, XFR_SURF_UPLOAD);
+
+    VkImageMemoryBarrier pre[2] = {
+        {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT,
+            .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
+            .oldLayout = src_layout,
+            .newLayout = src_copy,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image = src->image,
+            .subresourceRange = range,
+        },
+        {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .srcAccessMask = VK_ACCESS_MEMORY_READ_BIT |
+                             VK_ACCESS_MEMORY_WRITE_BIT,
+            .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+            .oldLayout = dst->image_layout,
+            .newLayout = dst_copy,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image = dst->image,
+            .subresourceRange = range,
+        },
+    };
+    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+                         VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL,
+                         2, pre);
+
+    /* Depth and stencil as two regions, as the upload copies them. */
+    VkImageAspectFlags parts[2] = {
+        dst->color ? VK_IMAGE_ASPECT_COLOR_BIT : VK_IMAGE_ASPECT_DEPTH_BIT,
+        VK_IMAGE_ASPECT_STENCIL_BIT,
+    };
+    int num_regions = (aspect & VK_IMAGE_ASPECT_STENCIL_BIT) ? 2 : 1;
+    VkImageCopy regions[2];
+    for (int i = 0; i < num_regions; i++) {
+        regions[i] = (VkImageCopy){
+            .srcSubresource = { parts[i], 0, 0, 1 },
+            .srcOffset = { (int32_t)x0, (int32_t)y0, 0 },
+            .dstSubresource = { parts[i], 0, 0, 1 },
+            .dstOffset = { 0, 0, 0 },
+            .extent = { dst->width, dst->height, 1 },
+        };
+    }
+    vkCmdCopyImage(cmd, src->image, src_copy, dst->image, dst_copy,
+                   num_regions, regions);
+
+    VkImageMemoryBarrier post[2] = {
+        {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+            .dstAccessMask = VK_ACCESS_MEMORY_READ_BIT |
+                             VK_ACCESS_MEMORY_WRITE_BIT,
+            .oldLayout = dst_copy,
+            .newLayout = dst_final,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image = dst->image,
+            .subresourceRange = range,
+        },
+        {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
+            .dstAccessMask = VK_ACCESS_MEMORY_READ_BIT |
+                             VK_ACCESS_MEMORY_WRITE_BIT,
+            .oldLayout = src_copy,
+            .newLayout = src_layout,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image = src->image,
+            .subresourceRange = range,
+        },
+    };
+    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                         VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, NULL, 0,
+                         NULL, 2, post);
+    dst->image_layout = dst_final;
+
+    pgraph_vk_xfr_end(pg, cmd, xfr_tok);
+    pgraph_vk_end_debug_marker(r, cmd);
+    pgraph_vk_end_nondraw_commands(pg, cmd);
+}
+
+/*
+ * The update's completion, unless every uploading binding either has no
+ * pending download over its bytes or takes them by su_splice_copy. Returns
+ * true when the completion is not needed. Planned for both bindings before
+ * anything is recorded: one fallback completes the batch for both, and then
+ * both upload from VRAM as before. A binding that took the copy is left as
+ * the upload leaves it (surface_drop_covered_upload's steps), so the upload
+ * that follows skips it.
+ */
+static bool su_splice_try(NV2AState *d)
+{
+    PGRAPHState *pg = &d->pgraph;
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    SurfaceBinding *b[2] = { r->color_binding, r->zeta_binding };
+    SuPlan plan[2] = { { .kind = SU_NONE }, { .kind = SU_NONE } };
+    int fallback = SU_NONE;
+
+    if (!((b[0] && b[0]->upload_pending) || (b[1] && b[1]->upload_pending))) {
+        return false;
+    }
+    if (!tcg_enabled()) {
+        fallback = SUFB_CPUW;
+    } else if (r->deferred_downloads_frame >= 0 ||
+               r->display_predownload_pending) {
+        fallback = SUFB_SUB;
+    } else {
+        for (int i = 0; i < 2 && fallback == SU_NONE; i++) {
+            plan[i] = su_plan_binding(d, b[i]);
+            if (plan[i].kind != SU_NONE && plan[i].kind != SU_COPY) {
+                fallback = plan[i].kind;
+            }
+        }
+    }
+    if (fallback != SU_NONE) {
+        SDCALL_DO(g_sdcall.splfb[fallback]++);
+        return false;
+    }
+
+    int copies = 0;
+    for (int i = 0; i < 2; i++) {
+        if (plan[i].kind != SU_COPY) {
+            continue;
+        }
+        SurfaceBinding *s = b[i];
+        su_splice_copy(d, plan[i].src, s, plan[i].x0, plan[i].y0);
+        qemu_rec_mutex_lock(&surface_watch_lock);
+        surface_watch_resume(d, s);
+        s->upload_pending = false;
+        UPW_SET(s, UPW_NONE);
+        qemu_rec_mutex_unlock(&surface_watch_lock);
+        s->draw_time = pg->draw_time;
+        s->initialized = true;
+        copies++;
+    }
+    SDCALL_DO(if (copies) { g_sdcall.spl_cp += copies; }
+              else { g_sdcall.spl_nov++; });
+    (void)copies;
+    return true;
+}
+
 // FIXME: Move to common?
 void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
                               bool zeta_write)
@@ -6344,9 +6796,13 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
          * on the PFIFO thread, holding pgraph.lock; the thread test keeps any
          * other caller on the locked wait. See wait_frame_fence (#474).
          * HAKUX_SURFGPU's held batch alone stays held: an upload over its
-         * bytes completes it (surfsplice_upload_ok). */
-        download_surface_complete_deferred_at(
-            d, SDC_SURF_UPDATE, qemu_thread_is_self(&d->pfifo.thread));
+         * bytes completes it (surfsplice_upload_ok). HAKUX_SU_SPLICE feeds
+         * the uploads from the downloads' images instead when it can
+         * (su_splice_try); off, or when it cannot, this is the same call. */
+        if (!(g_su_splice && upload && su_splice_try(d))) {
+            download_surface_complete_deferred_at(
+                d, SDC_SURF_UPDATE, qemu_thread_is_self(&d->pfifo.thread));
+        }
     }
     SURF413_ACC(cdef_ns, _s413);
 
@@ -6858,6 +7314,11 @@ void pgraph_vk_init_surfaces(PGRAPHState *pg)
                 .vk_format,
             pg->zeta_stored_as_float ? "float" : "unorm",
             zeta_d24_first ? " (HAKUX_ZETA_D24)" : "");
+
+    /* #433 fps30 P4; see su_splice_try. Read once, like HAKUX_ZETA_D24. */
+    const char *su_splice_env = getenv("HAKUX_SU_SPLICE");
+    g_su_splice = su_splice_env && su_splice_env[0] == '1';
+    fprintf(stderr, "nv2a: HAKUX_SU_SPLICE=%d\n", g_su_splice ? 1 : 0);
 
     QTAILQ_INIT(&r->surfaces);
     QTAILQ_INIT(&r->invalid_surfaces);
