@@ -114,6 +114,13 @@ files = ["docs/lanes/playprobe1021/**", "docs/testing/jobs/selftest.d/99-playpro
 released = ["docs/lanes/playprobe1021/**", "docs/testing/jobs/selftest.d/99-playprobe-report.sh", "docs/testing/titles/drive-profiles/generic.toml", "docs/testing/titles/drive.py", "docs/testing/titles/pathclass_selftest.py", "docs/testing/titles/pathknow/learned.py", "docs/testing/titles/playprobe_report.py"]
 note = "CLAIMED AND RELEASED AT READY (lane.local, owner order 2026-10-21 'Yes let's build it ... the game needs to hold 30 FPS regardless of the path chosen when in gameplay. If falling into water craters the framerate, we need to know that.'): lane/playprobe1021 was built in the interactive session, so it has no unit and its PR.md is State: ready with the full selftest result recorded in it. Every file is released in the same commit, so no file is held by this lane. Adds the play probe to drive.py (hold A/X/Y/R1/L1/LY until the picture moves), kind=play records in pathknow/learned.py, input and play-probe markers in logcat, and playprobe_report.py (dips laid against inputs)."
 
+[lane.loadstuck1021]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/loadstuck1021/**", "docs/testing/titles/drive-profiles/generic.toml", "docs/testing/titles/drive.py", "docs/testing/titles/pathclass_selftest.py"]
+released = ["docs/lanes/loadstuck1021/**", "docs/testing/titles/drive-profiles/generic.toml", "docs/testing/titles/drive.py", "docs/testing/titles/pathclass_selftest.py"]
+note = "CLAIMED AND RELEASED AT READY (lane.local, owner order 2026-10-21 'Then rerun HP2 on the Nova through the dispatcher.'): lane/loadstuck1021 was built in the interactive session, so it has no unit and its PR.md is State: ready with the full selftest result recorded in it. Every file is released in the same commit, so no file is held by this lane. The first HP2 rerun after playprobe1021 sat 530 s in a confidently-wrong `loading` (the Career briefing) with nothing pressed, so the play probe never ran; drive.py now hands a `loading` older than loading_stuck_s (90 s in generic.toml) to the unknown branch."
+
 [retired.compatpage1012]
 issues = ["433"]
 retired_utc = "2026-10-13T18:25:00Z"
