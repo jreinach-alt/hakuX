@@ -111,6 +111,15 @@ loading_stuck_s = 90.0
 # An unknown stretch opens with the d-pad (UP DOWN LEFT RIGHT, one flick a capture) instead of a free
 # look; the result (how many flicks moved the picture) is logged as `dpad-probe` (decaydpad1022).
 dpad_probe = 1
+# A dark screen (`boot` and `black` together, whichever the luma check calls it) is a hang if it lasts
+# (hangplay1022; owner 2026-10-22: "a black screen for 30 seconds sounds like a hang"). Measured over the
+# 45 runs in dispatch/results (blackscan: the longest dark stretch of each): the 16 that reached play never
+# sat dark longer than 9.7 s; the two that did were Def Jam (577 s on a LOADING splash, the guest spinning at
+# one pc) and Bloody Roar (262 s on a dark prompt, #1071). So: waited out for 10 s, then the exploration
+# ladder (A first) one rung a capture, and ROUTE FAIL at 30 s with the dwell, luma and presses in the text.
+# 0/0 = waited out for ever, as before.
+dark_grace_s = 10.0
+dark_fail_s = 30.0
 
 [input]
 # Play (routebuild1021): a title this profile has never seen, so nothing title-specific.

@@ -38,7 +38,13 @@ POLICY. States are classify.py's; the inputs come from the profile's
                          waited out any longer: it is handled as `unknown` from then
                          on (loadstuck1021: NFS Hot Pursuit 2's "A Advance" briefing
                          was called `loading` at >= 0.7 for 530 s and nothing was
-                         ever pressed).
+                         ever pressed). A dark stretch (`boot` and `black` together)
+                         is waited out for `dark_grace_s`, then the exploration ladder
+                         is pressed one rung a capture, and at `dark_fail_s` it is ROUTE
+                         FAIL "dark" (hangplay1022: Def Jam sat 578 s on a LOADING
+                         splash the harness read as black, and ended `terminated`;
+                         owner 2026-10-22: "a black screen for 30 seconds sounds like
+                         a hang"). 0 = off, as before.
   unknown                With `dpad_probe` on (decaydpad1022) the first flick of the d-pad, UP, is
                          the stretch's free look, and the rest of UP DOWN LEFT RIGHT follow in the
                          slot the exploration ladder starts in (after a learned answer, the
@@ -227,7 +233,15 @@ FAMILY = {"menu": ("title_screen", "main_menu", "submenu", "profile_creation", "
           "wait": ("loading", "black"),
           "play": ("gameplay",)}
 FAMILY_OF = {s: f for f, ss in FAMILY.items() for s in ss}
+DARK = ("boot", "black")      # one dark stretch: the luma check calls a screen either, and Def Jam's splash alternated them
 LEAN_MASS = 0.45
+# A screen that has been leaning play STAYS leaning play down to this much gameplay in the top-3, until another
+# family takes LEAN_MASS of it (hangplay1022). The 007 proof run read 0.47-0.61 for 50 s, an R1 held by the probe
+# moved the picture, the next read fell under 0.45, and the exploration ladder pressed A X Y DOWN LX R1 L1 B
+# into live gameplay for 400 s. The entry bar is not the keeping bar: held-out set, 16 true gameplay frames:
+# 12 lean play at 0.45 and 13 at 0.25, and the non-gameplay frames that lean play go 5 -> 6.
+LEAN_PLAY_KEEP = 0.25
+LEAN_PLAY_YIELD = LEAN_MASS   # ... and another family holding this much of the top-3 takes the screen from play
 LEAN_PLAY_START = 0.1         # START only while the top-3 gives gameplay less than this: START in play pauses it
 LEAN_WAIT_S = 15.0            # a screen leaning `wait` is left alone this long, then pressed like any other
 LEAN_BUTTONS = ("A", "START", "UP", "DOWN", "LEFT", "RIGHT")   # pathclass action.do values worth sending
@@ -258,6 +272,8 @@ DEFAULTS = dict(
     probe_idle_s=0.0, probe_hold_s=5.0, probe_hits=2, probe_rounds=3,   # probe_idle_s 0 = off (PROBE_LADDER)
     loading_stuck_s=0.0,                 # 0 = a `loading` is waited out for ever; else it becomes `unknown` after this long
     dpad_probe=0,                        # 1 = an unknown stretch starts with DPAD_ROTATION, one flick per capture
+    dark_grace_s=0.0, dark_fail_s=0.0,   # 0 = a dark (`boot`/`black`) stretch is waited out for ever; else it is pressed after
+                                          # dark_grace_s and is ROUTE FAIL after dark_fail_s
 )
 
 
@@ -451,6 +467,9 @@ class Driver:
         self.state = None
         self.state_since = 0.0
         self.loading_over = False        # a `loading` past loading_stuck_s, handled as `unknown`
+        self.dark_since = None           # when the current dark (`boot`/`black`) stretch began
+        self.dark_presses = 0            # ladder rungs pressed into it
+        self.play_lean = False           # the last capture was held as "leans play": lean() keeps it at LEAN_PLAY_KEEP
         self.seen = []
         self.furthest = -1
         self.prev = None
@@ -545,6 +564,10 @@ class Driver:
                         raise SystemExit("drive.py: profile stall_cycle (mode %s) sends %s: START in live play "
                                          "pauses it" % (mode, b))
         self.mode = None
+        grace, fail = self.cfg["dark_grace_s"], self.cfg["dark_fail_s"]
+        if fail and not 0.0 <= grace < fail:
+            raise SystemExit("drive.py: profile [drive] dark_grace_s (%r) must be under dark_fail_s (%r), or both 0"
+                             % (grace, fail))
         for k in ("classifier_decay_menu", "classifier_decay_gameplay"):
             steps = self.p.get(k)
             if steps is None:
@@ -1200,6 +1223,11 @@ class Driver:
                 self.resolve_explore("regressed" if regressed else "advanced")
         if state != "loading":
             self.loading_over = False
+        if state in DARK:
+            if prev not in DARK:
+                self.dark_since, self.dark_presses = t, 0
+        else:
+            self.dark_since = None
         if prev != "unknown" and state == "unknown":
             self.explore_tried = []          # a fresh screen gets a fresh ladder
             self.explore_fresh = True        # ... and one free capture before the first press
@@ -1248,6 +1276,10 @@ class Driver:
             self.hold_play()
             return "hold (hud up, motion not yet play)" + self.probe_tick(r, t, state)
         lean = self.lean(r) if state == "unknown" else None
+        if state == "unknown":
+            self.play_lean = bool(lean and lean[0] == "play")
+        elif state not in ("play", "stalled"):
+            self.play_lean = False       # a named screen ends it; `play`/`stalled` alternate with the unknowns of one stretch
         if lean and lean[0] == "play":
             # pathclass leans gameplay, under its 0.85 floor: the same probe as the HUD case
             # above, for a profile with no HUD crop. Nothing is pressed, so nothing is explored.
@@ -1261,6 +1293,15 @@ class Driver:
         if state != "play":
             self.play_since = None
             self.play_frames = []
+
+        if state in DARK and cfg["dark_fail_s"]:
+            dark = t - (self.dark_since if self.dark_since is not None else t)
+            if dark >= cfg["dark_fail_s"]:
+                raise Fail("dark for %.0f s (%s, luma %.1f): %d presses sent and no picture came -- the game "
+                           "is hung, or draws something the luma check cannot tell from black"
+                           % (dark, r.get("source"), r.get("luma") or 0.0, self.dark_presses))
+            if dark >= cfg["dark_grace_s"]:
+                return self.dark_press(r, dark)
 
         if state in ("boot", "black", "loading"):
             return "wait"
@@ -1421,6 +1462,17 @@ class Driver:
         self.explore = dict(key=key, embedding=embedding, button=btn, t=t, dpad=dpad)
         return self.press(btn, "explore unknown (%s; %s)" % (r.get("source"), origin))
 
+    def dark_press(self, r, dark):
+        """A dark stretch past dark_grace_s: the exploration ladder, one rung a capture (A first: a prompt the
+        luma check reads as black is waiting for it). Nothing is learned from it -- a black frame has no
+        embedding, so every press would read as `changed` -- and nothing is held."""
+        if self.t() - self.last_press_t < self.cfg["skip_settle_s"]:
+            return "settle (dark)"
+        rung = [b for b in EXPLORE_LADDER if self.has_pause_crop or "START" not in b]
+        btn = rung[self.dark_presses % len(rung)]
+        self.dark_presses += 1
+        return self.press(btn, "dark %.0f s (%s)" % (dark, r.get("source")))
+
     def dpad_verdict(self):
         """The whole rotation has been pressed and read back: how many flicks moved the picture.
         A screen that answers the pad is interactive (a menu, a prompt, a game that reads it); one
@@ -1456,7 +1508,9 @@ class Driver:
         A menu lean presses pathclass's own action first (its OCR read the highlight),
         then A, a skip lean A; both add START only while gameplay holds under
         LEAN_PLAY_START of the top-3 (START in live play pauses it, and this loop cannot
-        always see the pause). `wait` and `play` press nothing."""
+        always see the pause). `wait` and `play` press nothing. A screen already held as
+        leaning play (`self.play_lean`) keeps the lean at LEAN_PLAY_KEEP, until another
+        family holds LEAN_MASS."""
         pc = r.get("pathclass") or {}
         mass = {}
         for s, p in pc.get("top3") or []:
@@ -1466,6 +1520,9 @@ class Driver:
         if not mass:
             return None
         fam = max(mass, key=mass.get)
+        if (self.play_lean and mass.get("play", 0.0) >= LEAN_PLAY_KEEP
+                and not (fam != "play" and mass[fam] >= LEAN_PLAY_YIELD)):
+            return "play", round(mass["play"], 2), []
         if mass[fam] < LEAN_MASS:
             return None
         start = ["START"] if mass.get("play", 0.0) < LEAN_PLAY_START else []
