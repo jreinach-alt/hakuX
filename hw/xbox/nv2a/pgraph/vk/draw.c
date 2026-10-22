@@ -1203,13 +1203,22 @@ static void opt_stats_log_and_reset(void)
  *                   bfin=<reason>:n  pgraph_vk_finish, by finish reason
  *                   bfbd bpd         draw setup: framebuffer dirty / the
  *                                    pipeline's render pass differs
- *                   bqry             occlusion query begin or end
+ *                   bqry             occlusion query begin or end (0 under
+ *                                    HAKUX_QRY_INPASS=1: no query ends a pass)
  *                   bclr bclre       begin_draw's / end_draw's clear
  *                   bnd              pgraph_vk_begin_nondraw_commands; its
  *                                    callers by address in nd=
  *                   bsnb bsbd bsmd   vk/surface.c's binding gate: no binding /
  *                                    surface buffer dirty / guest memory dirty
  *                 brk minus their sum is ends no cause was counted for.
+ *   qsplit=       HAKUX_QRY_INPASS=1: render pass ends that closed a running
+ *                 occlusion query inside the pass (end_render_pass); the next
+ *                 ZPASS draw begins a fresh index, as the path with the query
+ *                 outside the pass does after the same pass end. Not a cause:
+ *                 the pass ended for one of the b<why> above.
+ *   qry_overflow= HAKUX_QRY_INPASS=1: finishes taken because the command
+ *                 buffer's query range was nearly full (pgraph_vk_draw_end);
+ *                 also counted in bfin=buf.
  *   <name>=n/ms   calls and time. The x-marked timers below leave out any
  *                 pgraph_vk_finish nested in them, which fin= has already.
  *   nd=+off:n     caller offsets from the library's load base; symbolise with
@@ -1240,6 +1249,8 @@ static void opt_stats_log_and_reset(void)
 #define DW_BREAKS(X) \
     X(bfbd) X(bpd) X(bqry) X(bclr) X(bclre) X(bnd) X(bsnb) X(bsbd) X(bsmd)
 
+#define DW_QRY(X) X(qsplit) X(qry_overflow)
+
 #define DW_NREASON (VK_FINISH_REASON_STALLED + 1)
 
 enum {
@@ -1248,6 +1259,7 @@ enum {
 #undef DW_T
 #define DW_B(n) DW_##n,
     DW_BREAKS(DW_B)
+    DW_QRY(DW_B)
 #undef DW_B
     DW_FIN,                                 /* + 2 * reason: calls, ns */
     DW_BFIN = DW_FIN + 2 * DW_NREASON,      /* + reason */
@@ -1374,6 +1386,7 @@ static void dipwin_flip(void)
     }
 #define DW_B(n) dw_put(&p, end, " " #n "=%" PRIu64, v[DW_##n]);
     DW_BREAKS(DW_B)
+    DW_QRY(DW_B)
 #undef DW_B
 
     dw_put(&p, end, " full=%" PRIu64 " ubo=%" PRIu64 " vcopyK=%" PRIu64
@@ -4204,10 +4217,24 @@ static void bind_descriptor_sets(PGRAPHState *pg)
     }
 }
 
+/*
+ * HAKUX_QRY_INPASS=1 (#433): the query is begun inside the draw's render pass
+ * (begin_draw, after begin_render_pass) and ended inside the same pass, by
+ * begin_draw or by end_render_pass, so a query transition never ends a pass.
+ * Its index is reset with the command buffer's whole range in the aux command
+ * buffer (pgraph_vk_reset_cb_queries), since vkCmdResetQueryPool may not be
+ * recorded inside a render pass. pgraph_vk_draw_end keeps the range from
+ * filling (QRY_INPASS_HEADROOM). 0: begun and ended outside any pass, each
+ * index reset just before its begin.
+ */
 static void begin_query(PGRAPHVkState *r)
 {
     assert(r->in_command_buffer);
-    assert(!r->in_render_pass);
+    if (r->qry_inpass) {
+        assert(r->in_render_pass);
+    } else {
+        assert(!r->in_render_pass);
+    }
     assert(!r->query_in_flight);
 
     // FIXME: We should handle this. Make the query buffer bigger, but at least
@@ -4215,8 +4242,10 @@ static void begin_query(PGRAPHVkState *r)
     assert(r->num_queries_in_flight < r->max_queries_in_flight);
 
     nv2a_profile_inc_counter(NV2A_PROF_QUERY);
-    vkCmdResetQueryPool(r->command_buffer, r->query_pool,
-                        r->num_queries_in_flight, 1);
+    if (!r->qry_inpass) {
+        vkCmdResetQueryPool(r->command_buffer, r->query_pool,
+                            r->num_queries_in_flight, 1);
+    }
     VkQueryControlFlags query_flags =
         r->enabled_physical_device_features.occlusionQueryPrecise == VK_TRUE ?
         VK_QUERY_CONTROL_PRECISE_BIT : 0;
@@ -4232,7 +4261,12 @@ static void begin_query(PGRAPHVkState *r)
 static void end_query(PGRAPHVkState *r)
 {
     assert(r->in_command_buffer);
-    assert(!r->in_render_pass);
+    if (r->qry_inpass) {
+        /* begun in this pass: end_render_pass ends a running query first */
+        assert(r->in_render_pass);
+    } else {
+        assert(!r->in_render_pass);
+    }
     assert(r->query_in_flight);
 
     vkCmdEndQuery(r->command_buffer, r->query_pool,
@@ -4465,6 +4499,19 @@ static void begin_render_pass(PGRAPHState *pg)
 void end_render_pass(PGRAPHVkState *r)
 {
     if (r->in_render_pass) {
+        if (r->qry_inpass && r->query_in_flight) {
+            /*
+             * A query begun in this pass ends in it. The next ZPASS draw
+             * begins a fresh index (begin_draw: !query_in_flight), and the
+             * reports sum indices up to their query_count, so the count is
+             * the one the query outside the pass gets: that path ends its
+             * query after every pass end too.
+             */
+#if NV2A_PERF_LOG
+            DW_INC(qsplit);
+#endif
+            end_query(r);
+        }
         OPT_STAT_INC(render_pass_breaks);
 #if NV2A_PERF_LOG
         DW_INC(BRK);
@@ -5813,6 +5860,12 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
         vkCmdPipelineBarrier(cmd,
             VK_PIPELINE_STAGE_TRANSFER_BIT, wait_stage,
             0, 1, &aux_main_barrier, 0, NULL, 0, NULL);
+
+        /* HAKUX_QRY_INPASS=1: the main command buffer's queries, reset ahead
+         * of it in the same submission (begin_query records no reset). */
+        if (r->qry_inpass) {
+            pgraph_vk_reset_cb_queries(pg, cmd);
+        }
 
         VK_CHECK(vkEndCommandBuffer(r->aux_command_buffer));
         r->in_aux_command_buffer = false;
@@ -7595,8 +7648,27 @@ static void begin_draw(PGRAPHState *pg)
      * transitions (~70-80 RP breaks/frame). Games may render extra
      * geometry that would have been culled, but visuals are not corrupted.
      * The zpass result is simply never updated, so the game sees the last
-     * valid count (or zero). */
-    if (!g_xemu_skip_occlusion_queries) {
+     * valid count (or zero).
+     *
+     * HAKUX_QRY_INPASS=1: queries begin and end at the draws where the path
+     * below begins and ends them, but are recorded inside the render pass, so
+     * none of them ends the pass. A query running when the pass ends for
+     * another reason is ended by end_render_pass, and the next ZPASS draw
+     * begins a new index; the path below ends and begins one at the same
+     * draws. The begin is recorded once the pass below is begun. */
+    bool qry_begin = false;
+    if (g_xemu_skip_occlusion_queries) {
+        /* no query commands */
+    } else if (r->qry_inpass) {
+        if (!pg->clearing && pg->zpass_pixel_count_enable) {
+            if (r->new_query_needed && r->query_in_flight) {
+                end_query(r);
+            }
+            qry_begin = !r->query_in_flight;
+        } else if (r->query_in_flight) {
+            end_query(r);
+        }
+    } else {
         if (!pg->clearing && pg->zpass_pixel_count_enable) {
             if (r->new_query_needed && r->query_in_flight) {
                 if (r->in_render_pass) { OPT_STAT_INC(rp_break_query); }
@@ -7637,6 +7709,9 @@ static void begin_draw(PGRAPHState *pg)
     if (!r->in_render_pass) {
         begin_render_pass(pg);
         must_bind_pipeline = true;
+    }
+    if (qry_begin) {
+        begin_query(r);
     }
     if (!pg->clearing && xfr.cur >= 0) {
         uint32_t c0 = pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_0);
@@ -9850,6 +9925,26 @@ void pgraph_vk_draw_end(NV2AState *d)
         if (probe1010.snapq) {
             probe_snapq(d);
         }
+    }
+
+    /*
+     * HAKUX_QRY_INPASS=1: begin_query cannot end the pass to flush when the
+     * command buffer's index range is full, so the flush happens here, before
+     * this draw writes anything into the staging buffers. Between two of these
+     * checks at most QRY_INPASS_HEADROOM / 2 queries begin: one for a merged
+     * draw-queue flush, two for the signed-blend fold's two passes, one for a
+     * draw-queue flush from outside pgraph_vk_draw_end (the reorder window's
+     * replay begins none). A query split by a pass end (qsplit) is one of
+     * these, as it is on the path with the query outside the pass.
+     */
+#define QRY_INPASS_HEADROOM 8
+    if (r->qry_inpass && r->in_command_buffer &&
+        r->num_queries_in_flight + QRY_INPASS_HEADROOM >
+            r->max_queries_in_flight) {
+#if NV2A_PERF_LOG
+        DW_INC(qry_overflow);
+#endif
+        pgraph_vk_finish(pg, VK_FINISH_REASON_NEED_BUFFER_SPACE);
     }
 
     if (g_xemu_draw_reorder &&

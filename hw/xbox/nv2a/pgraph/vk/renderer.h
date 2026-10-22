@@ -1620,6 +1620,12 @@ typedef struct PGRAPHVkState {
     bool new_query_needed;
     bool query_in_flight;
     bool queries_reset_in_cb;
+    /* HAKUX_QRY_INPASS=1 (#433, read once in pgraph_vk_init_reports):
+     * occlusion queries begin and end inside the draw's render pass, and
+     * pgraph_vk_reset_cb_queries resets the command buffer's whole index
+     * range in the aux command buffer. 0 is the query-outside-the-pass path
+     * (draw.c begin_draw). */
+    bool qry_inpass;
     uint32_t zpass_pixel_count_result;
     QSIMPLEQ_HEAD(, QueryReport) report_queue;
     QSIMPLEQ_HEAD(, QueryReport) report_pool;
@@ -2049,6 +2055,7 @@ void pgraph_vk_clear_report_value(NV2AState *d);
 void pgraph_vk_get_report(NV2AState *d, uint32_t parameter);
 void pgraph_vk_process_pending_reports(NV2AState *d);
 void pgraph_vk_process_pending_reports_internal(NV2AState *d);
+void pgraph_vk_reset_cb_queries(PGRAPHState *pg, VkCommandBuffer cmd);
 
 // draw.c
 void pgraph_vk_init_pipelines(PGRAPHState *pg);

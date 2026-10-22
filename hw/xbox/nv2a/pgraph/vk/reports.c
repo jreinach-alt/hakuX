@@ -485,6 +485,11 @@ void pgraph_vk_init_reports(PGRAPHState *pg)
 
     const char *async = getenv("HAKUX_REPORT_ASYNC");
     ra.on = async && !strcmp(async, "1");
+    const char *inpass = getenv("HAKUX_QRY_INPASS");
+    r->qry_inpass = inpass && inpass[0] == '1';
+    RA_LOG("[qry433] occlusion queries %s the render pass "
+           "(HAKUX_QRY_INPASS=%d)",
+           r->qry_inpass ? "inside" : "outside", (int)r->qry_inpass);
     rt_init(pg);
     re_init();
     zr_init();
@@ -758,6 +763,41 @@ void pgraph_vk_get_report(NV2AState *d, uint32_t parameter)
     }
     if (re.early || re.submit_us) {
         re_queued(d, report);
+    }
+}
+
+/*
+ * HAKUX_QRY_INPASS=1 (#433): reset, in one command, every pool index the open
+ * command buffer began a query on, recorded into the aux command buffer `cmd`
+ * by pgraph_vk_finish before it is ended. begin_query (draw.c) then records no
+ * reset of its own, which is what lets it run inside a render pass.
+ *
+ * The range is [base, num_queries_in_flight): base is 0 on the synchronous
+ * path (pgraph_vk_process_pending_reports_internal sets the count to 0 after
+ * every submit) and the frame slot's cur_base on the reader-thread path
+ * (ra_internal sets the count to it). Neither moves while a command buffer is
+ * open -- both run only with none open -- so every index in the range was
+ * begun by this command buffer, once, and the range holds nothing else.
+ *
+ * Ordering: pgraph_vk_finish submits {aux, main} in one VkSubmitInfo, so the
+ * reset precedes every vkCmdBeginQuery on those indices in submission order,
+ * and query commands on the same query execute in submission order. The
+ * previous user of each index ended its query before its own command buffer
+ * ended, and its results were read before this range was handed out again
+ * (synchronous path: read in the finish that submitted it, under #804's wait;
+ * reader-thread path: ra_internal's ra.pending gate on the slot).
+ */
+void pgraph_vk_reset_cb_queries(PGRAPHState *pg, VkCommandBuffer cmd)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    int base = ra.started ? ra.cur_base : 0;
+    int n = r->num_queries_in_flight - base;
+
+    assert(r->qry_inpass);
+    assert(!r->query_in_flight);
+    assert(n >= 0 && r->num_queries_in_flight <= r->max_queries_in_flight);
+    if (n > 0) {
+        vkCmdResetQueryPool(cmd, r->query_pool, base, n);
     }
 }
 
