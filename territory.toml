@@ -128,6 +128,13 @@ files = ["docs/lanes/decaydpad1022/**", "docs/testing/titles/classify.py", "docs
 released = ["docs/lanes/decaydpad1022/**", "docs/testing/titles/classify.py", "docs/testing/titles/drive-profiles/generic.toml", "docs/testing/titles/drive.py", "docs/testing/titles/pathclass_selftest.py"]
 note = "CLAIMED AND RELEASED AT READY (lane.local, owner order 2026-10-22 'Build this first, cancel the run'): lane/decaydpad1022 was built in the interactive session, so it has no unit and its PR.md is State: ready with the full selftest result recorded in it. Every file is released in the same commit, so no file is held by this lane. Owner 10-22 on the 007/Def Jam pilot: the threshold before declaring `unknown` is too high, lower it over time in 3-5 steps, and do not sit still while it does -- press the d-pad UP DOWN LEFT RIGHT and read what moves. classify.py: classifier_decay_menu / classifier_decay_gameplay (the floor in force falls with each capture under it; a gameplay-mass guard refuses a decayed menu answer when the top-3 still gives gameplay 0.1); drive.py: dpad_probe (the rotation, hat flicks, learned `changed` not `advanced`, a `dpad-probe` verdict logged and kept); generic.toml: the lists and the measured tables."
 
+[lane.hangplay1022]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/hangplay1022/**", "docs/testing/titles/drive-profiles/generic.toml", "docs/testing/titles/drive.py", "docs/testing/titles/pathclass_selftest.py"]
+released = ["docs/lanes/hangplay1022/**", "docs/testing/titles/drive-profiles/generic.toml", "docs/testing/titles/drive.py", "docs/testing/titles/pathclass_selftest.py"]
+note = "CLAIMED AND RELEASED AT READY (lane.local, owner 2026-10-22 'A black screen for 30 seconds sounds like a hang.'): lane/hangplay1022 was built in the interactive session, so it has no unit and its PR.md is State: ready with the full selftest result recorded in it. Every file is released in the same commit, so no file is held by this lane. drive.py: a boot/black stretch is waited out for dark_grace_s (10), pressed with the exploration ladder after that and ROUTE FAIL at dark_fail_s (30) naming dwell, luma and presses; a screen held as leaning play stays leaning play down to LEAN_PLAY_KEEP 0.25 (entry still 0.45) unless another family holds 0.45 -- the 007 proof run (1-1792686890-decaydpad1022-3970029) pressed the ladder into live gameplay for ~400 s because the entry bar was also the keeping bar. generic.toml: dark_grace_s / dark_fail_s with the measured 9.7 s max dark among runs that reached play."
+
 [retired.compatpage1012]
 issues = ["433"]
 retired_utc = "2026-10-13T18:25:00Z"
