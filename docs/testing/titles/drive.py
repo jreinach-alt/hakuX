@@ -39,6 +39,15 @@ POLICY. States are classify.py's; the inputs come from the profile's
                          on (loadstuck1021: NFS Hot Pursuit 2's "A Advance" briefing
                          was called `loading` at >= 0.7 for 530 s and nothing was
                          ever pressed).
+  unknown                With `dpad_probe` on (decaydpad1022) the first flick of the d-pad, UP, is
+                         the stretch's free look, and the rest of UP DOWN LEFT RIGHT follow in the
+                         slot the exploration ladder starts in (after a learned answer, the
+                         lean, and the global learned answers, which still go first): no d-pad
+                         press confirms, cancels or pauses, so a menu is left where it was.
+                         Meanwhile each capture is judged under a lower floor (classify.py
+                         decay_floor, the profile's `classifier_decay_*` lists), so the stretch
+                         ends in a few captures. Whether the picture moved under the pad is
+                         logged (`dpad-probe`) and kept in route-solution.json `dpad_probes`.
   logo, intro_video, cutscene
                          SKIP (owner, ADDENDUM 2): at once on entry, the
                          profile's recorded winning button first, then the
@@ -200,6 +209,12 @@ NEVER = {"BACK", "SELECT"}            # BACK exits to the dashboard on some titl
 # then `mid`). press() sends these names as a hat flick. Until routebuild1021 every
 # DOWN drive.py sent was a no-op: the learned table's 16 DOWN records are all `none`.
 HAT = {"UP": "HATY:min", "DOWN": "HATY:max", "LEFT": "HATX:min", "RIGHT": "HATX:max"}
+# The d-pad rotation an unknown stretch opens with (decaydpad1022; owner 2026-10-22: "sitting there and
+# waiting is counterproductive ... use the dpad in an order, up, down, left, right"). The pairs undo each
+# other on a menu, and no d-pad press confirms, cancels or pauses, which is more than A or START can say.
+# A classifier answers every 1.3-3 s (route-state.tsv of the 007 and Def Jam pilots), and a frame that
+# does not change scores the same each time, so a wait spends captures and learns nothing.
+DPAD_ROTATION = ("UP", "DOWN", "LEFT", "RIGHT")
 
 # What a press does on each of pathclass.py's classes (routebuild1021). Below the
 # confidence floor classify.py answers `unknown`, but pathclass's top-3 still ranks the
@@ -242,6 +257,7 @@ DEFAULTS = dict(
     progress_bar=0.0, progress_window_s=10.0, stall_clear_s=0.0, keep_all=0,
     probe_idle_s=0.0, probe_hold_s=5.0, probe_hits=2, probe_rounds=3,   # probe_idle_s 0 = off (PROBE_LADDER)
     loading_stuck_s=0.0,                 # 0 = a `loading` is waited out for ever; else it becomes `unknown` after this long
+    dpad_probe=0,                        # 1 = an unknown stretch starts with DPAD_ROTATION, one flick per capture
 )
 
 
@@ -451,6 +467,11 @@ class Driver:
         self.explore_fresh = False       # just entered `unknown`: give the classifier one free
                                           # capture to resolve a confidence blip before pressing anything
         self.explored = []               # [#433] every (key, button, outcome) this run recorded, for finish()
+        self.low_run = 0                 # captures running pathclass stayed under its floor: the floors fall with it
+        self.dpad_seen = {}              # this stretch's d-pad presses -> whether the picture moved
+        self.dpad_tried = []             # the rotation's presses this stretch (apart from explore_tried: the
+                                          # ladder's wrap must not count them, or the rotation would rerun)
+        self.dpad_log = []               # every finished rotation, for finish()'s `dpad_probes`
         self._own_learned = None         # lazily loaded, then kept current in-memory (learned.py)
         self._global_learned = None
         # TITLE_ID (the dispatcher's soak sets it): the learned table and the path book are
@@ -524,6 +545,15 @@ class Driver:
                         raise SystemExit("drive.py: profile stall_cycle (mode %s) sends %s: START in live play "
                                          "pauses it" % (mode, b))
         self.mode = None
+        for k in ("classifier_decay_menu", "classifier_decay_gameplay"):
+            steps = self.p.get(k)
+            if steps is None:
+                continue
+            if (not isinstance(steps, list) or not steps
+                    or any(isinstance(x, bool) or not isinstance(x, (int, float)) or not 0.0 <= x <= 1.0 for x in steps)
+                    or any(b > a for a, b in zip(steps, steps[1:]))):
+                raise SystemExit("drive.py: profile %s must be a non-empty list of floors in 0..1, each no higher "
+                                 "than the one before (got %r)" % (k, steps))
         for tok in self.inp.get("probe", []):
             if tok.split(":")[0].split("/")[0] in ("START", "SELECT", "BACK", "B"):
                 raise SystemExit("drive.py: profile input.probe holds %s: START pauses live play and B backs out "
@@ -995,7 +1025,15 @@ class Driver:
 
     # -- one capture -------------------------------------------------------
     def classify(self, frame):
-        r = classify.classify_frame(frame, self.prev, self.p, self.seen, self.last_play_luma, self.state)
+        r = classify.classify_frame(frame, self.prev, self.p, self.seen, self.last_play_luma, self.state,
+                                    low_step=self.low_run)
+        # The floor stays down until pathclass is sure again at its own floor: dropping it back the
+        # moment a lowered floor names the screen would send the next capture of that screen
+        # `unknown` again, one press behind (a flip-flop at the edge of the bar).
+        if r["source"] == "pathclass:low-confidence":
+            self.low_run += 1
+        elif r["source"].startswith("pathclass:") and "decayed" not in r:
+            self.low_run = 0
         if r.get("crop") and r["source"].startswith("hud:"):
             self.last_hud_t = self.t()
         elif (r["source"] in ("static", "between") and self.last_hud_t is not None
@@ -1117,6 +1155,12 @@ class Driver:
         in-memory copy too, so a later capture in THIS run sees it without a re-read) and
         clear the pending slot. Never called with nothing pending."""
         ex = self.explore
+        if ex.get("dpad"):
+            if outcome in ("advanced", "regressed"):
+                outcome = "changed"      # a cursor moved; the d-pad does not take a screen anywhere
+            self.dpad_seen[ex["button"]] = outcome
+            if all(b in self.dpad_seen for b in DPAD_ROTATION):
+                self.dpad_verdict()
         rec = learned.record(self.ltitle, ex["key"], ex["embedding"], ex["button"], outcome,
                               self.t(), os.path.basename(self.out))
         own, _ = self.learned_tables()
@@ -1148,12 +1192,18 @@ class Driver:
         # (a `loading` handled as `unknown` past loading_stuck_s resolves the same way when it ends)
         if self.explore and ((prev == "unknown" and state != "unknown")
                              or (prev == "loading" and self.loading_over and state != "loading")):
-            self.resolve_explore("regressed" if regressed else "advanced")
+            if "decayed" in r:
+                # The screen was named because the FLOOR fell, not necessarily because the press moved
+                # anything: judge the press by the picture, as a press that stayed `unknown` is.
+                self.settle_explore(r)
+            else:
+                self.resolve_explore("regressed" if regressed else "advanced")
         if state != "loading":
             self.loading_over = False
         if prev != "unknown" and state == "unknown":
             self.explore_tried = []          # a fresh screen gets a fresh ladder
             self.explore_fresh = True        # ... and one free capture before the first press
+            self.dpad_tried, self.dpad_seen = [], {}
         # a skip attempt resolves on the first capture in another state
         if self.ladder and state != self.ladder["state"]:
             lad = self.ladder
@@ -1183,6 +1233,7 @@ class Driver:
             if not self.loading_over:
                 self.loading_over = True
                 self.explore_tried = []
+                self.dpad_tried, self.dpad_seen = [], {}
                 self.dev.logcat("loading-overstay t=%.1f: %.0f s in `loading` (%s); handled as unknown from here"
                                 % (t, t - self.state_since, r.get("source")))
             state = "unknown"
@@ -1319,24 +1370,33 @@ class Driver:
         # awaiting an outcome from the LAST capture (the screen stayed `unknown`, so it's
         # `changed` or `none`), then pick the next one: this title's learned answer that
         # did something, the classifier's lean, any title's learned answer that did
-        # something, the next untried rung of the exploration ladder, in that order
-        # (routebuild1021), wrapping forever once the whole ladder's been tried this
-        # stretch. The route's own wall-clock budget in `run()` is the only thing allowed
-        # to end a run that never gets past this; this branch itself must never raise Fail.
+        # something, the d-pad rotation (decaydpad1022, when the profile turns it on), the
+        # next untried rung of the exploration ladder, in that order (routebuild1021),
+        # wrapping forever once the whole ladder's been tried this stretch. The route's own
+        # wall-clock budget in `run()` is the only thing allowed to end a run that never gets
+        # past this; this branch itself must never raise Fail.
         self.settle_explore(r)
-        if self.explore_fresh:
+        rotation = [b for b in DPAD_ROTATION if cfg["dpad_probe"] and b not in self.dpad_tried]
+        fresh, self.explore_fresh = self.explore_fresh, False
+        if fresh and not rotation:
             # a low-confidence reading is often gone on the very next capture with no input
             # at all (AvP Extinction's own recorded run: two of its three `unknown` frames
             # here resolve for free one capture later) -- one free look before spending a
             # press on what might be nothing.
-            self.explore_fresh = False
             return "wait (unknown, confirming)"
         if t - self.last_press_t < cfg["skip_settle_s"]:
             return "settle (exploring)"
         key = "unknown:%s" % r.get("source")
         embedding = (r.get("pathclass") or {}).get("embedding")
         own, glob = self.learned_tables()
-        btn, origin = learned.suggest(own, [], key, embedding, self.explore_tried, min_rank=2), "learned"
+        btn, origin = None, None
+        if fresh:
+            # With the d-pad rotation on, the first flick IS that free look: it commits nothing (no
+            # d-pad press confirms, cancels or pauses), so the capture is not spent waiting, and the
+            # next one is read under a lower floor (classify.decay_floor).
+            btn, origin = rotation[0], "dpad probe 1/%d, floor step %d" % (len(DPAD_ROTATION), self.low_run)
+        else:
+            btn, origin = learned.suggest(own, [], key, embedding, self.explore_tried, min_rank=2), "learned"
         if btn is None and lean:
             if lean[0] == "wait" and t - self.state_since < LEAN_WAIT_S:
                 return "wait (unknown, leans wait %.2f)" % lean[1]
@@ -1344,15 +1404,36 @@ class Driver:
             origin = "leans %s %.2f" % (lean[0], lean[1])
         if btn is None:
             btn, origin = learned.suggest([], glob, key, embedding, self.explore_tried, min_rank=2), "learned:global"
+        if btn is None and rotation:
+            # nothing learned and no lean to press: the rest of the d-pad rotation, in the slot the
+            # exploration ladder would otherwise start in (owner 2026-10-22: "while it is in the
+            # decay loop, it should use the dpad in an order, up, down, left, right")
+            btn, origin = rotation[0], "dpad probe %d/%d, floor step %d" % (
+                len(DPAD_ROTATION) - len(rotation) + 1, len(DPAD_ROTATION), self.low_run)
         if btn is None:
             rung = [b for b in EXPLORE_LADDER if self.has_pause_crop or "START" not in b]
             if len(self.explore_tried) >= len(rung):
                 self.explore_tried = []      # exhausted this screen's ladder: wrap, keep trying
             untried = [b for b in rung if b not in self.explore_tried]
             btn, origin = (untried[0] if untried else rung[0]), "ladder"
-        self.explore_tried.append(btn)
-        self.explore = dict(key=key, embedding=embedding, button=btn, t=t)
+        dpad = origin.startswith("dpad")
+        (self.dpad_tried if dpad else self.explore_tried).append(btn)
+        self.explore = dict(key=key, embedding=embedding, button=btn, t=t, dpad=dpad)
         return self.press(btn, "explore unknown (%s; %s)" % (r.get("source"), origin))
+
+    def dpad_verdict(self):
+        """The whole rotation has been pressed and read back: how many flicks moved the picture.
+        A screen that answers the pad is interactive (a menu, a prompt, a game that reads it); one
+        that answers none of the four is a load, a cutscene or a prompt waiting for A. It is
+        written down, not acted on: the next press is still the learned answer, the lean or the
+        ladder."""
+        moved = [b for b in DPAD_ROTATION if self.dpad_seen[b] != "none"]
+        what = " ".join("%s %s" % (b, self.dpad_seen[b]) for b in DPAD_ROTATION)
+        self.dpad_log.append(dict(t=round(self.t(), 1), moved=len(moved), results=dict(self.dpad_seen),
+                                  low_run=self.low_run))
+        self.dev.logcat("dpad-probe t=%.1f: %d/%d moved the picture (%s); floor step %d"
+                        % (self.t(), len(moved), len(DPAD_ROTATION), what, self.low_run))
+        self.dpad_seen = {}
 
     def settle_explore(self, r):
         """The pending explore press (if any) stayed on `unknown`: `changed` if the frame
@@ -1574,6 +1655,7 @@ class Driver:
                    time_to_play_s=self.time_to.get("play"), states_seen=self.seen, skips=self.skips,
                    inputs=self.inputs, anomalies=self.anomalies, classifier_sources=self.sources,
                    play_stretch_frames=self.play_frames, explored=self.explored, play_probes=self.probes,
+                   dpad_probes=self.dpad_log,
                    written_utc=dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
         tmp = os.path.join(self.out, ".route-solution.json.tmp")
         with open(tmp, "w") as f:

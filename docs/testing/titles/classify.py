@@ -362,11 +362,35 @@ def match_crop(im, crops, profile):
     return (hit[0], hit[1], scores) if hit else (None, None, scores)
 
 
-def classify_frame(frame, prev, profile, seen=(), last_play_luma=None, prev_state=None):
+# A non-gameplay answer taken below its own floor (decay_floor) is refused when the top-3 gives gameplay
+# this much: the screen stays `unknown`, where the lean's START guard (drive.py LEAN_PLAY_START, the
+# same 0.1) applies. On the 117-frame held-out set it costs 2 right answers at the bottom step (72 -> 69
+# answered, 70 -> 68 right) and removes the one answer that fired on a gameplay frame (a Buffy
+# `controller_prompt` miscall); START pressed into live play pauses it.
+DECAY_PLAY_MASS = 0.1
+
+
+def play_mass(ans):
+    return sum(float(p) for s, p in (ans.get("top3") or []) if s == "gameplay")
+
+
+def decay_floor(full, steps, step):
+    """The floor in force `step` low-confidence captures into a stretch. 0 is the profile's own
+    floor; step k is steps[k-1], and the last entry holds from then on. Never above `full`: a
+    profile cannot raise a floor by listing a high step. No list, or a profile that never sets
+    one, is `full` for ever (every hand-tuned profile)."""
+    if not steps or step <= 0:
+        return full
+    return min(full, float(steps[min(step, len(steps)) - 1]))
+
+
+def classify_frame(frame, prev, profile, seen=(), last_play_luma=None, prev_state=None, low_step=0):
     """Name one capture. `prev` is the previous capture's path (None for the
     first), `seen` the states this run has already been in, `last_play_luma`
-    the luminance of the last `play` frame. Returns a dict: state, source
-    (what decided it), and the numbers it was decided on."""
+    the luminance of the last `play` frame, `low_step` how many captures running
+    pathclass has been under its floor (the floors fall with it: decay_floor).
+    Returns a dict: state, source (what decided it), and the numbers it was
+    decided on."""
     seen = set(seen)
     im = open_grey(frame)
     lu = luma(im)
@@ -408,13 +432,25 @@ def classify_frame(frame, prev, profile, seen=(), last_play_luma=None, prev_stat
         # only the one knob, so a hand-tuned profile's existing single floor still behaves as before.
         ans = pathclass_client().classify(frame, prev, {"menu_seen": after_title})
         gameplay_floor = profile.get("classifier_confidence", 0.0)
-        floor = gameplay_floor if ans["state"] == "gameplay" else \
-            profile.get("classifier_confidence_menu", gameplay_floor)
+        menu_floor = profile.get("classifier_confidence_menu", gameplay_floor)
+        full = gameplay_floor if ans["state"] == "gameplay" else menu_floor
+        # (decaydpad1022, owner 2026-10-22: "the threshold you're using before declaring things
+        # unknown is way too high ... lower over time, a pretty steep drop off, 3-5 steps") The floor
+        # falls with every capture running that stayed under it: sitting on one frame does not raise
+        # a score, so the waiting is spent on d-pad presses (drive.py) and on a lower bar. The
+        # `gameplay` list stops where the held-out set stops having gameplay answers to give.
+        floor = decay_floor(full, profile.get("classifier_decay_gameplay" if ans["state"] == "gameplay"
+                                              else "classifier_decay_menu"), low_step)
         if ans["confidence"] < floor:
+            out.update(state="unknown", source="pathclass:low-confidence", pathclass=ans)
+            return out
+        if ans["confidence"] < full and ans["state"] != "gameplay" and play_mass(ans) >= DECAY_PLAY_MASS:
             out.update(state="unknown", source="pathclass:low-confidence", pathclass=ans)
             return out
         st = PATHCLASS_MAP.get(ans["state"], "unknown")
         out.update(state=st, source="pathclass:" + ans["state"], changed=ans.get("diff"), pathclass=ans)
+        if ans["confidence"] < full:
+            out["decayed"] = low_step     # named under a floor that has fallen, not under its own
         if st == "play" and not ans.get("moving"):
             out.update(state="stalled", source=out["source"] + "+static")
         return out
