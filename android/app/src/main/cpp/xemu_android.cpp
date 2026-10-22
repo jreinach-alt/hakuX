@@ -875,6 +875,49 @@ constexpr TitleRenderMode kTitleRenderModes[] = {
     {0x4541007B, "sysmem"},  // Need for Speed: Most Wanted (#433, lane.gpupass1010 A/B)
 };
 
+/*
+ * Titles whose Z24S8 zeta is stored as D24_UNORM_S8_UINT instead of
+ * D32_SFLOAT_S8_UINT (#433, fps30 P1). D32S8 keeps its stencil as a separate
+ * GMEM plane on Turnip, which doubles the tile width alignment, so a 640x480
+ * pass with 4-byte colour takes two tiles and replays its whole draw stream
+ * in each (surface.c, the HAKUX_ZETA_D24 comment). An HAKUX_ZETA_D24 already
+ * in the environment (the env_vars pref) wins over the table: "0" is off.
+ */
+constexpr uint32_t kTitleZetaD24[] = {
+    0x5454000E,  // Grand Theft Auto III
+    0x54540082,  // Grand Theft Auto: San Andreas
+    0x4D530065,  // Blinx 2: Masters of Time & Space
+    0x4D5300D1,  // Fable: The Lost Chapters
+};
+
+static bool g_zeta_d24_from_table = false;
+
+// Runs before the renderer reads HAKUX_ZETA_D24 (surface.c, at init).
+static void ApplyZetaFormat(uint32_t title_id) {
+  if (g_zeta_d24_from_table) {
+    // Set for the previous launch in this process, not by the user.
+    unsetenv("HAKUX_ZETA_D24");
+    g_zeta_d24_from_table = false;
+  }
+  const char* source = "default";
+  if (getenv("HAKUX_ZETA_D24")) {
+    source = "env";
+  } else {
+    for (uint32_t t : kTitleZetaD24) {
+      if (title_id != 0 && t == title_id) {
+        setenv("HAKUX_ZETA_D24", "1", 0);
+        g_zeta_d24_from_table = true;
+        source = "table";
+        break;
+      }
+    }
+  }
+  const char* now = getenv("HAKUX_ZETA_D24");
+  __android_log_print(ANDROID_LOG_INFO, "hakuX-build",
+                      "zeta_d24: %s (%s) title=%08X (#433)",
+                      now ? now : "(unset)", source, title_id);
+}
+
 static bool HasCsvToken(const std::string& list, const char* token) {
   std::istringstream stream(list);
   std::string item;
@@ -1121,6 +1164,7 @@ static SetupFiles SyncSetupFiles() {
   }
 
   const uint32_t title_id = ApplyRenderMode(env, activity, out.dvd);
+  ApplyZetaFormat(title_id);
   hxs_android_configure(env, activity, base.c_str(),
                         GetPrefString(env, activity, "savestate_tree_uri").c_str(),
                         GetPrefBool(env, activity, "savestate_compression", true),

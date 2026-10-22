@@ -1332,7 +1332,7 @@ static void dw_put(char **p, char *end, const char *fmt, ...)
 }
 
 /* The one reader. FLIP_STALL finish only, on the PFIFO thread. */
-static void dipwin_flip(void)
+static void dipwin_flip(PGRAPHState *pg)
 {
     static unsigned flips;
     static uint64_t cum_fl, cum_rp, cum_brk;
@@ -1355,9 +1355,10 @@ static void dipwin_flip(void)
     char buf[3072];
     char *p = buf, *end = buf + sizeof(buf);
     dw_put(&p, end, "[dipwin] tid=%d fl=%u s=%.3f cfl=%" PRIu64
-           " crp=%" PRIu64 " cbrk=%" PRIu64 " rp=%" PRIu64 " brk=%" PRIu64,
+           " crp=%" PRIu64 " cbrk=%" PRIu64 " rp=%" PRIu64 " brk=%" PRIu64
+           " zfmt=%s",
            qemu_get_thread_id(), flips, secs, cum_fl, cum_rp, cum_brk,
-           v[DW_RP], v[DW_BRK]);
+           v[DW_RP], v[DW_BRK], pg->zeta_stored_as_float ? "f32" : "d24");
     flips = 0;
 
     dw_put(&p, end, " bfin=");
@@ -5708,7 +5709,7 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
          */
         if (finish_reason == VK_FINISH_REASON_FLIP_STALL) {
             opt_stats_log_and_reset();
-            dipwin_flip();
+            dipwin_flip(pg);
         }
 #else
         opt_stats_log_and_reset();
