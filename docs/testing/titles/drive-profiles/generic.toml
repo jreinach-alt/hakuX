@@ -66,6 +66,12 @@ ladder = ["A"]
 # probe is on. Every hold is logged to logcat (tag hakuX-route, `play-probe`) and to the
 # learned table (kind "play").
 probe_idle_s = 8.0
+# A `loading` that is still `loading` after 90 s is handled as `unknown` from then on
+# (loadstuck1021). The rerun of the HP2 proof sat 530 s on a Career event briefing -- "A Advance",
+# pathclass `loading` at >= 0.7 -- with nothing pressed, so the play probe never had a screen to
+# probe. A real load longer than this takes a few presses (A first) that it ignores; the first press
+# that moves the screen is learned. 0 = wait for ever, as before.
+loading_stuck_s = 90.0
 
 [input]
 # Play (routebuild1021): a title this profile has never seen, so nothing title-specific.

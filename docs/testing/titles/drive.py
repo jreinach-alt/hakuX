@@ -34,6 +34,11 @@ THE LOOP, per capture:
 POLICY. States are classify.py's; the inputs come from the profile's
 [input] table, never from a guess here.
   boot, black, loading   wait; nothing pressed; any held play input released.
+                         A `loading` that outlasts `loading_stuck_s` (0 = off) is not
+                         waited out any longer: it is handled as `unknown` from then
+                         on (loadstuck1021: NFS Hot Pursuit 2's "A Advance" briefing
+                         was called `loading` at >= 0.7 for 530 s and nothing was
+                         ever pressed).
   logo, intro_video, cutscene
                          SKIP (owner, ADDENDUM 2): at once on entry, the
                          profile's recorded winning button first, then the
@@ -236,6 +241,7 @@ DEFAULTS = dict(
     hud_memory_s=20.0, escape_max=6, escape_capture_s=0.0, escape_reset_s=0.0,
     progress_bar=0.0, progress_window_s=10.0, stall_clear_s=0.0, keep_all=0,
     probe_idle_s=0.0, probe_hold_s=5.0, probe_hits=2, probe_rounds=3,   # probe_idle_s 0 = off (PROBE_LADDER)
+    loading_stuck_s=0.0,                 # 0 = a `loading` is waited out for ever; else it becomes `unknown` after this long
 )
 
 
@@ -428,6 +434,7 @@ class Driver:
         self.clock_sim = 0.0
         self.state = None
         self.state_since = 0.0
+        self.loading_over = False        # a `loading` past loading_stuck_s, handled as `unknown`
         self.seen = []
         self.furthest = -1
         self.prev = None
@@ -1138,8 +1145,12 @@ class Driver:
         # an explore press resolves the moment the screen stops being `unknown` (#433 Part
         # B): the same order-regression check above decides whether the button that got us
         # here `advanced` past it or `regressed` into an earlier state.
-        if self.explore and prev == "unknown" and state != "unknown":
+        # (a `loading` handled as `unknown` past loading_stuck_s resolves the same way when it ends)
+        if self.explore and ((prev == "unknown" and state != "unknown")
+                             or (prev == "loading" and self.loading_over and state != "loading")):
             self.resolve_explore("regressed" if regressed else "advanced")
+        if state != "loading":
+            self.loading_over = False
         if prev != "unknown" and state == "unknown":
             self.explore_tried = []          # a fresh screen gets a fresh ladder
             self.explore_fresh = True        # ... and one free capture before the first press
@@ -1162,6 +1173,19 @@ class Driver:
         """The policy. Returns the action string for the timeline, or raises Fail."""
         t = self.t()
         cfg = self.cfg
+        if state == "loading" and cfg["loading_stuck_s"] and t - self.state_since >= cfg["loading_stuck_s"]:
+            # A `loading` that never ends is a screen the classifier got wrong or a game
+            # waiting for a button (NFS Hot Pursuit 2's "A Advance" briefing: `loading` at
+            # >= 0.7 for 530 s, nothing pressed). Past this it is an `unknown` screen: the
+            # book, the learned answers and the exploration ladder get their turn, and what
+            # moves it is learned. A real load that is still running takes a few harmless
+            # presses at worst; the bar is per profile.
+            if not self.loading_over:
+                self.loading_over = True
+                self.explore_tried = []
+                self.dev.logcat("loading-overstay t=%.1f: %.0f s in `loading` (%s); handled as unknown from here"
+                                % (t, t - self.state_since, r.get("source")))
+            state = "unknown"
         if state == "unknown" and r.get("source", "").startswith("hud:"):
             # The play HUD is up but the motion does not say play yet: the
             # first frame after a load or overlay, or a character standing
