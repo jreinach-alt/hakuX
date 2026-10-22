@@ -43,7 +43,25 @@ The table carries only the titles whose A/B passed (see below).
 Env A/B on master b944110629 (no new code needed to measure), `--perflog`, Nova, A-B-A per title, A last so the
 env_vars pref is left on the shipped setting:
 
-| title | A1 (=0) | B (=1) | A2 (=0) | GPU R/flip B/A | verdict |
+| title | A (=0) | B (=1) | GPU R/flip B/A | verdict |
+|---|---|---|---|---|
+| Blinx 2 | 1-1792703349-p1zeta1022-1980285, 1-1792704960-p1zeta1022-2079841, 1-1792704963-p1zeta1022-2080106 | 1-1792703350-p1zeta1022-1980392, 1-1792704962-p1zeta1022-2080002 | 0.996 (q1 0.944, q3 1.056), 245 of 245 gameplay windows matched | falsified: not tabled |
+| Fable | | | | |
+
+### Blinx 2
+
+All five runs logged `PurpleVK` and the arm's init line (`0x82, depth stored as float` for =0, `0x81, depth stored
+as unorm (HAKUX_ZETA_D24)` for =1). The generated route reaches gameplay in some runs and stays in menus in others,
+so the arms are compared in matched `full`/flip windows (`full` >= 800, within 6 pct):
+
+| full/flip | n A | GPU R A (ms) | n B | GPU R B (ms) | B/A |
 |---|---|---|---|---|---|
-| Blinx 2 | 1-1792703349-p1zeta1022-1980285 | 1-1792703350-p1zeta1022-1980392 | | | |
-| Fable | | | | | |
+| 800-1200 | 51 | 10.0 | 35 | 8.9 | 0.89 |
+| 1200-1600 | 154 | 13.2 | 46 | 15.35 | 1.16 |
+| 1600-2400 | 52 | 17.35 | 151 | 17.0 | 0.98 |
+| 2400+ | 5 | 26.7 | 13 | 25.6 | 0.96 |
+
+The median of each B window's R over its matched A windows is 0.996. The falsifier (> 0.85) fires: Blinx 2's main
+pass does not replay across two tiles under D32S8, so D24 removes nothing there. In menu windows (`full` 200-400)
+the phase `GPU X` (passes other than the main one) is 1.9-2.8 ms/flip under =0 and 0.1 under =1, but those windows
+run at 60 fps either way. Blinx 2 is not in the table.

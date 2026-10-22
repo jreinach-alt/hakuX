@@ -886,7 +886,6 @@ constexpr TitleRenderMode kTitleRenderModes[] = {
 constexpr uint32_t kTitleZetaD24[] = {
     0x5454000E,  // Grand Theft Auto III
     0x54540082,  // Grand Theft Auto: San Andreas
-    0x4D530065,  // Blinx 2: Masters of Time & Space
     0x4D5300D1,  // Fable: The Lost Chapters
 };
 
