@@ -33,7 +33,121 @@
 #include "../prim_rewrite.h"
 #include "psh.h"
 
+#ifdef __ANDROID__
+#include <android/log.h>
+#endif
+
 DEF_UNIFORM_INFO_ARR(PshUniform, PSH_UNIFORM_DECL_X)
+
+bool pgraph_glsl_psh_fragdepth_off(void)
+{
+    static int off = -1;
+
+    if (off < 0) {
+        const char *e = getenv("HAKUX_FRAGDEPTH");
+        off = e && strcmp(e, "off") == 0;
+        /* The arm's reader: a B leg without this line did not run arm B. On
+         * Android it goes out under hakuX-perf too, the tag a title soak's
+         * logcat keeps. */
+        fprintf(stderr, "fragdepth: HAKUX_FRAGDEPTH=%s: %s\n", e ? e : "unset",
+                off ? "gl_FragDepth omitted where fixed-function depth "
+                      "stands in (P10 arm B)"
+                    : "gl_FragDepth written on every depth draw");
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_INFO, "hakuX-perf",
+                            "fragdepth: HAKUX_FRAGDEPTH=%s: %s", e ? e : "unset",
+                            off ? "gl_FragDepth omitted where fixed-function "
+                                  "depth stands in (P10 arm B)"
+                                : "gl_FragDepth written on every depth draw");
+#endif
+    }
+    return off;
+}
+
+bool pgraph_glsl_polygon_offset_raster(PGRAPHState *pg)
+{
+    uint32_t raster = pgraph_reg_r(pg, NV_PGRAPH_SETUPRASTER);
+    uint32_t polygon_mode =
+        GET_MASK(raster, NV_PGRAPH_SETUPRASTER_FRONTFACEMODE);
+
+    return (polygon_mode == NV_PGRAPH_SETUPRASTER_FRONTFACEMODE_FILL &&
+            (raster & NV_PGRAPH_SETUPRASTER_POFFSETFILLENABLE)) ||
+           (polygon_mode == NV_PGRAPH_SETUPRASTER_FRONTFACEMODE_LINE &&
+            (raster & NV_PGRAPH_SETUPRASTER_POFFSETLINEENABLE)) ||
+           (polygon_mode == NV_PGRAPH_SETUPRASTER_FRONTFACEMODE_POINT &&
+            (raster & NV_PGRAPH_SETUPRASTER_POFFSETPOINTENABLE));
+}
+
+/*
+ * #433 P10 arm B. Without a gl_FragDepth write the host stores the
+ * rasteriser's interpolated z / clipRange.y (vsh: oPos.z / clipRange.y),
+ * tested and written by the pipeline's own depth state, clamped to the
+ * viewport's [0, 1] by depthClampEnable. That stands in for the write below
+ * only where it lands within one unit of the word the write would store:
+ *
+ *   D16 on D16_UNORM, D24 on D24_UNORM (HAKUX_ZETA_D24=1): the host rounds
+ *   z to the nearest unit where NV2A floors it, so a pixel stores the same
+ *   word or one above it.
+ *   D24 on D32_SFLOAT (the default): below 2^23 the float keeps the
+ *   fraction and the read-back truncates it, giving the floor; from 2^23 up
+ *   one float ULP is one unit and the host's rounding gives the floor or
+ *   one above.
+ *
+ * Every other case keeps the write, each for a reason fixed function cannot
+ * reproduce:
+ *
+ *   F24, F16      the stored word is the float encoding of z, not z scaled
+ *                 (#16); fixed function can only store z scaled.
+ *   w-buffer      depth is the interpolated w (with the slope offset taken
+ *                 at the triangle's first covered pixel), not screen z.
+ *   DOT_ZW        texm3x2depth replaces the depth with dot(i-1)/dot(i), a
+ *                 per-pixel texture-stage result (#279).
+ *   ZCLAMP CLAMP  depth is clamped to CLIP_MIN/CLIP_MAX, which are uniforms;
+ *                 depth clamp reaches only the viewport's [0, 1].
+ *   poly offset   depthBiasEnable is baked off (vk/draw.c), and Vulkan's
+ *                 constant unit is per primitive on a float image (2^(e-23))
+ *                 and implementation-defined on a unorm one, where NV2A adds
+ *                 ZOFFSETBIAS + ZOFFSETFACTOR * the triangle's max slope in
+ *                 depth units before it floors.
+ *   CLIP_MAX past 0xFFFFFF on a float-stored D24: the write saturates at
+ *                 0xFFFFFF (#266); fixed function stores the value, which
+ *                 sits above the 0xFFFFFF clear and fails LEQUAL.
+ */
+enum PshDepthWrite pgraph_glsl_psh_depth_write(const PshState *state,
+                                               bool frag_depth_ff)
+{
+    if (!state->depth_needed) {
+        return PSH_DEPTH_WRITE_NONE;
+    }
+    if (!frag_depth_ff) {
+        return PSH_DEPTH_KEPT_ENV;
+    }
+    if (state->depth_format == DEPTH_FORMAT_F24) {
+        return PSH_DEPTH_KEPT_F24;
+    }
+    if (state->depth_format == DEPTH_FORMAT_F16) {
+        return PSH_DEPTH_KEPT_F16;
+    }
+    if (state->z_perspective) {
+        return PSH_DEPTH_KEPT_WBUF;
+    }
+    for (int i = 0; i < 4; i++) {
+        if (((state->shader_stage_program >> (i * 5)) & 0x1F) ==
+            PS_TEXTUREMODES_DOT_ZW) {
+            return PSH_DEPTH_KEPT_DOTZW;
+        }
+    }
+    if (!state->depth_clipping) {
+        return PSH_DEPTH_KEPT_CLAMP;
+    }
+    if (state->polygon_offset) {
+        return PSH_DEPTH_KEPT_POFF;
+    }
+    if (state->clip_max_saturates) {
+        return PSH_DEPTH_KEPT_ZSAT;
+    }
+    return PSH_DEPTH_WRITE_FF;
+}
 
 // TODO: https://github.com/xemu-project/xemu/issues/2260
 //   Investigate how color keying is handled for components with no alpha or
@@ -625,6 +739,20 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
                 pg->surface_shape.zeta_format);
         assert(false);
         break;
+    }
+
+    /* #433 P10 arm B only, so the default state is unchanged. The registers
+     * behind both fields reach the shader under the arm and only then: the
+     * polygon offset enables stop being dynamic and ZCLIPMAX becomes a
+     * shader register (pgraph.c). */
+    if (state->depth_needed && pgraph_glsl_psh_fragdepth_off()) {
+        state->polygon_offset = pgraph_glsl_polygon_offset_raster(pg);
+        uint32_t zclip_max = pgraph_reg_r(pg, NV_PGRAPH_ZCLIPMAX);
+        float clip_max;
+        memcpy(&clip_max, &zclip_max, sizeof(clip_max));
+        state->clip_max_saturates = state->depth_format == DEPTH_FORMAT_D24 &&
+                                    pg->zeta_stored_as_float &&
+                                    !(clip_max <= 16777215.0f);
     }
 }
 
@@ -4117,7 +4245,14 @@ static MString* psh_convert(struct PixelShader *ps)
         }
     }
 
-    if (ps->state->depth_needed) {
+    /* #433 P10 arm B: the key says fixed function stands in, and the state
+     * agrees (a persisted key cannot drop the write for a kept case). The
+     * depth computation above stays: the ZCLAMP CULL discard reads it. */
+    bool depth_by_ff = ps->opts.frag_depth_ff &&
+                       pgraph_glsl_psh_depth_write(ps->state, true) ==
+                           PSH_DEPTH_WRITE_FF;
+
+    if (ps->state->depth_needed && !depth_by_ff) {
         /*
          * zvalue is in the guest's depth units -- vtxPos.w for W buffering,
          * vtxPos.z otherwise -- and what lands in the host depth buffer has to
@@ -4527,21 +4662,8 @@ void pgraph_glsl_set_psh_uniform_values(PGRAPHState *pg,
         pgraph_glsl_set_clip_range_uniform_value(pg, values->clipRange[0]);
     }
 
-    bool polygon_offset_enabled = false;
-    if (pg->primitive_mode >= PRIM_TYPE_TRIANGLES) {
-        uint32_t raster = pgraph_reg_r(pg, NV_PGRAPH_SETUPRASTER);
-        uint32_t polygon_mode =
-            GET_MASK(raster, NV_PGRAPH_SETUPRASTER_FRONTFACEMODE);
-
-        if ((polygon_mode == NV_PGRAPH_SETUPRASTER_FRONTFACEMODE_FILL &&
-             (raster & NV_PGRAPH_SETUPRASTER_POFFSETFILLENABLE)) ||
-            (polygon_mode == NV_PGRAPH_SETUPRASTER_FRONTFACEMODE_LINE &&
-             (raster & NV_PGRAPH_SETUPRASTER_POFFSETLINEENABLE)) ||
-            (polygon_mode == NV_PGRAPH_SETUPRASTER_FRONTFACEMODE_POINT &&
-             (raster & NV_PGRAPH_SETUPRASTER_POFFSETPOINTENABLE))) {
-            polygon_offset_enabled = true;
-        }
-    }
+    bool polygon_offset_enabled = pg->primitive_mode >= PRIM_TYPE_TRIANGLES &&
+                                  pgraph_glsl_polygon_offset_raster(pg);
 
     if (locs[PshUniform_depthOffset] != -1) {
         float zbias = 0.0f;

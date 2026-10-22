@@ -44,6 +44,14 @@ struct OptBisectStats g_opt_stats;
 void pgraph_vk_ubosz_note_upload(PGRAPHState *pg, int site);
 void pgraph_vk_ubosz_note_bind(VkDescriptorSet set, const uint32_t off[2]);
 void pgraph_vk_ubosz_log_and_reset(void);
+
+/*
+ * #433 P10: how the depth word of each depth-tested draw is produced, by
+ * enum PshDepthWrite (glsl/psh.h). Counted in begin_draw over the draws with
+ * ZENABLE set. Without arm B every depth draw keeps its write and counts as
+ * env; nowrite is a draw whose shader state has no depth_needed.
+ */
+static unsigned int psh_depth_count[PSH_DEPTH_WRITE__COUNT];
 #endif
 
 /* HAKUX_SURFGPU's held download batch, in vk/surface.c. Declared here because
@@ -1092,6 +1100,28 @@ static void opt_stats_log_and_reset(void)
         pgraph_vk_ubosz_log_and_reset();
         {
             /*
+             * #433 P10: depth-tested draws over the 60 frames by who writes
+             * the depth word; see psh_depth_count. psh_depth_ff is the
+             * fixed-function share, psh_depth_kept the sum of the reasons
+             * after it. On hakuX-stall for the reason pipe[] is.
+             */
+            const unsigned int *c = psh_depth_count;
+            unsigned int kept = 0;
+            for (int i = PSH_DEPTH_KEPT_ENV; i < PSH_DEPTH_WRITE__COUNT; i++) {
+                kept += c[i];
+            }
+            __android_log_print(ANDROID_LOG_INFO, "hakuX-stall",
+                "psh_depth[psh_depth_ff=%u psh_depth_kept=%u nowrite=%u "
+                "env=%u f24=%u f16=%u wbuf=%u dotzw=%u clamp=%u poff=%u "
+                "zsat=%u]",
+                c[PSH_DEPTH_WRITE_FF], kept, c[PSH_DEPTH_WRITE_NONE],
+                c[PSH_DEPTH_KEPT_ENV], c[PSH_DEPTH_KEPT_F24],
+                c[PSH_DEPTH_KEPT_F16], c[PSH_DEPTH_KEPT_WBUF],
+                c[PSH_DEPTH_KEPT_DOTZW], c[PSH_DEPTH_KEPT_CLAMP],
+                c[PSH_DEPTH_KEPT_POFF], c[PSH_DEPTH_KEPT_ZSAT]);
+        }
+        {
+            /*
              * #461: what a texture bind spends its time on, counted in
              * vk/texture.c; on hakuX-stall for the reason pipe[] is. Counts
              * and KiB over the 60 frames:
@@ -1177,6 +1207,7 @@ static void opt_stats_log_and_reset(void)
 #endif
         vaf_stats_log_and_reset();
         memset(&g_opt_stats, 0, sizeof(g_opt_stats));
+        memset(psh_depth_count, 0, sizeof(psh_depth_count));
     }
 #else
     vaf_stats_log_and_reset();
@@ -7915,6 +7946,15 @@ static void begin_draw(PGRAPHState *pg)
             push_vertex_attr_values(pg);
             push_geom_line_params(pg);
         }
+
+#if NV2A_PERF_LOG
+        if (r->shader_binding && (pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_0) &
+                                  NV_PGRAPH_CONTROL_0_ZENABLE)) {
+            psh_depth_count[pgraph_glsl_psh_depth_write(
+                &r->shader_binding->state.psh,
+                pgraph_vk_psh_frag_depth_ff(r))]++;
+        }
+#endif
     }
 
     r->in_draw = true;

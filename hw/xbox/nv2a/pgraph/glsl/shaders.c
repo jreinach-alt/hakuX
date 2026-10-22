@@ -108,6 +108,13 @@ bool pgraph_glsl_check_shader_state_dirty(PGRAPHState *pg,
         }
     }
 
+    /* #433 P10 arm B: PshState.clip_max_saturates reads CLIP_MAX, a shader
+     * register under the arm only (pgraph.c), so the default list stays. */
+    if (pgraph_glsl_psh_fragdepth_off() &&
+        pgraph_is_reg_dirty(pg, NV_PGRAPH_ZCLIPMAX)) {
+        return true;
+    }
+
     int num_stages =
         psh_num_combiner_stages(pgraph_reg_r(pg, NV_PGRAPH_COMBINECTL));
     for (int i = 0; i < num_stages; i++) {

@@ -2041,6 +2041,7 @@ void pgraph_vk_update_descriptor_sets(PGRAPHState *pg);
 void pgraph_vk_bind_shaders(PGRAPHState *pg);
 void pgraph_vk_reclaim_descriptor_overflow(PGRAPHVkState *r);
 void pgraph_vk_update_shader_uniforms(PGRAPHState *pg);
+bool pgraph_vk_psh_frag_depth_ff(PGRAPHVkState *r);
 
 // reports.c
 void pgraph_vk_init_reports(PGRAPHState *pg);

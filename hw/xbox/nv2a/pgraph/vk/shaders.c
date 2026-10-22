@@ -1228,6 +1228,43 @@ get_and_ref_shader_module_for_key(PGRAPHVkState *r,
     return entry->module_info;
 }
 
+bool pgraph_vk_psh_frag_depth_ff(PGRAPHVkState *r)
+{
+    if (!pgraph_glsl_psh_fragdepth_off()) {
+        return false;
+    }
+    /*
+     * Fixed-function depth stands in only where the host clamps instead of
+     * clipping (a depth word past the surface's range saturates, as the write
+     * does) and where Z24S8 is stored as one of the two images the write's
+     * analysis covers. The no-D24-no-D32 fallback puts Z24S8 on D16_UNORM,
+     * where z / 0xFFFFFF keeps 16 of the guest's 24 bits.
+     */
+    VkFormat z24 =
+        r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8]
+            .vk_format;
+    bool ok = r->enabled_physical_device_features.depthClamp == VK_TRUE &&
+              (z24 == VK_FORMAT_D24_UNORM_S8_UINT ||
+               z24 == VK_FORMAT_D32_SFLOAT_S8_UINT);
+    static bool logged;
+    if (!ok && !logged) {
+        logged = true;
+        fprintf(stderr, "fragdepth: HAKUX_FRAGDEPTH=off has no effect: "
+                "depthClamp %d, Z24S8 host format 0x%x\n",
+                r->enabled_physical_device_features.depthClamp == VK_TRUE,
+                z24);
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_INFO, "hakuX-perf",
+                            "fragdepth: HAKUX_FRAGDEPTH=off has no effect: "
+                            "depthClamp %d, Z24S8 host format 0x%x",
+                            r->enabled_physical_device_features.depthClamp ==
+                                VK_TRUE,
+                            z24);
+#endif
+    }
+    return ok;
+}
+
 static void shader_binding_build_module_keys(
     PGRAPHVkState *r, ShaderBinding *binding,
     ShaderModuleCacheKey *vsh_key, ShaderModuleCacheKey *geom_key,
@@ -1272,6 +1309,20 @@ static void shader_binding_build_module_keys(
      * only then does its module interpret the combiners. */
     psh_key->psh.uber = pgraph_glsl_psh_uber_enabled() &&
                         pgraph_glsl_psh_uber_is_family(&binding->state.psh);
+    /*
+     * #433 P10 arm B. The flag is the decision itself, not the switch, so a
+     * draw that keeps its write has today's key and today's module, in the
+     * persisted shader_module_keys.bin as well. The two fields that only
+     * feed the decision are cleared for the same reason: the shader reads
+     * neither, and with them set a kept draw would compile a second copy of
+     * the module it already has.
+     */
+    psh_key->psh.glsl_opts.frag_depth_ff =
+        pgraph_glsl_psh_depth_write(&binding->state.psh,
+                                    pgraph_vk_psh_frag_depth_ff(r)) ==
+        PSH_DEPTH_WRITE_FF;
+    psh_key->psh.state.polygon_offset = false;
+    psh_key->psh.state.clip_max_saturates = false;
 }
 
 #if OPT_ASYNC_COMPILE

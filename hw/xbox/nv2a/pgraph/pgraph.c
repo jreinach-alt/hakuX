@@ -38,6 +38,7 @@
 #include "nv2a_vsh_emulator.h"
 #include "glsl/vsh-prog.h"
 #include "glsl/vsh.h"
+#include "glsl/psh.h"
 
 #define PG_GET_MASK(reg, mask) GET_MASK(pgraph_reg_r(pg, reg), mask)
 #define PG_SET_MASK(reg, mask, value)        \
@@ -64,6 +65,16 @@ void pgraph_init_reg_dynamic_masks(bool eds1, bool eds3)
         NV_PGRAPH_SETUPRASTER_POFFSETFILLENABLE |
         NV_PGRAPH_SETUPRASTER_LINESMOOTHENABLE |
         NV_PGRAPH_SETUPRASTER_POLYSMOOTHENABLE;
+    /* #433 P10 arm B: whether a draw keeps its gl_FragDepth write depends on
+     * the polygon offset enables (PshState.polygon_offset), so a change to
+     * one has to reach the shader-state check, which a dynamic bit does not
+     * (pgraph_reg_w moves shader_state_gen on non-dynamic bits only). */
+    if (pgraph_glsl_psh_fragdepth_off()) {
+        pgraph_reg_dynamic_mask_table[NV_PGRAPH_SETUPRASTER / 4] &=
+            ~(NV_PGRAPH_SETUPRASTER_POFFSETPOINTENABLE |
+              NV_PGRAPH_SETUPRASTER_POFFSETLINEENABLE |
+              NV_PGRAPH_SETUPRASTER_POFFSETFILLENABLE);
+    }
 
     pgraph_reg_dynamic_mask_table[NV_PGRAPH_BLENDCOLOR / 4] = 0xFFFFFFFF;
 
@@ -121,6 +132,12 @@ static void pgraph_init_reg_category_table(void)
     };
     for (int i = 0; i < ARRAY_SIZE(shader_regs); i++)
         pgraph_reg_category_table[shader_regs[i] / 4] |= REG_CAT_SHADER;
+    /* #433 P10 arm B: PshState.clip_max_saturates reads CLIP_MAX. Off the
+     * arm the register stays uniform-only, as before. This call is also
+     * where the arm's init line is printed. */
+    if (pgraph_glsl_psh_fragdepth_off()) {
+        pgraph_reg_category_table[NV_PGRAPH_ZCLIPMAX / 4] |= REG_CAT_SHADER;
+    }
 
     for (int i = 0; i < 8; i++) {
         pgraph_reg_category_table[(NV_PGRAPH_COMBINEALPHAI0 + i * 4) / 4] |= REG_CAT_SHADER;

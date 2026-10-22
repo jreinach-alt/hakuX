@@ -126,6 +126,13 @@ typedef struct PshState {
     bool z_perspective;
     bool noperspective; /* SET_CONTROL0 texture perspective off */
     bool depth_needed;
+    /* Under HAKUX_FRAGDEPTH=off only, and false otherwise, so the default
+     * state is unchanged: the polygon offset enable of the front polygon mode
+     * (pgraph_glsl_polygon_offset_raster), and a float-stored D24 surface
+     * whose CLIP_MAX lies past 0xFFFFFF. Both keep the gl_FragDepth write;
+     * see pgraph_glsl_psh_depth_write. */
+    bool polygon_offset;
+    bool clip_max_saturates;
 
     unsigned int surface_zeta_format;
     enum PshDepthFormat depth_format;
@@ -133,7 +140,40 @@ typedef struct PshState {
 
 int pgraph_glsl_window_clip_count(PGRAPHState *pg);
 bool pgraph_glsl_polygon_stipple_enabled(PGRAPHState *pg);
+/* SETUPRASTER enables polygon offset for the front polygon mode. The
+ * primitive type is not consulted (the uniforms also require a triangle). */
+bool pgraph_glsl_polygon_offset_raster(PGRAPHState *pg);
 void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state);
+
+/*
+ * #433 P10 arm B: HAKUX_FRAGDEPTH=off leaves depth to the fixed-function
+ * pipeline (the interpolated z / clipRange.y, the pipeline's compare and
+ * write, depth clamp) wherever that stays within one unit of the guest's
+ * depth word, so the fragment shader no longer forces late Z. Read once;
+ * unset or "on" is the default and writes gl_FragDepth on every depth draw.
+ */
+bool pgraph_glsl_psh_fragdepth_off(void);
+
+/* What a fragment shader does with depth. One FF value and a kept reason
+ * per case that fixed function cannot reproduce. */
+enum PshDepthWrite {
+    PSH_DEPTH_WRITE_NONE,  /* depth_needed false: no depth code at all */
+    PSH_DEPTH_WRITE_FF,    /* no gl_FragDepth; fixed function stands in */
+    PSH_DEPTH_KEPT_ENV,    /* HAKUX_FRAGDEPTH on/unset, or no depthClamp */
+    PSH_DEPTH_KEPT_F24,    /* the F24 encoding is stored, not the value */
+    PSH_DEPTH_KEPT_F16,    /* the F16 encoding is stored, not the value */
+    PSH_DEPTH_KEPT_WBUF,   /* w-buffer: depth is the interpolated w */
+    PSH_DEPTH_KEPT_DOTZW,  /* texm3x2depth: depth from a texture stage */
+    PSH_DEPTH_KEPT_CLAMP,  /* ZCLAMP clamps to CLIP_MIN/MAX (uniforms) */
+    PSH_DEPTH_KEPT_POFF,   /* polygon offset: NV2A units, floored */
+    PSH_DEPTH_KEPT_ZSAT,   /* float D24 storage, CLIP_MAX past 0xFFFFFF */
+    PSH_DEPTH_WRITE__COUNT
+};
+
+/* Whether a state's fragment shader writes gl_FragDepth, and why. frag_depth_ff
+ * is the arm being active for the device (pgraph_vk_psh_frag_depth_ff). */
+enum PshDepthWrite pgraph_glsl_psh_depth_write(const PshState *state,
+                                               bool frag_depth_ff);
 /* 1 << MAX_ANISOTROPY when the pixel shader takes stage i's anisotropic
  * probes, else 1; the samplers drop host anisotropy on exactly these (#284). */
 int pgraph_glsl_tex_aniso_probes(PGRAPHState *pg, int i);
@@ -273,6 +313,11 @@ typedef struct GenPshGlslOptions {
     /* See PGRAPHState::zeta_stored_as_float. */
     bool float_depth_storage;
     bool gles;
+    /* #433 P10 arm B: true only where pgraph_glsl_psh_depth_write() gives
+     * PSH_DEPTH_WRITE_FF; the shader then omits gl_FragDepth. Sits in what
+     * was padding before gles_version, so the key's size is unchanged and
+     * false is today's shader. */
+    bool frag_depth_ff;
     int gles_version;
     int ubo_binding;
     int ubo_set;
