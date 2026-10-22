@@ -6545,3 +6545,23 @@ status = "open"
 dispatch_state = "available"
 blocked_on = ""
 status_note = "Filed 2026-10-18 from lane.pathfind's own OUTBOX (branch origin/lane/pathfind): classify.py:381-383 tests `lu < BLACK_LUMA(8.0) or flat` with no std term, so a dark text prompt (e.g. Bloody Roar Extreme's save-data Yes/No, mean 1.17/std 12.31) reads as a black load screen and stalls a route. pathfind.py's own is_black already requires low std too; the fix is adding the same std floor to classify.py's black test, with a selftest frame from this run. classify.py and classify_selftest.py are released to [free] (left there by the folded lane.pathclass); no lane currently owns this fix -- available for the next lane.local dispatch, not blocked on anything."
+
+[issue.1101]
+title = "007: Everything or Nothing (45410042): level-1 gameplay runs at 1-7 fps on the Nova"
+suites = []
+no_suites = "A frame-rate defect in one title's first level, not yet located, so no pgraph suite is known to cover it."
+disposition = "defect"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "Filed 2026-10-22 from two unattended dispatcher runs on the Nova (PurpleVK, no route, nothing pressed by hand). Measured: 29 fps through the menus and the first cutscene (67 perf lines at 28+ fps in each run, Tq at most 11), then from the first level (the 'Basic combat, step 1' tutorial, ~137 s in) 24 lines at 2-7 fps (run 1, apk 9f33ac1e31c5, median 4, G median 219 ms, Tq 25,421-58,076) and 27 lines at 1-3 fps (run 2, apk 873beaf7e8bd, median 3, G median 259 ms, Tq 44,110-58,939) to the end of the 10-minute run. No thermal pause, clocks near maximum. Tq (per-draw texture dirty-bitmap polls, each hit forcing a TLB dirty reset across CPUs) rising three orders of magnitude at the level is the first lead; nothing bisected yet. Not Playable. Results 1-1792675737-loadstuck1021-2178878 and 1-1792686890-decaydpad1022-3970029. First step: one Nova run with a profile of the texture poll in the level."
+
+[issue.1102]
+title = "Def Jam: Fight for NY (45410049): the game stays on its LOADING splash for 10 minutes on the Nova"
+suites = []
+no_suites = "A title that never leaves its loading splash, cause not yet identified, so no pgraph suite is known to cover it."
+disposition = "defect"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "Filed 2026-10-22 from an unattended dispatcher run on the Nova (apk 9f33ac1e31c5, PurpleVK, no route, nothing pressed). Measured: all 434 captures read luma 1.9 from 0.4 s to 577.6 s (the gold-crown LOADING splash); gfps=59 on all 606 perf lines; [rr425w] idlepc=8001b02e in all 296 windows with idle_us=0 in 295 and busy_us ~2.05 s per ~2.05 s window, so the guest is awake, not sleeping in its idle loop. Result 1-1792675739-loadstuck1021-2178987. Not Playable (never leaves the splash). First step: find what the guest is waiting on (a disc read, a timer, a save check or an input) from the last kernel calls before the loop settles. Re-run with the harness's 30 s dark-stretch Fail pending (lane hangplay1022): it should end the run at ~30 s with 'dark for N s' rather than after 578 s."
