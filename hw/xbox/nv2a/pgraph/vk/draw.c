@@ -1212,6 +1212,13 @@ static void opt_stats_log_and_reset(void)
  *                 brk minus their sum is ends no cause was counted for.
  *   <name>=n/ms   calls and time. The x-marked timers below leave out any
  *                 pgraph_vk_finish nested in them, which fin= has already.
+ *   pipe_skipped= pipe_forced= pf_<why>= pipe_mismatch=
+ *                 HAKUX_PIPEKEY_DIRTY's verdicts on full-path draws that got
+ *                 past check_pipeline_dirty (pipekey_check): kept the bound
+ *                 pipeline without a key (under =2: would have), or went on
+ *                 to build the key, by the first input that stopped the skip;
+ *                 =2 only: would-skip draws whose built key differed.
+ *                 All 0 under =0.
  *   nd=+off:n     caller offsets from the library's load base; symbolise with
  *                 llvm-addr2line -f -e <unstripped .so> off.
  */
@@ -1223,6 +1230,7 @@ static void opt_stats_log_and_reset(void)
     X(bind)     /* x pgraph_vk_bind_shaders in it */ \
     X(key)      /*   init_pipeline_key and the same-binding memcmp */ \
     X(lru)      /*   fast_hash and lru_lookup */ \
+    X(pkc)      /*   pipekey_check, HAKUX_PIPEKEY_DIRTY=1/2 only */ \
     X(descf)    /* x full path pgraph_vk_update_descriptor_sets */ \
     X(descm)    /* x MFP path pgraph_vk_update_descriptor_sets */ \
     X(sub)      /*   finish_submit */ \
@@ -1253,6 +1261,9 @@ enum {
     DW_BFIN = DW_FIN + 2 * DW_NREASON,      /* + reason */
     DW_VCOPY_B = DW_BFIN + DW_NREASON,
     DW_STALE_B,
+    /* pipekey_check() verdicts, in PIPEKEY_* order, then =2's mismatches */
+    DW_PK_SKIP, DW_PK_NOB, DW_PK_SHD, DW_PK_RP, DW_PK_REG, DW_PK_VTX,
+    DW_PK_MIS,
     DW_FULL,        /* full-path draws */
     DW_UBO,         /* full-path descriptor updates that take a new UBO set */
     DW_RP,
@@ -1379,6 +1390,14 @@ static void dipwin_flip(void)
     dw_put(&p, end, " full=%" PRIu64 " ubo=%" PRIu64 " vcopyK=%" PRIu64
            " staleK=%" PRIu64, v[DW_FULL], v[DW_UBO], v[DW_VCOPY_B] >> 10,
            v[DW_STALE_B] >> 10);
+    dw_put(&p, end, " pipe_skipped=%" PRIu64 " pipe_forced=%" PRIu64
+           " pf_nob=%" PRIu64 " pf_shd=%" PRIu64 " pf_rp=%" PRIu64
+           " pf_reg=%" PRIu64 " pf_vtx=%" PRIu64 " pipe_mismatch=%" PRIu64,
+           v[DW_PK_SKIP],
+           v[DW_PK_NOB] + v[DW_PK_SHD] + v[DW_PK_RP] + v[DW_PK_REG] +
+               v[DW_PK_VTX],
+           v[DW_PK_NOB], v[DW_PK_SHD], v[DW_PK_RP], v[DW_PK_REG],
+           v[DW_PK_VTX], v[DW_PK_MIS]);
 #define DW_T(n) \
     dw_put(&p, end, " " #n "=%" PRIu64 "/%.2f", v[DW_##n], \
            v[DW_##n##_NS] / 1e6);
@@ -1663,10 +1682,57 @@ static void pipeline_cache_count_evict(PGRAPHVkState *r,
 #define PIPELINE_NOTE_BIND(r, b) do { } while (0)
 #endif
 
+/*
+ * #433 (HAKUX_PIPEKEY_DIRTY): a draw that reaches the pipeline key with every
+ * key input equal to the bound pipeline's keeps that pipeline without
+ * building the key, hashing it or looking it up.
+ *
+ * pipekey.binding is the pipeline whose key the last key built here matched
+ * (same binding, or an LRU hit), and pipekey.shader the shader binding that
+ * key's shader_state came from. pipekey_check() compares every other input of
+ * init_pipeline_key() by value against binding->key. The shader state goes by
+ * identity: ShaderBinding::state is written only when its node is
+ * (re)initialised by the lookup in pgraph_vk_bind_shaders(), which runs only
+ * in a call that sets shader_bindings_changed, and create_pipeline() drops
+ * pipekey after any such call. Everything else that can replace or free the
+ * bound entry drops it too: eviction and flush (post_evict), node reuse
+ * (entry_init), a lookup that does not end on the same binding or an LRU hit
+ * (before the hash), and renderer init.
+ *
+ * 0 (default): off. 1: skip. 2: build the key anyway and count, and log, a
+ * draw the check would have skipped whose key differs.
+ */
+enum {
+    PIPEKEY_SKIP,
+    PIPEKEY_NOB, /* no binding to compare with: init, a lookup, an eviction */
+    PIPEKEY_SHD, /* the shader binding changed */
+    PIPEKEY_RP,  /* render pass formats */
+    PIPEKEY_REG, /* a key register */
+    PIPEKEY_VTX, /* vertex binding or attribute descriptions */
+};
+
+static struct {
+    int mode;
+    int why; /* what pipekey_check() reports while binding is NULL */
+    PipelineBinding *binding;
+    ShaderBinding *shader;
+    int num_bindings, num_attributes;
+    unsigned long mismatches;
+} pipekey;
+
+static inline void pipekey_drop(int why)
+{
+    pipekey.binding = NULL;
+    pipekey.why = why;
+}
+
 static void pipeline_cache_entry_init(Lru *lru, LruNode *node,
                                       const void *state)
 {
     PipelineBinding *snode = container_of(node, PipelineBinding, node);
+    if (pipekey.binding == snode) {
+        pipekey_drop(PIPEKEY_NOB);
+    }
     snode->layout = VK_NULL_HANDLE;
     snode->pipeline = VK_NULL_HANDLE;
     snode->draw_time = 0;
@@ -1709,6 +1775,10 @@ static void pipeline_cache_entry_post_evict(Lru *lru, LruNode *node)
     assert((!r->in_command_buffer ||
             snode->draw_time < r->command_buffer_start_time) &&
            "Pipeline evicted while in use!");
+
+    if (pipekey.binding == snode) {
+        pipekey_drop(PIPEKEY_NOB);
+    }
 
 #if NV2A_PERF_LOG
     pipeline_cache_count_evict(r, snode);
@@ -1803,6 +1873,18 @@ static void init_pipeline_cache(PGRAPHState *pg)
     r->pipeline_cache.compare_nodes = pipeline_cache_entry_compare;
     r->pipeline_cache.post_node_evict = pipeline_cache_entry_post_evict;
     r->pipeline_cache.pre_node_evict = pipeline_cache_pre_evict;
+
+    const char *pipekey_env = getenv("HAKUX_PIPEKEY_DIRTY");
+    pipekey.mode = pipekey_env && (pipekey_env[0] == '1' ||
+                                   pipekey_env[0] == '2') ?
+                       pipekey_env[0] - '0' : 0;
+    pipekey.mismatches = 0;
+    pipekey_drop(PIPEKEY_NOB);
+    fprintf(stderr, "nv2a: pipeline key %s (HAKUX_PIPEKEY_DIRTY=%d)\n",
+            pipekey.mode == 1 ? "skipped when its inputs match the bound one's" :
+            pipekey.mode == 2 ? "built on every lookup, skip checked against it" :
+                                "built on every lookup",
+            pipekey.mode);
 }
 
 /* #569 P1: vk/compile_worker.c and pgraph/profile.c */
@@ -1868,6 +1950,8 @@ static void finalize_pipeline_cache(PGRAPHState *pg)
     lru_destroy(&r->pipeline_cache);
     g_free(r->pipeline_cache_entries);
     r->pipeline_cache_entries = NULL;
+    /* flush leaves an entry pre_evict refuses: none outlives the array */
+    pipekey_drop(PIPEKEY_NOB);
 
     vkDestroyPipelineCache(r->device, r->vk_pipeline_cache, NULL);
 }
@@ -2509,6 +2593,89 @@ static bool check_pipeline_dirty(PGRAPHState *pg)
     return false;
 }
 
+/*
+ * The register part of the pipeline key. Every input init_pipeline_key()
+ * reads is compared by pipekey_check() too, or HAKUX_PIPEKEY_DIRTY=1 keeps a
+ * pipeline the key would not: a new input goes in both.
+ */
+static void init_pipeline_key_regs(PGRAPHState *pg, uint32_t *regs,
+                                   size_t num_regs)
+{
+#if OPT_DYNAMIC_STATES
+    const int reg_ids[] = {
+        NV_PGRAPH_BLEND,     NV_PGRAPH_CONTROL_0,
+        NV_PGRAPH_CONTROL_2, NV_PGRAPH_CONTROL_3,
+        NV_PGRAPH_SETUPRASTER, NV_PGRAPH_CONTROL_1,
+    };
+#else
+    const int reg_ids[] = {
+        NV_PGRAPH_BLEND,       NV_PGRAPH_CONTROL_0,
+        NV_PGRAPH_BLENDCOLOR,  NV_PGRAPH_CONTROL_2,
+        NV_PGRAPH_CONTROL_3,   NV_PGRAPH_SETUPRASTER,
+        NV_PGRAPH_ZOFFSETBIAS, NV_PGRAPH_ZOFFSETFACTOR,
+        NV_PGRAPH_CONTROL_1,
+    };
+#endif
+    assert(ARRAY_SIZE(reg_ids) == num_regs);
+    for (int i = 0; i < ARRAY_SIZE(reg_ids); i++) {
+        regs[i] = pgraph_vk_reg_r(pg, reg_ids[i]);
+    }
+    /*
+     * Blend enters the key in its effective form, because the static path now
+     * bakes a destination-alpha substitution that depends on the surface
+     * format. The render pass state only carries the *host* format, and
+     * A8R8G8B8 and X8R8G8B8_Z8R8G8B8 share one -- so keying on the raw register
+     * would hand an X surface the pipeline built for an A8R8G8B8 draw. Inert
+     * where eds3 blend is supported: regs[0] is zeroed below.
+     */
+    regs[0] = pgraph_vk_effective_blend_reg(pg);
+#if OPT_DYNAMIC_STATES
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    bool use_dyn_ds = r->extended_dynamic_state_supported;
+    if (use_dyn_ds) {
+        regs[1] &= ~(NV_PGRAPH_CONTROL_0_ZENABLE |
+                     NV_PGRAPH_CONTROL_0_ZWRITEENABLE |
+                     NV_PGRAPH_CONTROL_0_STENCIL_WRITE_ENABLE |
+                     NV_PGRAPH_CONTROL_0_ZFUNC);
+        regs[2] &= ~(NV_PGRAPH_CONTROL_2_STENCIL_OP_FAIL |
+                     NV_PGRAPH_CONTROL_2_STENCIL_OP_ZFAIL |
+                     NV_PGRAPH_CONTROL_2_STENCIL_OP_ZPASS);
+    }
+    regs[0] &= ~(NV_PGRAPH_BLEND_LOGICOP_ENABLE |
+                 NV_PGRAPH_BLEND_LOGICOP);
+    regs[1] &= ~(NV_PGRAPH_CONTROL_0_ALPHAREF |
+                 NV_PGRAPH_CONTROL_0_DITHERENABLE);
+#if OPT_DYNAMIC_BLEND
+    if (r->eds3_blend_supported) {
+        regs[0] = 0;
+        regs[1] &= ~(NV_PGRAPH_CONTROL_0_RED_WRITE_ENABLE |
+                     NV_PGRAPH_CONTROL_0_GREEN_WRITE_ENABLE |
+                     NV_PGRAPH_CONTROL_0_BLUE_WRITE_ENABLE |
+                     NV_PGRAPH_CONTROL_0_ALPHA_WRITE_ENABLE);
+    }
+#endif
+    regs[4] &= ~(NV_PGRAPH_SETUPRASTER_CULLENABLE |
+                 NV_PGRAPH_SETUPRASTER_CULLCTRL |
+                 NV_PGRAPH_SETUPRASTER_FRONTFACE |
+                 NV_PGRAPH_SETUPRASTER_POFFSETPOINTENABLE |
+                 NV_PGRAPH_SETUPRASTER_POFFSETLINEENABLE |
+                 NV_PGRAPH_SETUPRASTER_POFFSETFILLENABLE |
+                 NV_PGRAPH_SETUPRASTER_LINESMOOTHENABLE |
+                 NV_PGRAPH_SETUPRASTER_POLYSMOOTHENABLE);
+    if (use_dyn_ds) {
+        regs[5] &= ~(NV_PGRAPH_CONTROL_1_STENCIL_TEST_ENABLE |
+                     NV_PGRAPH_CONTROL_1_STENCIL_FUNC |
+                     NV_PGRAPH_CONTROL_1_STENCIL_REF |
+                     NV_PGRAPH_CONTROL_1_STENCIL_MASK_READ |
+                     NV_PGRAPH_CONTROL_1_STENCIL_MASK_WRITE);
+    } else {
+        regs[5] &= ~(NV_PGRAPH_CONTROL_1_STENCIL_REF |
+                     NV_PGRAPH_CONTROL_1_STENCIL_MASK_READ |
+                     NV_PGRAPH_CONTROL_1_STENCIL_MASK_WRITE);
+    }
+#endif
+}
+
 static void init_pipeline_key(PGRAPHState *pg, PipelineKey *key)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
@@ -2522,79 +2689,169 @@ static void init_pipeline_key(PGRAPHState *pg, PipelineKey *key)
     memcpy(key->attribute_descriptions, r->vertex_attribute_descriptions,
            sizeof(key->attribute_descriptions[0]) *
                r->num_active_vertex_attribute_descriptions);
+    init_pipeline_key_regs(pg, key->regs, ARRAY_SIZE(key->regs));
+}
 
-#if OPT_DYNAMIC_STATES
-    const int regs[] = {
-        NV_PGRAPH_BLEND,     NV_PGRAPH_CONTROL_0,
-        NV_PGRAPH_CONTROL_2, NV_PGRAPH_CONTROL_3,
-        NV_PGRAPH_SETUPRASTER, NV_PGRAPH_CONTROL_1,
-    };
-#else
-    const int regs[] = {
-        NV_PGRAPH_BLEND,       NV_PGRAPH_CONTROL_0,
-        NV_PGRAPH_BLENDCOLOR,  NV_PGRAPH_CONTROL_2,
-        NV_PGRAPH_CONTROL_3,   NV_PGRAPH_SETUPRASTER,
-        NV_PGRAPH_ZOFFSETBIAS, NV_PGRAPH_ZOFFSETFACTOR,
-        NV_PGRAPH_CONTROL_1,
-    };
+/*
+ * Would init_pipeline_key() build exactly r->pipeline_binding's key? Field by
+ * field, in PipelineKey's order: clear (false for every key built above),
+ * render_pass_state (built from a zeroed struct, so its load ops are 0 as
+ * in the key), shader_state (by identity, see pipekey), regs, then the
+ * active vertex descriptions with the counts the matched key was built with
+ * (a key's entries past them are zero). PIPEKEY_SKIP only if all are equal.
+ *
+ * The asserts pin PipelineKey to exactly those six fields, each after the
+ * last with only alignment padding between (zero in every key built here):
+ * a field added to the key fails the build until pipekey_check() covers it.
+ */
+#define PIPEKEY_FIELD(f) (((PipelineKey *)0)->f)
+#define PIPEKEY_END(f) (offsetof(PipelineKey, f) + sizeof(PIPEKEY_FIELD(f)))
+#define PIPEKEY_NEXT(prev, next) \
+    QEMU_BUILD_BUG_ON(offsetof(PipelineKey, next) != \
+                      QEMU_ALIGN_UP(PIPEKEY_END(prev), \
+                                    _Alignof(__typeof__(PIPEKEY_FIELD(next)))))
+QEMU_BUILD_BUG_ON(offsetof(PipelineKey, clear) != 0);
+PIPEKEY_NEXT(clear, render_pass_state);
+PIPEKEY_NEXT(render_pass_state, shader_state);
+PIPEKEY_NEXT(shader_state, regs);
+PIPEKEY_NEXT(regs, binding_descriptions);
+PIPEKEY_NEXT(binding_descriptions, attribute_descriptions);
+QEMU_BUILD_BUG_ON(sizeof(PipelineKey) !=
+                  QEMU_ALIGN_UP(PIPEKEY_END(attribute_descriptions),
+                                _Alignof(PipelineKey)));
+#undef PIPEKEY_NEXT
+#undef PIPEKEY_END
+#undef PIPEKEY_FIELD
+
+static int pipekey_check(PGRAPHState *pg)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    PipelineBinding *b = pipekey.binding;
+
+    if (!b) {
+        return pipekey.why == PIPEKEY_SHD ? PIPEKEY_SHD : PIPEKEY_NOB;
+    }
+    if (b != r->pipeline_binding || b->key.clear) {
+        return PIPEKEY_NOB;
+    }
+    if (r->shader_binding != pipekey.shader) {
+        return PIPEKEY_SHD;
+    }
+
+    RenderPassState rp;
+    memset(&rp, 0, sizeof(rp));
+    init_render_pass_state(pg, &rp);
+    if (memcmp(&rp, &b->key.render_pass_state, sizeof(rp))) {
+        return PIPEKEY_RP;
+    }
+
+    uint32_t regs[ARRAY_SIZE(b->key.regs)];
+    init_pipeline_key_regs(pg, regs, ARRAY_SIZE(regs));
+    if (memcmp(regs, b->key.regs, sizeof(regs))) {
+        return PIPEKEY_REG;
+    }
+
+    int nb = r->num_active_vertex_binding_descriptions;
+    int na = r->num_active_vertex_attribute_descriptions;
+    if (nb != pipekey.num_bindings || na != pipekey.num_attributes ||
+        memcmp(r->vertex_binding_descriptions, b->key.binding_descriptions,
+               nb * sizeof(b->key.binding_descriptions[0])) ||
+        memcmp(r->vertex_attribute_descriptions, b->key.attribute_descriptions,
+               na * sizeof(b->key.attribute_descriptions[0]))) {
+        return PIPEKEY_VTX;
+    }
+    return PIPEKEY_SKIP;
+}
+
+/* The key just built from the current inputs equals r->pipeline_binding's */
+static void pipekey_confirm(PGRAPHVkState *r)
+{
+    pipekey.binding = r->pipeline_binding;
+    pipekey.shader = r->shader_binding;
+    pipekey.num_bindings = r->num_active_vertex_binding_descriptions;
+    pipekey.num_attributes = r->num_active_vertex_attribute_descriptions;
+}
+
+static size_t pipekey_first_diff(const void *a, const void *b, size_t n)
+{
+    const uint8_t *x = a, *y = b;
+    size_t i = 0;
+    while (i < n && x[i] == y[i]) {
+        i++;
+    }
+    return i;
+}
+
+/*
+ * =2: pipekey_check() said skip, the built key differs from the bound one.
+ * Logs the first differing field, on the 1st, 2nd, 4th, 8th ... mismatch.
+ */
+static void pipekey_mismatch(PGRAPHVkState *r, const PipelineKey *key)
+{
+    const PipelineKey *bk = &r->pipeline_binding->key;
+    unsigned long n = ++pipekey.mismatches;
+#if NV2A_PERF_LOG
+    DW_INC(PK_MIS);
 #endif
-    assert(ARRAY_SIZE(regs) == ARRAY_SIZE(key->regs));
-    for (int i = 0; i < ARRAY_SIZE(regs); i++) {
-        key->regs[i] = pgraph_vk_reg_r(pg, regs[i]);
+    if (n & (n - 1)) {
+        return;
     }
-    /*
-     * Blend enters the key in its effective form, because the static path now
-     * bakes a destination-alpha substitution that depends on the surface
-     * format. The render pass state only carries the *host* format, and
-     * A8R8G8B8 and X8R8G8B8_Z8R8G8B8 share one -- so keying on the raw register
-     * would hand an X surface the pipeline built for an A8R8G8B8 draw. Inert
-     * where eds3 blend is supported: regs[0] is zeroed below.
-     */
-    key->regs[0] = pgraph_vk_effective_blend_reg(pg);
-#if OPT_DYNAMIC_STATES
-    bool use_dyn_ds = r->extended_dynamic_state_supported;
-    if (use_dyn_ds) {
-        key->regs[1] &= ~(NV_PGRAPH_CONTROL_0_ZENABLE |
-                           NV_PGRAPH_CONTROL_0_ZWRITEENABLE |
-                           NV_PGRAPH_CONTROL_0_STENCIL_WRITE_ENABLE |
-                           NV_PGRAPH_CONTROL_0_ZFUNC);
-        key->regs[2] &= ~(NV_PGRAPH_CONTROL_2_STENCIL_OP_FAIL |
-                           NV_PGRAPH_CONTROL_2_STENCIL_OP_ZFAIL |
-                           NV_PGRAPH_CONTROL_2_STENCIL_OP_ZPASS);
-    }
-    key->regs[0] &= ~(NV_PGRAPH_BLEND_LOGICOP_ENABLE |
-                       NV_PGRAPH_BLEND_LOGICOP);
-    key->regs[1] &= ~(NV_PGRAPH_CONTROL_0_ALPHAREF |
-                       NV_PGRAPH_CONTROL_0_DITHERENABLE);
-#if OPT_DYNAMIC_BLEND
-    if (r->eds3_blend_supported) {
-        key->regs[0] = 0;
-        key->regs[1] &= ~(NV_PGRAPH_CONTROL_0_RED_WRITE_ENABLE |
-                           NV_PGRAPH_CONTROL_0_GREEN_WRITE_ENABLE |
-                           NV_PGRAPH_CONTROL_0_BLUE_WRITE_ENABLE |
-                           NV_PGRAPH_CONTROL_0_ALPHA_WRITE_ENABLE);
-    }
-#endif
-    key->regs[4] &= ~(NV_PGRAPH_SETUPRASTER_CULLENABLE |
-                       NV_PGRAPH_SETUPRASTER_CULLCTRL |
-                       NV_PGRAPH_SETUPRASTER_FRONTFACE |
-                       NV_PGRAPH_SETUPRASTER_POFFSETPOINTENABLE |
-                       NV_PGRAPH_SETUPRASTER_POFFSETLINEENABLE |
-                       NV_PGRAPH_SETUPRASTER_POFFSETFILLENABLE |
-                       NV_PGRAPH_SETUPRASTER_LINESMOOTHENABLE |
-                       NV_PGRAPH_SETUPRASTER_POLYSMOOTHENABLE);
-    if (use_dyn_ds) {
-        key->regs[5] &= ~(NV_PGRAPH_CONTROL_1_STENCIL_TEST_ENABLE |
-                           NV_PGRAPH_CONTROL_1_STENCIL_FUNC |
-                           NV_PGRAPH_CONTROL_1_STENCIL_REF |
-                           NV_PGRAPH_CONTROL_1_STENCIL_MASK_READ |
-                           NV_PGRAPH_CONTROL_1_STENCIL_MASK_WRITE);
+
+    char what[128];
+    if (key->clear != bk->clear) {
+        snprintf(what, sizeof(what), "clear %d -> %d", bk->clear, key->clear);
+    } else if (memcmp(&key->render_pass_state, &bk->render_pass_state,
+                      sizeof(key->render_pass_state))) {
+        snprintf(what, sizeof(what),
+                 "render_pass_state byte %zu (color 0x%x zeta 0x%x -> "
+                 "color 0x%x zeta 0x%x)",
+                 pipekey_first_diff(&key->render_pass_state,
+                                    &bk->render_pass_state,
+                                    sizeof(key->render_pass_state)),
+                 bk->render_pass_state.color_format,
+                 bk->render_pass_state.zeta_format,
+                 key->render_pass_state.color_format,
+                 key->render_pass_state.zeta_format);
+    } else if (memcmp(&key->shader_state, &bk->shader_state,
+                      sizeof(key->shader_state))) {
+        snprintf(what, sizeof(what), "shader_state byte %zu of %zu",
+                 pipekey_first_diff(&key->shader_state, &bk->shader_state,
+                                    sizeof(key->shader_state)),
+                 sizeof(key->shader_state));
     } else {
-        key->regs[5] &= ~(NV_PGRAPH_CONTROL_1_STENCIL_REF |
-                           NV_PGRAPH_CONTROL_1_STENCIL_MASK_READ |
-                           NV_PGRAPH_CONTROL_1_STENCIL_MASK_WRITE);
+        snprintf(what, sizeof(what), "byte %zu of %zu outside the named fields",
+                 pipekey_first_diff(key, bk, sizeof(*key)), sizeof(*key));
+        for (int i = 0; i < ARRAY_SIZE(key->regs); i++) {
+            if (key->regs[i] != bk->regs[i]) {
+                snprintf(what, sizeof(what), "regs[%d] 0x%08x -> 0x%08x", i,
+                         bk->regs[i], key->regs[i]);
+                goto log;
+            }
+        }
+        for (int i = 0; i < ARRAY_SIZE(key->binding_descriptions); i++) {
+            if (memcmp(&key->binding_descriptions[i],
+                       &bk->binding_descriptions[i],
+                       sizeof(key->binding_descriptions[i]))) {
+                snprintf(what, sizeof(what),
+                         "binding_descriptions[%d] (active %d)", i,
+                         r->num_active_vertex_binding_descriptions);
+                goto log;
+            }
+        }
+        for (int i = 0; i < ARRAY_SIZE(key->attribute_descriptions); i++) {
+            if (memcmp(&key->attribute_descriptions[i],
+                       &bk->attribute_descriptions[i],
+                       sizeof(key->attribute_descriptions[i]))) {
+                snprintf(what, sizeof(what),
+                         "attribute_descriptions[%d] (active %d)", i,
+                         r->num_active_vertex_attribute_descriptions);
+                goto log;
+            }
+        }
     }
-#endif
+log:
+    fprintf(stderr, "nv2a: pipeline key mismatch #%lu (HAKUX_PIPEKEY_DIRTY=2): "
+            "%s\n", n, what);
 }
 
 #if OPT_ASYNC_COMPILE
@@ -3219,6 +3476,10 @@ static void create_pipeline(PGRAPHState *pg)
 #endif
         r->last_shader_state_gen = pg->shader_state_gen;
         dcen_bound_shaders = true;
+        if (pipekey.mode && r->shader_bindings_changed) {
+            /* its lookup may have reinitialised any ShaderBinding */
+            pipekey_drop(PIPEKEY_SHD);
+        }
     } else {
         pgraph_vk_update_shader_uniforms(pg);
     }
@@ -3245,6 +3506,30 @@ static void create_pipeline(PGRAPHState *pg)
         return;
     }
 
+    /* HAKUX_PIPEKEY_DIRTY: see pipekey */
+    int pk_why = PIPEKEY_NOB;
+    if (pipekey.mode) {
+#if NV2A_PERF_LOG
+        DW_T0(dw_pk0);
+#endif
+        pk_why = pipekey_check(pg);
+#if NV2A_PERF_LOG
+        DW_T1(pkc, dw_pk0);
+        QEMU_BUILD_BUG_ON(DW_PK_VTX - DW_PK_SKIP != PIPEKEY_VTX);
+        dipwin_add(&dw_c[DW_PK_SKIP + pk_why], 1);
+#endif
+        if (pk_why == PIPEKEY_SKIP && pipekey.mode == 1) {
+            /* the same binding the key would have found: as below */
+            NV2A_VK_DPRINTF("Cache hit (same key inputs)");
+            dcen_cp = DCEN_CP_SAMEKEY;
+            gpl_take_next_pipeline(r, r->pipeline_binding);
+            g_nv2a_stats.shader_stats.pipeline_cache_hits++;
+            NV2A_PHASE_TIMER_END_EXCL(pipe_lookup);
+            NV2A_VK_DGROUP_END();
+            return;
+        }
+    }
+
     PipelineKey key;
 #if NV2A_PERF_LOG
     DW_T0(dw_k0);
@@ -3255,10 +3540,16 @@ static void create_pipeline(PGRAPHState *pg)
 #if NV2A_PERF_LOG
     DW_T1(key, dw_k0);
 #endif
+    if (pipekey.mode == 2 && pk_why == PIPEKEY_SKIP && !same_key) {
+        pipekey_mismatch(r, &key);
+    }
 
     if (same_key) {
         NV2A_VK_DPRINTF("Cache hit (same binding)");
         dcen_cp = DCEN_CP_SAMEKEY;
+        if (pipekey.mode) {
+            pipekey_confirm(r);
+        }
         gpl_take_next_pipeline(r, r->pipeline_binding);
         g_nv2a_stats.shader_stats.pipeline_cache_hits++;
         NV2A_PHASE_TIMER_END_EXCL(pipe_lookup);
@@ -3266,6 +3557,10 @@ static void create_pipeline(PGRAPHState *pg)
         return;
     }
 
+    if (pipekey.mode) {
+        /* confirmed again only by an LRU hit below */
+        pipekey_drop(PIPEKEY_NOB);
+    }
 #if NV2A_PERF_LOG
     DW_T0(dw_l0);
 #endif
@@ -3301,6 +3596,9 @@ static void create_pipeline(PGRAPHState *pg)
         g_nv2a_stats.shader_stats.pipeline_cache_hits++;
         r->pipeline_binding_changed = r->pipeline_binding != snode;
         r->pipeline_binding = snode;
+        if (pipekey.mode) {
+            pipekey_confirm(r);
+        }
         gpl_take_next_pipeline(r, snode);
         NV2A_PHASE_TIMER_END_EXCL(pipe_lookup);
         NV2A_VK_DGROUP_END();
