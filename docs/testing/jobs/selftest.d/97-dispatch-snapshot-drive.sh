@@ -152,6 +152,37 @@ else
     bad "  mutant anchor for SNAPSHOT_GLOBS no longer matches dispatcher.sh"
 fi
 
+# book (routebuild1021): drive.py imports pathbook.py (SCRIPT_DEPS) and replays a title's
+# pathfind path from titles/pathknow/paths/ beside it (SNAPSHOT_GLOBS). 41430003 is a
+# complete path in the repo; with the glob dropped (the mutant) the snapshot has none.
+check "the snapshot's titles/ holds pathbook.py (SCRIPT_DEPS)" test -f "$BIN/titles/pathbook.py"
+sd_book() {   # <bin dir> -> the file pathbook.load() replays for 41430003, or "none"
+    HAKUX_PATHS_DIR= python3 -c 'import sys; sys.path[:0] = [sys.argv[1]]; import pathbook
+p, f = pathbook.load("41430003"); print(f if p and p.get("complete") else "none")' "$1/titles" 2>&1
+}
+if python3 -c 'import PIL, numpy' 2>/dev/null; then
+    out=$(sd_book "$BIN")
+    check "pathbook.py (snapshot) loads a complete repo path from the snapshot's own pathknow/paths/: $out" \
+        bash -c 'case "$1" in "$2"/titles/pathknow/paths/41430003.json) ;; *) exit 1 ;; esac' _ "$out" "$BIN"
+    # devices.sh beside the mutant, or its snapshot never runs at all (see the targets
+    # mutant below) and sd_book fails on a missing pathbook.py, not on a missing path.
+    cp "$TESTING/devices.sh" "$SD/devices.sh"
+    mutant_drop "SNAPSHOT_GLOBS" "titles/pathknow/paths/*.json" "$SD/no-paths.sh"
+    if [ -f "$SD/no-paths.sh" ]; then
+        sd_env_at "$SD/no-paths.sh" "$SD/dnb" "$TESTING" snapshot_scripts
+        mout=$(sd_book "$SD/dnb/bin")
+        case "$mout" in
+            none) ok "  mutant 'drop pathknow/paths from SNAPSHOT_GLOBS' leaves no path to replay (red, as it must be)" ;;
+            *) bad "  mutant 'drop pathknow/paths from SNAPSHOT_GLOBS' still loaded one -- the leg above checks nothing: $mout" ;;
+        esac
+    else
+        bad "  mutant anchor for SNAPSHOT_GLOBS no longer matches dispatcher.sh"
+    fi
+else
+    check "the snapshot carries pathfind's recorded paths (SNAPSHOT_GLOBS)" \
+        test -f "$BIN/titles/pathknow/paths/41430003.json"
+fi
+
 # targets: titlestate.py's admit() opens titles/targets.toml, titles/routes/<name>.route
 # and titles/profile-transition.toml beside itself (snaptargets1018, #433). targets.toml
 # ships now (SNAPSHOT_GLOBS); check the other two landed too.
@@ -174,6 +205,19 @@ sd_admit() {   # <bin dir> <dispatch dir> -> titlestate.py admit's stdout+stderr
 out=$(sd_admit "$BIN" "$SD/d")
 check "titlestate.py admit (snapshot, --find-route, no golden) returns admit=true, not a traceback" \
     python3 -c 'import json,sys; d=json.loads(sys.argv[1]); assert d.get("admit") is True and d.get("clause") == "find-route", d' "$out"
+
+# auto (routebuild1021): from the snapshot, a title with no route of its own is given
+# routes/auto.route, and the gate admits it with no golden -- the claim-time half of
+# "the dispatcher must not reject a request with no known path".
+out=$(MAKE_XBOX_HDD="$REPO/tools/make_xbox_hdd.py" TITLESTATE_DIR="$SD/d/titlestate" DISPATCH_DIR="$SD/d" \
+      python3 "$BIN/titles/titlestate.py" suggest-route --title-id FFFFFFFF 2>&1)
+check "titlestate.py suggest-route (snapshot, no route) names the shipped auto route: $out" \
+    python3 -c 'import json,sys; d=json.loads(sys.argv[1]); assert d.get("name") == "auto" and d.get("source") == "auto", d' "$out"
+out=$(MAKE_XBOX_HDD="$REPO/tools/make_xbox_hdd.py" TITLESTATE_DIR="$SD/d/titlestate" DISPATCH_DIR="$SD/d" \
+      python3 "$BIN/titles/titlestate.py" admit --title-id FFFFFFFF --route auto \
+      --route-text-file "$BIN/titles/routes/auto.route" 2>&1)
+check "titlestate.py admit (snapshot, auto route, no golden) returns admit=true, clause auto-route" \
+    python3 -c 'import json,sys; d=json.loads(sys.argv[1]); assert d.get("admit") is True and d.get("clause") == "auto-route", d' "$out"
 
 # The mutant: drop titles/targets.toml from SNAPSHOT_GLOBS. Must crash the admit call
 # above the same way master does -- the stop rule the brief sets for this fragment.

@@ -91,7 +91,7 @@ affinity.py captures.py make_test_iso.py extract_results.py sweep_queue.sh \
 make_isolation_discs.py vsh_score.py thermal_state.py titles/route.sh perf/pad.sh \
 battery_admit.py titles/titlestate.py titles/saves.py titles/drive.py \
 titles/classify.py titles/waitfor_match.py titles/pathclass.py titles/pathknow/learned.py \
-jobs/device_build.py \
+titles/pathbook.py jobs/device_build.py \
 jobs/models.py jobs/models.toml dispatch_doctor.sh jobs/window.sh jobs/models.sh \
 jobs/allowed-tools.doctor jobs/roles/dispatchdoctor.md"
 # DATA A SHIPPED SCRIPT PICKS AT RUN TIME, shipped by glob, never by name.
@@ -126,8 +126,13 @@ jobs/allowed-tools.doctor jobs/roles/dispatchdoctor.md"
 # worker only, with nothing in the log to say why. All three are a fixed file (or, for
 # routes, a file per title, same shape as a drive profile), so they ship here, not in
 # SCRIPT_DEPS; src_hash already covers whatever this matches.
+#
+# pathknow/paths/<TID>.json: pathfind.py's recorded paths into play, one per title.
+# drive.py replays one (pathbook.py load(), beside itself) when it beats the title's
+# drive-built book in $D/paths; without them a re-run of a pathfind title starts from
+# trial again (routebuild1021).
 SNAPSHOT_GLOBS="titles/drive-profiles/*.toml titles/drive-profiles/*/*.png titles/pathknow/classifier/head.npz \
-titles/targets.toml titles/profile-transition.toml titles/routes/*.route"
+titles/targets.toml titles/profile-transition.toml titles/routes/*.route titles/pathknow/paths/*.json"
 snapshot_globbed() {   # every file SNAPSHOT_GLOBS matches in $SRC, relative to it
     ( cd "$SRC" 2>/dev/null || exit 0
       local f
@@ -167,7 +172,7 @@ snapshot_scripts() {
              sweep_queue.sh make_isolation_discs.py vsh_score.py thermal_state.py \
              titles/route.sh perf/pad.sh battery_admit.py titles/titlestate.py \
              titles/saves.py titles/drive.py titles/classify.py titles/waitfor_match.py \
-             titles/pathclass.py titles/pathknow/learned.py jobs/device_build.py \
+             titles/pathclass.py titles/pathknow/learned.py titles/pathbook.py jobs/device_build.py \
              jobs/models.py jobs/models.toml \
              dispatch_doctor.sh jobs/window.sh jobs/models.sh jobs/allowed-tools.doctor \
              jobs/roles/dispatchdoctor.md; do
@@ -2438,12 +2443,18 @@ except Exception: print("")' "$rdir/profile-backup.json" 2>/dev/null)
             restore_hdd_pref
             mv "$req" "$rdir/request.json"; return 0
         }
+        # The soak below passes TITLE_ID/TITLE_NAME and the two dirs to drive.py
+        # through route.sh (routebuild1021): the title's book is read from, and
+        # written back to, $D/paths (pathbook.py; the repo's pathfind paths ship
+        # in the snapshot, read-only), and what drive.py learns on unnamed
+        # screens goes to $D/learned -- both outside $SNAP, which is rebuilt.
         start_frame_capture "$rdir" "$frames_every" "$seconds"
         start_soak_video "$rdir" "$video_seconds" "$video_after" "$([ -s "$rdir/route.txt" ] && echo 1 || echo 0)" "$seconds"
         SERIAL="$SERIAL" CAPTURE_LOG="$rdir/logcat.txt" \
             PULL_GLOB="$pull_glob" PULL_DEST="$rdir/pulled" \
             AUDIO_CAPTURE_MB="$audio_capture" \
             ROUTE_FILE="$([ -s "$rdir/route.txt" ] && echo "$rdir/route.txt")" \
+            TITLE_ID="$ttid" TITLE_NAME="$title" HAKUX_PATHS_DIR="$D/paths" HAKUX_LEARNED_DIR="$D/learned" \
             bash "$HERE/soak_title.sh" "$tpath" "$seconds" >>"$rdir/run.log" 2>&1
         # Before the result is written, so the count in result.json is final,
         # and unconditionally, so an early guest exit does not leave a

@@ -1,0 +1,18 @@
+# state: any   (serves every title with no route of its own; drive.py marks gameplay; lane routebuild1021)
+# The shared route for a title nobody has written a route for (#433, owner
+# 2026-10-21: "we would discuss 10 titles then hand them to the dispatcher and
+# it would handle the rest"). titlestate.py suggest_route attaches it when a
+# title has no proven and no configured route, and admit() lets it through
+# with no golden (clause `auto-route`): it is the dispatcher's own
+# route-finding, the way `--find-route` is a person's.
+#
+# drive.py does all of it, for the whole soak (the soak's TERM ends the step
+# long before 7200 s):
+#   - into play: the title's book first (pathbook.py: the presses an earlier
+#     run of this title recorded, at the screens it recorded them on), then
+#     the classifier's lean, the learned table and the explore ladder;
+#   - `mark`: it writes `mark gameplay` itself once play is confirmed;
+#   - in play: generic.toml's play_cycle/stall_cycle keep the player moving;
+#   - at the end: route-trail.json, and the title's book rewritten if this
+#     run reached play faster (or got further) than the book on file.
+drive generic 7200 mark

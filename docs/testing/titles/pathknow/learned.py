@@ -26,7 +26,9 @@ import json
 import os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-DIR = os.path.join(HERE, "learned")
+# HAKUX_LEARNED_DIR: the dispatcher's $D/learned, kept outside the script snapshot it
+# rebuilds (routebuild1021). Unset: next to this file, as before.
+DIR = os.environ.get("HAKUX_LEARNED_DIR") or os.path.join(HERE, "learned")
 GLOBAL_PATH = os.path.join(DIR, "_global.jsonl")
 
 OUTCOME_RANK = {"advanced": 3, "changed": 2, "none": 1}
@@ -95,10 +97,12 @@ def _matches(records, key, embedding):
     return out
 
 
-def suggest(own_records, global_records, key, embedding, tried):
+def suggest(own_records, global_records, key, embedding, tried, min_rank=0):
     """The best button to press again for this screen, or None (nothing learned, or
     everything learned is either vetoed or already tried this visit -- the caller falls
-    back to the next untried rung of the hardcoded explore ladder either way)."""
+    back to the next untried rung of the hardcoded explore ladder either way).
+    `min_rank` drops a best answer ranked under it: drive.py passes 2 so a button whose
+    only record is `none` is not chosen over the classifier's own lean."""
     for records in (own_records, global_records):
         matches = _matches(records, key, embedding)
         if not matches:
@@ -114,6 +118,6 @@ def suggest(own_records, global_records, key, embedding, tried):
             score = max(OUTCOME_RANK.get(o, 0) for o in outs)
             if score > best_score:
                 best, best_score = b, score
-        if best is not None:
+        if best is not None and best_score >= min_rank:
             return best
     return None

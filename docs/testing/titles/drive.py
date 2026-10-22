@@ -90,12 +90,33 @@ for a cursor the d-pad does not move (Castlevania's save prompt).
                          escape n with cycle (n-1) mod len: one run tries
                          several escapes, one per stall.
   unknown                one free capture (a confidence blip often clears on its own),
-                         then press and observe: the learned table's best answer for
-                         this screen, or the next untried rung of EXPLORE_LADDER
-                         otherwise, wrapping forever. Never waits to fail -- see
-                         ACT-OBSERVE below.
+                         then press and observe, the first that has an untried
+                         answer: this title's learned answer that did something;
+                         the classifier's lean (lean(): pathclass's top-3 summed by
+                         FAMILY -- a menu lean presses pathclass's own action, then
+                         A; a skip lean A; START only while gameplay holds under
+                         LEAN_PLAY_START; a wait lean waits LEAN_WAIT_S first; a
+                         play lean holds the play input, the HUD probe above);
+                         any title's learned answer that did something; the next
+                         untried rung of EXPLORE_LADDER, wrapping forever. Never
+                         waits to fail -- see ACT-OBSERVE below.
+A pathclass-named menu with no profile input follows pathclass's action
+(MENU_FOLLOW presses on one screen), then rotates MENU_ROTATE; its press count
+is per screen signature, so a menu tree is not one "stuck" screen.
 A state seen after a later one in the profile's `order` (a main_menu after
 play) is logged as `anomaly`.
+UP/DOWN/LEFT/RIGHT are sent as hat flicks (HAT): hakuX's d-pad buttons do nothing.
+
+THE BOOK (routebuild1021). With TITLE_ID set (the dispatcher's soak sets it),
+the learned table is the title's, not the profile's, and pathbook.load() gives
+the title's recorded path into play, if one exists (a drive-built one in
+HAKUX_PATHS_DIR, or pathfind's in pathknow/paths). Before any state's policy
+but the waits, replay_book() presses the book's step for this screen, found by
+signature near the book's cursor; a step that does not move its screen in
+REPLAY_TRIES presses is left to the policy. Every press, the book's or the
+policy's, goes to a trail with its screen and what the next capture showed;
+finish() writes it to <out>/route-trail.json and pathbook.build() turns it into
+the title's path, saved only if it beats the stored one (pathbook.py, BETTER).
 
 ACT-OBSERVE (owner, #433, 2026-10-18 Part B/C). An `unknown` screen is never idle-waited
 to a timeout any more: it is pressed and learned from. Each press's outcome is read off
@@ -152,6 +173,7 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import classify  # noqa: E402
+import pathbook  # noqa: E402  (the title's recorded way into play, routebuild1021)
 sys.path.insert(0, os.path.join(HERE, "pathknow"))
 import learned  # noqa: E402  (unknown-screen memory, #433 Part C)
 
@@ -164,8 +186,39 @@ LADDER = ("A", "START", "B", "X", "START+A")
 # never idle. START excluded unless the profile can SEE a pause (has_pause_crop), the
 # same rule the cutscene skip ladder already uses, for the same reason: a wrong START
 # this loop cannot see is a pause this loop cannot undo.
-EXPLORE_LADDER = ("A", "START", "B", "X", "Y", "DOWN", "LX:min", "R1", "L1")
+# B is last (routebuild1021): on a menu it is cancel, so the screen it "changes" is
+# usually the one before.
+EXPLORE_LADDER = ("A", "START", "X", "Y", "DOWN", "LX:min", "R1", "L1", "B")
 NEVER = {"BACK", "SELECT"}            # BACK exits to the dashboard on some titles; no guide button exists here
+# The d-pad BUTTONS (544-547) do nothing in hakuX: its d-pad is the hat (pathfind.py's
+# HAT; routes/midnight-club-3.returning.route moves a menu one row with `axis HATY max`
+# then `mid`). press() sends these names as a hat flick. Until routebuild1021 every
+# DOWN drive.py sent was a no-op: the learned table's 16 DOWN records are all `none`.
+HAT = {"UP": "HATY:min", "DOWN": "HATY:max", "LEFT": "HATX:min", "RIGHT": "HATX:max"}
+
+# What a press does on each of pathclass.py's classes (routebuild1021). Below the
+# confidence floor classify.py answers `unknown`, but pathclass's top-3 still ranks the
+# screen: on the Blinx 2 run 1-1792424727-lane.fpsnext1019-447829, 72 of 88 captures
+# came back `unknown`, and every one went to the blind ladder. lean() sums the top-3 by
+# family, and a family holding LEAN_MASS of it picks the presses before any ladder rung.
+FAMILY = {"menu": ("title_screen", "main_menu", "submenu", "profile_creation", "name_entry",
+                   "save_load_prompt", "controller_prompt", "results", "game_over"),
+          "skip": ("intro_video", "publisher_logo", "cutscene"),
+          "wait": ("loading", "black"),
+          "play": ("gameplay",)}
+FAMILY_OF = {s: f for f, ss in FAMILY.items() for s in ss}
+LEAN_MASS = 0.45
+LEAN_PLAY_START = 0.1         # START only while the top-3 gives gameplay less than this: START in play pauses it
+LEAN_WAIT_S = 15.0            # a screen leaning `wait` is left alone this long, then pressed like any other
+LEAN_BUTTONS = ("A", "START", "UP", "DOWN", "LEFT", "RIGHT")   # pathclass action.do values worth sending
+# A pathclass-named menu with no profile input: pathclass's own action (its OCR re-reads
+# the highlight every capture) for MENU_FOLLOW presses on one screen, then these in turn.
+# Measured prior, pathknow's 164 complete paths: menus take A, a title START; B is rare.
+MENU_FOLLOW = 6
+MENU_ROTATE = ("A", "START", "DOWN", "X", "B")
+REPLAY_TRIES = 3              # presses of one book step on an unchanged screen before the policy takes it
+BOOK_STICK = {"up": ("LY", "min"), "down": ("LY", "max"), "left": ("LX", "min"), "right": ("LX", "max")}
+BOOK_BUTTONS = ("A", "B", "X", "Y", "START", "L1", "R1", "L3", "R3", "START+A") + tuple(HAT)
 
 DEFAULTS = dict(
     fast_s=1.0, slow_s=5.0, skip_settle_s=1.5, skip_passes=3, menu_gap_s=2.0, menu_max_presses=25,
@@ -185,6 +238,38 @@ def rest(axis):
     (`min`). pad.sh's `mid` on a 0..32767 trigger is a half press, which is
     what every release here sent until lane.routedriver2."""
     return "min" if axis in ("LT", "RT", "L2", "R2") else "mid"
+
+
+def book_button(action):
+    """A path step's action tokens (pathfind.py's vocabulary, or drive.py's own) as one
+    press() string, or None when a token has no safe translation: BACK/SELECT (NEVER),
+    two axes at once (`STICK:upleft`, `RT+left`), anything unrecognised. pathfind's
+    holds keep their length: `STICK:up:2` is `LY:min:2`, `HOLD:A:0.4` is `A/400`."""
+    out = []
+    for tok in action:
+        head, _, rest_ = tok.partition(":")
+        if head in NEVER or (head == "HOLD" and rest_.split(":")[0] in NEVER):
+            return None
+        if head in ("STICK", "RSTICK"):
+            d, _, secs = rest_.partition(":")
+            ax = BOOK_STICK.get(d)
+            if ax is None:
+                return None
+            ax = (("R" + ax[0][1:]) if head == "RSTICK" else ax[0], ax[1])
+            out.append(":".join(ax + ((secs,) if secs else ())))
+        elif head == "HOLD":
+            b, _, secs = rest_.partition(":")
+            if b not in BOOK_BUTTONS:
+                return None
+            out.append("%s/%d" % (b, round(float(secs or 0.4) * 1000)))
+        elif head in ("RT", "LT") and "+" not in tok:
+            out.append("%s:max%s" % (head, (":" + rest_) if rest_ else ""))
+        elif tok in BOOK_BUTTONS or (":" in tok and head in ("LX", "LY", "RX", "RY", "HATX", "HATY")) or (
+                "/" in tok and tok.split("/")[0] in BOOK_BUTTONS):
+            out.append(tok)
+        else:
+            return None
+    return " ".join(out) or None
 
 
 class Device:
@@ -351,6 +436,19 @@ class Driver:
         self.explored = []               # [#433] every (key, button, outcome) this run recorded, for finish()
         self._own_learned = None         # lazily loaded, then kept current in-memory (learned.py)
         self._global_learned = None
+        # TITLE_ID (the dispatcher's soak sets it): the learned table and the path book are
+        # this title's, not the profile's -- every new title shares the one `generic` profile.
+        self.tid = (os.environ.get("TITLE_ID") or "").upper() or None
+        self.ltitle = self.tid or profile.get("name")
+        self.cur_sig = None              # this capture's pathbook signature
+        self.cur_cls = None              # ... and pathclass's top answer for it
+        self.cur_diff = None             # ... and its motion against the capture before
+        self.trail = []                  # every press with its screen and its effect: pathbook.py's input
+        self.book, self.book_file = pathbook.load(self.tid) if self.tid else (None, None)
+        self.book_cursor = 0
+        self.book_skip = set()           # book steps the policy has taken over this run
+        self.replay = None               # the pending book press: dict(j, sig, menu, tries)
+        self.menu_screen = None          # (sig, id): a pathclass menu's press counter resets on a new screen
         self.stalled_since = None
         self.escapes = 0                 # stall_cycle runs so far
         self.esc_frames = 0
@@ -377,6 +475,7 @@ class Driver:
         self.play_since = None
         self.play_frames = []
         self.marked = False
+        self.play_at = None              # when the play stretch that confirmed gameplay began
         self.last_keep = -1e9
         self.sources = {}
         self.anomalies = []
@@ -424,24 +523,50 @@ class Driver:
         return self.clock_sim if self.sim else now() - self.t0
 
     def press(self, btn, why):
+        """`btn` is one button or several, space-separated and sent 0.3 s apart (a
+        book step's `START A`). Each press goes to the trail with this capture's screen;
+        the next capture fills in what it did (after())."""
         t = self.t()
         if not self.dev.foreground():
             raise Fail("hakuX is not the focused app: no press sent (the emulator exited, or another window "
                        "took the screen)")
+        for k, b in enumerate(btn.split()):
+            if k:
+                self.sleep(0.3)
+            self.send(HAT.get(b, b))
+        self.last_press_t = t
+        self.inputs.append(dict(t=round(t, 1), state=self.state, input=btn, why=why))
+        self.trail.append(dict(t=round(t, 1), state=self.state, cls=self.cur_cls, button=btn, why=why,
+                               menu=self.state in MENU_LIKE or FAMILY_OF.get(self.cur_cls) == "menu",
+                               sig=None if self.cur_sig is None else pathbook.sig_list(self.cur_sig),
+                               in_play=self.play_at is not None))
+        return "press %s (%s)" % (btn, why)
+
+    def send(self, btn):
         if btn == "START+A":
             self.dev.pad("hold", "START")
             self.dev.pad("press", "A")
             self.dev.pad("release", "START")
         elif ":" in btn:                 # AXIS:value, a stick flick (a cursor move where the d-pad is not mapped)
-            ax, val = btn.split(":", 1)
+            ax, val, *secs = btn.split(":")   # AXIS:value:seconds, a hold (a book's STICK:up:2)
             self.dev.pad("axis", ax, val)
-            self.sleep(0.4)
+            self.sleep(float(secs[0]) if secs else 0.15 if ax.startswith("HAT") else 0.4)   # a held hat repeats
             self.dev.pad("axis", ax, rest(ax))
+        elif "/" in btn:                 # `A/800`: held 800 ms (a book's HOLD:A:0.8)
+            b, ms = btn.split("/", 1)
+            self.dev.pad("press", b, ms)
         else:
             self.dev.pad("press", btn)
-        self.last_press_t = t
-        self.inputs.append(dict(t=round(t, 1), state=self.state, input=btn, why=why))
-        return "press %s (%s)" % (btn, why)
+
+    def after(self, st, r):
+        """This capture is the one after the trail's last press: what that press did."""
+        for e in reversed(self.trail):
+            if "after_state" in e:
+                break
+            e["after_state"] = st
+            e["after_d"] = (None if e["sig"] is None or self.cur_sig is None
+                            else round(pathbook.sig_dist(e["sig"], self.cur_sig), 2))
+            e["after_changed"] = self.cur_diff
 
     def stall_cycles(self):
         """input.stall_cycles (a list of cycles: escape n plays cycle
@@ -795,7 +920,7 @@ class Driver:
     # -- learned table (#433 Part C) ---------------------------------------
     def learned_tables(self):
         if self._own_learned is None:
-            self._own_learned, self._global_learned = learned.load(self.p.get("name"))
+            self._own_learned, self._global_learned = learned.load(self.ltitle)
         return self._own_learned, self._global_learned
 
     def resolve_explore(self, outcome):
@@ -803,7 +928,7 @@ class Driver:
         in-memory copy too, so a later capture in THIS run sees it without a re-read) and
         clear the pending slot. Never called with nothing pending."""
         ex = self.explore
-        rec = learned.record(self.p.get("name"), ex["key"], ex["embedding"], ex["button"], outcome,
+        rec = learned.record(self.ltitle, ex["key"], ex["embedding"], ex["button"], outcome,
                               self.t(), os.path.basename(self.out))
         own, _ = self.learned_tables()
         own.append(rec)
@@ -865,6 +990,13 @@ class Driver:
             # a play stretch this neither ends the stretch nor counts toward it.
             self.hold_play()
             return "hold (hud up, motion not yet play)"
+        lean = self.lean(r) if state == "unknown" else None
+        if lean and lean[0] == "play":
+            # pathclass leans gameplay, under its 0.85 floor: the same probe as the HUD case
+            # above, for a profile with no HUD crop. Nothing is pressed, so nothing is explored.
+            self.settle_explore(r)
+            self.hold_play()
+            return "hold (unknown, leans play %.2f)" % lean[1]
         if state != "play" and state != "stalled" and (self.held or self.steer_on.is_set()):
             self.release_play()
         if state != "stalled":
@@ -875,6 +1007,10 @@ class Driver:
 
         if state in ("boot", "black", "loading"):
             return "wait"
+
+        book = self.replay_book(state, r)
+        if book:
+            return book
 
         if state in SKIPPABLE:
             lad = self.ladder
@@ -912,14 +1048,23 @@ class Driver:
             return self.press(seq[(self.resume_tries - 1) % len(seq)], "resume %d" % self.resume_tries)
 
         if state in MENU_LIKE:
-            key = (state, r.get("source"))
+            # A pathclass-named menu counts its presses per SCREEN (signature), not per
+            # name: every menu of a title reads `pathclass:main_menu`, and one counter
+            # across a whole menu tree would call the third menu stuck.
+            pcl = r.get("source", "").startswith("pathclass:")
+            key = (state, r.get("source")) + ((self.screen_id(),) if pcl else ())
             n = self.screen_presses.get(key, 0)
             if t - self.last_press_t < cfg["menu_gap_s"]:
                 return "settle"
             if n >= cfg["menu_max_presses"]:
                 raise Fail("stuck on %s (%s) after %d presses" % (state, r.get("source"), n))
             crop = self.crops.get(r.get("crop") or "")
-            seq = (crop or {}).get("press") or self.inp.get(state) or (["START"] if state == "title" else ["A"])
+            seq = (crop or {}).get("press") or self.inp.get(state)
+            default = ["START"] if state == "title" else ["A"]
+            if not seq and pcl:
+                do = ((r.get("pathclass") or {}).get("action") or {}).get("do")
+                seq = ([do] if do in LEAN_BUTTONS else default) if n < MENU_FOLLOW else list(MENU_ROTATE)
+            seq = seq or default
             row = self.cursor_press(r, frame)
             if row:
                 key = (state, r.get("source"), row[0])
@@ -965,20 +1110,13 @@ class Driver:
 
         # unknown (#433 Part B): never wait-then-fail. Resolve whatever press is still
         # awaiting an outcome from the LAST capture (the screen stayed `unknown`, so it's
-        # `changed` or `none`), then pick the next one -- the learned table first, the next
-        # untried rung of the exploration ladder otherwise, wrapping forever once the whole
-        # ladder's been tried this stretch. The route's own wall-clock budget in `run()` is
-        # the only thing allowed to end a run that never gets past this; this branch itself
-        # must never raise Fail.
-        if self.explore is not None:
-            embedding = (r.get("pathclass") or {}).get("embedding")
-            if r.get("changed") is not None:
-                moved = r["changed"] > classify.STATIC_BAR
-            else:
-                prev_embedding = self.explore["embedding"]
-                moved = (embedding is None or prev_embedding is None or
-                         learned.cosine(embedding, prev_embedding) < learned.SIM_BAR)
-            self.resolve_explore("changed" if moved else "none")
+        # `changed` or `none`), then pick the next one: this title's learned answer that
+        # did something, the classifier's lean, any title's learned answer that did
+        # something, the next untried rung of the exploration ladder, in that order
+        # (routebuild1021), wrapping forever once the whole ladder's been tried this
+        # stretch. The route's own wall-clock budget in `run()` is the only thing allowed
+        # to end a run that never gets past this; this branch itself must never raise Fail.
+        self.settle_explore(r)
         if self.explore_fresh:
             # a low-confidence reading is often gone on the very next capture with no input
             # at all (AvP Extinction's own recorded run: two of its three `unknown` frames
@@ -991,16 +1129,112 @@ class Driver:
         key = "unknown:%s" % r.get("source")
         embedding = (r.get("pathclass") or {}).get("embedding")
         own, glob = self.learned_tables()
-        btn = learned.suggest(own, glob, key, embedding, self.explore_tried)
+        btn, origin = learned.suggest(own, [], key, embedding, self.explore_tried, min_rank=2), "learned"
+        if btn is None and lean:
+            if lean[0] == "wait" and t - self.state_since < LEAN_WAIT_S:
+                return "wait (unknown, leans wait %.2f)" % lean[1]
+            btn = next((b for b in lean[2] if b not in self.explore_tried), None)
+            origin = "leans %s %.2f" % (lean[0], lean[1])
+        if btn is None:
+            btn, origin = learned.suggest([], glob, key, embedding, self.explore_tried, min_rank=2), "learned:global"
         if btn is None:
             rung = [b for b in EXPLORE_LADDER if self.has_pause_crop or "START" not in b]
             if len(self.explore_tried) >= len(rung):
                 self.explore_tried = []      # exhausted this screen's ladder: wrap, keep trying
             untried = [b for b in rung if b not in self.explore_tried]
-            btn = untried[0] if untried else rung[0]
+            btn, origin = (untried[0] if untried else rung[0]), "ladder"
         self.explore_tried.append(btn)
         self.explore = dict(key=key, embedding=embedding, button=btn, t=t)
-        return self.press(btn, "explore unknown (%s)" % r.get("source"))
+        return self.press(btn, "explore unknown (%s; %s)" % (r.get("source"), origin))
+
+    def settle_explore(self, r):
+        """The pending explore press (if any) stayed on `unknown`: `changed` if the frame
+        moved -- classify.py's motion fraction, or if that branch didn't run, pathclass's
+        own embedding far enough from the last one -- else `none`."""
+        if self.explore is None:
+            return
+        embedding = (r.get("pathclass") or {}).get("embedding")
+        if r.get("changed") is not None:
+            moved = r["changed"] > classify.STATIC_BAR
+        else:
+            prev_embedding = self.explore["embedding"]
+            moved = (embedding is None or prev_embedding is None or
+                     learned.cosine(embedding, prev_embedding) < learned.SIM_BAR)
+        self.resolve_explore("changed" if moved else "none")
+
+    def lean(self, r):
+        """Where pathclass's top-3 leans on a screen it would not name: (family, mass,
+        presses) when one FAMILY holds LEAN_MASS of the top-3's probability, else None.
+        A menu lean presses pathclass's own action first (its OCR read the highlight),
+        then A, a skip lean A; both add START only while gameplay holds under
+        LEAN_PLAY_START of the top-3 (START in live play pauses it, and this loop cannot
+        always see the pause). `wait` and `play` press nothing."""
+        pc = r.get("pathclass") or {}
+        mass = {}
+        for s, p in pc.get("top3") or []:
+            f = FAMILY_OF.get(s)
+            if f:
+                mass[f] = mass.get(f, 0.0) + float(p)
+        if not mass:
+            return None
+        fam = max(mass, key=mass.get)
+        if mass[fam] < LEAN_MASS:
+            return None
+        start = ["START"] if mass.get("play", 0.0) < LEAN_PLAY_START else []
+        cands = []
+        if fam == "menu":
+            do = (pc.get("action") or {}).get("do")
+            first = [do] if do in LEAN_BUTTONS and (do != "START" or start) else []
+            cands = first + ["A"] + start + ["DOWN"]
+        elif fam == "skip":
+            cands = ["A"] + start
+        return fam, round(mass[fam], 2), list(dict.fromkeys(cands))
+
+    def screen_id(self):
+        """A number for the screen on show: the same while this capture's signature stays
+        within SIG_MATCH of the one the number was given for, the next once it moves off."""
+        if self.cur_sig is None:
+            return None
+        if self.menu_screen is None or pathbook.sig_dist(self.menu_screen[0], self.cur_sig) > pathbook.SIG_MATCH:
+            self.menu_screen = (self.cur_sig, 0 if self.menu_screen is None else self.menu_screen[1] + 1)
+        return self.menu_screen[1]
+
+    # -- the path book (routebuild1021) -------------------------------------
+    def replay_book(self, state, r):
+        """The book's press for this screen, or None. A step is pressed when its screen
+        matches this capture (pathbook.match: the cursor's step or one of the next few);
+        the cursor moves past it once the screen leaves the step's signature, or, for a
+        menu step, once anything on it moves (a cursor row). A step pressed REPLAY_TRIES
+        times on its own screen is the policy's from then on: a book never holds a run
+        on a step that no longer works."""
+        if not self.book or self.cur_sig is None or state in ("play", "stalled", "paused") or self.play_at is not None:
+            return None
+        steps = self.book["steps"]
+        rp = self.replay
+        if rp is not None:
+            if (pathbook.sig_dist(self.cur_sig, rp["sig"]) > pathbook.SIG_MATCH
+                    or (rp["menu"] and (self.cur_diff or 0.0) > pathbook.UNCHANGED)):
+                self.book_cursor = max(self.book_cursor, rp["j"] + 1)
+                self.replay = rp = None
+        hit = pathbook.match(steps, self.book_cursor, self.cur_sig, self.book_skip)
+        if hit is None:
+            return None
+        j, s = hit
+        if self.t() - self.last_press_t < self.cfg["skip_settle_s"]:
+            return "settle (book step %d)" % (j + 1)
+        tries = rp["tries"] + 1 if rp is not None and rp["j"] == j else 1
+        if tries > REPLAY_TRIES:
+            self.book_skip.add(j)
+            self.replay = None
+            return None
+        btn = book_button(s.get("action") or [])
+        if btn is None:
+            self.book_skip.add(j)
+            return None
+        self.replay = dict(j=j, sig=s["sig"], menu=bool(s.get("menu")) or s.get("state") in pathbook.MENU_STATES,
+                           tries=tries)
+        self.settle_explore(r)           # a pending explore press stayed on `unknown`: its outcome is in
+        return self.press(btn, "book step %d/%d (%s)" % (j + 1, len(steps), s.get("state")))
 
     def interval(self):
         cfg = self.cfg
@@ -1043,6 +1277,15 @@ class Driver:
                     return 1
                 st = r["state"]
                 self.sources[r["source"].split(":")[0]] = self.sources.get(r["source"].split(":")[0], 0) + 1
+                pc = r.get("pathclass") or {}
+                self.cur_cls = pc.get("state")
+                self.cur_diff = pc.get("diff") if pc.get("diff") is not None else r.get("changed")
+                try:
+                    self.cur_sig = pathbook.signature(cur)
+                except (OSError, ValueError) as e:
+                    print("drive: pathbook signature: %s" % e)
+                    self.cur_sig = None
+                self.after(st, r)
                 changed = st != self.state
                 if changed:
                     self.enter(st, r, cur)
@@ -1061,10 +1304,12 @@ class Driver:
                         if self.t() - self.play_since >= self.cfg["find_play_s"]:
                             self.row(r, cap_s, action, kept)
                             self.result = "reached-play"
+                            self.play_at = self.play_since
                             return 0
                     elif self.mark and not self.marked and self.t() - self.play_since >= self.cfg["confirm_play_s"]:
                         self.dev.logcat("mark gameplay")
                         self.marked = True
+                        self.play_at = self.play_since
                         action += " mark gameplay"
                         kept = self.keep(cur, "gameplay")
                 if not kept and (changed or self.cfg["keep_all"]
@@ -1130,6 +1375,25 @@ class Driver:
         print("drive: %s after %.0f s; title at %s s, play at %s s; %d inputs, %d skips, %d explored"
               % (res, t, self.time_to.get("title"), self.time_to.get("play"), len(self.inputs),
                  len(self.skips), len(self.explored)))
+        # The trail, and from it this title's path (pathbook.py): kept only if it beats the
+        # one this run replayed. A failure here must not cost the run its other results.
+        meta = dict(title_id=self.tid, name=os.environ.get("TITLE_NAME") or self.p.get("title") or self.p.get("name"),
+                    device=os.environ.get("SERIAL"), result=res,
+                    complete=self.play_at is not None,
+                    time_to_play_s=None if self.play_at is None else round(self.play_at, 1),
+                    furthest=self.furthest, run=os.path.basename(os.path.abspath(self.out)),
+                    book=self.book_file, book_cursor=self.book_cursor, book_skipped=sorted(self.book_skip))
+        trail = dict(order=self.order, meta=meta, trail=self.trail)
+        try:
+            tmp = os.path.join(self.out, ".route-trail.json.tmp")
+            with open(tmp, "w") as f:
+                json.dump(trail, f)
+            os.replace(tmp, os.path.join(self.out, "route-trail.json"))
+            if self.tid and pathbook.paths_dir():
+                ok, why = pathbook.save(pathbook.build(self.trail, self.order, meta), pathbook.paths_dir())
+                print("drive: pathbook: %s" % why)
+        except (OSError, ValueError, KeyError, TypeError) as e:
+            print("drive: pathbook: not saved (%s: %s)" % (type(e).__name__, e))
 
 
 class Fail(Exception):

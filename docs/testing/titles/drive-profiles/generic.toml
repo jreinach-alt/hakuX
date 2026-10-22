@@ -58,3 +58,14 @@ order = ["boot", "logo", "intro_video", "title", "profile", "main_menu", "loadin
 stall_fail_s = 40.0
 escape_max = 6
 ladder = ["A"]
+
+[input]
+# Play (routebuild1021): a title this profile has never seen, so nothing title-specific.
+# Hold the stick forward with RT (the gas on a racer, fire on a shooter: RT is gas, the
+# triggers are not swapped) and turn a little each way, so an on-foot title walks a loop
+# instead of standing against the first wall; A every 5 s (a jump, an attack, the next
+# line of a dialogue box). Never START or B: START pauses live play, B backs out of a menu
+# the classifier may have miscalled as play. A stall backs off and tries a side, with A/X.
+play_cycle = [[[["LY", "min"], ["RT", "max"]], 4.0], [[["LX", "max"], ["RT", "max"]], 1.5], [[["LY", "min"], ["RT", "max"]], 3.0], [[["LX", "min"], ["RT", "max"]], 1.5]]
+play_tap = [["A", 5.0]]
+stall_cycle = [[[["LY", "max"]], 1.5, ["A"]], [[["LX", "max"]], 1.5, ["X"]], [[["LY", "min"]], 2.0, ["A"]]]
