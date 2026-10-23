@@ -142,6 +142,12 @@ files = ["docs/lanes/holdpid1022/**", "docs/testing/jobs/hold.sh", "docs/testing
 released = ["docs/lanes/holdpid1022/**", "docs/testing/jobs/hold.sh", "docs/testing/jobs/selftest.d/99-ownerplay-capture.sh"]
 note = "CLAIMED AND RELEASED AT READY (lane.local 2026-10-22 PDT; harness defect, no issue; brief briefs/holdpid1022.md): hold.sh capture_ensure handed its script to systemd-run as `bash -c \"$script\"`, and systemd rewrote `$$` to `$`, so the pidfile held `$` and `take` exited 6 on 10-22. Fix: the script is written to hold/<label>.capture.sh and run as `bash <file>`; identity is PIDFILE= in /proc/<pid>/environ; the TERM trap is single-quoted. The selftest fake systemd-run now expands like the real one. Both files were free (holdcap1018/restoreprio1011 released them)."
 
+[lane.scenewrite1023]
+issues = []
+standing = false
+files = ["docs/lanes/scenewrite1023/**", "docs/testing/dispatcher.sh", "docs/testing/jobs/selftest.d/99-load-state.sh"]
+note = "STARTED (lane.local 2026-10-23 ~09:55 PDT, Sonnet; harness defect, no issue; brief briefs/scenewrite1023.md): the first device run of request.sh --load-state failed in scene setup because adb's shell user cannot write the app-created states/<ttid> dir (drwxr-s--- u0_a145 ext_data_rw), and every scene write (backup, push, park, restore) runs as plain shell; a failed park was also silently dropped. Fix: open the dir with run-as chmod g+w before the first write, fail loudly on a park failure, and give the 99-load-state fake adb the real permission split. dispatcher.sh and 99-load-state.sh were released by [lane.savestate-req1019] at its fold (1b616ee718)."
+
 [lane.suitesha1022]
 issues = []
 standing = false
