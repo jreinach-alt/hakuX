@@ -5658,7 +5658,7 @@ static void texture_cache_init(PGRAPHVkState *r)
     lru_init(&r->texture_cache, texture_hash_buckets);
     QTAILQ_INIT(&r->texture_active_list);
     image_pool_init(r);
-    for (int i = 0; i < NUM_SUBMIT_FRAMES; i++) {
+    for (int i = 0; i < r->ring_alloc; i++) {
         r->deferred_texture_releases[i] =
             g_array_new(FALSE, FALSE, sizeof(DeferredTextureRelease));
     }
@@ -5686,7 +5686,7 @@ static void texture_cache_finalize(PGRAPHVkState *r)
     }
     lru_flush(&r->texture_cache);
     /* Everything retired above lands in the pool; drain that afterwards. */
-    for (int i = 0; i < NUM_SUBMIT_FRAMES; i++) {
+    for (int i = 0; i < r->ring_alloc; i++) {
         pgraph_vk_drain_deferred_texture_releases(r, i);
         g_array_free(r->deferred_texture_releases[i], TRUE);
         r->deferred_texture_releases[i] = NULL;

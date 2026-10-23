@@ -229,7 +229,7 @@ void pgraph_vk_update_vertex_ram_buffer(PGRAPHState *pg, hwaddr offset,
     if (end > fs->vertex_ram_flush_max) {
         fs->vertex_ram_flush_max = end;
     }
-    for (int i = 0; i < NUM_SUBMIT_FRAMES; i++) {
+    for (int i = 0; i < r->ring_alloc; i++) {
         FrameStagingState *other = &r->frame_staging[i];
         if (other == fs) {
             continue;
