@@ -62,6 +62,14 @@ dd_classify() {
     case "$err" in
         *"this was the one requeue, so it is final"*)
             echo zero-captures-interop-exhausted; return 0 ;;
+        # A disc run on a disk other than the one the harness reads. The
+        # 10-19..10-22 pgraph runs on the Nova were this, reported as
+        # "ran but produced 0 captures" with `d98f15f not found` in run1.log,
+        # and a model session blamed a host-side lookup. run_disc.sh now names
+        # the disk (WRONG HDD / HDD UNKNOWN) and the dispatcher refuses to
+        # point a disc run at one it could not move (could not point hddPath).
+        "WRONG HDD:"*|"HDD UNKNOWN:"*|*"could not point hddPath at hdd.img"*)
+            echo wrong-hdd; return 0 ;;
         # Anywhere in the line, not a prefix: Section 3 puts what staging
         # found ahead of device_title_miss's own text, and history before
         # this lane carries that text bare ("title not on device: ...").
@@ -400,6 +408,17 @@ EOF
 dd_diagnose() {
     local id="$1" rdir="$2" cls gr cr model t0 log secs verdict
     cls=$(dd_classify "$rdir") || { echo "VERDICT give-up: not a class the doctor recognises"; return 0; }
+    # wrong-hdd has one cause and none of the three fixes mends it (none changes
+    # which image the app boots), so there is nothing for a model to decide:
+    # the verdict is written here, with no session, no gate and no cap slot (the
+    # TSV is one row per session that ran, and dd_cap counts its rows).
+    if [ "$cls" = wrong-hdd ]; then
+        verdict="give-up: the disc ran on a different disk from the one the harness reads ($(head -1 "$rdir/ERROR" | cut -c1-240)); push-iso, attach-route and restore-profile do not change which image the app boots, so this is the hddPath pref, not the title, disc, route or profile"
+        printf '%s: no doctor session was run -- the ERROR names the disk.\n\n%s\n' "$cls" "$verdict" > "$rdir/doctor.md"
+        dd_append_lesson "$cls" "$verdict"
+        echo "VERDICT $verdict"
+        return 0
+    fi
     gr=$(dd_gate "${DEVICE_LABEL:-}")
     if [ "$gr" != admit ]; then
         printf '%s: the doctor did not run -- %s\n' "$cls" "$gr" > "$rdir/doctor.md"

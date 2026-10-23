@@ -44,3 +44,91 @@ Consequences for this change, from the table:
 - `set_hdd_pref` / `restore_hdd_pref` and the one marker are reused, not copied (fa2e37531b, 84a86029e1);
 - a missing `HDD resolved:` line is "HDD unknown", never a pass (the table's md5 row is what a pass without a
   check looks like).
+
+## Mechanism
+
+A disc run (pgraph or vsh) now boots the harness's disk on purpose, and a run on any other disk is refused by name.
+
+dispatcher.sh, around the run loop in `serve_one`:
+- `disc_hdd_prepare` reads the app's `x1box_prefs.xml` (`hdd_pref_fetch`: run-as cat). `hddPath` already
+  `$(x1box_dir)/hdd.img` is `kept`: one read, no write, no marker. Anything else, an absent key included, is
+  `set` through the existing `set_hdd_pref <want> <marker>` (the marker is written first and never overwritten; the
+  write is verified by read-back). Prefs that cannot be read (a release package, no run-as) are `unread`: the run goes
+  on and `run_disc.sh`'s log check is the only guard. A readable pref that differs and cannot be moved is `failed`: the
+  request is refused (`could not point hddPath at hdd.img for this disc run (it names <path>)`) and no guest is launched.
+- `disc_hdd_after` runs after the run loop and in the refusal paths: `restore_hdd_pref`, which writes back exactly what the
+  marker holds (byte for byte when the key existed; the key removed when it was absent). A failed restore logs a
+  WARNING and leaves the marker, so the next request's start-of-request restore retries it.
+- `hdd_disc.json` in the result dir (`action`, `was`, `want`, `restored`) and `meta.hdd_disc` / `meta.hdd_verdicts` in
+  result.json say what happened.
+- A `WRONG HDD:` or `HDD UNKNOWN:` line in any `run*.log` becomes the request's ERROR, ahead of the generic
+  `ran but produced 0 captures` branch, so a wrong disk is never scored as 0 captures.
+
+run_disc.sh: `hdd_check` reads every `HDD resolved:` line of this run's `CAPTURE_LOG`. All equal to the pulled path
+(`DEVHDD`) passes. Another path prints `WRONG HDD: guest wrote <path>, harness pulls <DEVHDD>` and exits 1 (checked
+early, so the guest is stopped seconds in; and again before the pull, so nothing is pulled or extracted). No line is
+`HDD UNKNOWN: ... has no 'HDD resolved:' line`, exit 1, never a pass. A caller with no `CAPTURE_LOG` gets a non-fatal
+`HDD UNCHECKED` (only direct callers; the dispatcher always sets one). A pass prints which disk the log named.
+
+extract_results.py: the not-found error names the directory looked for, the path walked, and the root dirs the image
+does hold (`... not found -- looked for 'dX' in / and it holds 1 directories (dOLDRUN) and 0 files`).
+
+dispatch_doctor.sh: `dd_classify` returns `wrong-hdd` for `WRONG HDD:`, `HDD UNKNOWN:` and the could-not-point ERROR;
+`dd_diagnose` answers it deterministically (a `give-up:` verdict naming the disk, `doctor.md`, a lesson), with no model
+session, no gate and no TSV row (rows count against the doctor's session cap).
+
+Never done by this change: no read, move, rewrite, push-over or `rm` of the owner's image; no other app data touched
+(the pref edit is an in-place regex edit of one `<string name="hddPath">` element).
+
+## Checks
+
+- `bash -n` on the three shell files, `python3 -I -m py_compile` on the extractor.
+- `SELFTEST_ONLY=99-disc-hdd` with the fix: 44 passed, 0 failed, 74 s. The same fragment on the unfixed base tree
+  (b944110629 + only the fragment): 6 passed, 38 failed, S1 red first.
+- Regression fragments run with this change (touch dispatcher.sh, run_disc.sh, the extractor or the doctor):
+  51 57 58 84 85 86-build-stamp 89-verdict-perflog 94-arms-disc-narrow 95 97-dispatch-{deploy,snapshot-drive,snapshot-rename}
+  98-dispatch-{doctor,late-device} 99-{auto-route,battery-admit,build-gate,dev-push-ro-disc,dev-push-wslpath,
+  fleet-battery-gate,folder-pref,hdd-split,hitch-report,hold-take,hold-tiers,iso-roots,ownerplay-capture,profile-gate,
+  restore-priority} 56-desktop-worker 61 62-routerefs: all green except 51's E and E2, which read what
+  50-arms-requeue leaves behind (`clear_markers`, `finish_queue` are defined there) and fail identically on the base
+  tree when run alone. 51's F (serve_one 0-capture requeue), G (run_disc crash naming) and H (cache clearing) pass.
+- `selftest.sh --check-shards 4`: all 161 fragments covered once (`99-disc-hdd:70` added to the shard table).
+
+## Selftest: 99-disc-hdd
+
+Fake adb whose device is a directory: prefs say `hddPath=.../hdd-owner-1018.img`; the fake app reads `hddPath` when
+`am start` arrives, boots that image, writes its output dir into the disk it booted (so hdd.img lacks the dir when the
+owner image is booted, as in the incident), and logs `Prefs hddPath=` / `HDD resolved:`. Real run_disc.sh, real
+`serve_one`, real extractor, real doctor.
+
+With the fix: 44 ok, 0 FAIL. The legs: D1-D4 (run_disc.sh alone), S1-S7 (serve_one), the extractor, the doctor, the
+wiring order, and six mutants that each turn a named leg red. S1 is the falsifier: `hddPath` reads hdd.img when the
+guest starts, the prefs file is byte for byte the owner's afterwards, the owner's image sha is unchanged and no adb call
+names it.
+
+With the mutant `if ! disc_hdd_prepare "$rdir"; then` -> `if false; then` (a disc run trusts `hddPath`) applied to the
+worktree's dispatcher.sh: rc=1, 27 passed, 17 failed, with `FAIL S1 (FALSIFIER): hddPath read hdd.img when the guest
+started, though it named the owner's image on arrival` first (S1's other six legs, S2, S4-S7 and the wiring check
+follow). The edit was reverted with `git checkout`.
+
+## Risks
+
+- Cost: one `run-as cat` of the prefs per disc request, and one write pair when `hddPath` differs.
+- A release package (no run-as) cannot be read: the run goes on unguarded by the pref and guarded by the log check, which
+  refuses a wrong disk but cannot move the pref.
+- A disc run on the wrong disk is now the request's ERROR (`WRONG HDD: ...`), not a 0-capture result. The P10 pair
+  that was voided on 10-19..10-22 is for lane.local to re-queue after this folds.
+- An app build that does not log `HDD resolved:` (every build since 09-12 does) would make each disc run `HDD UNKNOWN`:
+  that is the intended failure, not a pass.
+- The doctor's model brief reads `logcat.txt`; a disc run's log is `logcat1.txt`. Not changed here (the wrong-hdd class
+  needs no model), but any other disc-run diagnosis still does not see the HDD lines.
+- The 10-19..10-22 voided runs left output dirs (`e:/d...`) inside `hdd-owner-1018.img`. Not touched.
+
+## Marker interplay (lane.local, before folding)
+
+The disc path shares one marker with the title path: `$DISPATCH_DIR/.hdd_pref.<label>` (`.hdd_pref.nova` for the Nova).
+`serve_one` restores at the start of every request, so a marker a died title run or disc run left is restored and
+cleared before either kind of run records its own original: each run sees the true original, and the shared marker is
+safe. A pref already at hdd.img costs a read and no marker. Residual window (same as title runs): if the worker dies
+mid-disc-run the owner's path sits in the marker until the next request starts; an owner launching the app in that window
+boots hdd.img. Do not clear `.hdd_pref.*` by hand while a request is running.

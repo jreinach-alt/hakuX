@@ -789,7 +789,8 @@ PYENV
 #
 # So a title run points `hddPath` at files/x1box/titles.qcow2, a disk the
 # host builds from its save store (titles/titlestate.py, docs/lanes/
-# titlestate/NOTES.md), and every other run leaves `hddPath` on hdd.img.
+# titlestate/NOTES.md), and every other run leaves `hddPath` on hdd.img -- a
+# disc run no longer assumes that, it makes it so (disc_hdd_prepare, below).
 # titlestate.py `plan` decides what happens to the titles disk before a run
 # (seed / harvest / build / keep); after the run the disk is pulled and its
 # saves harvested, so the store stays the truth and a rebuild loses nothing.
@@ -855,6 +856,18 @@ open(path, "w").write(s)
 PYHDD
 }
 
+# hdd_pref_fetch <file>: the app's x1box_prefs.xml, as it is on the device
+# now, written to <file>. Exit 1 when it could not be read (no run-as, a hung
+# call). The one read set_hdd_pref and disc_hdd_prepare both start from.
+hdd_pref_fetch() {
+    local pkg="${PKG:-com.jreinach.hakux.debug}" out="$1"
+    adb_call "$ADB_QUICK_TIMEOUT" "run-as cat x1box_prefs.xml (hdd)" \
+        shell "run-as $pkg cat shared_prefs/x1box_prefs.xml" 2>/dev/null | tr -d '\r' > "$out"
+    if [ -s "${ADB_HUNG_FILE:-}" ] || [ ! -s "$out" ]; then
+        return 1
+    fi
+}
+
 # set_hdd_pref <path> [marker] ; echoes the hddPath it replaced. Verified by
 # reading back. With a marker, the value to put back is recorded there BEFORE
 # the write (unless a marker is already there): a write that lands and a
@@ -866,9 +879,7 @@ set_hdd_pref() {
     pkg="${PKG:-com.jreinach.hakux.debug}"
     tmp="$D/.prefs.${DEVICE_LABEL:-$SERIAL}.hdd.xml"
     adb_call "$ADB_QUICK_TIMEOUT" "am force-stop (hdd pref)" shell am force-stop "$pkg" >/dev/null 2>&1
-    adb_call "$ADB_QUICK_TIMEOUT" "run-as cat x1box_prefs.xml (hdd)" \
-        shell "run-as $pkg cat shared_prefs/x1box_prefs.xml" 2>/dev/null | tr -d '\r' > "$tmp"
-    if [ -s "${ADB_HUNG_FILE:-}" ] || [ ! -s "$tmp" ]; then
+    if ! hdd_pref_fetch "$tmp"; then
         log "  HDD PREF: cannot read x1box_prefs.xml"; return 1
     fi
     was=$(hdd_pref_edit get "$tmp")
@@ -899,6 +910,79 @@ restore_hdd_pref() {
     set_hdd_pref "$orig" >/dev/null || return 1
     rm -f "$marker"
     log "  hddPath restored to ${orig:-(unset)}"
+}
+
+# A DISC RUN BOOTS hdd.img, WHATEVER hddPath SAYS (suitesha1022).
+#
+# "Every other run leaves hddPath on hdd.img" was a sentence, not a check. The
+# owner points hddPath at their own image to play (hdd-owner-1018.img, GTA III
+# and its save states) and nothing puts it back: every pgraph disc run on the
+# Nova from 10-19 booted that image, wrote its e:/d<hash> output dir into it,
+# and run_disc.sh then pulled hdd.img, found no such dir, and the extractor
+# said "d98f15f not found". 0 captures from a clean 225 s run, and the doctor
+# read it as a host-side lookup.
+#
+# So a disc run does for itself what a title run does for the titles disk: if
+# hddPath is not hdd.img, set_hdd_pref points it there with the one marker, and
+# restore_hdd_pref puts back exactly what was there, afterwards or, for a
+# worker that died, at the start of the next request. The owner's path comes
+# back unchanged and the owner's image is never opened, copied, pushed over or
+# removed by this: only the pref moves. A pref that is already hdd.img costs one
+# read and no write and leaves no marker.
+#
+# THE MARKER IS SHARED WITH TITLE RUNS and that is safe because set_hdd_pref
+# never overwrites one: a request restores at its start (serve_one), so by the
+# time either kind of run sets the pref the marker is gone and its own original
+# is the one recorded. A title run that died leaves the owner's path in the
+# marker; the next request, disc or title, puts it back first.
+#
+# disc_hdd_prepare <rdir>: 0 = go ahead, 1 = hddPath is another image and could
+# not be moved (DISC_HDD_WAS says what it names); a disc must not run on it.
+# An unreadable prefs file is not a refusal (a release package has no run-as):
+# run_disc.sh reads the disk the guest actually booted from its own logcat, and
+# that is the guard then. Writes <rdir>/hdd_disc.json.
+DISC_HDD_WAS=""
+disc_hdd_prepare() {
+    local rdir="$1" want cur tmp action
+    want="$(x1box_dir)/hdd.img"
+    tmp="$D/.prefs.${DEVICE_LABEL:-$SERIAL}.hdd.disc.xml"
+    DISC_HDD_WAS=""
+    if ! hdd_pref_fetch "$tmp"; then
+        action=unread
+        log "  HDD PREF: cannot read x1box_prefs.xml; only run_disc.sh's check of the guest's own log guards this run's disk"
+    else
+        cur=$(hdd_pref_edit get "$tmp"); DISC_HDD_WAS="$cur"
+        if [ "$cur" = "$want" ]; then
+            action=kept
+        elif set_hdd_pref "$want" "$(hdd_pref_marker)" >/dev/null; then
+            action=set
+            log "  HDD PREF: disc run boots hdd.img (hddPath was ${cur:-(unset)}; put back afterwards)"
+        else
+            action=failed
+        fi
+    fi
+    python3 - "$rdir/hdd_disc.json" "$action" "${DISC_HDD_WAS}" "$want" <<'PYHDD'
+import json, sys
+out, action, was, want = sys.argv[1:5]
+json.dump({"action": action, "was": was, "want": want, "restored": None}, open(out, "w"), indent=1)
+PYHDD
+    [ "$action" != failed ]
+}
+
+# disc_hdd_after <rdir>: put hddPath back if disc_hdd_prepare moved it. A
+# failure leaves the marker, and the next request's restore retries.
+disc_hdd_after() {
+    local rdir="$1" ok=true
+    [ -f "$(hdd_pref_marker)" ] || return 0
+    restore_hdd_pref || { ok=false; log "  WARNING: hddPath not restored after the disc run; the next request retries"; }
+    python3 - "$rdir/hdd_disc.json" "$ok" <<'PYHDD' 2>/dev/null
+import json, sys
+p = sys.argv[1]
+d = json.load(open(p))
+d["restored"] = sys.argv[2] == "true"
+json.dump(d, open(p, "w"), indent=1)
+PYHDD
+    return 0
 }
 
 # A BUILD FROM BEFORE LIBFOLDERS MUST STILL FIND ITS GAMES FOLDER.
@@ -2300,9 +2384,12 @@ p=sys.argv[1]; b=json.load(open(p)); b["t_device"]=time.time(); json.dump(b,open
     fi
     req_env=$(python3 -c "import json,sys;print(json.dumps(json.load(open(sys.argv[1])).get('env') or []))" "$req" 2>/dev/null || echo "[]")
     # A title run that never reached titles_disk_after left hddPath on the
-    # titles disk; no run may start on the wrong one. No marker, no adb call.
+    # titles disk, and a disc run that never reached disc_hdd_after left it on
+    # hdd.img with the owner's path in the marker; no run may start on the wrong
+    # one, and this is also what makes the one marker safe to share (see
+    # disc_hdd_prepare). No marker, no adb call.
     if ! restore_hdd_pref; then
-        adb_error "could not restore hddPath after an earlier title run; see dispatcher.log" > "$rdir/ERROR"
+        adb_error "could not restore hddPath after an earlier title or disc run; see dispatcher.log" > "$rdir/ERROR"
         log "  HDD PREF RESTORE FAILED"
         mv "$req" "$rdir/request.json"; return 0
     fi
@@ -2802,6 +2889,15 @@ PYEOF
 )
 
     hdd_img_guard "$rdir"
+    # The disc boots hdd.img whatever hddPath said when the request arrived. A
+    # pref that names another image and cannot be moved refuses the run: the
+    # guest would write its output into that image (the owner's, on the Nova).
+    if ! disc_hdd_prepare "$rdir"; then
+        adb_error "could not point hddPath at hdd.img for this disc run (it names ${DISC_HDD_WAS:-nothing readable}); a disc must not run on another image; see dispatcher.log" > "$rdir/ERROR"
+        log "  HDD PREF SET FAILED"
+        disc_hdd_after "$rdir"
+        mv "$req" "$rdir/request.json"; maybe_run_doctor "$id" "$rdir"; return 0
+    fi
     local r
     for r in $(seq 1 "$runs"); do
         local args=() gdir="d$(echo "$id$r" | md5sum | cut -c1-6)"
@@ -2821,6 +2917,7 @@ PYEOF
                   tail -3 "$rdir/run$r.log" | sed 's/^/  /'; } > "$rdir/ERROR"
                 log "  VSH DISC REFUSED"
                 rm -f "$rdir/disc$r.iso"; mv "$req" "$rdir/request.json"
+                disc_hdd_after "$rdir"
                 return 0
             fi
             touch "$LEASE"
@@ -2856,6 +2953,10 @@ PYEOF
             --flat --apk-sha "$sha" --disc-id "$disc_id" --label "$requester" \
             --tsv "$rdir/scores$r.tsv" >>"$rdir/run$r.log" 2>&1
     done
+    # The runs are over: hddPath goes back to what it was (nothing to do when
+    # it was already hdd.img). Before the result is written, so every return
+    # below leaves the pref as the owner had it.
+    disc_hdd_after "$rdir"
 
     REQ_ENV_JSON="$req_env" \
     python3 - "$rdir" "$sha" "$disc_id" "$requester" "$purpose" "$ref" "$SNAP" "$program" <<'PYEOF'
@@ -2885,6 +2986,22 @@ try:
     meta["hdd_guard"] = json.load(open(os.path.join(rdir, "hdd_guard.json")))
 except (OSError, ValueError):
     pass
+# disc_hdd_prepare: what hddPath was, what the disc run set it to, and whether
+# it was put back.
+try:
+    meta["hdd_disc"] = json.load(open(os.path.join(rdir, "hdd_disc.json")))
+except (OSError, ValueError):
+    pass
+# A run run_disc.sh refused for its disk (WRONG HDD / HDD UNKNOWN) is not a run
+# that scored 0: it is named here, and the request fails on it below.
+hdd_verdicts = []
+for lg in sorted(glob.glob(os.path.join(rdir, "run*.log"))):
+    for line in open(lg, errors="replace"):
+        if line.startswith(("WRONG HDD:", "HDD UNKNOWN:")):
+            hdd_verdicts.append(dict(file=os.path.basename(lg), verdict=line.strip()))
+            break
+if hdd_verdicts:
+    meta["hdd_verdicts"] = hdd_verdicts
 # TWO revisions, because `classifier_rev` has been recording the WRONG FILE.
 #
 # The `status` column every consumer reads -- ok / label-differs /
@@ -3031,6 +3148,18 @@ import json,sys
 m=json.load(open(sys.argv[1]))
 print(sum(r['captures'] for r in m['runs']))" "$rdir/result.json" 2>/dev/null || echo 0)
     mv "$req" "$rdir/request.json"
+    # A run on a disk other than the one the harness reads is not a run, and
+    # it is not "0 captures" either: the verdict run_disc.sh wrote is the
+    # ERROR, first line, where the doctor keys on it. Checked ahead of the
+    # zero-capture block, whose generic text sent the doctor looking at the
+    # extractor.
+    local hdd_bad; hdd_bad=$(grep -hs -m1 -E '^(WRONG HDD|HDD UNKNOWN):' "$rdir"/run*.log | head -1)
+    if [ -n "$hdd_bad" ]; then
+        adb_error "$hdd_bad" > "$rdir/ERROR"
+        log "  FAILED: $(head -1 "$rdir/ERROR")"
+        maybe_run_doctor "$id" "$rdir"
+        return 0
+    fi
     if [ "${got:-0}" = "0" ]; then
         # Zero captures is a failed run, not a result of zero. Handing a
         # requester an empty TSV as if it were an answer is how "this suite

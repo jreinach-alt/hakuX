@@ -257,6 +257,7 @@ class Fatx:
     def resolve(self, path):
         """Resolve a '/'-separated path to (attributes, cluster, size)."""
         cluster, attributes, size = self.root_cluster, ATTR_DIRECTORY, 0
+        walked = []
         for part in [p for p in path.split("/") if p]:
             if not attributes & ATTR_DIRECTORY:
                 raise ExtractError(f"{path}: {part} is not inside a directory")
@@ -265,8 +266,27 @@ class Fatx:
                     cluster, attributes, size = first, attrs, sz
                     break
             else:
-                raise ExtractError(f"{path}: {part} not found")
+                raise ExtractError(
+                    f"{path}: {part} not found -- looked for '{part}' in "
+                    f"{'/' + '/'.join(walked)} and it holds {self._holds(cluster)}")
+            walked.append(part)
         return attributes, cluster, size
+
+    def _holds(self, cluster, limit=20):
+        """What one directory holds, for a 'not found' that must say where it
+        looked. The 10-19 runs said 'd98f15f: d98f15f not found' and read as a
+        sha lookup; it was the per-run output dir missing from the root of an
+        image the guest had never written (a different disk from the one pulled).
+        """
+        dirs, files = [], 0
+        for name, attrs, _first, _sz, _mt, _ct in self.listdir(cluster):
+            if attrs & ATTR_DIRECTORY:
+                dirs.append(name)
+            else:
+                files += 1
+        shown = ", ".join(dirs[:limit]) + (f", ... {len(dirs) - limit} more" if len(dirs) > limit else "")
+        return (f"{len(dirs)} directories ({shown}) and {files} files" if dirs
+                else f"no directories and {files} files")
 
 
 def extract(fs, cluster, out_dir, prefix="", newer_than=None, manifest=None,
