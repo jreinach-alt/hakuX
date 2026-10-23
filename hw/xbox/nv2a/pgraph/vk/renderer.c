@@ -535,6 +535,7 @@ static void pgraph_vk_finalize(NV2AState *d)
             vkDestroyQueryPool(r->device, r->gpu_ts_pool, NULL);
             r->gpu_ts_pool = VK_NULL_HANDLE;
         }
+        pgraph_vk_gpubrk_finalize(r);
     }
 
     pgraph_vk_finalize_reports(pg);

@@ -3182,7 +3182,12 @@ PYEOF
 # dirty, lookup hit/evict/nosurf, create, put, bind, upload, download,
 # expire -- and DOA2U's perflog soak (1790450181-doa413-1721403) spent 33-52
 # ms per frame in `Surf` without it, so the soak could not say which part.
-LOGCAT_SPEC="${LOGCAT_SPEC_OVERRIDE:-hakuX-crash:V hakuX-unhandled:W hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-phase:I xemu-work:I hakuX-lane:I hakuX-tier1:D hakuX-pages:I hakuX:I hakuX-rw:I hakuX-stderr:E hakuX-vk:I hakuX-route:I hakuX-pace:I hakuX-stall:I hakuX-rpbrk:I hakuX-cpu:I xemu-gpu:I xemu-sfp:I xemu-surf:I libc:F DEBUG:F VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}"
+#
+# hakuX-gpubrk ADDED 2026-10-22 for #433 (lane gpubreak1022): one line per 60
+# flips with the main pass's GPU time per draw, its render mode (out/in) and a
+# fit of that time on what the draws carried. On by default in the perflog
+# build, HAKUX_GPUBRK=1 elsewhere; a normal apk without it logs nothing.
+LOGCAT_SPEC="${LOGCAT_SPEC_OVERRIDE:-hakuX-crash:V hakuX-unhandled:W hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-phase:I xemu-work:I hakuX-lane:I hakuX-tier1:D hakuX-pages:I hakuX:I hakuX-rw:I hakuX-stderr:E hakuX-vk:I hakuX-route:I hakuX-pace:I hakuX-stall:I hakuX-rpbrk:I hakuX-gpubrk:I hakuX-cpu:I xemu-gpu:I xemu-sfp:I xemu-surf:I libc:F DEBUG:F VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}"
 export LOGCAT_SPEC
 
 case "${1:-status}" in

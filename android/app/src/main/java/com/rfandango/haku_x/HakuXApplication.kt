@@ -15,7 +15,7 @@ class HakuXApplication : Application() {
     private val LOG_TAGS = arrayOf(
       // App
       "hakuX:V", "hakuX-phase:V", "hakuX-cpu:V", "hakuX-stall:V",
-      "hakuX-rw:V", "hakuX-rpbrk:V", "hakuX-tex:V",
+      "hakuX-rw:V", "hakuX-rpbrk:V", "hakuX-gpubrk:V", "hakuX-tex:V",
       "hakuX-mmio:V", "hakuX-nop:V", "hakuX-mhist:V",
       "hakuX-compat:V", "hakuX-config:V", "hakuX-diag:V",
       "hakuX-texreplace:V", "hakuX-watchdog:V",

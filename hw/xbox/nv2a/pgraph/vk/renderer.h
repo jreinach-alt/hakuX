@@ -1688,6 +1688,18 @@ typedef struct PGRAPHVkState {
     int gpu_ts_rp_index;
     int gpu_ts_rp_counts[SUBMIT_RING_CAP];
     uint64_t gpu_ts_results[GPU_TS_QUERIES_PER_CB];
+    /* hakuX-gpubrk (lane gpubreak1022, #433): renderer-lifetime counts the
+     * line takes per-segment and per-window deltas of. Plain adds on the
+     * render thread, counted in every build (one add each); read only when
+     * the line is on. draw.c's gpubrk block is the reader. */
+    uint64_t gb_pbind;  /* vkCmdBindPipeline */
+    uint64_t gb_pchg;   /* ... that changed the bound VkPipeline */
+    uint64_t gb_dub;    /* UBO descriptor set binds */
+    uint64_t gb_dtx;    /* texture descriptor pushes or set binds */
+    uint64_t gb_push_b; /* push-constant bytes */
+    uint64_t gb_ubo_b;  /* uniform bytes appended to the UBO ring */
+    uint64_t gb_nv;     /* vertices or indices the draw commands fetch */
+    uint64_t gb_cmd;    /* GPU draw commands (an indirect entry is one) */
     bool new_query_needed;
     bool query_in_flight;
     bool queries_reset_in_cb;
@@ -2144,6 +2156,8 @@ void pgraph_vk_draw_begin(NV2AState *d);
 void pgraph_vk_draw_end(NV2AState *d);
 void pgraph_vk_finish(PGRAPHState *pg, FinishReason why);
 void pgraph_vk_flush_all_frames(PGRAPHState *pg);
+/* hakuX-gpubrk's query pool and records, before the device goes */
+void pgraph_vk_gpubrk_finalize(PGRAPHVkState *r);
 int xemu_submit_ring_env(void);
 int xemu_get_submit_frames(void);
 void end_render_pass(PGRAPHVkState *r);

@@ -4,11 +4,20 @@ State: draft
 
 Lane: gpubreak1022            Issue: #433 (0.5)
 Base: lane/drive1022 @ 03e01c3aad
-Files: docs/lanes/gpubreak1022/PR.md (Step 0); the build commit lists the rest
-Prediction: (filled at the build commit)
-Needs device: yes (filled at the build commit)
+Files: docs/lanes/gpubreak1022/PR.md, hw/xbox/nv2a/pgraph/vk/{gpubrk.h (new),draw.c,renderer.h,renderer.c,shaders.c},
+  docs/testing/perf/gpubrk_sum.py (new), docs/testing/jobs/selftest.d/99-gpubrk-fit.sh (new),
+  docs/testing/dispatcher.sh (LOGCAT_SPEC), android/.../HakuXApplication.kt (LOG_TAGS)
+Prediction: GTA III on the heavy save state, perflog build, no env: the `hakuX-gpubrk` line's main pass reads
+  `mrep` < 1.3 (sysmem, or one tile) in most windows, and `mus` lands within ±20% of the control's
+  (R+Post)/full, 26-31 us (Step 0 row 60). `HAKUX_GPUBRK=0` moves hakuX-phase R/draw and fps by under 3%.
+  Falsified when `mrep` >= 1.6 in most windows (the main pass is tiled after all, and `mus` is one tile's
+  time), or when `mus` is off (R+Post)/full by more than 2x either way (the line does not measure what
+  hakuX-phase does)
+Needs device: yes. The Nova, perflog build of this branch, heavycap1022's heavy save state; the arm table
+  below, `GPU: PurpleVK` in every run. No fix is built, so there is no fix A/B
 Needs NDK: yes
-Selftest: (filled at the build commit)
+Selftest: 99-gpubrk-fit -- builds vk/gpubrk.h on its own (fit, R², percentiles, the line's formatter) and reads
+  the line back with gpubrk_sum.py; four mutants of gpubrk.h and one of the line's field names must fail
 
 ## Step 0: already tried
 
@@ -64,3 +73,360 @@ Nothing in the table timed the GPU inside the main pass, below the pass level, o
 claims the brief started from do not hold: the pipeline is not re-bound unchanged (it changes on ~40% of draws),
 and `R` is a truncated sum in the heavy windows. Neither is a reason to rebuild a refuted approach; the
 instrument below is new.
+
+## 1. What the line measures
+
+**No counters, so stamps.** VK_KHR_performance_query is not exposed on KGSL Turnip (row 56). The line probes
+it once, logs `perfquery unavailable` in its `on` line and as `perfquery=` on every window, and carries on.
+Hardware counters come only through the optional KGSL sampler (`HAKUX_GPUBRK_KGSL=1`), below.
+
+**Five stamps per pass, in a pool of the line's own.** Every pass `begin_render_pass()` opens is stamped
+(draw.c:4045-4081), with up to 256 passes and 2048 stamps per command buffer. hakuX-phase stops at 48
+(row 60), and the line has no such cap. The stamps:
+- O0: TOP, before vkCmdBeginRenderPass;
+- I0: TOP, first in the pass;
+- Ie: TOP, just before Iw;
+- Iw: BOTTOM, last in the pass;
+- Ow: BOTTOM, after vkCmdEndRenderPass.
+
+Inside the pass there is also one stamp every `HAKUX_GPUBRK_K` draw commands (default 16). These are TOP unless
+`HAKUX_GPUBRK_WFI=1`. A draw command is one vkCmdDraw*, or one entry of an indirect or multi draw. Stamps tick
+on the always-on counter, 19.2 MHz, so 52 ns a tick (tu_device.cc:1180, :1296).
+
+**What Turnip does with a stamp inside a pass** (tu_query_pool.cc:2100-2171):
+- It is a CP_REG_TO_MEM of the always-on counter, recorded into `draw_cs`.
+- A sysmem pass runs `draw_cs` once.
+- A GMEM pass replays `draw_cs` in the binning pass and in every tile, so each replay overwrites the value and
+  the last tile's lands. The source comment says so ("the user gets the last one if we use GMEM").
+- Anything but TOP_OF_PIPE first emits a WFI, which in a GMEM pass means a WFI per tile.
+- O0 and Ow are in the primary stream, so they span binning, every tile, and the tile loads and stores.
+
+**How the stamps combine.**
+- `in` = Iw - I0. This is the whole pass on sysmem, and the last tile's draws (without its loads/stores) on GMEM.
+- `out` = Ow - O0. This is the whole pass in either mode.
+- `mrep` = Σout / Σin over the main passes. It is ~1.0 for sysmem or one tile, and ~n for n even tiles.
+  - The line also logs the median and max of the per-pass ratio (`mrepmed`, `mrepmax`).
+  - `mode` reads `mrep`: `s` < 1.3, `u` < 1.6, `t` above.
+  - A single tile with heavy loads/stores reads `u`. Uneven tiles read between 1 and n. u_trace (arm C1d) gives
+    the bin count for certain.
+
+**How far a number can be trusted.**
+- `mus` (in-pass µs per draw command, over the main passes) is exact on sysmem. I0 starts after the previous
+  pass's BOTTOM Ow, and Iw waits for the work. On GMEM it is the last tile's time per draw. Read `mus` only
+  together with `mode`.
+- `muso` (the outer pair) is the pass's whole cost per draw in either mode. It includes the binning pass and
+  loads/stores. On sysmem `muso - mus` is the pass's own begin/end overhead.
+- **Segment times** are where the CP was, not where the shader cores were.
+  - A TOP stamp records when the CP reaches it, and that runs ahead of the work by whatever is queued.
+  - `drain` = Iw - Ie, in µs, is that lead at the pass end. Segments sum exactly to `in`, because the last one
+    ends at Iw. One segment's split is smeared by up to `drain`.
+  - When `drain` is small, the CP is not ahead: either it is the bottleneck, or each draw waits. The segment
+    split is then the GPU's own.
+  - When `drain` is large, run the WFI arm (I3) before reading `b=`/`sh=`.
+- **The per-window fit** (gpubrk.h): least squares, with no intercept, of each main-pass segment's µs on what
+  its commands carried. The features:
+  - `cmd`: draw commands;
+  - `pchg`: pipeline binds that changed the VkPipeline;
+  - `fd`: the fragment shader writes gl_FragDepth;
+  - `kill`: alpha test or alpha kill;
+  - `blend`: blending on;
+  - `zw`: depth test and depth write on;
+  - `tex`: texture stages sampled;
+  - `dtx`: texture descriptor binds;
+  - `kvtx`: vertices or indices, in thousands;
+  - `ukb`: uniform KiB uploaded.
+
+  The fit is solved over the columns that moved, with a relative ridge of 1e-6 so that a collinear pair splits
+  instead of failing. The line logs:
+  - `b=`: µs per unit of each feature;
+  - `sh=`: µs per draw command attributable to each feature;
+  - `fx=`: each feature's mean per command;
+  - `r2` (centred), `fn` (segment count), and `fit=ok|few|sing`.
+
+  `sh` adds up to the fitted µs per command. It is attribution by correlation in one window: a feature that
+  never varies apart from `cmd` lands in `cmd`. At K=16 a segment mixes ~16 draws, and `HAKUX_GPUBRK_K=1`
+  (I4) gives per-draw rows.
+- **Which passes count as main (M).** A pass is M when it has a depth attachment and its render area is at
+  least 0.9 x the largest such area seen. The largest comes from this command buffer or the previous window.
+  Everything else counts under `op/ocmd/oin/oout`. GTA III's main scene is many passes on one 640x480
+  Z24S8 surface (row 60), so `mp` is passes per flip, not 1.
+
+**Load/store ops are baked, and the line shows it.** `create_render_pass()` builds every pass with colour,
+depth and stencil LOAD/STORE, whatever `begin_state` asked. `get_optimal_*_load_op` only reaches the
+render-pass cache key. This change names those six constants (`RP_*`, draw.c:2093-2106, values unchanged)
+so the line can print them: `ld=cL/zL/sL st=cS/zS/sS`. `mreqc=`/`mreqz=` count the M passes whose
+`begin_state` asked for LOAD, which is how many could use DONT_CARE if the ops were honoured. On a GMEM main
+pass, every tile loads and stores colour and depth/stencil, and `muso - mus` carries that cost. On sysmem the
+ops cost nothing.
+
+**Host-side counts per window.** These are plain counters in PGRAPHVkState, added in every build at the sites
+listed in section 4:
+- `pbind`: vkCmdBindPipeline calls;
+- `pchg`: binds that changed the bound pipeline;
+- `dub`: UBO descriptor-set binds;
+- `dtx`: texture descriptor pushes or binds;
+- `pushB`: push-constant bytes;
+- `uboK`: UBO ring KiB;
+- `nvK`: thousands of vertices or indices;
+- `cmd`: draw commands.
+
+All of these are per flip.
+
+**System fields.**
+- `mhz`: kgsl `gpuclk`.
+- `busy`: `gpu_busy_percentage`.
+- `drop`: passes not stamped (over the caps, or a result not read).
+- `kg=`: `off`, `errN` (the ioctl's errno), or the deltas of the KGSL perfcounters this process could reserve,
+  in thousands per flip. The counters are CP busy and WFI stall, PC busy and VFD stall, VFD, HLSQ, TP, SP busy,
+  ALU and TP stall, RB busy and CCU stall, Z pass/fail, CCU GMEM read/write, and LRZ busy/visible (draw.c:4131).
+  They are device-wide, they include the compositor, and an untrusted app may be refused.
+
+**The line.** It is one `hakuX-gpubrk` INFO line per 60 flips, with fields in this order:
+`fl s cb K wfi mp mcmd min mout mrep mrepmed mrepmax mode mus muso p50 p90 drain op ocmd oin oout fn r2 fit b sh fx
+fmt wh ld st mreqc mreqz pbind pchg dub dtx pushB uboK nvK cmd mhz busy drop kg perfquery`.
+- `min`/`mout`/`oin`/`oout` are ms per flip.
+- `p50`/`p90` are µs per command over segments, weighted by commands.
+
+It is on by default in the perflog build (`HAKUX_GPUBRK=0` turns it off) and behind `HAKUX_GPUBRK=1`
+elsewhere. Its tag is in the dispatcher's LOGCAT_SPEC and the app's LOG_TAGS.
+
+**Reading it.** Run `docs/testing/perf/gpubrk_sum.py --bands --min-cmd 800 A0=<logcat> SYS=<logcat> ...`.
+- It prints one row per arm and per draw band, with the medians over windows of `fps`, `mus`, `muso`, `mrep`,
+  the `mode` counts, `drain`, `r2`, the three largest shares, and more.
+- It exits 2 when a window line lacks a field it reads, which means the format and the parser drifted, and
+  1 when there is no window.
+- Compare arms within a band, never by run median (drive1022/README.md).
+
+## 2. Arms
+
+The arms are run by lane.local on the Nova, perflog build of this branch, heavycap1022's heavy save state. Each
+arm gets at least 3 minutes of gameplay, and every run shows `GPU: PurpleVK`.
+- `TU_DEBUG` and `MESA_*` go in through the env_vars pref, one `TU_DEBUG` value per arm.
+
+**Reference figures:**
+- Control R/draw: 26.0 µs (drive1022, pid21946).
+- Control, 1000-1200-draw band: 18.6 fps, which is 53.8 ms/flip, with a fence wait of 14.2 ms/flip.
+
+**fps model.**
+- A GPU saving of Δ µs per draw at ~1100 draws is 1.1Δ ms/flip. While the fence wait lasts, the frame
+  shortens by that much, so fps ≈ 1000 / (53.8 - 1.1Δ).
+- That gives +0.4 fps per µs/draw: Δ 4 → 20.3, Δ 8 → 22.0.
+- The cap is about 25 fps at Δ 13, where the fence wait runs out. A GPU-only fix cannot reach the owner's bar
+  in this band. The rest is heavycap1022's CPU side.
+
+**Reading the cells.**
+- The "if it dominates" column is the change in that arm against A0 when that candidate is most of the ~26 µs.
+- The "expected" column is what the Step 0 rows predict.
+
+| # | arm (env) | isolates | if it dominates | expected (from Step 0) |
+|---|---|---|---|---|
+| A0 | none (line on, K=16, TOP) | the baseline every arm is read against | - | `mrep` < 1.3, `mode` s; `mus` 26-31; R/draw 26.0 ±3%; 18.6 ±1 fps (1000-1200) |
+| I1 | `HAKUX_GPUBRK=0` | the line's own cost: 2 WFIs + 3 TOP stamps a pass, 1 TOP stamp per 16 draws | - | R/draw and fps within 3% / 0.5 fps of A0. If A0 is slower by more, re-run A0 at `HAKUX_GPUBRK_K=64` and read `mus` from that |
+| I2 | `HAKUX_GPUBRK_K=0` | the K stamps alone (pass stamps kept) | - | `mus`/`muso` within 3% of A0 |
+| I3 | `HAKUX_GPUBRK_WFI=1` | the TOP lead in segment times | - | `drain` < 2 µs; `mus` up by at most 10% (a WFI per 16 draws; BF2's per-draw syncdraw cost was +3.8 µs, so ~+0.25 µs); `p50`/`p90` and `b=` become the GPU's own; fps −0.5 at most |
+| I4 | `HAKUX_GPUBRK_K=1` | per-draw segments for the fit | - | `fn` x16, `r2` up; R/draw +5% at most, fps −1 at most; `drop` stays 0 (~1100 + 5 x 130 stamps per flip fits 2048 only if a command buffer holds about one flip) |
+| I5 | `HAKUX_GPUBRK_KGSL=1` | hardware split, device-wide | CP busy ≈ pass time and SP/TP/RB low: CP or state bound (C2). SP/TP high: shading (C3). VFD/PC-VFD high: fetch (C4). GMEM r/w high: C1 | `kg=err1` or `err13` (the sandbox refuses the perfcounter ioctl) is the likely reading; timing ±1% |
+| I6 | performance mode 2 (**instrument only, never a fix or recommendation**) | how much of the per-draw cost scales with GPU clock | - | `mhz` above 401; `mus` scales as (401/mhz)^e, e 0.6-0.98 (row 61). Near 1 means clocked work (CP, ALU); near 0 means memory |
+| C1a | `TU_DEBUG=sysmem` | GMEM replay plus per-tile LOAD/STORE of the main pass | `mode` t→s; `muso` falls to ~`mus` (≥ 8 µs/draw); fps ≥ 22 | `mode` already s: `muso` ±5%, `mus` ±5%. Any fps change shows in `oin`/`oout` (other passes), as in fpsnext1019's +3 fps with rp 130→70 |
+| C1b | `TU_DEBUG=gmem` | positive control: does `mrep` see a replay? | (A0 already t: no change) | `mrep` ≥ the u_trace bin count. With 2+ bins, `muso` +30-75% (row 32's x0.57-0.64 inverted), fps −2 to −5. With 1 bin, `mrep` 1.05-1.3 (loads, stores, binning) |
+| C1c | `TU_DEBUG=nobin` / `forcebin` | the binning pass (only if A0 reads t) | `muso` falls (nobin) or rises (forcebin) by the binning time | not run if A0 reads s; row 35: forcebin never won on the Nova |
+| C1d | `MESA_GPU_TRACES=print` `MESA_GPU_TRACEFILE=<app files dir>/utrace.txt` | ground truth per pass: `tiledRender`, `numberOfBins`, `binWidth/Height`, `drawCount`, `lrz`, `lrzDisableReason` (tu_tracepoints.py:128-154) | - | main pass `tiledRender`=0 or 1 bin; `lrzDisableReason` names the fragment shader. Not timed. Void if the shipped driver has no u_trace (no file). The file is flushed at exit, so stop the app, do not kill it |
+| C1e | `TU_DEBUG=perf`, with `TU:W` in `LOGCAT_SPEC_OVERRIDE` | Turnip's own reasons (sysmem choice, "Disabling LRZ because…", "Skipping LRZ due to FS") | - | the LRZ-off reason on the main-pass pipelines. Logs per draw, so not timed |
+| C2a | A0's fit | per-draw state: CP emission and WFI on state changes | `sh` pchg+dtx+ukb ≥ 40% of `mus` (≥ 10 µs); `drain` < 5 µs (CP not ahead); I5 CP busy ≈ pass time | < 15% of `mus`. Row 43 bounds a UBO bind at ≤ 1 µs, `pchg` is ~0.4 a draw (row 47) |
+| C2b | `TU_DEBUG=syncdraw` | how much draws overlap today | draws already serial: `mus` +<1 µs, fps −0.4 at most | BF2: +3.8 µs/draw (+15%), fps −1.4 |
+| C2c | `TU_DEBUG=flushall` | dependence on warm caches between draws (diagnostic) | flush cost only: `mus` +1-2 µs | `mus` +20-60%. A rise ≥ 10 µs points at fetch or texture (C4/C3), not state |
+| C3a | A0's fit | late-Z from gl_FragDepth | `sh` fd ≥ 4 µs; I5 Z-pass ≫ visible pixels | `fx` fd ≈ 1 (every depth-tested shader writes it) leaves fd collinear with zw/cmd. Then C3c decides |
+| C3b | `TU_DEBUG=nolrz` | is LRZ doing anything today? | LRZ already off (FS writes depth): R/draw ±3%, fps ±0.5 | same: no change |
+| C3c | `HAKUX_FRAGDEPTH=off` (needs this branch merged with lane/p10fragdepth1022 31770d97e5; not on this base) | the gl_FragDepth write | `mus` −4 to −6 µs (PLAN 1.1: 5-7 ms/flip at ~1100 draws); R/draw ~20-22; fps +1.6 to +2.4 (~20.5) | open: the one candidate Step 0 leaves standing |
+| C4a | A0's fit, I5 | vertex fetch from host-visible staging | `sh` kvtx ≥ 30% of `mus`; I5 VFD/PC-VFD stall high | small. Row 57 refuted host-visible fetch on BF2. No run-time switch on this base moves the fetch source (`HAKUX_VTX_MIRROR`, 57fe561924, is no longer in vk/*.c) |
+| C4b | `HAKUX_VTXHZ_BUMP=1` | known-effect arm: what the line reads for a change with a measured result | - | measured: R/draw 21.9 vs 26.0, 22.4 vs 18.6 fps (1000-1200). The line: `mus` −10 to −16% (GPU/full 26.7 vs 31.8), `sh` kvtx unchanged. If `mus` does not fall, the R/draw drop was the 48-pass truncation |
+
+**Not re-run.**
+- `HAKUX_ZETA_D24=1`: refuted (row 34). Re-run only if A0 reads `mode` t.
+- `HAKUX_GPUTS_INRP=0`: changes hakuX-phase's stamps only; the line has its own pool.
+- `HAKUX_GPUXFR=1`: hakuX-phase's outer/inner pair over its first 48 passes. Use it to cross-check `muso`/`mus`
+  on those passes, not as an arm.
+
+**Order.**
+1. A0 and I1 first: the instrument must not move the thing it measures.
+2. Then C1a, C1b, C3b, C2b, C4b, I3.
+3. Then C1d, C1e, I5, I4, C2c.
+4. I6 last.
+5. C3c needs the merged build.
+
+**What each outcome points to.** No fix is built until one of these shows.
+- `mode` t with C1a saving ≥ 8 µs points to the render mode: a per-title `TU_DEBUG=sysmem` (kTitleRenderModes,
+  row 35), or honouring `begin_state`'s load ops on GMEM.
+- An fd share ≥ 4 µs confirmed by C3c points to P10.
+- C2a's signature with C2b +<1 µs points to fewer real pipeline changes per pass. Row 47 says ~40% of draws
+  change pipeline, so that would mean ordering draws by pipeline (the reorder window, default off), not skipping
+  re-binds.
+- A kvtx share ≥ 30% would need written evidence of what differs from row 57 before a device-local copy is
+  rebuilt.
+
+## 3. The fix
+
+None is built. The brief allows a fix only where code reading plus the numbers decide a candidate. They do
+not.
+- The example the brief gives, the same pipeline re-bound every draw, is refuted by code reading (row 47).
+- Descriptor rebinding is bounded at ≤ 1 µs a draw (row 43).
+- Tiling is ruled out as an even two-tile replay (row 34), but not as uneven tiles or per-pass load/store.
+- Late-Z (P10) is already built on its own lane and waits for its A/B (C3c).
+
+## 4. The change
+
+**draw.c**
+- :2093-2106: `RP_COLOR/ZETA/STENCIL_LOAD/STORE_OP`. `create_render_pass()` at :2124-2125 and :2142-2145 uses
+  them, with the same values.
+- :4045-4745: the gpubrk block.
+  - `gb_on()` reads the env once, probes perfquery, and logs the `on` / `off:` line.
+  - Stamping: `gb_stamp()`, `gb_pass_begin()` (O0), `gb_pass_begun()` (I0), `gb_batch_open()` (a batch's
+    features, from the bound pipeline's key and the draw's blend and control_0), `gb_batch_fold()` (adds the
+    batch to the segment, and stamps at K), `gb_pass_ending()` (Ie), `gb_pass_end_in()` (Iw),
+    `gb_pass_end_out()` (Ow).
+  - Readout and teardown: the KGSL sampler, `gb_win_check()` (the 60-flip window and the line),
+    `gb_readback()` (stamps into M/O sums, ratios, the fit and the histogram), and
+    `pgraph_vk_gpubrk_finalize()`.
+- Hooks:
+  - `begin_render_pass` :5238, :5254;
+  - `end_render_pass` :5277-5278, :5292;
+  - `gpu_ts_readback` :6161;
+  - `pgraph_vk_begin_command_buffer` :7136 (it resets only the slot's used stamps);
+  - `begin_draw` :8507 (bind), :8766 (batch);
+  - `end_draw` :8781;
+  - `emit_reorder_entry` :10357, :10372, :10640.
+- Host counts:
+  - push constants :4769, :4885, :10400, :10605;
+  - texture descriptors :4916, :4967, :10581, :10590;
+  - UBO binds :4937, :9239, :10566;
+  - UBO bytes :8969;
+  - draw commands and vertices, `gb_draw()` at every vkCmdDraw* site: :9432-9589, :10626-10637, :11749,
+    :12232-12264, :12355, :12438-12441, :12535-12538.
+
+**Other files**
+- gpubrk.h (new): the features, the fit (pivoted Gaussian elimination over the columns that moved, with a
+  relative ridge), centred R², shares, the 0.5 µs histogram and its percentiles, the render-mode reading, and
+  the line's formatter. It is standalone C, so the selftest builds it.
+- renderer.h:1691-1702: the eight `gb_*` counters. :2159-2160: the finalize prototype.
+- renderer.c:538: finalize before the device goes.
+- shaders.c:929: UBO bytes from `pgraph_vk_update_descriptor_sets()`.
+- dispatcher.sh:3185-3190: `hakuX-gpubrk:I` in LOGCAT_SPEC.
+- HakuXApplication.kt:18: `hakuX-gpubrk:V`.
+- docs/testing/perf/gpubrk_sum.py: the reader.
+- 99-gpubrk-fit.sh: the falsifier.
+
+**Cost in builds where the line is off:** one add per counter site, plus a pipeline-handle compare per bind.
+Every stamp and record sits behind `gb_on()` / `gb.cur`.
+
+## 5. Checks
+
+**Desktop.** cc_wt.py (p11vtxbump1022 §6: desktop flags, worktree headers), each touched C file with
+`-DNV2A_PERF_LOG=1` and `=0`, against the base 03e01c3aad:
+
+```
+draw.c     perflog=1 EXIT=0  perflog=0 EXIT=0   15 warnings each; base 15, the same set: missing prototypes
+                                                  :1455-1549, -Wshadow=local :6750 (base :6023), unused `r`
+                                                  :8845 (base :8110)
+renderer.c perflog=1 EXIT=0  perflog=0 EXIT=0   7 warnings each; base 7, the same set, shifted one line
+shaders.c  perflog=1 EXIT=0  perflog=0 EXIT=0   2 warnings each; base 2, the same set, shifted one line
+```
+
+renderer.h is compiled by all three. gpubrk.h is compiled by draw.c and, on its own with `-Wall -Wextra
+-Werror`-clean output, by the selftest.
+
+**Android stub.** The log calls are Android-only, so draw.c was also compiled with `-D__ANDROID__ -Wformat=2`
+and a stub `android/log.h` declaring `__android_log_print` with `format(printf, 3, 4)`.
+- A `#warning` in the stub fires, which proves the stub was the header included.
+- perflog=1 and =0 both gave EXIT=0, with 18 and 16 warnings. That is the stub's `#warning`, the 15 above, and
+  at =1 the two nested externs at :1168-1169 (base code, under NV2A_PERF_LOG).
+- There are no new warnings, so `gb_log`'s and the line's format strings match their arguments.
+
+**Selftest.** `SELFTEST_ONLY=99-gpubrk-fit`:
+
+```
+  ok   gpubrk_test builds against vk/gpubrk.h with no warning
+  ok   T1-T5: betas, zero columns, a collinear pair, an unexplained window, percentiles
+       t1 beta cmd=12.000 fd=6.000 kvtx=9.000 shares=24.941/24.941 r2=1.00000
+       t2 solved=7 beta cmd=12.000 fd=0.000
+       t3 fd=5.000 zw=5.000 sum=10.000
+       t4 r2=-2548.565
+       t5 p50=2.25 p90=10.25
+  ok   T6: gb_win_format writes a line
+  ok   T6: gpubrk_sum.py reads the line (exit 0)
+       arm=arm n=1 fps=30.0 cmd=1100 mcmd=1000 mp=1.00 min=26.00 mout=27.30 mrep=1.05 mode=s1 mus=26.00 muso=27.30 ...
+  ok   T6: the summary carries the values the window was given
+  ok   gpubrk_sum.py exits 1 on a capture with no window line
+  ok   FALSIFIED: a fit that keeps never-moving columns fails (T2)
+  ok   FALSIFIED: a fit with no ridge fails on a collinear pair (T3)
+  ok   FALSIFIED: an uncentred R^2 passes an unexplained window and fails (T4)
+  ok   FALSIFIED: a percentile that needs more than p of the weight fails (T5)
+  ok   FALSIFIED: a line with a field renamed fails gpubrk_sum.py (exit 2)
+selftest: 17 passed, 0 failed, PARTIAL: 1 of 161 fragments
+```
+
+(The five "falsification ran: the X mutant differs" lines are omitted above.)
+
+**The fit test's ground truth.**
+- True betas: {cmd 12, pchg 3, fd 6, kill 2, blend 1.5, zw 4, tex 2.5, dtx 0.8, kvtx 9, ukb 1.2} µs.
+- 400 segments of LCG features, noise-free, so T1 holds every beta within 2% and every share within 1%.
+- At the earlier ridge, 1e-4, ukb came back 1.2345, a 3% error. Every feature scales with `cmd`, which magnifies
+  the ridge's bias on the small columns. At 1e-6 every beta is exact to three decimals, and T3's collinear pair
+  still splits 5.000 / 5.000.
+
+**Each mutant, run by hand, fails only its own test:**
+- zeroskip fails T2 (solved −1);
+- ridge fails T3 (singular);
+- center fails T4 (R² 0.915 on a window the features do not explain);
+- pct fails T5 (p50 10.25).
+
+**Tag regex.** gpubrk_sum.py's tag regex was checked on threadtime, `-v time`, desktop stderr, and the `on` /
+`off:` info lines.
+
+**The fragments that read the tag list.** LOGCAT_SPEC gained `hakuX-gpubrk:I`, and 51-dispatch-hardening (I)
+and 99-ownerplay-capture (a) source it.
+- `SELFTEST_ONLY="50-arms-requeue 51-dispatch-hardening"` gave `selftest: 77 passed, 0 failed, PARTIAL: 2 of
+  161 fragments`, with every `I: the dispatcher's LOGCAT_SPEC keeps ...` ok.
+- 99-ownerplay-capture passed every check, including "(a) the capture used the dispatcher's own LOGCAT_SPEC".
+  That was in a three-fragment run with 99-gpubrk-fit and 51 without 50.
+- That run's 7 failures were all 51's E/E2. Those sections need 50's fixture ("fixture not as 50 leaves it";
+  `clear_markers`/`finish_queue: command not found`), and they pass with 50 in the run above.
+
+**Not run:** the full selftest, an NDK build, a desktop link, any device.
+
+## 6. Risks
+
+**Not run yet.**
+- Not built with the NDK, and not run anywhere. A0 is the first execution.
+- I1 is what shows whether the line's cost moves R. The two WFIs it adds per pass serialise pass ends. Iw sits
+  next to hakuX-phase's own in-pass BOTTOM stamp on the first 48 passes; Ow is new.
+
+**Gaps in what the line sees.**
+- `pchg` sees binds in draw.c only. Pipelines bound in surface.c and display.c (blits, the display pass) are
+  not counted, so the cached last pipeline can be stale after one, and a re-bind can read as a change.
+- With the reorder window on (default off), a `begin_draw` batch can be open while an entry is emitted, and the
+  two batches' features can mix in one segment.
+- The vertex count of the reorder path's indirect draws is GPU-side, so it is logged as 0. `kvtx` under-reads
+  there.
+
+**How segments are cut.**
+- UBO bytes uploaded before a pass's first draw count in its first segment.
+- The last segment of a pass ends at Iw (BOTTOM), so it includes the drain. TOP segments measure CP progress
+  (section 1).
+
+**Caps and precision.**
+- A command buffer with more than 256 passes or 2048 stamps stops stamping. Those passes show in `drop`, not
+  in the sums. At K=1 a heavy flip comes close to the stamp cap.
+- Features are stored as float. Exact for counts below 2^24.
+
+**Classification.**
+- The M rule (has depth, area ≥ 0.9 x the largest) can admit a full-size shadow or reflection pass with its
+  own depth. Both `mp` and `fmt`/`wh` are logged so that shows.
+- A window that starts in a menu holds `area_ref` from the previous window.
+
+**Device-specific.**
+- `kg=` counters are device-wide, and reserving them can fail in an app sandbox (`errN`). They are never a
+  timing arm.
+- u_trace (C1d) depends on the shipped driver being built with it. Unknown.
+
+**Comparing with the control.** The drive1022 figures were taken without the line. The line changes R by
+whatever I1 shows, so compare arms against this branch's own A0, not against drive1022's control.
