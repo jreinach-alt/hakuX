@@ -180,7 +180,31 @@ It is counted in `begin_draw` over draws with `ZENABLE` set. `psh_depth_kept` is
 - **Bindings under the arm.** The binding (`ShaderState`) carries both fields, so a poff toggle or a CLIP_MAX
   change rebinds to the right module through the existing hash. The pipeline key is unchanged.
 
-### Device A/B (not run)
+### Device A/B pair 1: arm B FAILS (lane.local, 2026-10-23 02:40 PDT)
+
+Nova, ref 31770d97e5, both arms on `hdd.img` (`hdd_disc.json` action `set`, restored), `GPU: PurpleVK`, 941
+captures each. B = `1-1792747304-p10fragdepth1022-28875` (`HAKUX_FRAGDEPTH=off`, its `omitted where
+fixed-function depth stands in` line present). A = `...-28949` (`=on`, `written on every depth draw`). The
+registered prediction is `predictions/p10fragdepth1022-pixels.json`. 880 of 941 captures are byte-identical
+between the arms, so the differences below are the arm, not noise.
+
+| Leg | Result |
+|---|---|
+| 1 Void | Neither arm is void |
+| 2 must_not_move | **Fails:** 684 captures, 1 moved. `Depth_function/DepthFunc_ZB` went 0 -> 9216 px (max 8, none off by one) |
+| 3 No new blank | **Fails:** `Depth_buffer_fixed_function/z16_Cn_FZn_M00ffff` and `z16_Cy_FZn_M00ffff` are ok in A, white-content in B |
+| 4 Colour | **Fails:** B is worse in 55 captures, better in 1 (`Stencil`, -30000) |
+| 5 `_ZB` | Not decided from scores. z16 `DepthFmt_*_FZn_M00ffff_ZB` 0 -> 76744 px, every one off by one but max 255 (a carry across the decoded byte?). z24 `Mffffff_ZB` 6770 -> 51302 |
+
+The largest B-worse rows by suite are `Color_zeta_overlap/Swap` 0 -> 165447 (max 4), 32 `Depth_buffer` (up to
+76744), 8 `Depth_buffer_fixed_function` (z16 FZn), 4 `Depth_Clamp/depth_equal_Ofs*` (0 -> 54084-76510, max 255,
+none off by one: an EQUAL compare after polygon offset no longer matches), and 9 `ZPass_pixel_count` (up to 8192).
+
+So pair 2 and the Blinx 2 pair do not run. Any retry has to explain the depth_equal_Ofs rows (the polygon offset
+mapping, "Polygon offset: NV2A units against Vulkan `depthBias`") and Color_zeta_overlap/Swap, which the kept-case
+list does not cover. The comparison script is `p10_pair.py` in the lane.local scratchpad of session 8d26cd5d.
+
+### Device A/B: the plan as registered
 
 The suites are the 10 depth suites of fpsbelow1012 section 14, as registered in
 `docs/testing/predictions/fpsbelow1012-zetad24-pixels.json` (`disc.suites`).
