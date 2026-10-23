@@ -45,6 +45,9 @@ LEASE="${HAKUX_DEVICE_LEASE:-/tmp/hakux-device-lease}"
 # successful run. Found the first time both devices ran at once, which is the
 # only way it could have been found.
 HDD="${HAKUX_HDD_SCRATCH:-$HOME/hakux-work/hdd-${DEVICE_LABEL:-${SERIAL:-x}}.img}"
+# The disk this script reads results from, on the device. The guest has to have
+# written to THIS file (see hdd_check below).
+DEVHDD=/storage/emulated/0/Android/data/"$PKG"/files/x1box/hdd.img
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Every adb call gets a deadline. Without one this script finished a run,
@@ -131,6 +134,45 @@ crash_line() {
     grep -a -m1 -E "Caught signal|Fatal signal|assertion .* failed" "$CAPTURE_LOG"
 }
 
+# THE DISK THE GUEST WROTE IS READ FROM THE GUEST, NOT ASSUMED.
+#
+# Everything below the run pulls DEVHDD and looks for the guest's output dir on
+# it. The app boots whatever its `hddPath` pref names, and that is not always
+# hdd.img: the owner points it at their own image to play. From 10-19 every
+# pgraph disc run on the Nova booted hdd-owner-1018.img, wrote its PNGs there,
+# and this script pulled hdd.img, matched its md5 against the device's (it did:
+# it was a faithful copy of the wrong file), and the extractor said
+# "d98f15f not found" -- a message that read as a sha lookup. Three runs, 0
+# captures each, and a doctor that blamed the host.
+#
+# The app logs `HDD resolved: <path>  size=<n>` for the disk it opened
+# (xemu_android.cpp), in the capture this script already takes. So:
+#   - the path equals DEVHDD: go on;
+#   - it names another image: "WRONG HDD", before the pull, and the run is
+#     refused rather than scored as 0 captures;
+#   - there is no such line, or no capture at all: "HDD UNKNOWN" or "HDD
+#     UNCHECKED". A build that does not say which disk it booted is not a pass.
+# The dispatcher puts `hddPath` on hdd.img for a disc run (disc_hdd_prepare), so
+# this is the check behind that, not the fix.
+#
+# hdd_check: exit 0 = every disk the guest resolved is DEVHDD; 1 = one is not,
+# and WRONG HDD is on stdout; 2 = the log names none yet.
+hdd_check() {
+    local booted b
+    [ -n "$CAPTURE_LOG" ] && [ -s "$CAPTURE_LOG" ] || return 2
+    booted=$(grep -a 'HDD resolved: ' "$CAPTURE_LOG" | tr -d '\r' \
+        | sed -e 's/.*HDD resolved: //' -e 's/  size=[-0-9]*[[:space:]]*$//' | awk '!seen[$0]++')
+    [ -n "$booted" ] || return 2
+    while IFS= read -r b; do
+        if [ "$b" != "$DEVHDD" ]; then
+            echo "WRONG HDD: guest wrote $b, harness pulls $DEVHDD"
+            return 1
+        fi
+    done <<< "$booted"
+    return 0
+}
+HDD_STATE=unchecked
+
 s=0
 appeared=0
 while [ "$s" -lt "${APPEAR_TIMEOUT:-90}" ]; do
@@ -150,6 +192,26 @@ if [ "$appeared" = 0 ]; then
         echo "the emulator never started: no $PKG:xemu within ${APPEAR_TIMEOUT:-90}s (no CAPTURE_LOG, so a crash faster than the 1 s poll cannot be ruled out)"
     fi
     exit 1
+fi
+
+# The app names its disk in the first second or two. Look now, so a guest on
+# the wrong image is stopped before it spends the run writing into it (the
+# release trap force-stops it), and not 225 s later. No line within
+# HDD_LINE_WAIT s is not yet a verdict: the check below the run decides.
+if [ -n "$CAPTURE_LOG" ]; then
+    hw=0
+    while [ "$hw" -lt "${HDD_LINE_WAIT:-20}" ]; do
+        hv=$(hdd_check); hrc=$?
+        if [ "$hrc" = 1 ]; then
+            echo "$hv"
+            echo "  the app's hddPath pref names another image; the guest was stopped ${s}s in rather than left to run"
+            exit 1
+        fi
+        [ "$hrc" = 0 ] && { HDD_STATE=match; break; }
+        sleep 1; hw=$((hw+1)); s=$((s+1))
+        touch "$LEASE"
+        alive || break
+    done
 fi
 
 misses=0
@@ -176,6 +238,26 @@ else
     echo "ran ${s}s"
 fi
 
+# Which disk did the guest write? (hdd_check, above.) Settled before the pull,
+# so a run on another image is a named verdict and never "0 captures".
+if [ "$HDD_STATE" != match ]; then
+    if [ -z "$CAPTURE_LOG" ]; then
+        echo "HDD UNCHECKED: no CAPTURE_LOG, so the disk the guest wrote cannot be read from its log; pulling $DEVHDD on trust"
+        HDD_STATE=unchecked
+    else
+        hv=$(hdd_check); hrc=$?
+        case "$hrc" in
+            0) HDD_STATE=match ;;
+            1) echo "$hv"
+               echo "  the app's hddPath pref names another image; nothing was pulled or extracted"
+               exit 1 ;;
+            *) echo "HDD UNKNOWN: $CAPTURE_LOG has no 'HDD resolved:' line, so the disk the guest wrote is not known (the build must log it, and LOGCAT_SPEC must carry hakuX:I); not pulling $DEVHDD as if it were"
+               if crashed=$(crash_line); then echo "  and the log shows: $crashed"; fi
+               exit 1 ;;
+        esac
+    fi
+fi
+
 # THE PULL IS CHECKED AGAINST THE DEVICE, NOT TRUSTED. On 09-25 two arms
 # (shadeflat224-fix, wparamclip223-base) scored 56 and 51 W_param captures
 # that were each exactly 16384 bytes: one FATX cluster, with the PNG header
@@ -193,7 +275,6 @@ fi
 # count as the only check. SHORT files are then re-pulled too. SHORT files
 # from a pull that matches the device are the device's own image, and a
 # re-pull cannot mend those.
-DEVHDD=/storage/emulated/0/Android/data/"$PKG"/files/x1box/hdd.img
 DEV_MD5=$(a shell "md5sum '$DEVHDD'" 2>/dev/null | tr -d '\r' | awk 'NR==1{print $1}')
 [[ "$DEV_MD5" =~ ^[0-9a-f]{32}$ ]] || DEV_MD5=""
 PULL_TRIES="${PULL_TRIES:-3}"
@@ -258,6 +339,7 @@ while :; do
     [ "$pull_try" -lt "$PULL_TRIES" ] || break
     echo "pull $pull_try: SHORT files and no device md5 to check the pull against; pulling again"
 done
+[ "$HDD_STATE" = match ] && echo "hdd: the guest's log says it booted $DEVHDD, the image pulled"
 case "$PULL_CHECK" in
     match) echo "pull: md5 matches the device's image (pull $pull_try of at most $PULL_TRIES)" ;;
     *)     echo "pull: NOT VERIFIED -- the device gave no md5 for its image (pull $pull_try)" ;;

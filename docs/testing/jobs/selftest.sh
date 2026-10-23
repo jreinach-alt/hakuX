@@ -95,7 +95,7 @@ SHARD_SECS="
     99-handback-idle:175 99-handback-lane-line:17 99-handback-merged:29
     99-handback-parked:46 99-handback-resolved:13 99-handback-runs:12
     99-handback-strand:6 99-hold-take:5 99-iso-roots:1 99-limits-env:12
-    99-pilot-gate:3 99-power-per-frame:4 99-score-sweep-flat-split:3
+    99-pilot-gate:3 99-disc-hdd:70 99-power-per-frame:4 99-score-sweep-flat-split:3
     99-status-escalation-items:1 99-thermal-pause:34 99-title-state:5
     99-tmp-cleanup-selftestclean1011:2
 "
