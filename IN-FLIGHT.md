@@ -11,7 +11,7 @@ No lane session is running.
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lane.local`
-- **Device queue:** 1 waiting, 1 running.
+- **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -139,4 +139,4 @@ No branch is being worked right now.
 - 2026-10-19 The compatibility page adds Pro Evolution Soccer 5 (Europe), The Wild Rings and Knights of the Temple II to Playable (94 -> 97)
 - 2026-10-19 fpsdata1018: FPS dip causes in the 4-title owner capture, and fixes (#433)
 
-_Updated 2026-10-22 18:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-22 19:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
