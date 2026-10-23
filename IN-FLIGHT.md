@@ -9,7 +9,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 No lane session is running.
 
 - **Handhelds:** 2 connected.
-  - Nova: free for the queue
+  - Nova: held by `2026-10-23T19:15:22Z`
   - Thor: held by `lane.local`
 - **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
@@ -126,6 +126,7 @@ No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-23 scenewrite1023: a scene load opens the app-only states dir before it writes there, and a failed park fails the run
 - 2026-10-23 savestate-req1019: load a save state through request.sh -- no hand-driving to reach a scene (#433)
 - 2026-10-23 suitesha1022: a disc run boots the harness's disk, and a run on any other disk is refused by name
 - 2026-10-22 holdpid1022: hold.sh's owner-play capture never confirms itself, because systemd expands `$` in the script before bash sees it
@@ -137,6 +138,5 @@ No branch is being worked right now.
 - 2026-10-19 fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433)
 - 2026-10-19 Fix the 10-19 11:14 master-red: a usage-meter time bomb and a hold-tiers clock race
 - 2026-10-19 fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433)
-- 2026-10-19 fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433)
 
-_Updated 2026-10-23 12:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-23 12:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
