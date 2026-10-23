@@ -116,6 +116,9 @@ WHO=""; PURPOSE=""; SUITES=""; REF="HEAD"; RUNS=1; WAIT=0; ARM="company"; TESTS=
 REF_WAS_DEFAULTED=1
 SKIP_TESTS=""
 TITLE=""; SECONDS_HOLD=60; PULL_GLOB=""; EXPECT=""; NO_EXPECT=""; DEVICE=""
+# Load a save state through the dispatcher instead of driving the pause menu
+# by hand (#433, lane.savestate-req1019). See --load-state/--scene below.
+LOAD_STATE_RAW=""; HOLD_TRIGGER=""; SCENE=""; LOAD_HDD=""
 AUDIO_CAPTURE=""; BASE_ISO=""; PERFLOG=""; ONLY_TESTS=""; PROGRAM="pgraph"
 ENV_VARS=()
 FRAMES_EVERY=0
@@ -189,6 +192,21 @@ while [ $# -gt 0 ]; do
         --remake-profile) REMAKE_PROFILE="$2"; shift 2;;
         --path-broken) PATH_BROKEN="$2"; shift 2;;
         --save) SAVE="$2"; shift 2;;
+        # <slot-or-file>: a bare 0-9/10/auto means "load what's already on
+        # the device at that slot"; anything else is a host .hxs file to
+        # push into a slot (default slot: auto, HXS_SLOT_AUTO, so a raw push
+        # never collides with a numbered slot someone cares about).
+        --load-state) LOAD_STATE_RAW="$2"; shift 2;;
+        # axis:seconds (e.g. rt:60): hold a pad axis for a window after the
+        # load, so one request covers load + a driving window. See pad.sh.
+        --hold-trigger) HOLD_TRIGGER="$2"; shift 2;;
+        # <name>: the disk the load boots, a file in the device's x1box dir
+        # holding the snapshot the state was saved with -- a copy of the disk
+        # it was saved on, never the owner's image. See dispatcher.sh's A
+        # SCENE BOOTS A COPY OF THE DISK ITS STATE WAS SAVED ON.
+        --load-hdd) LOAD_HDD="$2"; shift 2;;
+        # Sugar for --load-state/--title/--hold-trigger/--load-hdd, from scenes.tsv.
+        --scene) SCENE="$2"; shift 2;;
         --expect) EXPECT="$2"; shift 2;;
         --no-expect) NO_EXPECT="$2"; shift 2;;
         --wait) WAIT=1; shift;;
@@ -200,6 +218,149 @@ while [ $# -gt 0 ]; do
         *) echo "unknown option $1" >&2; exit 2;;
     esac
 done
+
+# --scene <name> (#433, lane.savestate-req1019): sugar for --load-state,
+# --title, --hold-trigger and --load-hdd, read from docs/testing/scenes.tsv
+# (name, title_id, slot, state_file, default_hold, hdd). This is how a request reaches a
+# specific point in a game -- the owner's GTA III in-car save, first --
+# without anyone driving the pause menu by hand; the by-hand procedure this
+# replaces is docs/lanes/fpsnext1019's arm.sh. A scene only fills gaps: a
+# flag the caller also gave explicitly is left alone.
+#
+# `state_file` of literally "device" means the state is already on the
+# device at that slot (the owner's own save, never copied off-device) --
+# nothing is pushed, the slot is just isolated from the others so auto-load
+# cannot pick a different one. Anything else is a host .hxs path, resolved
+# and checked exactly like --load-state's own file form below.
+if [ -n "$SCENE" ]; then
+    SCENES_TSV="$(dirname "$0")/scenes.tsv"
+    SCROW=$(python3 - "$SCENES_TSV" "$SCENE" <<'PYSCENE'
+import csv, json, sys
+path, name = sys.argv[1], sys.argv[2]
+try:
+    rows = list(csv.DictReader(open(path), delimiter="\t"))
+except OSError as e:
+    print(json.dumps({"refuse": "cannot read %s: %s" % (path, e)})); raise SystemExit(0)
+for r in rows:
+    if r["name"] == name:
+        print(json.dumps(r)); raise SystemExit(0)
+names = ", ".join(r["name"] for r in rows) or "(none)"
+print(json.dumps({"refuse": "no scene %r in %s; known: %s" % (name, path, names)}))
+PYSCENE
+)
+    SCREFUSE=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("refuse") or "")' "$SCROW" 2>/dev/null) \
+        || SCREFUSE="scenes.tsv row for '$SCENE' did not parse: $SCROW"
+    [ -z "$SCREFUSE" ] || { echo "refusing to queue: $SCREFUSE" >&2; exit 2; }
+    SC_TID=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["title_id"])' "$SCROW")
+    SC_SLOT=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["slot"])' "$SCROW")
+    SC_STATE_FILE=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["state_file"])' "$SCROW")
+    SC_HOLD=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["default_hold"])' "$SCROW")
+    # A row from before the hdd column has none; the refusal below says why.
+    SC_HDD=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("hdd") or "")' "$SCROW")
+    [ -n "$LOAD_HDD" ] || LOAD_HDD="$SC_HDD"
+    if [ -z "$TITLE" ]; then
+        SC_ISO=$(python3 "$(dirname "$0")/titles/titlestate.py" iso-for-tid --title-id "$SC_TID" ${DEVICE:+--device "$DEVICE"} 2>/dev/null)
+        [ -n "$SC_ISO" ] || { echo "refusing to queue: scene '$SCENE' names title_id $SC_TID, and no on-device ISO name is known for it" >&2; exit 2; }
+        TITLE="$SC_ISO"
+        echo "scene: $SCENE -> --title $TITLE" >&2
+    fi
+    [ -n "$HOLD_TRIGGER" ] || HOLD_TRIGGER="$SC_HOLD"
+    if [ -z "$LOAD_STATE_RAW" ]; then
+        LOAD_SLOT="$SC_SLOT"
+        [ "$SC_STATE_FILE" = device ] || LOAD_STATE_FILE="$SC_STATE_FILE"
+    fi
+fi
+# --load-state <slot-or-file>, resolved and checked HERE, at queue time, not
+# on the device: a slot digit needs nothing more, a file must exist (the
+# falsifier's case e) and is resolved to an absolute path for the same reason
+# --base-iso is -- the dispatcher's cwd is not the requester's.
+: "${LOAD_SLOT:=}"; : "${LOAD_STATE_FILE:=}"
+if [ -n "$LOAD_STATE_RAW" ]; then
+    case "$LOAD_STATE_RAW" in
+        [0-9]|10|auto)
+            [ "$LOAD_STATE_RAW" = auto ] && LOAD_SLOT=10 || LOAD_SLOT="$LOAD_STATE_RAW"
+            LOAD_STATE_FILE=""
+            ;;
+        *)
+            if [ ! -f "$LOAD_STATE_RAW" ]; then
+                echo "refusing to queue: --load-state $LOAD_STATE_RAW is neither a slot (0-9, 10, auto) nor an existing file" >&2
+                exit 2
+            fi
+            LOAD_STATE_FILE=$(cd "$(dirname "$LOAD_STATE_RAW")" && printf '%s/%s' "$(pwd)" "$(basename "$LOAD_STATE_RAW")")
+            [ -n "$LOAD_SLOT" ] || LOAD_SLOT=10
+            ;;
+    esac
+fi
+if [ -n "$LOAD_STATE_FILE" ] && [ ! -f "$LOAD_STATE_FILE" ]; then
+    echo "refusing to queue: load-state file $LOAD_STATE_FILE does not exist" >&2
+    exit 2
+fi
+if [ -n "$HOLD_TRIGGER" ] && ! [[ "$HOLD_TRIGGER" =~ ^[A-Za-z_]+:[0-9]+$ ]]; then
+    echo "refusing to queue: --hold-trigger '$HOLD_TRIGGER' must be axis:seconds (e.g. rt:60)" >&2
+    exit 2
+fi
+if [ -n "$LOAD_SLOT" ] && [ -z "$TITLE" ]; then
+    echo "refusing to queue: --load-state/--scene needs a --title (which game's slot this is)" >&2
+    exit 2
+fi
+
+# --load-state/--scene, checked against the SNAPSHOT the dispatcher actually
+# runs, the same way the --only-tests guard above does: a request carrying
+# load_slot/hold_trigger that reaches an older dispatcher is not refused and
+# not void -- jq_get answers the fields it has never heard of with their
+# default, so the soak just runs from the title screen with nothing loaded,
+# and the result is filed as though it were the scene that was asked for.
+# Confirmed for real (#433, lane.savestate-req1019): a request queued with
+# scene/load_slot/hold_trigger set, served by a pre-fold dispatcher, came
+# back with every one of those fields null and no [savestate] op=load line
+# at all -- no error, no VOID, just a silent ordinary soak.
+if [ -n "$LOAD_SLOT" ] || [ -n "$SCENE" ]; then
+    SNAPBIN="${DISPATCH_DIR:-/home/justin/hakux-work/dispatch}/bin"
+    SERVER="${DISPATCH_TREE:-/home/justin/hakuX}/docs/testing"
+    # scene_hdd_check, not scene_verdict: a dispatcher with the load but not
+    # the scene's disk boots titles.qcow2 or the owner's image under it.
+    if ! grep -q scene_hdd_check "$SNAPBIN/dispatcher.sh" 2>/dev/null; then
+        if grep -q scene_hdd_check "$SERVER/dispatcher.sh" 2>/dev/null; then
+            echo "refusing to queue: --load-state/--scene is merged but the SERVING" >&2
+            echo "dispatcher still runs an older snapshot ($SNAPBIN). Restart it, or" >&2
+            echo "touch dispatcher.sh to force its re-exec." >&2
+        else
+            echo "refusing to queue: --load-state/--scene is not supported by the" >&2
+            echo "dispatcher that will serve this request ($SERVER). An older" >&2
+            echo "dispatcher ignores load_slot/hold_trigger silently and runs an" >&2
+            echo "ordinary soak from the title screen, filed as the scene you asked" >&2
+            echo "for. Merge the --scene support and restart the serving dispatcher" >&2
+            echo "first." >&2
+        fi
+        exit 2
+    fi
+fi
+
+# THE LOAD'S DISK, refused here by name exactly as the dispatcher refuses it
+# at claim (dispatcher.sh scene_hdd_name_refusal, under A SCENE BOOTS A COPY
+# OF THE DISK ITS STATE WAS SAVED ON; jobs/selftest.d/99-load-state.sh holds
+# the two texts equal). Whether the file is on the device is the
+# dispatcher's to say, before it installs anything.
+scene_hdd_name_refusal() {
+    local n="$1" lc="${1,,}"
+    case "$n" in
+        "") echo "a save-state load names no hdd: a state loads only on a disk holding the snapshot it was saved with, and without one the run boots titles.qcow2 (composed from goldens: no such snapshot, the load VOIDs) or whatever hddPath names (on the Nova the owner's image, which the load would roll back); name a copy of the disk the state was saved on in the scene's scenes.tsv hdd column, or pass --load-hdd <name>"; return;;
+        */*) echo "scene hdd '$n' is a path; name a file in the device's x1box dir (where hdd.img is)"; return;;
+        .|..|-*|*[!A-Za-z0-9._-]*) echo "scene hdd '$n' is not a plain file name (letters, digits, . _ - only)"; return;;
+    esac
+    case "$lc" in
+        hdd-owner-*) echo "scene hdd '$n' is the owner's image (hdd-owner-*): a load rolls the disk it boots back to the state's snapshot, so a scene boots a copy of that image, never the image itself";;
+        titles.qcow2|hdd.img) echo "scene hdd '$n' is a harness disk (other runs rebuild and boot it); name a copy of the disk the state was saved on";;
+    esac
+}
+if [ -n "$LOAD_SLOT" ]; then
+    SHWHY=$(scene_hdd_name_refusal "$LOAD_HDD")
+    [ -z "$SHWHY" ] || { echo "refusing to queue: $SHWHY" >&2; exit 2; }
+elif [ -n "$LOAD_HDD" ]; then
+    echo "refusing to queue: --load-hdd names the disk for a save-state load, and this request loads none (--load-state/--scene)" >&2
+    exit 2
+fi
+
 # A soak request names a title instead of suites: it boots a real game and
 # keeps the log, for questions with no golden framebuffer (the test discs are
 # silent, so nothing about audio can be asked of them).
@@ -1471,6 +1632,7 @@ TITLE_ID="$TITLE_ID" TITLE_STATE="$TITLE_STATE" IDENTIFIED="$IDENTIFIED" \
 VIDEO_SECONDS="$VIDEO_SECONDS" VIDEO_AFTER="$VIDEO_AFTER" \
 FIND_ROUTE="$FIND_ROUTE" REMAKE_PROFILE="$REMAKE_PROFILE" PATH_BROKEN="$PATH_BROKEN" SAVE="$SAVE" \
 PROFILE_CLAUSE="$PROFILE_CLAUSE" \
+LOAD_SLOT="$LOAD_SLOT" LOAD_STATE_FILE="$LOAD_STATE_FILE" HOLD_TRIGGER="$HOLD_TRIGGER" SCENE="$SCENE" LOAD_HDD="$LOAD_HDD" \
 python3 - "$D/queue/.$ID.req.tmp" "$ID" "$WHO" "$PURPOSE" "$SUITES" "$REF" "$ARM" "$RUNS" "$TESTS" "$TITLE" "$SECONDS_HOLD" "$PULL_GLOB" "$EXPECT" "${EXPECT_SHA:-}" "$NO_EXPECT" "$SKIP_TESTS" "$DEVICE" "$AUDIO_CAPTURE" "$BASE_ISO" "$PERFLOG" "$ONLY_TESTS" "$FRAMES_EVERY" "$PROGRAM" ${ENV_VARS[@]+"${ENV_VARS[@]}"} <<'PY'
 import json, sys
 (p, i, who, purpose, suites, ref, arm, runs, tests, title, seconds,
@@ -1527,6 +1689,18 @@ json.dump({"id": i, "requester": who, "purpose": purpose,
            "path_broken": __import__("os").environ.get("PATH_BROKEN", ""),
            "profile_clause": __import__("os").environ.get("PROFILE_CLAUSE", ""),
            "save": __import__("os").environ.get("SAVE", ""),
+           # Load a save state through the dispatcher instead of driving the
+           # pause menu (--load-state/--scene, #433). load_slot is "" unless
+           # a scene or --load-state asked for one; load_state_file is "" in
+           # slot mode (use what's on the device) and a host path in file
+           # mode (push, then restore the original after). hold_trigger is
+           # "axis:seconds" or "". scene_hdd is the disk the load boots
+           # (--load-hdd / scenes.tsv hdd), a file in the device's x1box dir.
+           "load_slot": __import__("os").environ.get("LOAD_SLOT", ""),
+           "load_state_file": __import__("os").environ.get("LOAD_STATE_FILE", ""),
+           "hold_trigger": __import__("os").environ.get("HOLD_TRIGGER", ""),
+           "scene": __import__("os").environ.get("SCENE", ""),
+           "scene_hdd": __import__("os").environ.get("LOAD_HDD", ""),
            # The failure identified before a held title was queued again
            # (--identified; see the failure gate above). Empty when none.
            "identified": __import__("os").environ.get("IDENTIFIED", ""),
@@ -1567,9 +1741,12 @@ except Exception as e:
     print("UNREADABLE:%s" % e)
     raise SystemExit(0)
 if r.get("title"):
-    print("soak: %s, %ss%s%s" % (r["title"], r["seconds"],
+    print("soak: %s, %ss%s%s%s" % (r["title"], r["seconds"],
                                ", env " + " ".join(r["env"]) if r.get("env") else "",
-                               ", route " + r["route_name"] if r.get("route") else "")
+                               ", route " + r["route_name"] if r.get("route") else "",
+                               ", scene " + r["scene"] if r.get("scene") else
+                               (", load slot " + r["load_slot"] if r.get("load_slot") else ""))
+          + (", hdd " + r["scene_hdd"] if r.get("scene_hdd") else "")
           + " [%s %s]" % (r.get("title_id") or "title ?", r.get("title_state") or "any"))
 else:
     print("%sdisc: %d suite(s) [%s], only_tests %d, skip_tests %d, runs %d"

@@ -203,6 +203,10 @@ The source is the owner, as project manager, on 2026-09-28:
 - Push to `master` or to any branch but your own.
 - Run git in a tree that is not your worktree.
 - Touch a device directly. `request.sh` and `ab_run.sh` are the only way in.
+  To reach a scene (e.g. a title mid-level, in a vehicle, past a menu),
+  queue `request.sh --scene <name>` or `--load-state <slot-or-file>` --
+  never drive the pause menu by hand to get there. See AGENTS.md, "Loading a
+  scene without driving the device".
 - Write or remove `$DISPATCH_DIR/hold/<dev>` by hand. Take and release a
   device hold ONLY with `jobs/hold.sh take|release <dev> lane.<name>`; it
   refuses (exit 3) a device someone else holds, and never removes a hold you
