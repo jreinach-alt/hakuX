@@ -4000,7 +4000,18 @@ PYEOF
 # dirty, lookup hit/evict/nosurf, create, put, bind, upload, download,
 # expire -- and DOA2U's perflog soak (1790450181-doa413-1721403) spent 33-52
 # ms per frame in `Surf` without it, so the soak could not say which part.
-LOGCAT_SPEC="${LOGCAT_SPEC_OVERRIDE:-hakuX-crash:V hakuX-unhandled:W hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-phase:I xemu-work:I hakuX-lane:I hakuX-tier1:D hakuX-pages:I hakuX:I hakuX-rw:I hakuX-stderr:E hakuX-vk:I hakuX-route:I hakuX-pace:I hakuX-stall:I hakuX-rpbrk:I hakuX-cpu:I xemu-gpu:I xemu-sfp:I xemu-surf:I libc:F DEBUG:F VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}"
+#
+# hakuX-gpubrk and hakuX-heavy ADDED 2026-10-23 (scenewrite1023, coordinator
+# addendum ce679c6d30). Both are logged at ANDROID_LOG_INFO, so `:I` is the
+# whole of them. hakuX-gpubrk is lane gpubreak1022's per-window GPU-time
+# breakdown of the main pass (vk/draw.c, `__android_log_print(ANDROID_LOG_INFO,
+# GB_TAG, ...)`); hakuX-heavy is lane heavycap1022's heavy-frame capture block
+# (pgraph/profile.c, `ANDROID_LOG_INFO, "hakuX-heavy"`). Both lanes are unfolded
+# at the time of this entry: until their builds are installed no apk emits
+# either tag and this changes nothing in a capture. After, `*:S` would silence
+# both before anyone asked, the way it silenced `hakuX-tier1` above, and a
+# capture would show zero lines for a mechanism that fired.
+LOGCAT_SPEC="${LOGCAT_SPEC_OVERRIDE:-hakuX-crash:V hakuX-unhandled:W hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-phase:I xemu-work:I hakuX-lane:I hakuX-tier1:D hakuX-pages:I hakuX:I hakuX-rw:I hakuX-stderr:E hakuX-vk:I hakuX-route:I hakuX-pace:I hakuX-stall:I hakuX-rpbrk:I hakuX-cpu:I xemu-gpu:I xemu-sfp:I xemu-surf:I libc:F DEBUG:F VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W hakuX-gpubrk:I hakuX-heavy:I *:S}"
 export LOGCAT_SPEC
 
 case "${1:-status}" in

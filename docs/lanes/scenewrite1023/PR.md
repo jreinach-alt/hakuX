@@ -1,6 +1,6 @@
 # scenewrite1023: a scene load opens the app-only states dir before it writes there, and a failed park fails the run
 
-State: draft
+State: ready
 
 Lane: scenewrite1023            Issue: none (harness defect, dispatched directly)
 Base: master @ 1b616ee718
@@ -34,6 +34,8 @@ of docs/lanes/*/ and docs/testing/ for `ext_data_rw`, `chmod g+w`, `run-as .* st
 | 10-17 | 9a177a6f82 (dispatchdoctor1017 Section 1b); docs/lanes/dispatchdoctor1017/{NOTES,PR}.md; request.sh "dispatchdoctor1017 Section 1b", dispatcher.sh `ensure_route_attached` | A soak that typed no `--route` (or `survey`) gets the title's `suggest-route` answer attached, at queue time and again at claim; skipped for `--find-route`, `--remake-profile`, `--path-broken`. Owner 10-17: "no route (or only survey)" | Built and selftest-green for a cold-boot soak. Its skip list names three deliberate intents; it names no load | Does not cover a load. A `--load-state`/`--scene` request starts mid-game, and nothing in either guard asks. The two places are fixed here (A) |
 | 10-23 | coordinator addendum ce679c6d30 (the lane.local replay of heavy2.hxs, `--load-state`, no `--route`) | request.sh attached `gta-3.route` (A x16, steering from 55 s, recorded from a cold boot) to a request that loads a mid-game state; the replay was void | The failure A fixes | The fix is a guard in the attach condition, not a new flag: an explicit `--route` still attaches, and a scene's own input is `--hold-trigger` |
 
+| 09-26 to 10-22 | dispatcher.sh LOGCAT_SPEC history (hakuX-tier1 #81, hakuX-stall/rpbrk/cpu/xemu-gpu/sfp #372, xemu-surf #413); lane/heavycap1022 8d27d8fe54 | Each new telemetry tag was added to the allow-list by hand, after a capture showed zero lines for a mechanism the filter silenced; heavycap1022 adds `hakuX-heavy:I` on its own branch | The allow-list is edited per tag, and the comment above it says why | `hakuX-gpubrk` (gpubreak1022) and `hakuX-heavy` are not on master and `*:S` would silence both. Added here ahead of their builds, as the addendum asks; heavycap1022's own `hakuX-heavy:I` on the same line will conflict at fold |
+
 No row is a states-dir write that already worked from code. The earlier lanes handled the mode of a pushed file
 (hddperm, devpushro), or the app's own writes (savestate1011); the open dir on the Nova was a hand step. No row is a
 route guard for a load: dispatchdoctor1017 skipped three intents and none was a load.
@@ -59,3 +61,7 @@ route guard for a load: dispatchdoctor1017 skipped three intents and none was a 
    not in the addendum: a route-less request from an older request.sh would otherwise get gta-3 there) and says why
    in the inputs note. Falsifier (l) in 99-load-state.sh, against the real `suggest-route`, `targets.toml` and
    `routes/`; two cmp-verified mutants (`noqueueguard`, `noclaimguard`).
+7. **B: `hakuX-gpubrk:I hakuX-heavy:I` in dispatcher.sh's LOGCAT_SPEC**, before `*:S`, with a dated paragraph. Both
+   tags log at INFO (draw.c:4207, profile.c:520 on their lane branches; neither is on master). No mutant: an allow-list
+   entry. The other copies (soak_title.sh:36, run_disc.sh:82, titles/pathfind.py:91, HakuXApplication.kt:18) are named
+   in NOTES.md and not edited; a dispatched run inherits the dispatcher's spec.

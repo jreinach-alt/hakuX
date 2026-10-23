@@ -144,3 +144,42 @@ symlink, request.sh a real mutated copy, the root a one-commit git repo in the s
 **`--load-hdd` is required with a load.** A `--load-state` without `--load-hdd` is refused by request.sh at queue
 time (the scene's disk rule from 10-22), so the (l) cases pass `--load-hdd hdd-scene-gta3.img`; `--scene` takes its
 disk from `scenes.tsv`. Nothing here reads that disk.
+
+## B: the dispatcher's LOGCAT_SPEC names hakuX-gpubrk and hakuX-heavy (commit 3, coordinator addendum ce679c6d30)
+
+`LOGCAT_SPEC` (dispatcher.sh, the `LOGCAT_SPEC="${LOGCAT_SPEC_OVERRIDE:-...}"` line, with the dated "ADDED" paragraph
+above it) is an allow-list ending in `*:S`, so a tag it does not name is silenced before anyone asks. It now has
+`hakuX-gpubrk:I hakuX-heavy:I` immediately before `*:S`.
+
+**Why `:I`.** Both tags log at `ANDROID_LOG_INFO`. Quoted from the lane branches that add them (neither is on master, so
+`grep` of the master tree for either string finds nothing):
+
+- `hakuX-gpubrk`: lane/gpubreak1022 (dfc55f031a), hw/xbox/nv2a/pgraph/vk/draw.c:4090 `#define GB_TAG "hakuX-gpubrk"` and
+  :4207 `__android_log_print(ANDROID_LOG_INFO, GB_TAG, "%s", buf);` (the stderr twin at :4209).
+- `hakuX-heavy`: lane/heavycap1022 (8d27d8fe54), hw/xbox/nv2a/pgraph/profile.c:520
+  `__android_log_print(ANDROID_LOG_INFO, "hakuX-heavy", "%s", b);` (stderr twin :522). lane/diagdrive1022 (8bf140bf88)
+  merges both and has the same lines.
+
+Neither tag logs below INFO at those sites, so `:I` loses nothing; `:V` would only widen the filter for a tag someone
+later adds a debug line to.
+
+**No mutant**, as the addendum says: the change is an allow-list entry, and the existing check
+(51-dispatch-hardening.sh "I:", which asserts the spec keeps each of its tags) cannot see an addition. I did not add
+a check that the spec has these two: it would name tags no apk on master emits.
+
+**Other copies of the tag list, outside this lane's files (not edited):**
+
+- `docs/testing/soak_title.sh:36` and `docs/testing/run_disc.sh:82` both read `LOGCAT_SPEC="${LOGCAT_SPEC:-<literal>}"`.
+  A dispatched run inherits the dispatcher's exported spec, so those literals are fallbacks that apply only when the
+  script is run by hand; they are not the copy that decides a dispatched capture. `jobs/hold.sh` sources the
+  dispatcher's own spec fresh (hold.sh:202-212), so an owner-play capture picks the change up too.
+- `docs/testing/titles/pathfind.py:91` has its own short list (`hakuX-route:I hakuX-pace:I VALIDATION:W ...`) for the
+  path-finding capture; it names neither tag and has no reason to.
+- `android/app/src/main/java/com/rfandango/haku_x/HakuXApplication.kt:18` is the app's own logcat filter list on the
+  device side (`"hakuX-rw:V", "hakuX-rpbrk:V", ...`). lane/gpubreak1022 adds `"hakuX-gpubrk:V"` there and
+  lane/diagdrive1022 adds both; master has neither.
+
+**A fold conflict is expected on the one line.** lane/heavycap1022 and lane/diagdrive1022 already add `hakuX-heavy:I`
+to the same LOGCAT_SPEC line, between `xemu-surf:I` and `libc:F`; this lane adds both tags before `*:S`. Whichever
+folds second conflicts on that line. The resolution is the union with one `hakuX-heavy:I` (a duplicate is harmless to
+logcat but untidy). lane/gpubreak1022 does not touch the line, so it is the tag this change alone supplies.
