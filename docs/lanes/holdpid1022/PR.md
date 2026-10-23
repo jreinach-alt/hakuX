@@ -31,3 +31,52 @@ is repeated or contradicted here.
 
 Stop rule read: the same failure twice for one cause means stop and report. This is the first fix attempt for this
 cause.
+
+## 1. What systemd 255 does to the argv, observed before any edit
+
+Host: systemd 255 (255.4-1ubuntu8.18), user manager running. Every probe is
+`systemd-run --user --wait --collect --pipe -q [--setenv=...] <command>` on a command that prints and touches no
+device. `--expand-environment=BOOL` exists (man systemd-run: "Added in version 246").
+
+**The production failure, reproduced with the real systemd-run** (hold.sh's first two script lines, `PIDFILE` by
+`--setenv`):
+
+    trap -- 'kill  2>/dev/null; exit 0' SIGTERM
+    bash pid is 210739
+    pidfile now holds: [$]
+
+**Which `$` forms systemd rewrites.** One probe per word, `--setenv=A="x y"`, command `printf '<%s>' <word> END`,
+plus in-script probes where bash reassigns a variable and reads it back (so a rewrite by systemd is
+distinguishable from bash's own evaluation):
+
+| Word, as it appears in argv | What the command receives | Who evaluated it |
+|---|---|---|
+| `$$` (anywhere in a word) | `$` | systemd: `$$` is an escaped `$` |
+| `a$$b`, `$$$`, `$$$$` | `a$b`, `$$`, `$$` | systemd |
+| `${A}` (anywhere in a word) | the --setenv value, or empty if unset | systemd |
+| `$A` as a whole separate argument | the value, split on whitespace into 0..n arguments; an unset name drops the argument | systemd |
+| `$` alone, `$(echo)`, `$1`, `$?`, `$A$A`, `$A:z` as a whole argument | dropped (read as a variable name that is not set) | systemd |
+| `pre$A`, `a$`, `${A`, `${A:+b}` | unchanged | bash, later |
+| bare `$SERIAL`, `$cur`, `$rc`, `$PIDFILE`, `$LOG`, `$SPEC`, `$?`, `$!`, `$(...)` inside a longer word | unchanged | bash evaluates them. `SERIAL=reassigned; echo $SERIAL` printed `reassigned`; `cur=42; echo $cur` printed `42`; `echo ${SERIAL}` printed the --setenv value, not the reassigned one |
+| `%H`, `%n`, `%%`, `%s`, `date +%Y-%m-%dT%H:%M:%SZ` | unchanged | no specifier expansion in a transient command |
+
+So the brief's list is half right. Against hold.sh's script (one argv word, `bash -c "$script"`):
+- `$$` -> `$`: yes, and it is the only rewrite. `echo "$$" > "$PIDFILE"` became `echo "$" > "$PIDFILE"`; the pidfile
+  holds a literal `$`; `capture_running` needs `^[0-9]+$`; `take` exits 6. This is the whole production failure.
+- `$SERIAL`, `$LOG`, `$SPEC`, `$PIDFILE`: NOT substituted by systemd. They sit inside a longer word, and systemd
+  rewrites a bare `$VAR` only when it is the entire argument. bash evaluates them from the unit's environment, which
+  is what the comment above the script wanted.
+- `$cur`, `$rc`: NOT expanded to nothing by systemd (`rc=7; echo $rc` printed 7).
+- The script has no `${...}`, so nothing else is rewritten. A future edit that adds one would be.
+
+**A second defect, independent of systemd.** The trap line is
+`trap "kill $cur 2>/dev/null; exit 0" TERM`, double-quoted. bash expands `$cur` when `trap` runs, when `cur` is
+unset, so the stored trap is `kill  2>/dev/null; exit 0` (output above, from the real unit; the same line comes out of
+a plain `bash -c`). SIGTERM to the capture's bash therefore never kills the adb child. Evidence on this host: each run
+of the unfixed 99-ownerplay-capture fragment (29 passed) leaves four orphaned `sleep 100000` (the fake adb) behind
+(`pgrep -c -x -f 'sleep 100000'` read 48 after my one baseline run; the four newest pids are that run's, 44 are older). Production hides it only because `systemctl --user stop` kills the whole
+cgroup; the `kill "$pid"` half of `capture_release` leaves a live `adb logcat` appending to the file.
+
+**Why the fragment passed.** Its local `systemd-run` does `setsid env ... bash -c "$script"` with the argument
+untouched, so `$$` reaches bash as `$$`. Its (e) leg asserts `oc_dead` by re-reading the pidfile that `release` has
+just removed, which is true of any state.
