@@ -20,6 +20,7 @@
  */
 
 #include "hw/xbox/nv2a/nv2a_int.h"
+#include "hw/xbox/nv2a/heavycap.h"      /* heavycap1022: VBLANK raise */
 #include "hw/xbox/game-compat.h"
 #include "hw/core/cpu.h"
 #include "target/i386/cpu.h"
@@ -941,6 +942,10 @@ static void nv2a_simple_vblank_cb(NV2AState *d)
      * nv2a_vga_gfx_update below for what else used to assert one and why that
      * made this mode useless as the baseline it exists to be.
      */
+    if (hakux_heavycap_on()) {
+        hakux_hc_vblank_raise(d->pcrtc.pending_interrupts &
+                              NV_PCRTC_INTR_0_VBLANK, false, now);
+    }
     d->pcrtc.pending_interrupts |= NV_PCRTC_INTR_0_VBLANK;
     d->pcrtc.raster = 0;
     nv2a_update_irq(d);
@@ -1171,6 +1176,10 @@ static void nv2a_vblank_timer_cb(void *opaque)
 
     nv2a_vblank_record(d, VBH_SRC_TIMER, was_deferred,
                        d->vblank_next_target_ns);
+    if (hakux_heavycap_on()) {
+        hakux_hc_vblank_raise(d->pcrtc.pending_interrupts &
+                              NV_PCRTC_INTR_0_VBLANK, was_deferred, now);
+    }
     d->pcrtc.pending_interrupts |= NV_PCRTC_INTR_0_VBLANK;
     d->pcrtc.raster = 0;
 

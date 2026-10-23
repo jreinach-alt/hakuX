@@ -30,6 +30,8 @@
 #include "scsi/constants.h"
 #include "ide-internal.h"
 #include "trace.h"
+#include "qemu/timer.h"             /* get_clock(), heavycap */
+#include "hw/xbox/nv2a/heavycap.h"
 
 #define ATAPI_SECTOR_BITS (2 + BDRV_SECTOR_BITS)
 #define ATAPI_SECTOR_SIZE (1 << ATAPI_SECTOR_BITS)
@@ -92,6 +94,9 @@ static int
 cd_read_sector_sync(IDEState *s)
 {
     int ret;
+    /* heavycap1022: a synchronous read stops its caller (the vCPU, in a
+     * PIO transfer) for the whole host read; booked in core.c. */
+    int64_t hc_t0 = hakux_heavycap_on() ? get_clock() : 0;
     block_acct_start(blk_get_stats(s->blk), &s->acct,
                      ATAPI_SECTOR_SIZE, BLOCK_ACCT_READ);
 
@@ -113,6 +118,7 @@ cd_read_sector_sync(IDEState *s)
         block_acct_invalid(blk_get_stats(s->blk), BLOCK_ACCT_READ);
         return -EIO;
     }
+    hakux_hc_ide_sync(hc_t0, ATAPI_SECTOR_SIZE);
 
     if (ret < 0) {
         block_acct_failed(blk_get_stats(s->blk), &s->acct);

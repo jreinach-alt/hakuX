@@ -257,6 +257,16 @@ void hakux_ft_site_add(uintptr_t ra, int reason, int64_t ns);
 extern void (*hakux_ft_site_describe)(uintptr_t ra, char *buf, size_t n);
 
 void hakux_ft_init(void);                       /* reads the environment */
+/* heavycap1022: the hooks without the instrument. Turns hakux_ft_on on with
+ * no log, no CSV, no writer thread and no Vulkan interposer, so the wait
+ * totals below accumulate for hw/xbox/nv2a/heavycap.h; hakux_ft_full stays 0
+ * and profile.c's flip skips hakux_ft_flip(). */
+void hakux_ft_init_hooks(void);
+extern int hakux_ft_full;                       /* hakux_ft_init() turned it on */
+/* The vCPU's booked waits by reason (plus the one in progress), its wait
+ * count and its MMIO dispatch ns: false if the seqlock read kept failing. */
+bool hakux_ft_vcpu_waits(uint64_t acc[HAKUX_FT_NW], uint64_t *nwait,
+                         uint64_t *mmio_ns);
 void hakux_ft_thread(int role);                 /* register the calling thread */
 int hakux_ft_role_self(void);                   /* -1 if unregistered */
 void hakux_ft_wait_begin_slow(HakuxFtWait *w, int reason, int holder);
@@ -499,6 +509,7 @@ static const char *const hakux_ft_lws_name[HAKUX_FT_NLWS] __attribute__((unused)
 #endif
 
 int hakux_ft_on;
+int hakux_ft_full;
 int hakux_ft_bql_owner = -1;
 
 #define FT_SPAN_RING 4096           /* per role */
@@ -716,6 +727,18 @@ void hakux_ft_init(void)
              ft_force_ireq, ft_csv_wanted, ft_dir[0] ? ft_dir : "-",
              ft_mhz_fd, (int)(ft_duty_ns / 1000000000LL));
     hakux_ft_log("hakuX-ft1", line);
+    hakux_ft_full = 1;
+    __atomic_store_n(&hakux_ft_on, 1, __ATOMIC_RELEASE);
+}
+
+void hakux_ft_init_hooks(void)
+{
+    if (hakux_ft_enabled()) {
+        return;                     /* the full instrument is already on */
+    }
+    for (int i = 0; i < HAKUX_FT_NROLE; i++) {
+        ft_role[i].ssfd = -1;
+    }
     __atomic_store_n(&hakux_ft_on, 1, __ATOMIC_RELEASE);
 }
 
@@ -1062,7 +1085,7 @@ static bool ft_schedstat(int fd, uint64_t *run, uint64_t *rq)
 
 /* Effective totals at @now: booked plus the in-progress wait, read under the
  * role's seqlock so a wait ending mid-read is not counted twice or lost. */
-static void ft_snap_role(int i, int64_t now, FtSnap *s)
+static bool ft_snap_role(int i, int64_t now, FtSnap *s)
 {
     FtRole *r = &ft_role[i];
 
@@ -1130,8 +1153,24 @@ static void ft_snap_role(int i, int64_t now, FtSnap *s)
         if (gt0 && now > gt0) {
             s->gidle += (uint64_t)(now - gt0);
         }
-        return;
+        return true;
     }
+    return false;
+}
+
+bool hakux_ft_vcpu_waits(uint64_t acc[HAKUX_FT_NW], uint64_t *nwait,
+                         uint64_t *mmio_ns)
+{
+    FtSnap s;
+
+    memset(&s, 0, sizeof(s));
+    if (!ft_snap_role(HAKUX_FT_VCPU, hakux_ft_now(), &s)) {
+        return false;
+    }
+    memcpy(acc, s.acc[HAKUX_FT_VCPU], sizeof(s.acc[HAKUX_FT_VCPU]));
+    *nwait = s.nwait[HAKUX_FT_VCPU];
+    *mmio_ns = FT_LD(&ft_mmio_ns);
+    return true;
 }
 
 static uint32_t ft_us(uint64_t a, uint64_t b)

@@ -35,6 +35,8 @@
 #include <sys/syscall.h>
 
 #include "hxs.h"
+#include "hw/xbox/nv2a/heavycap.h"      /* heavycap1022: the heavy save */
+#include "hw/xbox/nv2a/heavyrule.h"
 #include "lz4/lz4.h"
 #include "zstd/zstd.h"
 
@@ -69,6 +71,18 @@
 #define HXS_MAX_THREADS 4
 #define HXS_CTX_WORKER HXS_MAX_THREADS
 #define HXS_JOB_RING 16
+
+/*
+ * heavycap1022 (#433): the automatic heavy-scene states, heavy0.hxs ..
+ * heavy3.hxs, are slots past HXS_SLOT_COUNT. Every listing, the auto-load
+ * pick, hxs_save() and hxs_load() stop at HXS_SLOT_COUNT (or at the auto
+ * slot), so a heavy state is never shown, never auto-loaded, and never
+ * written over slots 0-9 or auto; only hxs_save_heavy() writes one.
+ */
+#define HXS_SLOT_HEAVY HC_SLOT_BASE
+#define HXS_HEAVY_SLOTS HC_KEEP
+#define HXS_SLOT_ALL (HXS_SLOT_HEAVY + HXS_HEAVY_SLOTS)
+QEMU_BUILD_BUG_ON(HXS_SLOT_HEAVY < HXS_SLOT_COUNT);
 
 /*
  * What "On" stands for, chosen from the measurements in
@@ -733,12 +747,16 @@ static const char *file_info(const char *rel, FileInfo *fi)
 
 static const char *slot_file(int slot)
 {
-    static const char *const names[HXS_SLOT_COUNT] = {
+    static const char *const names[HXS_SLOT_ALL] = {
         "slot0.hxs", "slot1.hxs", "slot2.hxs", "slot3.hxs", "slot4.hxs",
         "slot5.hxs", "slot6.hxs", "slot7.hxs", "slot8.hxs", "slot9.hxs",
         "auto.hxs",  "undo-save.hxs",
+        "heavy0.hxs", "heavy1.hxs", "heavy2.hxs", "heavy3.hxs",
     };
-    return slot >= 0 && slot < HXS_SLOT_COUNT ? names[slot] : NULL;
+    /* The table names the heavy files right after undo-save. */
+    QEMU_BUILD_BUG_ON(HXS_SLOT_HEAVY != HXS_SLOT_COUNT ||
+                      HXS_HEAVY_SLOTS != 4);
+    return slot >= 0 && slot < HXS_SLOT_ALL ? names[slot] : NULL;
 }
 
 static char *slot_rel(const char *title, int slot)
@@ -748,7 +766,7 @@ static char *slot_rel(const char *title, int slot)
 
 static int slot_from_file(const char *name)
 {
-    for (int s = 0; s < HXS_SLOT_COUNT; s++) {
+    for (int s = 0; s < HXS_SLOT_ALL; s++) {
         if (!strcmp(name, slot_file(s))) {
             return s;
         }
@@ -2227,14 +2245,17 @@ static int save_locked(int slot, int mode, int codec, int level,
         refuse(st, "cannot-save", "%s", id.can_save_err);
         goto done;
     }
-    jobs_settle(id.title, slot,
-                slot < HXS_SLOTS ? HXS_SLOT_UNDO_SAVE : HXS_SLOT_AUTO);
+    /* A numbered slot hands its file to undo-save; auto and the heavy slots
+     * replace their own. */
+    jobs_settle(id.title, slot, slot < HXS_SLOTS ? HXS_SLOT_UNDO_SAVE : slot);
     st_mkdir(id.title);
     final = slot_rel(id.title, slot);
     tmp = g_strconcat(final, ".tmp", NULL);
-    snap = snap_name_new(id.title, slot == HXS_SLOT_AUTO
-                                       ? "auto"
-                                       : (char[]){ 's', '0' + slot, 0 });
+    snap = snap_name_new(id.title,
+                         slot == HXS_SLOT_AUTO ? "auto"
+                         : slot >= HXS_SLOT_HEAVY
+                             ? (char[]){ 'h', '0' + slot - HXS_SLOT_HEAVY, 0 }
+                             : (char[]){ 's', '0' + slot, 0 });
     c.snap = snap;
     m = build_meta(&id, slot, mode, codec, level, snap);
     if (compress_later) {
@@ -2384,6 +2405,21 @@ static void log_op(const char *op, const HxsStats *st)
     HXS_LOG("[savestate] %s", line);
 }
 
+/* Raw takes no codec; a compressing mode with no codec is raw. */
+static void save_norm(int *mode, int *codec, int *level)
+{
+    if (*mode == HXS_MODE_RAW) {
+        *codec = HXS_CODEC_NONE;
+        *level = 0;
+    }
+    if (*mode == HXS_MODE_BACKGROUND && *codec == HXS_CODEC_NONE) {
+        *mode = HXS_MODE_RAW;
+    }
+    if (*mode == HXS_MODE_INLINE && *codec == HXS_CODEC_NONE) {
+        *mode = HXS_MODE_RAW;
+    }
+}
+
 static int save_entry(int slot, int mode, int codec, int level,
                       bool wait_durable, bool compress_later, HxsStats *st)
 {
@@ -2391,16 +2427,7 @@ static int save_entry(int slot, int mode, int codec, int level,
     if (!st) {
         st = &local;
     }
-    if (mode == HXS_MODE_RAW) {
-        codec = HXS_CODEC_NONE;
-        level = 0;
-    }
-    if (mode == HXS_MODE_BACKGROUND && codec == HXS_CODEC_NONE) {
-        mode = HXS_MODE_RAW;
-    }
-    if (mode == HXS_MODE_INLINE && codec == HXS_CODEC_NONE) {
-        mode = HXS_MODE_RAW;
-    }
+    save_norm(&mode, &codec, &level);
     stats_init(st, slot, mode, codec, level);
     if (slot < 0 || slot > HXS_SLOT_AUTO || mode < 0 ||
         mode > HXS_MODE_DEFERRED || codec < 0 || codec > HXS_CODEC_ZSTD) {
@@ -2445,6 +2472,48 @@ int hxs_save_auto_quit(HxsStats *st)
         mode = HXS_MODE_RAW;
     }
     return save_entry(HXS_SLOT_AUTO, mode, codec, level, true, later, st);
+}
+
+/*
+ * heavycap1022 (#433): one automatic heavy-scene save, in the default mode
+ * of a menu save, durable before it returns, into the heavy slot
+ * hc_pick_slot() names: the first empty one, else the one saved longest ago.
+ * The file it replaces goes the way an auto slot's does (place_file()), so
+ * that file's disk snapshot is deleted once no other file names it.
+ */
+static int hxs_save_heavy(int *slot_out, HxsStats *st)
+{
+    bool present[HXS_HEAVY_SLOTS] = { false };
+    int64_t saved_at[HXS_HEAVY_SLOTS] = { 0 };
+    int mode, codec, level, slot, r;
+    Ident id;
+
+    hxs_default_mode(hxs_get_compression(), &mode, &codec, &level);
+    save_norm(&mode, &codec, &level);
+    pthread_mutex_lock(&hxs_op_mu);
+    ident_get(&id);
+    if (have_root() && id.title) {
+        pthread_mutex_lock(&hxs_mu);
+        for (int k = 0; k < HXS_HEAVY_SLOTS; k++) {
+            g_autofree char *rel = slot_rel(id.title, hc_slot_of(k));
+            FileInfo fi;
+            const char *why = file_info(rel, &fi);
+            present[k] = !why || strcmp(why, "empty");
+            /* A damaged file has no saved_at: 0, so it goes first. */
+            saved_at[k] = g_ascii_strtoll(
+                meta_get(fi.meta, "saved_at") ?: "0", NULL, 10);
+            file_info_clear(&fi);
+        }
+        pthread_mutex_unlock(&hxs_mu);
+    }
+    ident_clear(&id);
+    slot = hc_slot_of(hc_pick_slot(present, saved_at));
+    stats_init(st, slot, mode, codec, level);
+    r = save_locked(slot, mode, codec, level, true, false, st);
+    pthread_mutex_unlock(&hxs_op_mu);
+    log_op("save-heavy", st);
+    *slot_out = slot;
+    return r;
 }
 
 /* ----------------------------------------------------------------- load */
@@ -2834,7 +2903,8 @@ int hxs_delete(int slot)
     char *snap = NULL;
     int r = -1;
 
-    if (slot < 0 || slot >= HXS_SLOT_COUNT) {
+    /* The heavy slots too: their disk snapshot goes with the file. */
+    if (slot < 0 || slot >= HXS_SLOT_ALL) {
         return -1;
     }
     pthread_mutex_lock(&hxs_op_mu);
@@ -3105,7 +3175,7 @@ static void startup_title(const char *title, bool requeue)
     st_sync_dir(title);
 
     /* Raw files that were to be compressed: the quit save, a lost job. */
-    for (int s = 0; requeue && s < HXS_SLOT_COUNT; s++) {
+    for (int s = 0; requeue && s < HXS_SLOT_ALL; s++) {
         g_autofree char *rel = slot_rel(title, s);
         FileInfo fi;
         if (!file_info(rel, &fi) && fi.h.codec == HXS_CODEC_NONE &&
@@ -3361,6 +3431,77 @@ static void vm_change(void *opaque, bool running, RunState state)
     }
 }
 
+/* -------------------------------------------- heavycap1022: heavy save */
+
+/*
+ * The automatic heavy-scene save (HAKUX_HEAVYSAVE=1, #433). The rule fires
+ * at the guest flip, on the PFIFO thread, which holds the PFIFO and pgraph
+ * locks there. A save cannot be made from that thread: on_main() blocks the
+ * caller while save_main() runs vm_stop(RUN_STATE_SAVE_VM) on the main loop,
+ * and nv2a_vm_state_change() then takes the PFIFO lock and waits for PFIFO
+ * to signal idle -- which the blocked PFIFO thread never does. A vCPU caller
+ * deadlocks the same way in pause_all_vcpus(), which waits for that blocked
+ * vCPU to stop, and on_main() refuses the main loop (it holds the BQL).
+ * So the flip only posts heavy_sem -- heavy_post() takes no QEMU lock,
+ * allocates nothing and returns -- and heavy_thread, which holds no lock of
+ * QEMU's, makes the save exactly as the Java thread behind
+ * nativeSaveStateSave does: save_locked() under hxs_op_mu, the VM work on
+ * the main loop via on_main(). profile.c keeps one save in flight (a busy
+ * flag cleared by hakux_heavycap_saved()) and at most one per 60 s
+ * (heavyrule.h).
+ */
+static QemuSemaphore heavy_sem;
+
+static bool heavy_post(void)
+{
+    qemu_sem_post(&heavy_sem);
+    return true;
+}
+
+static void *heavy_thread(void *arg)
+{
+    (void)arg;
+    pthread_setname_np(pthread_self(), "hxs-heavy");
+    for (;;) {
+        HxsStats st;
+        int slot = HXS_SLOT_HEAVY;
+        char name[64];
+
+        qemu_sem_wait(&heavy_sem);
+        int r = hxs_save_heavy(&slot, &st);
+        pthread_mutex_lock(&hxs_mu);
+        snprintf(name, sizeof(name), "%s/%s", last_title ? last_title : "-",
+                 slot_file(slot));
+        pthread_mutex_unlock(&hxs_mu);
+        hakux_heavycap_saved(name, r == 0, st.pause_us / 1000,
+                             st.total_us / 1000);
+    }
+    return NULL;
+}
+
+static void heavy_start(void)
+{
+    const char *e = getenv("HAKUX_HEAVYSAVE");
+    pthread_t t;
+
+    if (!e || strcmp(e, "1")) {
+        return;
+    }
+    if (cfg_testing) {
+        HXS_LOG("[savestate] heavy-save off: the savestate test is running");
+        return;
+    }
+    qemu_sem_init(&heavy_sem, 0);
+    if (pthread_create(&t, NULL, heavy_thread, NULL) != 0) {
+        HXS_LOG("[savestate] heavy-save off: no thread");
+        return;
+    }
+    pthread_detach(t);
+    hakux_heavycap_set_saver(heavy_post);
+    HXS_LOG("[savestate] heavy-save on: slots %d-%d (heavy0-%d.hxs)",
+            HXS_SLOT_HEAVY, HXS_SLOT_ALL - 1, HXS_HEAVY_SLOTS - 1);
+}
+
 void hxs_init(void)
 {
     const char *dir = getenv("HAKUX_STATE_DIR");
@@ -3388,6 +3529,7 @@ void hxs_init(void)
         }
     }
     cfg_testing = test && *test;
+    heavy_start();
     qemu_add_vm_change_state_handler(vm_change, NULL);
     HXS_LOG("[savestate] init root=%s compression=%d auto_load=%d "
             "boot_title=%s testing=%d",

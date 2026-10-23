@@ -49,6 +49,7 @@
 #include "trace.h"
 #ifdef XBOX
 #include "hw/xbox/nv2a/pgraph/profile.h"   /* #433 HAKUX_FRAMETRACE */
+#include "hw/xbox/nv2a/heavycap.h"         /* #433 heavycap1022 */
 #endif
 
 #ifdef CONFIG_LINUX
@@ -445,6 +446,9 @@ void qemu_init_cpu_loop(void)
 #ifdef XBOX
     /* Before any vCPU or device thread exists, so each can register. */
     hakux_ft_init();
+    /* heavycap1022: after the instrument (it turns on only the frametrace
+     * hooks when HAKUX_FRAMETRACE left them off), before the registration. */
+    hakux_heavycap_init();
     hakux_ft_thread(HAKUX_FT_MAIN);
 #endif
 }

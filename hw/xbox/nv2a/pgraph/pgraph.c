@@ -27,6 +27,7 @@
 
 #include "hw/xbox/nv2a/nv2a_int.h"
 #include "hw/xbox/nv2a/pgraph/profile.h"   /* #433 frametrace */
+#include "hw/xbox/nv2a/heavycap.h"         /* #433 heavycap1022 */
 #ifdef __ANDROID__
 #include "hw/core/cpu.h"
 #include "target/i386/cpu.h"
@@ -4932,6 +4933,9 @@ DEF_METHOD(NV097, SET_BEGIN_END)
             return;
         }
         nv2a_profile_inc_counter(NV2A_PROF_BEGIN_ENDS);
+        if (hakux_heavycap_on()) {
+            hakux_hc_draws++;   /* heavycap1022: PFIFO thread, read at flip */
+        }
         /* #53: the fill reads the inline buffer draw_end consumes, and the
          * draw's uniforms read ring_pos before its own vertices move it. */
         unsigned int ring_vertices = pgraph_glsl_ring_fill(pg);
