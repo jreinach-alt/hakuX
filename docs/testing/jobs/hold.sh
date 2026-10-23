@@ -109,11 +109,24 @@
 # Detection of "is label's capture still alive" is never by asking systemd:
 # this harness's own selftest shims `systemctl ... is-active` to always print
 # `active`, for any unit name, so that would be a check that cannot fail. It
-# is a pidfile this file writes itself (`hold/<label>.capture.pid`, the
-# capture loop's own `$$`) plus a `/proc/<pid>/cmdline` check -- the same
-# "a pid naming what it claims to be" idiom `hold_py idle`'s `lanes/<label>`
-# check below already uses, for the same reason: a stale number is not proof
-# of anything alive, and PID reuse after a reboot would otherwise lie.
+# is a pidfile the capture writes itself (`hold/<label>.capture.pid`, its own
+# `$$`) plus a check that the pid really is this label's capture: its
+# /proc/<pid>/environ carries `PIDFILE=<that pidfile's path>`, which
+# `--setenv` gave the unit and nothing else on the host has. (It used to be
+# "/proc/<pid>/cmdline mentions logcat", which any `adb logcat` or `grep
+# logcat` answers to, and which held only because the whole script was on
+# bash's command line.) The same idiom `hold_py idle`'s `lanes/<label>` check
+# below uses, for the same reason: a stale number is not proof of anything
+# alive, and PID reuse after a reboot would otherwise lie.
+#
+# THE LAUNCH PASSES NO `$` TO SYSTEMD. systemd rewrites the command line of a
+# unit before it execs it (systemd.service(5), "Command lines"): `$$` becomes
+# `$`, `${VAR}` is replaced from the unit's environment, a whole argument
+# `$VAR` is replaced and word-split (dropped if unset). A script handed over as
+# `bash -c "$script"` therefore lost its `$$`, the pidfile held a literal `$`,
+# and `take` exited 6 on 2026-10-22. The capture script is written to
+# `hold/<label>.capture.sh` and run as `bash <file>`: the argv has no `$` in it
+# for systemd to touch, whatever the script says.
 #
 # TIERS (#433, 10-19). A hold also carries a tier: blocker (a release defect
 # that needs on-device time), fps (today's default -- also the FPS-focus
@@ -160,6 +173,14 @@ owner_play() { case "$1" in owner-play*) return 0 ;; *) return 1 ;; esac; }
 cap_unit()     { printf 'hakux-ownerplay-capture-%s' "$1"; }
 cap_pidfile()  { printf '%s/hold/%s.capture.pid' "$D" "$1"; }
 cap_pathfile() { printf '%s/hold/%s.capture' "$D" "$1"; }
+cap_script()   { printf '%s/hold/%s.capture.sh' "$D" "$1"; }
+
+# cap_owns <label> <pid>  ->  0 when <pid> is a process started as <label>'s
+# capture unit: its environment carries the exact `PIDFILE=` line the unit was
+# given. A recycled pid, or any process that merely mentions logcat, is not.
+cap_owns() {
+    tr '\0' '\n' < "/proc/$2/environ" 2>/dev/null | grep -qxF -- "PIDFILE=$(cap_pidfile "$1")"
+}
 
 # label_serial <label>  ->  the attached serial whose DEVICE_LABEL is <label>,
 # on stdout; non-zero when no adb, or no attached device matches. Same shape
@@ -199,8 +220,8 @@ capture_since() {
 
 # capture_running <label>  ->  0 and the log path on stdout when a capture
 # process for <label> is alive and really is one (not a reused pid): the
-# pidfile's pid answers to a signal and /proc/<pid>/cmdline still mentions
-# logcat. Else 1 and nothing.
+# pidfile's pid answers to a signal and cap_owns says it was started as this
+# label's capture. Else 1 and nothing.
 capture_running() {
     local pf path pid
     pf=$(cap_pidfile "$1"); path=$(cap_pathfile "$1")
@@ -208,8 +229,21 @@ capture_running() {
     pid=$(cat "$pf" 2>/dev/null)
     [[ "$pid" =~ ^[0-9]+$ ]] || return 1
     kill -0 "$pid" 2>/dev/null || return 1
-    grep -q logcat "/proc/$pid/cmdline" 2>/dev/null || return 1
+    cap_owns "$1" "$pid" || return 1
     cat "$path"
+}
+
+# capture_stop <label>  ->  stops <label>'s capture unit. TERM to the pidfile's
+# pid first, but only if cap_owns says it is the capture (a stale pidfile must
+# not get an unrelated process killed): the script's TERM trap kills its adb
+# child and exits. Then `systemctl --user stop`, which on a real systemd also
+# takes the unit's whole cgroup and its name with it.
+capture_stop() {
+    local pid
+    pid=$(cat "$(cap_pidfile "$1")" 2>/dev/null)
+    [[ "$pid" =~ ^[0-9]+$ ]] && cap_owns "$1" "$pid" && kill "$pid" 2>/dev/null
+    command -v systemctl >/dev/null 2>&1 && systemctl --user stop "$(cap_unit "$1")" >/dev/null 2>&1
+    return 0
 }
 
 # capture_report <label>  ->  0 and "capture: <path> (running since <time>)"
@@ -220,11 +254,51 @@ capture_report() {
     printf 'capture: %s (running since %s)\n' "$path" "$(capture_since "$1")"
 }
 
+# capture_script  ->  the capture's script on stdout. A restart loop that
+# appends on every (re)start, marking the gap, and exits cleanly (killing the
+# current adb child with it) on SIGTERM -- the same trap/background/wait shape
+# selftest.d/79-stop-hook-hold.sh's own dispatcher.sh fixture uses for "a
+# backgrounded process that dies cleanly". Written to a file and run as
+# `bash <file>` (see THE LAUNCH PASSES NO `$` TO SYSTEMD above), so every `$`
+# below is bash's own. SERIAL/LOG/SPEC/PIDFILE arrive as its environment
+# (--setenv); --setenv values are not expanded by systemd.
+#
+# THE TRAP IS SINGLE-QUOTED. Double-quoted (`trap "kill $cur ..."`), bash
+# expands $cur when `trap` runs, with cur unset, and the stored trap is
+# `kill  2>/dev/null; exit 0`: TERM then never reached the adb child. The sleep
+# between restarts is a background child waited on, so a TERM during it is
+# handled at once instead of after the sleep. `set -f`: SPEC ends in `*:S`, and
+# it is word-split unquoted below, so it must not be globbed against the cwd.
+capture_script() {
+    cat <<'CAPTURE_SCRIPT'
+# Written by hold.sh (capture_script). Run as `bash <this file>` by a transient
+# user unit; SERIAL, LOG, SPEC and PIDFILE are in its environment.
+set -f
+cur=
+trap 'kill "$cur" 2>/dev/null; exit 0' TERM
+echo "$$" > "$PIDFILE"
+while :; do
+    printf '=== capture (re)start %s ===\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$LOG"
+    adb -s "$SERIAL" logcat -v threadtime -T 1 $SPEC >> "$LOG" 2>&1 &
+    cur=$!
+    wait "$cur"
+    rc=$?
+    printf '=== capture process exited rc=%s at %s; restarting after a gap ===\n' "$rc" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$LOG"
+    sleep 2 &
+    cur=$!
+    wait "$cur"
+done
+CAPTURE_SCRIPT
+}
+
 # capture_ensure <label>  ->  0 and the capture_report line (a pre-existing
 # capture reused as-is, or a freshly started one), or 1 and a one-line reason
-# on stdout, for the caller to print as `NO CAPTURE: <reason>`.
+# on stdout, for the caller to print as `NO CAPTURE: <reason>`. A unit that
+# systemd accepted but that never showed itself is stopped before the 1: left
+# running it would hold the unit name against the next take and append to a log
+# nobody is told about.
 capture_ensure() {
-    local label="$1" line serial spec capdir log pf
+    local label="$1" line serial spec capdir log pf cs
     if line=$(capture_report "$label"); then printf '%s\n' "$line"; return 0; fi
     command -v adb >/dev/null 2>&1 || { printf 'no adb on PATH\n'; return 1; }
     serial=$(label_serial "$label") || { printf 'device %s not listed by adb devices\n' "$label"; return 1; }
@@ -233,38 +307,23 @@ capture_ensure() {
     capdir="$D/../captures/owner-play-$(date -u +%Y%m%d)"
     mkdir -p "$capdir" 2>/dev/null || { printf 'could not create %s\n' "$capdir"; return 1; }
     log="$capdir/logcat-$label-$(date -u +%H%M%S).txt"
-    pf=$(cap_pidfile "$label")
+    pf=$(cap_pidfile "$label"); cs=$(cap_script "$label")
     rm -f "$pf"
-    # The script: a restart loop that appends on every (re)start, marking the
-    # gap, and exits cleanly (killing the current adb child with it) on
-    # SIGTERM -- the same trap/background/wait shape
-    # selftest.d/79-stop-hook-hold.sh's own dispatcher.sh fixture uses for "a
-    # backgrounded process that dies cleanly". Single-quoted here: every `$`
-    # below must stay literal until the capture's own bash evaluates it --
-    # SERIAL/LOG/SPEC/PIDFILE arrive as its environment (--setenv), not by
-    # substitution into this string.
-    local script='trap "kill $cur 2>/dev/null; exit 0" TERM
-echo "$$" > "$PIDFILE"
-while :; do
-    printf "=== capture (re)start %s ===\n" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$LOG"
-    adb -s "$SERIAL" logcat -v threadtime -T 1 $SPEC >> "$LOG" 2>&1 &
-    cur=$!
-    wait "$cur"
-    rc=$?
-    printf "=== capture process exited rc=%s at %s; restarting after a gap ===\n" "$rc" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$LOG"
-    sleep 2
-done'
+    capture_script > "$cs" 2>/dev/null || { printf 'could not write %s\n' "$cs"; return 1; }
     if ! systemd-run --user --unit "$(cap_unit "$label")" --collect \
             --setenv=SERIAL="$serial" --setenv=LOG="$log" --setenv=SPEC="$spec" --setenv=PIDFILE="$pf" \
-            bash -c "$script" >/dev/null 2>&1
+            bash "$cs" >/dev/null 2>&1
     then
+        rm -f "$cs"
         printf 'systemd-run refused to start %s\n' "$(cap_unit "$label")"
         return 1
     fi
     local tries=0
-    while [ ! -s "$pf" ] && [ "$tries" -lt 25 ]; do sleep 0.2; tries=$((tries + 1)); done
+    while [ ! -s "$pf" ] && [ "$tries" -lt "${HOLD_CAPTURE_CONFIRM_TRIES:-25}" ]; do sleep 0.2; tries=$((tries + 1)); done
     printf '%s\n' "$log" > "$(cap_pathfile "$label")"
     if line=$(capture_report "$label"); then printf '%s\n' "$line"; return 0; fi
+    capture_stop "$label"
+    rm -f "$pf" "$(cap_pathfile "$label")" "$cs"
     printf '%s never confirmed running after systemd-run accepted it\n' "$(cap_unit "$label")"
     return 1
 }
@@ -274,17 +333,9 @@ done'
 # succeeds: called only after a release has already succeeded, so there is
 # nothing left to refuse.
 capture_release() {
-    local label="$1" unit pf path pid log size
-    unit=$(cap_unit "$label"); pf=$(cap_pidfile "$label"); path=$(cap_pathfile "$label")
-    pid=$(cat "$pf" 2>/dev/null)
-    # systemctl is the production mechanism (a real transient unit); killing
-    # the pidfile's own pid is what actually guarantees the stop -- the only
-    # mechanism this harness's own selftest (its systemd-run shim never
-    # starts a real unit) can exercise, and it works the same way in
-    # production: the capture script's own TERM trap tears down its current
-    # adb child and exits.
-    command -v systemctl >/dev/null 2>&1 && systemctl --user stop "$unit" >/dev/null 2>&1
-    [[ "$pid" =~ ^[0-9]+$ ]] && kill "$pid" 2>/dev/null
+    local label="$1" pf path log size
+    pf=$(cap_pidfile "$label"); path=$(cap_pathfile "$label")
+    capture_stop "$label"
     if [ -f "$path" ]; then
         log=$(cat "$path")
         size=$(stat -c %s "$log" 2>/dev/null || echo '?')
@@ -292,7 +343,7 @@ capture_release() {
     else
         printf 'capture: no record for %s\n' "$label"
     fi
-    rm -f "$pf" "$path"
+    rm -f "$pf" "$path" "$(cap_script "$label")"
 }
 
 # The whole state machine is python: bash has O_EXCL (set -C) but no way to
