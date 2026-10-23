@@ -1030,10 +1030,94 @@ disc_hdd_after() { hdd_pref_after "$1/hdd_disc.json"; }
 # savestate_auto_load is a boolean SharedPreference, same prefs file as
 # hddPath (shared_prefs/x1box_prefs.xml, internal storage: needs run-as).
 # The state files themselves live under x1box_dir(), external storage, app-
-# specific but shell-accessible -- dev_push/dev_pull/dev_sha256 already reach
-# them with plain `adb shell`, no run-as (confirmed by reading those
-# functions; the save-state dir is not shared_prefs).
-scene_state_dir() { echo "$(x1box_dir)/states/$1"; }   # <title_id hex>
+# specific. Plain `adb shell` (uid shell, group ext_data_rw) can READ them --
+# ls, stat and sha256sum work, which is all dev_sha256/dev_bytes/dev_pull need
+# -- but it cannot WRITE the directories the app made. Measured on the Nova,
+# 2026-10-23 09:47-09:49 PDT (lane.local), and the first --load-state of a
+# host file failed on it at 09:45:
+#
+#   drwxrws--- shell   ext_data_rw  x1box/                  shell test -w: yes
+#   drwxr-s--- u0_a145 ext_data_rw  x1box/states/            shell test -w: no
+#   drwxr-s--- u0_a145 ext_data_rw  x1box/states/5454000e/   shell test -w: no
+#   drwxrws--- u0_a145 ext_data_rw  x1box/states/4d530065/   shell test -w: yes
+#                                                            (opened by hand earlier)
+#   -rw-r----- u0_a145 ext_data_rw  x1box/states/5454000e/slot0.hxs
+#
+# The app makes them 0755 (hxs.c st_mkdir, :284-290, called on a title's first
+# save, :2232) and the storage layer shows them as owner u0_a145, group
+# ext_data_rw, group r-x. Creating, renaming or deleting inside one (every
+# step of set_scene_pref and restore_scene_pref: the backup cp, dev_push's .new
+# and its mv, the park mv, the unpark mv) needs write on the DIRECTORY, so each
+# fails as shell. `run-as <pkg>` is u0_a145, the owner, and can chmod it: one
+# `run-as <pkg> chmod g+w <dir>` opens it to shell and the mode persists
+# (scene_dir_open). An earlier version of this comment said the dir was
+# "shell-accessible -- confirmed by reading those functions"; reading them
+# proves reads only.
+#
+# The ttid is lower case here because the app names the dir %08x
+# (hxs_jni.cpp:228); the device's shared storage matches names without case,
+# so an upper-case spelling reads, but the dir the log and the marker name
+# should be the real one.
+scene_state_dir() { echo "$(x1box_dir)/states/${1,,}"; }   # <title_id hex>
+
+# scene_dir_probe <dir>: one word -- writable | closed | missing | unknown
+# (adb did not answer). `[ -w ]` is access(W_OK) as the shell user, the same
+# answer the create would get.
+scene_dir_probe() {
+    local ans
+    ans=$(adb_call "$ADB_QUICK_TIMEOUT" "test -w $1" shell \
+        "if [ ! -d '$1' ]; then echo missing; elif [ -w '$1' ]; then echo writable; else echo closed; fi" \
+        2>/dev/null | tr -d '\r' | head -1)
+    case "$ans" in writable|closed|missing) echo "$ans";; *) echo unknown;; esac
+}
+# scene_dir_mode <dir>: "<octal> <symbolic>" (e.g. "2750 drwxr-s---"), or "unreadable".
+scene_dir_mode() {
+    local m
+    m=$(adb_call "$ADB_QUICK_TIMEOUT" "stat mode $1" shell "stat -c '%a %A' '$1' 2>/dev/null" 2>/dev/null \
+        | tr -d '\r' | head -1)
+    [[ "$m" =~ ^[0-7]+\ [-a-zA-Z]+$ ]] && echo "$m" || echo unreadable
+}
+# scene_dir_chmod <dir> <g+w|g-w>: as the app (run-as), which owns the dir.
+scene_dir_chmod() {
+    adb_call "$ADB_QUICK_TIMEOUT" "run-as chmod $2 $1" \
+        shell "run-as ${PKG:-com.jreinach.hakux.debug} chmod $2 '$1'" >/dev/null 2>&1
+}
+# scene_fail <reason>: log it, keep it for the request's ERROR line, return 1.
+SCENE_WHY=""
+scene_fail() { SCENE_WHY="$1"; log "  SCENE: $1"; return 1; }
+# scene_dir_check <dir>: sets SCENE_DIR_ST to writable | closed. A dir that is
+# missing, or that adb cannot be asked about, fails with a named reason. A
+# missing dir is refused, not made: a title that never saved has no states
+# dir. Making the app's directories (run-as, since states/ is closed to shell
+# too) and removing them afterwards is a new kind of write that nothing has
+# measured on a device. A host-file push into a missing dir failed before this
+# too (adb push has no parent to put the file in); it now says why.
+SCENE_DIR_ST=""
+scene_dir_check() {
+    SCENE_DIR_ST=$(scene_dir_probe "$1")
+    case "$SCENE_DIR_ST" in
+        writable|closed) return 0;;
+        missing) scene_fail "$1 does not exist: the title has no saved state on this device (the app makes the directory on a title's first save; a scene does not create it)";;
+        *)       scene_fail "adb did not answer testing whether $1 is writable";;
+    esac
+}
+# scene_dir_open <dir>: <dir> is closed (scene_dir_check said so); run-as chmod
+# g+w, check again as shell, and log one line naming the dir and its mode
+# before and after. Still closed: the chmod is put back if it changed
+# anything, and the run fails with the named reason; nothing is written.
+scene_dir_open() {
+    local sdir="$1" m0 m1
+    m0=$(scene_dir_mode "$sdir")
+    scene_dir_chmod "$sdir" g+w
+    m1=$(scene_dir_mode "$sdir")
+    if [ "$(scene_dir_probe "$sdir")" != writable ]; then
+        [ "$m1" = "$m0" ] || scene_dir_chmod "$sdir" g-w
+        log "  SCENE: $sdir mode $m0 -> $m1 after run-as chmod g+w, and adb shell still cannot write it"
+        scene_fail "$sdir is not writable by adb shell; run-as chmod g+w did not open it"
+        return 1
+    fi
+    log "  SCENE: opened $sdir for adb shell: $m0 -> $m1 (run-as chmod g+w)"
+}
 
 hxs_slot_name() {   # <slot 0-9|10|auto>
     case "$1" in
@@ -1109,93 +1193,197 @@ restore_savestate_pref() {
     log "  savestate_auto_load restored to $orig"
 }
 
+# scene_abort <reason>: undo what set_scene_pref did so far, keep the reason in
+# SCENE_WHY (restore_scene_pref may name its own trouble), return 1.
+scene_abort() {
+    local why
+    scene_fail "$1"
+    why="$SCENE_WHY"
+    restore_scene_pref
+    SCENE_WHY="$why"
+    return 1
+}
+
 # set_scene_pref <req> <rdir> <ttid>: isolate load_slot (request.sh
-# --load-state/--scene) on the device -- park every other states/<ttid>/*.hxs
+# --load-state/--scene) on the device -- open the title's states dir to
+# `adb shell` if the app left it closed, park every other states/<ttid>/*.hxs
 # file, push a host file into the target slot if one was named (backing up
 # whatever was already there, sha256-tracked, never overwritten in place),
 # and turn savestate_auto_load on for this run only. A no-op when the
-# request named no load_slot. Everything needed to reverse this is written
-# to scene_files_marker() before any adb mutation after it, so a worker that
-# dies partway still leaves restore_scene_pref something to work from.
+# request named no load_slot.
+#
+# ORDER. Reads first -- the dir's state, its listing, the sha256 of the file
+# a push will displace; all of them work on a closed dir. Then the plan goes
+# to scene_files_marker(): the dir, the slot, every file to park, whether a
+# push is coming, the displaced file's sha256, and whether this call opens
+# the dir. That is BEFORE the first write (the chmod included), so a worker
+# that dies partway still leaves restore_scene_pref something to work from.
+# restore_scene_pref acts on what it finds on the device, so a step the plan
+# names that was never reached is a no-op there. Then the writes: open the
+# dir, back up, push, park, set the pref. Every failure from the plan on
+# undoes what was done and returns 1 with the reason in SCENE_WHY (serve_one
+# puts it in the request's ERROR): a failed park fails the run, and the run
+# never goes on with a competing slot file in the dir -- the adb status of
+# `mv` is not trusted alone, the dir is listed again afterwards.
 set_scene_pref() {   # <req> <rdir> <ttid>
-    local req="$1" ttid="$3" load_slot want load_file sdir marker list park f pushed=0 backup="" backup_sha=""
+    local req="$1" ttid="${3:-}" load_slot want load_file sdir marker list park f left n
+    local orig_sha="" backup="" opened=0 mode0="" pushed=0
+    SCENE_WHY=""
     load_slot=$(jq_get "$req" load_slot "")
     [ -n "$load_slot" ] || return 0
     marker="$(scene_files_marker)"
     if [ -f "$marker" ]; then
         log "  SCENE: a stale scene marker from an earlier run; restoring it first"
         restore_scene_pref
+        SCENE_WHY=""
     fi
     want="$(hxs_slot_name "$load_slot")"
-    [ -n "$want" ] || { log "  SCENE: bad load_slot '$load_slot'"; return 1; }
+    [ -n "$want" ] || { scene_fail "bad load_slot '$load_slot'"; return 1; }
+    [ -n "$ttid" ] || { scene_fail "the request names no title id, so there is no states directory to isolate"; return 1; }
     load_file=$(jq_get "$req" load_state_file "")
     sdir="$(scene_state_dir "$ttid")"
 
+    scene_dir_check "$sdir" || return 1
     list=$(adb_call "$ADB_QUICK_TIMEOUT" "ls $sdir" shell "ls '$sdir' 2>/dev/null")
     if [ -s "${ADB_HUNG_FILE:-}" ]; then
-        log "  SCENE: adb hung listing $sdir"; return 1
+        scene_fail "adb hung listing $sdir"; return 1
     fi
     park=$(printf '%s\n' "$list" | tr -d '\r' | grep -E '^(slot[0-9]|auto|undo-save)\.hxs$' | grep -v -x "$want" || true)
-
     if [ -n "$load_file" ]; then
+        pushed=1
         if [ "$(dev_bytes "$sdir/$want")" != -1 ]; then
             backup="$want.orig.hld"
-            adb_call "$ADB_QUICK_TIMEOUT" "backup $want" shell "cp '$sdir/$want' '$sdir/$backup'" >/dev/null 2>&1 \
-                || { log "  SCENE: could not back up $want before pushing a state into it"; return 1; }
-            backup_sha=$(dev_sha256 "$sdir/$backup")
+            orig_sha=$(dev_sha256 "$sdir/$want")
+            [ -n "$orig_sha" ] || { scene_fail "cannot read $sdir/$want to back it up before a push"; return 1; }
         fi
-        dev_push "$load_file" "$sdir/$want" || { log "  SCENE: push of $load_file -> $sdir/$want failed"; return 1; }
-        pushed=1
     fi
-
-    local parked=()
-    while IFS= read -r f; do
-        [ -n "$f" ] || continue
-        adb_call "$ADB_QUICK_TIMEOUT" "park $f" shell "mv '$sdir/$f' '$sdir/$f.hld'" >/dev/null 2>&1 && parked+=("$f")
-    done <<<"$park"
+    if [ "$SCENE_DIR_ST" = closed ]; then
+        opened=1
+        mode0=$(scene_dir_mode "$sdir")
+    fi
 
     python3 -c 'import json,sys
 json.dump(dict(dir=sys.argv[1], want=sys.argv[2],
                parked=[p for p in sys.argv[3].split(",") if p],
-               pushed=bool(int(sys.argv[4])), backup=sys.argv[5], backup_sha=sys.argv[6]),
-          open(sys.argv[7], "w"))' \
-        "$sdir" "$want" "$(IFS=,; echo "${parked[*]-}")" "$pushed" "$backup" "$backup_sha" "$marker"
+               pushed=bool(int(sys.argv[4])), backup=sys.argv[5], backup_sha=sys.argv[6],
+               opened=bool(int(sys.argv[7])), mode_before=sys.argv[8]),
+          open(sys.argv[9], "w"))' \
+        "$sdir" "$want" "$(printf '%s\n' "$park" | paste -sd, -)" "$pushed" "$backup" "$orig_sha" \
+        "$opened" "$mode0" "$marker" \
+        || { scene_fail "cannot write $marker, so nothing was changed"; return 1; }
+
+    if [ "$opened" = 1 ]; then
+        scene_dir_open "$sdir" || { rm -f "$marker"; return 1; }
+    fi
+
+    if [ -n "$backup" ]; then
+        # chmod 660 as dev_push does (hddperm): the copy is shell's, and it is
+        # the file the app reads again once restore moves it back.
+        adb_call "$ADB_QUICK_TIMEOUT" "backup $want" shell "cp '$sdir/$want' '$sdir/$backup' && chmod 660 '$sdir/$backup'" >/dev/null 2>&1
+        if [ "$(dev_sha256 "$sdir/$backup")" != "$orig_sha" ]; then
+            scene_abort "could not back up $want before pushing a state into it ($backup is missing or differs)"; return 1
+        fi
+    fi
+    if [ "$pushed" = 1 ]; then
+        dev_push "$load_file" "$sdir/$want" || { scene_abort "push of $load_file -> $sdir/$want failed"; return 1; }
+    fi
+
+    while IFS= read -r f; do
+        [ -n "$f" ] || continue
+        adb_call "$ADB_QUICK_TIMEOUT" "park $f" shell "mv '$sdir/$f' '$sdir/$f.hld'" >/dev/null 2>&1 \
+            || { scene_abort "could not park $f ($sdir/$f.hld): another slot file could win the auto-load"; return 1; }
+    done <<<"$park"
+    left=$(adb_call "$ADB_QUICK_TIMEOUT" "ls $sdir (after parking)" shell "ls '$sdir' 2>/dev/null" \
+        | tr -d '\r' | grep -E '^(slot[0-9]|auto|undo-save)\.hxs$' | grep -v -x "$want" | paste -sd' ' - || true)
+    if [ -n "$left" ] || [ -s "${ADB_HUNG_FILE:-}" ]; then
+        scene_abort "after parking, ${left:-adb hung listing} ${left:+is still in }$sdir${left:+: another slot file could win the auto-load}"; return 1
+    fi
 
     if ! set_savestate_pref 1 "$(scene_pref_marker)" >/dev/null; then
-        log "  SCENE: could not set savestate_auto_load=1"; restore_scene_pref; return 1
+        scene_abort "could not set savestate_auto_load=1"; return 1
     fi
-    log "  SCENE: slot $load_slot ($want), parked ${#parked[@]} other slot file(s)${load_file:+, pushed $load_file}"
+    n=$(printf '%s' "$park" | grep -c . || true)
+    log "  SCENE: slot $load_slot ($want), parked $n other slot file(s)${load_file:+, pushed $load_file}"
 }
 
-# restore_scene_pref: put back whatever set_scene_pref moved aside or
-# overwrote, and the savestate_auto_load pref -- unconditionally, on every
+# restore_scene_pref: put back whatever set_scene_pref moved aside, pushed or
+# opened, and the savestate_auto_load pref -- unconditionally, on every
 # exit from a scene request, success or refusal, exactly like
-# restore_hdd_pref. A pushed state's backup is sha256-verified before its
-# marker is trusted away.
+# restore_hdd_pref. It works from the marker and from what is on the device,
+# so it is safe after a set_scene_pref that stopped at any step.
+#
+# ORDER. The dir is writable first (opened again if it was closed meanwhile),
+# then the pushed file (the backup moved back and its sha256 checked against
+# the one taken before the push, or the pushed file dropped when there was no
+# original), then the parked files, then a listing to confirm each is back,
+# and only then the dir's mode: closed again last, and only if this scene
+# opened it and every step before succeeded -- a failure leaves it open so the
+# rest can be put back by hand with plain `adb shell`. The marker goes, and
+# the pref last, as before.
 restore_scene_pref() {
     local marker; marker="$(scene_files_marker)"
     [ -f "$marker" ] || { restore_savestate_pref; return $?; }
-    local sdir want pushed backup backup_sha rc=0
-    sdir=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["dir"])' "$marker")
-    want=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["want"])' "$marker")
-    pushed=$(python3 -c 'import json,sys; print(int(json.load(open(sys.argv[1]))["pushed"]))' "$marker")
-    backup=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("backup") or "")' "$marker")
-    backup_sha=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("backup_sha") or "")' "$marker")
-    if [ "$pushed" = 1 ]; then
-        if [ -n "$backup" ]; then
-            adb_call "$ADB_QUICK_TIMEOUT" "restore $want" shell "mv '$sdir/$backup' '$sdir/$want'" >/dev/null 2>&1 || rc=1
-            if [ -n "$backup_sha" ] && [ "$(dev_sha256 "$sdir/$want")" != "$backup_sha" ]; then
-                log "  SCENE: restored $want but its sha256 does not match the backup taken before the push"
-                rc=1
+    local m_dir="" m_want="" m_backup="" m_backup_sha="" m_mode_before="" m_pushed=0 m_opened=0
+    local m_parked=() mvars rc=0 reopened=0 f listing
+    mvars=$(python3 -c 'import json,shlex,sys
+d = json.load(open(sys.argv[1]))
+for k in ("dir", "want", "backup", "backup_sha", "mode_before"):
+    print("m_%s=%s" % (k, shlex.quote(str(d.get(k) or ""))))
+for k in ("pushed", "opened"):
+    print("m_%s=%d" % (k, int(bool(d.get(k)))))
+print("m_parked=(%s)" % " ".join(shlex.quote(p) for p in (d.get("parked") or [])))' "$marker" 2>/dev/null) \
+        && eval "$mvars" && [ -n "$m_dir" ] && [ -n "$m_want" ] \
+        || { log "  SCENE: cannot read $marker; dropping it (slots parked by that run are not put back)"; rm -f "$marker"; restore_savestate_pref; return 1; }
+    scene_dir_check "$m_dir" || rc=1
+    if [ "$SCENE_DIR_ST" = closed ]; then
+        scene_dir_open "$m_dir" && reopened=1 || rc=1
+    fi
+    if [ "$rc" = 0 ]; then
+        if [ "$m_pushed" = 1 ]; then
+            if [ -n "$m_backup" ]; then
+                if [ -n "$m_backup_sha" ] && [ "$(dev_sha256 "$m_dir/$m_want")" = "$m_backup_sha" ]; then
+                    # The original is still in place -- the push never replaced
+                    # it, so the backup is only a spare copy, and a backup that
+                    # failed its own check must not be moved over the original.
+                    adb_call "$ADB_QUICK_TIMEOUT" "drop spare $m_backup" shell "rm -f '$m_dir/$m_backup'" >/dev/null 2>&1 || rc=1
+                else
+                    if [ "$(dev_bytes "$m_dir/$m_backup")" != -1 ]; then
+                        adb_call "$ADB_QUICK_TIMEOUT" "restore $m_want" shell "mv '$m_dir/$m_backup' '$m_dir/$m_want'" >/dev/null 2>&1 || rc=1
+                    fi
+                    if [ -n "$m_backup_sha" ] && [ "$(dev_sha256 "$m_dir/$m_want")" != "$m_backup_sha" ]; then
+                        log "  SCENE: $m_want is not back as it was: its sha256 does not match the backup taken before the push"
+                        rc=1
+                    fi
+                fi
+            else
+                adb_call "$ADB_QUICK_TIMEOUT" "drop pushed $m_want (had none before)" shell "rm -f '$m_dir/$m_want'" >/dev/null 2>&1 || rc=1
             fi
-        else
-            adb_call "$ADB_QUICK_TIMEOUT" "drop pushed $want (had none before)" shell "rm -f '$sdir/$want'" >/dev/null 2>&1 || rc=1
+            adb_call "$ADB_QUICK_TIMEOUT" "drop $m_want.new" shell "rm -f '$m_dir/$m_want.new'" >/dev/null 2>&1 || rc=1
+        fi
+        for f in ${m_parked[@]+"${m_parked[@]}"}; do
+            adb_call "$ADB_QUICK_TIMEOUT" "unpark $f" shell \
+                "if [ -e '$m_dir/$f.hld' ]; then mv '$m_dir/$f.hld' '$m_dir/$f'; fi" >/dev/null 2>&1 || rc=1
+        done
+        if [ "${#m_parked[@]}" -gt 0 ]; then
+            listing=$(adb_call "$ADB_QUICK_TIMEOUT" "ls $m_dir (after unparking)" shell "ls '$m_dir' 2>/dev/null" | tr -d '\r')
+            for f in "${m_parked[@]}"; do
+                printf '%s\n' "$listing" | grep -qx -- "$f" || { log "  SCENE: $f is not back in $m_dir"; rc=1; }
+                if printf '%s\n' "$listing" | grep -qx -- "$f.hld"; then log "  SCENE: $f.hld is still in $m_dir"; rc=1; fi
+            done
         fi
     fi
-    while IFS= read -r f; do
-        [ -n "$f" ] || continue
-        adb_call "$ADB_QUICK_TIMEOUT" "unpark $f" shell "mv '$sdir/$f.hld' '$sdir/$f'" >/dev/null 2>&1 || rc=1
-    done < <(python3 -c 'import json,sys; print("\n".join(json.load(open(sys.argv[1])).get("parked") or []))' "$marker")
+    if [ "$m_opened" = 1 ] || [ "$reopened" = 1 ]; then
+        if [ "$rc" = 0 ]; then
+            scene_dir_chmod "$m_dir" g-w
+            if [ "$(scene_dir_probe "$m_dir")" = writable ]; then
+                log "  SCENE: WARNING: $m_dir is still writable by adb shell after run-as chmod g-w (mode $(scene_dir_mode "$m_dir"), was ${m_mode_before:-unknown}); left open"
+            else
+                log "  SCENE: closed $m_dir again: mode $(scene_dir_mode "$m_dir") (was ${m_mode_before:-unknown} before the run)"
+            fi
+        else
+            log "  SCENE: $m_dir left open for adb shell (mode $(scene_dir_mode "$m_dir"), was ${m_mode_before:-unknown}): something above did not restore"
+        fi
+    fi
     rm -f "$marker"
     restore_savestate_pref || rc=1
     if [ "$rc" = 0 ]; then
@@ -2915,7 +3103,7 @@ PYEOF
         # before anything else touches it, so every refusal path below has
         # something to restore_scene_pref back from.
         if ! set_scene_pref "$req" "$rdir" "$ttid"; then
-            adb_error "could not set up the requested save-state slot; see dispatcher.log" > "$rdir/ERROR"
+            adb_error "could not set up the requested save-state slot${SCENE_WHY:+ ($SCENE_WHY)}; see dispatcher.log" > "$rdir/ERROR"
             log "  SCENE SETUP FAILED"
             restore_scene_pref
             mv "$req" "$rdir/request.json"; return 0

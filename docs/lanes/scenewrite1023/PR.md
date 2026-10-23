@@ -4,11 +4,13 @@ State: draft
 
 Lane: scenewrite1023            Issue: none (harness defect, dispatched directly)
 Base: master @ 1b616ee718
-Files: docs/testing/dispatcher.sh, docs/testing/jobs/selftest.d/99-load-state.sh, docs/lanes/scenewrite1023/**
+Files: docs/testing/dispatcher.sh, docs/testing/jobs/selftest.d/99-load-state.sh, docs/testing/request.sh, docs/lanes/scenewrite1023/**
 Prediction: none: no arm (a harness defect with a falsifier fragment, not a pixel or perf claim)
 Needs device: yes (one proof run after the fold, queued by lane.local; the lane touches no device)
 Needs NDK: no
-Selftest: 99-load-state -- (to be filled when the fragment is extended)
+Selftest: 99-load-state 99-battery-admit 99-disc-hdd -- 99-load-state: a scene write into an app-only states dir
+  (fake dirs host mode 555, plain-shell writes refused), a dir run-as cannot open, a failing park, with four mutants;
+  99-battery-admit and 99-disc-hdd: the neighbours that source the same dispatcher.sh functions
 
 ## Step 0: already tried
 
@@ -33,4 +35,16 @@ No row is a states-dir write that already worked from code. The earlier lanes ha
 
 ## What this lane builds
 
-(Filled in when the change is done.)
+1. **dispatcher.sh `set_scene_pref` opens the title's states dir** to `adb shell` (`run-as <pkg> chmod g+w`) before its
+   first write, when the app left it closed. One log line names the dir and its mode before and after. If the dir is
+   still closed it fails with `SCENE: <sdir> is not writable by adb shell; run-as chmod g+w did not open it` and writes
+   nothing. The marker records whether this call opened the dir; `restore_scene_pref` closes it again (`chmod g-w`) only
+   if it did and every restore step succeeded. A missing dir is refused with a named reason (decision in NOTES.md).
+2. **A failed park fails the run.** `mv ... && parked+=` is gone; a failed park, or a slot file still in the dir after
+   the parks, calls `scene_abort`, which restores what was moved and returns 1 with the reason in `SCENE_WHY` (serve_one
+   puts it in the request's ERROR).
+3. **The comment at dispatcher.sh ~1032** no longer says the dirs are shell-accessible "confirmed by reading those
+   functions"; it states what was measured.
+4. **chmod, not a run-as copy**, argued in NOTES.md.
+5. **99-load-state.sh falsifier.** The fake device has app-only dirs (host mode 555, a plain-shell write fails); cases
+   k0-k7; four mutants (`dropopen`, `noclose`, `silentpark`, `nolisting`) each cmp-verified and each turns its case red.
