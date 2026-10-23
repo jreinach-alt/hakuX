@@ -1,10 +1,10 @@
-# suitesha1022: a disc run boots the harness's disk, and a run on any other disk is refused by name (#433)
+# suitesha1022: a disc run boots the harness's disk, and a run on any other disk is refused by name
 
-State: draft
+State: ready
 
 Lane: suitesha1022            Issue: none (harness defect, dispatched directly)
 Base: master @ b944110629
-Files: docs/lanes/suitesha1022/PR.md, docs/testing/{dispatcher.sh,run_disc.sh,extract_results.py,dispatch_doctor.sh}, docs/testing/jobs/selftest.d/99-disc-hdd.sh
+Files: docs/lanes/suitesha1022/PR.md, docs/testing/{dispatcher.sh,run_disc.sh,extract_results.py,dispatch_doctor.sh}, docs/testing/jobs/selftest.d/99-disc-hdd.sh, docs/testing/jobs/selftest.sh (shard table)
 Prediction: none: dispatcher plumbing, no pixels. The proof is the P10 depth-suite pair re-queued after this folds: its
   `logcat1.txt` reads `Prefs hddPath=.../x1box/hdd.img`, `captures1/` is not empty, and `hddPath` on the Nova reads
   `hdd-owner-1018.img` again when the request is done. Falsified by a pgraph disc result with 0 captures whose
