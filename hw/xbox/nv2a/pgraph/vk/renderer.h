@@ -1453,6 +1453,26 @@ typedef struct PGRAPHVkState {
     uint64_t vtxhz_cur_rot;
     uint64_t vtxhz_finishes;
 
+    /* #433 HAKUX_VTXHZ_BUMP (vk/vertex.c): each frame's vertex_ram buffer
+     * runs vtxhz_bump_cap bytes past vtxhz_bump_base (vertex RAM's size,
+     * rounded); 0 = off. A copy of guest [lo, hi) sits at offset `off` of
+     * frame vtxhz_bump_frame's buffer, for rotation vtxhz_bump_rot; the
+     * newest entry is last. vtxhz_attr_lo/hi: the guest bytes each attribute
+     * of the draw being set up reads. The counts are always kept and go on
+     * the vtx_hazard line with vtxhz_finishes; vtxhz_buf_finishes counts
+     * NEED_BUFFER_SPACE finishes (pgraph_vk_finish), in both arms. */
+    VkDeviceSize vtxhz_bump_base, vtxhz_bump_cap;
+    VkDeviceSize vtxhz_bump_used, vtxhz_bump_flushed;
+    struct VtxhzBump { hwaddr lo, hi; VkDeviceSize off; } *vtxhz_bump;
+    size_t vtxhz_bump_n, vtxhz_bump_alloc;
+    hwaddr vtxhz_bump_lo, vtxhz_bump_hi;
+    int vtxhz_bump_frame;
+    uint64_t vtxhz_bump_rot;
+    hwaddr vtxhz_attr_lo[NV2A_VERTEXSHADER_ATTRIBUTES];
+    hwaddr vtxhz_attr_hi[NV2A_VERTEXSHADER_ATTRIBUTES];
+    uint64_t vtxhz_bumps, vtxhz_bump_bytes, vtxhz_bump_full;
+    uint64_t vtxhz_bump_partial, vtxhz_buf_finishes;
+
     unsigned long *uploaded_bitmap;
     size_t bitmap_size;
 
@@ -1858,6 +1878,12 @@ void pgraph_vk_bind_vertex_attributes_inline(NV2AState *d);
 void pgraph_vk_update_vertex_ram_buffer(PGRAPHState *pg, hwaddr offset, void *data,
                                     VkDeviceSize size);
 void pgraph_vk_vtxhz_commit(PGRAPHVkState *r);
+VkDeviceSize pgraph_vk_vtxhz_bump_init(PGRAPHVkState *r, VkDeviceSize vram_size);
+VkDeviceSize pgraph_vk_vtxhz_bump_offset(PGRAPHVkState *r, int attr,
+                                         VkDeviceSize ident);
+bool pgraph_vk_vtxhz_bump_needs_copy(PGRAPHVkState *r, hwaddr addr,
+                                     hwaddr size);
+void pgraph_vk_vtxhz_bump_flush(PGRAPHVkState *r, VkCommandBuffer cmd);
 VkDeviceSize pgraph_vk_update_index_buffer(PGRAPHState *pg, void *data,
                                            VkDeviceSize size);
 VkDeviceSize pgraph_vk_update_vertex_inline_buffer(PGRAPHState *pg, void **data,
