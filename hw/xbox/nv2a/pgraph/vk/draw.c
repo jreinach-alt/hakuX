@@ -2090,6 +2090,20 @@ static void init_render_pass_state(PGRAPHState *pg, RenderPassState *state)
                                            VK_FORMAT_UNDEFINED;
 }
 
+/*
+ * The load and store ops every render pass below is built with. begin_state's
+ * color_load_op / zeta_load_op (get_optimal_*_load_op) reach get_render_pass
+ * only as part of the cache key: create_render_pass bakes these whatever the
+ * key asked. Named so hakuX-gpubrk logs what the pass does (lane
+ * gpubreak1022); the values are the ones that stood here.
+ */
+#define RP_COLOR_LOAD_OP VK_ATTACHMENT_LOAD_OP_LOAD
+#define RP_COLOR_STORE_OP VK_ATTACHMENT_STORE_OP_STORE
+#define RP_ZETA_LOAD_OP VK_ATTACHMENT_LOAD_OP_LOAD
+#define RP_ZETA_STORE_OP VK_ATTACHMENT_STORE_OP_STORE
+#define RP_STENCIL_LOAD_OP VK_ATTACHMENT_LOAD_OP_LOAD
+#define RP_STENCIL_STORE_OP VK_ATTACHMENT_STORE_OP_STORE
+
 static VkRenderPass create_render_pass(PGRAPHVkState *r, RenderPassState *state)
 {
     NV2A_VK_DPRINTF("Creating render pass");
@@ -2105,8 +2119,8 @@ static VkRenderPass create_render_pass(PGRAPHVkState *r, RenderPassState *state)
         attachments[num_attachments] = (VkAttachmentDescription){
             .format = state->color_format,
             .samples = VK_SAMPLE_COUNT_1_BIT,
-            .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
-            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+            .loadOp = RP_COLOR_LOAD_OP,
+            .storeOp = RP_COLOR_STORE_OP,
             .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
             .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
             .initialLayout = VK_IMAGE_LAYOUT_GENERAL,
@@ -2123,10 +2137,10 @@ static VkRenderPass create_render_pass(PGRAPHVkState *r, RenderPassState *state)
         attachments[num_attachments] = (VkAttachmentDescription){
             .format = state->zeta_format,
             .samples = VK_SAMPLE_COUNT_1_BIT,
-            .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
-            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-            .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
-            .stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE,
+            .loadOp = RP_ZETA_LOAD_OP,
+            .storeOp = RP_ZETA_STORE_OP,
+            .stencilLoadOp = RP_STENCIL_LOAD_OP,
+            .stencilStoreOp = RP_STENCIL_STORE_OP,
             .initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
             .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
         };
@@ -4028,6 +4042,708 @@ static void create_pipeline(PGRAPHState *pg)
     NV2A_VK_DGROUP_END();
 }
 
+/*
+ * hakuX-gpubrk (lane gpubreak1022, #433): where the main pass's GPU time per
+ * draw goes. One line per 60-flip window, on by default in the perflog build
+ * and with HAKUX_GPUBRK=1 elsewhere (HAKUX_GPUBRK=0 turns it off).
+ *
+ * Every render pass begin_render_pass opens is stamped five ways, in a pool
+ * of its own (the hakuX-phase stamps stop at GPU_TS_MAX_RENDER_PASSES):
+ *   O0  TOP, before vkCmdBeginRenderPass      Ow  BOTTOM, after vkCmdEndRenderPass
+ *   I0  TOP, first thing in the pass          Iw  BOTTOM, last thing in the pass
+ *   Ie  TOP, just before Iw
+ * plus one in-pass stamp every HAKUX_GPUBRK_K draw commands (default 16; 0
+ * for the pass stamps alone), TOP unless HAKUX_GPUBRK_WFI=1 makes the in-pass
+ * ones BOTTOM. Turnip records an in-pass stamp into the pass's draw stream,
+ * which a GMEM pass replays in the binning pass and in every tile, and the
+ * last tile's value is the one that lands (tu_CmdWriteTimestamp2); O0 and Ow
+ * are in the primary stream and hold binning, every tile, and the tile loads
+ * and stores. So `in` = Iw - I0 is the whole pass on sysmem and the last
+ * tile on GMEM, `out` = Ow - O0 is the whole pass either way, and out/in
+ * (mrep) reads ~1 for sysmem or one tile and ~n for n even tiles. A TOP
+ * stamp is the command processor's clock as it reaches the stamp, so it runs
+ * ahead of the work by what is queued behind it; `drain` = Iw - Ie is that
+ * lead at the pass end, and the WFI arm removes it at the cost of a wait
+ * per stamp (per tile, on GMEM).
+ *
+ * The span between two in-pass stamps is a segment. A segment's time is fit,
+ * per window, against what its draw commands carried (gpubrk.h, GB_F_*), by
+ * least squares over the M passes: those on the frame's largest depth
+ * surface. The fit and its arithmetic are in gpubrk.h, which the selftest
+ * builds on its own (docs/testing/jobs/selftest.d/99-gpubrk-fit.sh).
+ *
+ * The host-side counts the line carries (pipeline binds, descriptor binds,
+ * push-constant and uniform bytes, vertices) are PGRAPHVkState's gb_* fields,
+ * plain adds in every build. HAKUX_GPUBRK_KGSL=1 adds device-wide KGSL
+ * perfcounter deltas (kg=), which a sandboxed app may be refused (kg=errN).
+ * VK_KHR_performance_query is probed once and reported as perfquery=: KGSL
+ * Turnip does not expose it, so the in-pass stamps are what there is.
+ */
+#ifdef __ANDROID__
+#include <android/log.h>
+#endif
+#include "gpubrk.h"
+#ifdef __linux__
+#include <sys/ioctl.h>
+#endif
+
+#define GB_TAG "hakuX-gpubrk"
+#define GB_QCAP 2048 /* stamps per command-buffer slot */
+#define GB_PCAP 256  /* stamped render passes per slot */
+#define GB_WINDOW 60 /* flips per line */
+
+typedef struct GbPass {
+    uint32_t qbase;  /* its O0, within the slot */
+    uint32_t seg0;   /* its first segment, within the slot */
+    uint32_t nseg;
+    uint32_t cmds;   /* draw commands */
+    uint32_t w, h;   /* render area, scaled */
+    uint32_t cfmt, zfmt;
+    bool reqc, reqz; /* begin_state asked to LOAD colour, zeta */
+    bool done;       /* ended, with its closing stamps */
+} GbPass;
+
+typedef struct GbSeg {
+    float x[GB_NF];
+} GbSeg;
+
+#ifdef __linux__
+/* msm_kgsl.h's perfcounter ABI */
+struct gb_kgsl_get {
+    unsigned int groupid, countable, offset, offset_hi, pad;
+};
+struct gb_kgsl_put {
+    unsigned int groupid, countable, pad[2];
+};
+struct gb_kgsl_rgroup {
+    unsigned int groupid, countable;
+    unsigned long long value;
+};
+struct gb_kgsl_read {
+    struct gb_kgsl_rgroup *reads;
+    unsigned int count, pad[2];
+};
+#define GB_KGSL_GET _IOWR(0x09, 0x38, struct gb_kgsl_get)
+#define GB_KGSL_PUT _IOW(0x09, 0x39, struct gb_kgsl_put)
+#define GB_KGSL_READ _IOWR(0x09, 0x3B, struct gb_kgsl_read)
+#endif
+
+/* KGSL group and a7xx countable: what each kg= field counts */
+static const struct {
+    const char *name;
+    uint8_t group, countable;
+} gb_kg_list[] = {
+    { "cpbusy", 0x0, 2 },    /* CP BUSY_CYCLES */
+    { "cpwfi", 0x0, 24 },    /* CP SQE_PM4_WFI_STALL */
+    { "pcbusy", 0x2, 0 },    /* PC BUSY_CYCLES */
+    { "pcvfd", 0x2, 2 },     /* PC STALL_CYCLES_VFD */
+    { "vfdbusy", 0x3, 0 },   /* VFD BUSY_CYCLES */
+    { "hlsqbusy", 0x4, 0 },  /* HLSQ BUSY_CYCLES */
+    { "tpbusy", 0x9, 0 },    /* TP BUSY_CYCLES */
+    { "spbusy", 0xA, 0 },    /* SP BUSY */
+    { "spalu", 0xA, 1 },     /* SP ALU_WORKING_CYCLES */
+    { "sptp", 0xA, 4 },      /* SP STALL_CYCLES_TP */
+    { "rbbusy", 0xB, 0 },    /* RB BUSY_CYCLES */
+    { "rbccu", 0xB, 44 },    /* RB STALL_CYCLES_CCU */
+    { "zpass", 0xB, 17 },    /* RB Z_PASS */
+    { "zfail", 0xB, 18 },    /* RB Z_FAIL */
+    { "gmemr", 0x18, 8 },    /* CCU GMEM_READ */
+    { "gmemw", 0x18, 9 },    /* CCU GMEM_WRITE */
+    { "lrzbusy", 0x19, 0 },  /* LRZ BUSY_CYCLES */
+    { "lrzvis", 0x19, 18 },  /* LRZ VISIBLE_PIXEL_AFTER_LRZ */
+};
+QEMU_BUILD_BUG_ON(ARRAY_SIZE(gb_kg_list) > GB_KG_MAX);
+
+static struct {
+    int state;           /* -1 unread; else 1 when on */
+    int k;               /* draw commands per in-pass stamp; 0 none */
+    bool wfi;            /* in-pass stamps are BOTTOM_OF_PIPE */
+    bool kgsl;
+    bool pq;             /* VK_KHR_performance_query exposed */
+    VkPipeline last_pipe; /* the bound pipeline, for gb_pchg (every build) */
+    VkQueryPool pool;
+    /* per slot: what its recording wrote */
+    bool clean[SUBMIT_RING_CAP]; /* reset in full once */
+    uint32_t q[SUBMIT_RING_CAP];
+    uint32_t np[SUBMIT_RING_CAP];
+    uint32_t ns[SUBMIT_RING_CAP];
+    uint32_t drop[SUBMIT_RING_CAP];
+    GbPass *pass[SUBMIT_RING_CAP];
+    GbSeg *seg[SUBMIT_RING_CAP];
+    uint64_t results[GB_QCAP];
+    /* recording: the open pass and segment */
+    int cur;
+    uint64_t cmd0;
+    double acc[GB_NF];
+    uint64_t sn_cmd, sn_pchg, sn_dtx, sn_nv, sn_ubo;
+    bool b_open;
+    uint64_t b_cmd0;
+    double b_fd, b_kill, b_blend, b_zw, b_tex;
+    /* the window */
+    GbWin win;
+    bool win_open;
+    unsigned win_id, fc0;
+    int64_t t0;
+    uint64_t c0[8];
+    double area_ref, area_max, best_area;
+    int fd_clk, fd_busy;
+    int kg_fd, kg_n, kg_err;
+    struct {
+        uint8_t group, countable;
+        const char *name;
+    } kg_on[GB_KG_MAX];
+    uint64_t kg_last[GB_KG_MAX];
+} gb = { .state = -1, .cur = -1, .fd_clk = -1, .fd_busy = -1, .kg_fd = -1 };
+
+static void gb_log(const char *fmt, ...) G_GNUC_PRINTF(1, 2);
+static void gb_log(const char *fmt, ...)
+{
+    char buf[2048];
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+#ifdef __ANDROID__
+    __android_log_print(ANDROID_LOG_INFO, GB_TAG, "%s", buf);
+#else
+    fprintf(stderr, GB_TAG ": %s\n", buf);
+#endif
+}
+
+static bool gb_probe_perfquery(PGRAPHVkState *r)
+{
+    uint32_t n = 0;
+    bool found = false;
+    if (vkEnumerateDeviceExtensionProperties(r->physical_device, NULL, &n,
+                                             NULL) != VK_SUCCESS || !n) {
+        return false;
+    }
+    VkExtensionProperties *props = g_new(VkExtensionProperties, n);
+    if (vkEnumerateDeviceExtensionProperties(r->physical_device, NULL, &n,
+                                             props) == VK_SUCCESS) {
+        for (uint32_t i = 0; i < n; i++) {
+            if (!strcmp(props[i].extensionName,
+                        VK_KHR_PERFORMANCE_QUERY_EXTENSION_NAME)) {
+                found = true;
+            }
+        }
+    }
+    g_free(props);
+    return found;
+}
+
+static bool gb_on(PGRAPHVkState *r)
+{
+    if (gb.state >= 0) {
+        return gb.state > 0;
+    }
+    const char *on = getenv("HAKUX_GPUBRK");
+    const char *k = getenv("HAKUX_GPUBRK_K");
+    const char *wfi = getenv("HAKUX_GPUBRK_WFI");
+    const char *kg = getenv("HAKUX_GPUBRK_KGSL");
+#if NV2A_PERF_LOG
+    gb.state = !(on && on[0] == '0');
+#else
+    gb.state = on && on[0] == '1';
+#endif
+    gb.k = k ? (int)strtol(k, NULL, 10) : 16;
+    gb.k = MIN(MAX(gb.k, 0), 4096);
+    gb.wfi = wfi && wfi[0] == '1';
+    gb.kgsl = kg && kg[0] == '1';
+    if (!gb.state) {
+        return false;
+    }
+    if (!r->gpu_ts_supported) {
+        gb_log("off: the queue has no timestamps");
+        gb.state = 0;
+        return false;
+    }
+    gb.pq = gb_probe_perfquery(r);
+    gb_log("on K=%d wfi=%d kgsl=%d perfquery %s; render passes built with "
+           "ld=c%c/z%c/s%c st=c%c/z%c/s%c whatever begin_state asks",
+           gb.k, gb.wfi, gb.kgsl, gb.pq ? "exposed" : "unavailable",
+           gb_load_ch(RP_COLOR_LOAD_OP), gb_load_ch(RP_ZETA_LOAD_OP),
+           gb_load_ch(RP_STENCIL_LOAD_OP), gb_store_ch(RP_COLOR_STORE_OP),
+           gb_store_ch(RP_ZETA_STORE_OP), gb_store_ch(RP_STENCIL_STORE_OP));
+    return true;
+}
+
+static inline void gb_stamp(PGRAPHVkState *r, bool bottom)
+{
+    int f = r->current_frame;
+    vkCmdWriteTimestamp(r->command_buffer,
+                        bottom ? VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT
+                               : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                        gb.pool, f * GB_QCAP + gb.q[f]++);
+}
+
+/* A vkCmdBindPipeline: counted in every build */
+static inline void gb_note_bind(PGRAPHVkState *r, VkPipeline p)
+{
+    r->gb_pbind++;
+    if (p != gb.last_pipe) {
+        r->gb_pchg++;
+        gb.last_pipe = p;
+    }
+}
+
+/* Draw commands recorded and the vertices or indices they fetch */
+static inline void gb_draw(PGRAPHVkState *r, uint64_t nv, uint32_t ncmd)
+{
+    r->gb_nv += nv;
+    r->gb_cmd += ncmd;
+}
+
+/* pgraph_vk_begin_command_buffer: the slot's stamps from its last recording
+ * are reset, and only those (a reset is two CP_MEM_WRITEs per stamp). */
+static void gb_frame_begin(PGRAPHVkState *r)
+{
+    gb.last_pipe = VK_NULL_HANDLE;
+    if (!gb_on(r)) {
+        return;
+    }
+    int f = r->current_frame;
+    if (!gb.pool) {
+        VkQueryPoolCreateInfo ci = {
+            .sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,
+            .queryType = VK_QUERY_TYPE_TIMESTAMP,
+            .queryCount = GB_QCAP * r->ring_alloc,
+        };
+        if (vkCreateQueryPool(r->device, &ci, NULL, &gb.pool) != VK_SUCCESS) {
+            gb_log("off: vkCreateQueryPool failed");
+            gb.pool = VK_NULL_HANDLE;
+            gb.state = 0;
+            return;
+        }
+    }
+    if (!gb.pass[f]) {
+        gb.pass[f] = g_new0(GbPass, GB_PCAP);
+        gb.seg[f] = g_new0(GbSeg, GB_QCAP);
+    }
+    uint32_t n = gb.clean[f] ? gb.q[f] : GB_QCAP;
+    if (n) {
+        vkCmdResetQueryPool(r->command_buffer, gb.pool, f * GB_QCAP, n);
+    }
+    gb.clean[f] = true;
+    gb.q[f] = gb.np[f] = gb.ns[f] = gb.drop[f] = 0;
+    gb.cur = -1;
+    gb.b_open = false;
+    gb.sn_ubo = r->gb_ubo_b;
+}
+
+static void gb_snap(PGRAPHVkState *r)
+{
+    gb.sn_cmd = r->gb_cmd;
+    gb.sn_pchg = r->gb_pchg;
+    gb.sn_dtx = r->gb_dtx;
+    gb.sn_nv = r->gb_nv;
+    memset(gb.acc, 0, sizeof(gb.acc));
+}
+
+/* Before vkCmdBeginRenderPass: O0 */
+static void gb_pass_begin(PGRAPHVkState *r, const RenderPassState *st,
+                          unsigned int w, unsigned int h)
+{
+    gb.cur = -1;
+    if (!gb_on(r) || !gb.pool) {
+        return;
+    }
+    int f = r->current_frame;
+    if (gb.q[f] + 5 > GB_QCAP || gb.np[f] >= GB_PCAP) {
+        gb.drop[f]++;
+        return;
+    }
+    gb.pass[f][gb.np[f]] = (GbPass){
+        .qbase = gb.q[f],
+        .seg0 = gb.ns[f],
+        .w = w,
+        .h = h,
+        .cfmt = st->color_format,
+        .zfmt = st->zeta_format,
+        .reqc = st->color_format != VK_FORMAT_UNDEFINED &&
+                st->color_load_op == VK_ATTACHMENT_LOAD_OP_LOAD,
+        .reqz = st->zeta_format != VK_FORMAT_UNDEFINED &&
+                st->zeta_load_op == VK_ATTACHMENT_LOAD_OP_LOAD,
+    };
+    gb.cur = gb.np[f]++;
+    gb.cmd0 = r->gb_cmd;
+    gb.b_open = false;
+    gb_stamp(r, gb.wfi);
+}
+
+/* After vkCmdBeginRenderPass: I0, and the first segment opens */
+static void gb_pass_begun(PGRAPHVkState *r)
+{
+    if (gb.cur < 0) {
+        return;
+    }
+    gb_stamp(r, gb.wfi);
+    gb_snap(r);
+}
+
+/* The open segment ends here; its stamp is the caller's */
+static void gb_seg_close(PGRAPHVkState *r)
+{
+    int f = r->current_frame;
+    GbSeg *s = &gb.seg[f][gb.ns[f]++];
+    for (int j = 0; j < GB_NF; j++) {
+        s->x[j] = (float)gb.acc[j];
+    }
+    s->x[GB_F_CMD] = (float)(r->gb_cmd - gb.sn_cmd);
+    s->x[GB_F_PCHG] = (float)(r->gb_pchg - gb.sn_pchg);
+    s->x[GB_F_DTX] = (float)(r->gb_dtx - gb.sn_dtx);
+    s->x[GB_F_KVTX] = (float)((r->gb_nv - gb.sn_nv) / 1000.0);
+    s->x[GB_F_UKB] = (float)((r->gb_ubo_b - gb.sn_ubo) / 1024.0);
+    gb.sn_ubo = r->gb_ubo_b;
+    gb.pass[f][gb.cur].nseg++;
+    gb_snap(r);
+}
+
+/* begin_draw, once the pipeline is bound: what this batch's commands carry */
+static void gb_batch_open(PGRAPHVkState *r, const PipelineBinding *pb,
+                          uint32_t blend, uint32_t control_0)
+{
+    if (gb.cur < 0 || !pb) {
+        return;
+    }
+    const PshState *ps = &pb->key.shader_state.psh;
+    int tex = 0;
+    for (int i = 0; i < 4; i++) {
+        tex += ((ps->shader_stage_program >> (i * 5)) & 0x1F) != 0;
+    }
+    gb.b_open = true;
+    gb.b_cmd0 = r->gb_cmd;
+    gb.b_fd = ps->depth_needed;
+    gb.b_kill = ps->alpha_test || ps->alphakill[0] || ps->alphakill[1] ||
+                ps->alphakill[2] || ps->alphakill[3];
+    gb.b_blend = (blend & NV_PGRAPH_BLEND_EN) != 0;
+    gb.b_zw = (control_0 & NV_PGRAPH_CONTROL_0_ZENABLE) &&
+              (control_0 & NV_PGRAPH_CONTROL_0_ZWRITEENABLE);
+    gb.b_tex = tex;
+}
+
+/* end_draw: the batch's commands go into the segment, which ends once it
+ * holds K commands */
+static void gb_batch_fold(PGRAPHVkState *r, bool may_stamp)
+{
+    if (!gb.b_open) {
+        return;
+    }
+    gb.b_open = false;
+    if (gb.cur < 0) {
+        return;
+    }
+    double dc = (double)(r->gb_cmd - gb.b_cmd0);
+    gb.acc[GB_F_FD] += gb.b_fd * dc;
+    gb.acc[GB_F_KILL] += gb.b_kill * dc;
+    gb.acc[GB_F_BLEND] += gb.b_blend * dc;
+    gb.acc[GB_F_ZW] += gb.b_zw * dc;
+    gb.acc[GB_F_TEX] += gb.b_tex * dc;
+    int f = r->current_frame;
+    if (may_stamp && gb.k > 0 && r->gb_cmd - gb.sn_cmd >= (uint64_t)gb.k) {
+        if (gb.q[f] + 4 > GB_QCAP) {
+            return; /* the pass's closing stamps keep their room */
+        }
+        gb_seg_close(r);
+        gb_stamp(r, gb.wfi);
+    }
+}
+
+/* Before the pass's last commands: Ie, closing the last segment */
+static void gb_pass_ending(PGRAPHVkState *r)
+{
+    if (gb.cur < 0) {
+        return;
+    }
+    gb_batch_fold(r, false);
+    gb_seg_close(r);
+    gb_stamp(r, gb.wfi);
+}
+
+/* Just before vkCmdEndRenderPass: Iw */
+static void gb_pass_end_in(PGRAPHVkState *r)
+{
+    if (gb.cur < 0) {
+        return;
+    }
+    gb_stamp(r, true);
+    gb.pass[r->current_frame][gb.cur].cmds = (uint32_t)(r->gb_cmd - gb.cmd0);
+}
+
+/* After vkCmdEndRenderPass: Ow */
+static void gb_pass_end_out(PGRAPHVkState *r)
+{
+    if (gb.cur < 0) {
+        return;
+    }
+    gb_stamp(r, true);
+    gb.pass[r->current_frame][gb.cur].done = true;
+    gb.cur = -1;
+}
+
+static int gb_sysfs_int(int *fd, const char *path)
+{
+    char b[32];
+    if (*fd == -1) {
+        *fd = open(path, O_RDONLY | O_CLOEXEC);
+        if (*fd < 0) {
+            *fd = -2;
+        }
+    }
+    if (*fd < 0) {
+        return -1;
+    }
+    ssize_t n = pread(*fd, b, sizeof(b) - 1, 0);
+    if (n <= 0) {
+        return -1;
+    }
+    b[n] = '\0';
+    return (int)(strtoll(b, NULL, 10) / (strstr(path, "gpuclk") ? 1000000 : 1));
+}
+
+/* HAKUX_GPUBRK_KGSL=1: the counters this process could reserve, read now */
+static void gb_kgsl_read(uint64_t *out)
+{
+#ifdef __linux__
+    if (gb.kg_fd == -1 && !gb.kg_err) {
+        gb.kg_fd = open("/dev/kgsl-3d0", O_RDWR | O_CLOEXEC);
+        if (gb.kg_fd < 0) {
+            gb.kg_err = errno ? errno : 1;
+            gb.kg_fd = -2;
+            return;
+        }
+        for (size_t i = 0; i < ARRAY_SIZE(gb_kg_list); i++) {
+            struct gb_kgsl_get g = {
+                .groupid = gb_kg_list[i].group,
+                .countable = gb_kg_list[i].countable,
+            };
+            if (ioctl(gb.kg_fd, GB_KGSL_GET, &g) == 0) {
+                gb.kg_on[gb.kg_n].group = gb_kg_list[i].group;
+                gb.kg_on[gb.kg_n].countable = gb_kg_list[i].countable;
+                gb.kg_on[gb.kg_n].name = gb_kg_list[i].name;
+                gb.kg_n++;
+            } else if (!gb.kg_err) {
+                gb.kg_err = errno ? errno : 1;
+            }
+        }
+    }
+    if (gb.kg_fd < 0 || !gb.kg_n) {
+        return;
+    }
+    struct gb_kgsl_rgroup rg[GB_KG_MAX];
+    for (int i = 0; i < gb.kg_n; i++) {
+        rg[i] = (struct gb_kgsl_rgroup){ gb.kg_on[i].group,
+                                         gb.kg_on[i].countable, 0 };
+    }
+    struct gb_kgsl_read rd = { .reads = rg, .count = (unsigned)gb.kg_n };
+    if (ioctl(gb.kg_fd, GB_KGSL_READ, &rd) != 0) {
+        gb.kg_err = errno ? errno : 1;
+        return;
+    }
+    for (int i = 0; i < gb.kg_n; i++) {
+        out[i] = rg[i].value;
+    }
+#else
+    (void)out;
+#endif
+}
+
+static void gb_win_start(PGRAPHVkState *r, unsigned int fc)
+{
+    memset(&gb.win, 0, sizeof(gb.win));
+    gb.win_open = true;
+    gb.win_id = fc / GB_WINDOW;
+    gb.fc0 = fc;
+    gb.t0 = nv2a_clock_ns();
+    gb.area_ref = gb.area_max;
+    gb.area_max = 0;
+    gb.best_area = 0;
+    uint64_t c[8] = { r->gb_pbind, r->gb_pchg, r->gb_dub, r->gb_dtx,
+                      r->gb_push_b, r->gb_ubo_b, r->gb_nv, r->gb_cmd };
+    memcpy(gb.c0, c, sizeof(c));
+    if (gb.kgsl) {
+        gb_kgsl_read(gb.kg_last);
+    }
+}
+
+/* Closes the window once the flip count leaves it, and opens the next */
+static void gb_win_check(PGRAPHVkState *r)
+{
+    unsigned int fc = g_nv2a_stats.frame_count;
+    if (!gb.win_open) {
+        gb_win_start(r, fc);
+        return;
+    }
+    if (fc / GB_WINDOW == gb.win_id) {
+        return;
+    }
+    GbWin *w = &gb.win;
+    w->fl = fc - gb.fc0;
+    w->s = (nv2a_clock_ns() - gb.t0) / 1e9;
+    w->k = gb.k;
+    w->wfi = gb.wfi;
+    w->pbind = r->gb_pbind - gb.c0[0];
+    w->pchg = r->gb_pchg - gb.c0[1];
+    w->dub = r->gb_dub - gb.c0[2];
+    w->dtx = r->gb_dtx - gb.c0[3];
+    w->push_b = r->gb_push_b - gb.c0[4];
+    w->ubo_b = r->gb_ubo_b - gb.c0[5];
+    w->nv = r->gb_nv - gb.c0[6];
+    w->cmd = r->gb_cmd - gb.c0[7];
+    w->mhz = gb_sysfs_int(&gb.fd_clk, "/sys/class/kgsl/kgsl-3d0/gpuclk");
+    w->busy = gb_sysfs_int(&gb.fd_busy,
+                           "/sys/class/kgsl/kgsl-3d0/gpu_busy_percentage");
+    w->pq = gb.pq;
+    if (gb.kgsl) {
+        uint64_t now[GB_KG_MAX];
+        memcpy(now, gb.kg_last, sizeof(now));
+        gb_kgsl_read(now);
+        if (gb.kg_n) {
+            w->kg_state = gb.kg_n;
+            for (int i = 0; i < gb.kg_n; i++) {
+                w->kg_name[i] = gb.kg_on[i].name;
+                w->kg_val[i] = (double)(int64_t)(now[i] - gb.kg_last[i]);
+            }
+        } else {
+            w->kg_state = -(gb.kg_err ? gb.kg_err : 1);
+        }
+    }
+    char line[2048];
+    gb_win_format(w, line, sizeof(line));
+    gb_log("%s", line);
+    gb_win_start(r, fc);
+}
+
+/* gpu_ts_readback, once per recording: the slot's passes into the window */
+static void gb_readback(PGRAPHVkState *r, int f)
+{
+    if (gb.state <= 0 || !gb.pool || !gb.pass[f]) {
+        return;
+    }
+    gb_win_check(r);
+    GbWin *w = &gb.win;
+    uint32_t n = gb.q[f];
+    w->cb++;
+    w->drop += gb.drop[f];
+    if (!n) {
+        return;
+    }
+    if (vkGetQueryPoolResults(r->device, gb.pool, f * GB_QCAP, n,
+                              sizeof(uint64_t) * n, gb.results,
+                              sizeof(uint64_t),
+                              VK_QUERY_RESULT_64_BIT) != VK_SUCCESS) {
+        w->drop += gb.np[f];
+        return;
+    }
+    double us = r->gpu_ts_period_ns / 1e3; /* per tick */
+    double cbmax = 0;
+    for (uint32_t i = 0; i < gb.np[f]; i++) {
+        GbPass *p = &gb.pass[f][i];
+        if (p->done && p->zfmt != VK_FORMAT_UNDEFINED) {
+            cbmax = MAX(cbmax, (double)p->w * p->h);
+        }
+    }
+    gb.area_max = MAX(gb.area_max, cbmax);
+    double thr = 0.9 * MAX(gb.area_ref, cbmax);
+    for (uint32_t i = 0; i < gb.np[f]; i++) {
+        GbPass *p = &gb.pass[f][i];
+        if (!p->done) {
+            w->drop++;
+            continue;
+        }
+        const uint64_t *t = gb.results + p->qbase;
+        uint64_t o0 = t[0], i0 = t[1], ie = t[1 + p->nseg];
+        uint64_t iw = t[2 + p->nseg], ow = t[3 + p->nseg];
+        double in = (double)(int64_t)(iw - i0) * us / 1e3;
+        double out = (double)(int64_t)(ow - o0) * us / 1e3;
+        double area = (double)p->w * p->h;
+        if (p->zfmt == VK_FORMAT_UNDEFINED || area <= 0 || area < thr) {
+            w->op++;
+            w->ocmd += p->cmds;
+            w->oin_ms += in;
+            w->oout_ms += out;
+            continue;
+        }
+        w->mp++;
+        w->mcmd += p->cmds;
+        w->min_ms += in;
+        w->mout_ms += out;
+        w->mreqc += p->reqc;
+        w->mreqz += p->reqz;
+        if (p->cmds >= 32 && in > 0 && w->nrep < GB_REP_MAX) {
+            w->rep[w->nrep++] = out / in;
+        }
+        if (w->ndrain < GB_REP_MAX) {
+            w->drain[w->ndrain++] = (double)(int64_t)(iw - ie) * us;
+        }
+        if (area > gb.best_area) {
+            gb.best_area = area;
+            w->cfmt = p->cfmt;
+            w->zfmt = p->zfmt;
+            w->w = p->w;
+            w->h = p->h;
+            w->ld[0] = RP_COLOR_LOAD_OP;
+            w->ld[1] = RP_ZETA_LOAD_OP;
+            w->ld[2] = RP_STENCIL_LOAD_OP;
+            w->st[0] = RP_COLOR_STORE_OP;
+            w->st[1] = RP_ZETA_STORE_OP;
+            w->st[2] = RP_STENCIL_STORE_OP;
+        }
+        /* segment j ends at stamp 2 + j; the last at Iw, so they sum to in */
+        uint64_t prev = i0;
+        for (uint32_t j = 0; j < p->nseg; j++) {
+            uint64_t end = j + 1 == p->nseg ? iw : t[2 + j];
+            double y = (double)(int64_t)(end - prev) * us;
+            prev = end;
+            const GbSeg *s = &gb.seg[f][p->seg0 + j];
+            if (s->x[GB_F_CMD] <= 0) {
+                continue;
+            }
+            double x[GB_NF];
+            for (int c = 0; c < GB_NF; c++) {
+                x[c] = s->x[c];
+            }
+            gb_fit_add(&w->fit, x, y);
+            gb_hist_add(w->hist, y / x[GB_F_CMD], x[GB_F_CMD]);
+        }
+    }
+}
+
+void pgraph_vk_gpubrk_finalize(PGRAPHVkState *r)
+{
+    if (gb.pool) {
+        vkDestroyQueryPool(r->device, gb.pool, NULL);
+        gb.pool = VK_NULL_HANDLE;
+    }
+    for (int f = 0; f < SUBMIT_RING_CAP; f++) {
+        g_free(gb.pass[f]);
+        g_free(gb.seg[f]);
+        gb.pass[f] = NULL;
+        gb.seg[f] = NULL;
+        gb.clean[f] = false;
+    }
+#ifdef __linux__
+    if (gb.kg_fd >= 0) {
+        for (int i = 0; i < gb.kg_n; i++) {
+            struct gb_kgsl_put p = { gb.kg_on[i].group,
+                                     gb.kg_on[i].countable, { 0, 0 } };
+            ioctl(gb.kg_fd, GB_KGSL_PUT, &p);
+        }
+        close(gb.kg_fd);
+    }
+#endif
+    if (gb.fd_clk >= 0) {
+        close(gb.fd_clk);
+    }
+    if (gb.fd_busy >= 0) {
+        close(gb.fd_busy);
+    }
+    gb.kg_fd = gb.fd_clk = gb.fd_busy = -1;
+    gb.kg_n = gb.kg_err = 0;
+    gb.cur = -1;
+    gb.win_open = false;
+}
+
 static void push_vertex_attr_values(PGRAPHState *pg)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
@@ -4050,6 +4766,7 @@ static void push_vertex_attr_values(PGRAPHState *pg)
                            VK_SHADER_STAGE_VERTEX_BIT, vtx_offset,
                            num_uniform_attrs * 4 * sizeof(float),
                            &values);
+        r->gb_push_b += num_uniform_attrs * 4 * sizeof(float);
     }
 }
 
@@ -4165,6 +4882,7 @@ static void push_geom_line_params(PGRAPHState *pg)
     vkCmdPushConstants(r->command_buffer, r->pipeline_binding->layout,
                        VK_SHADER_STAGE_GEOMETRY_BIT, 0,
                        GEOM_PUSH_CONSTANT_SIZE, values);
+    r->gb_push_b += GEOM_PUSH_CONSTANT_SIZE;
 }
 
 /*
@@ -4195,6 +4913,7 @@ static void push_texture_descriptors(PGRAPHState *pg)
     vkCmdPushDescriptorSetWithTemplateKHR(
         r->command_buffer, r->push_tex_update_template[n],
         r->pipeline_binding->layout, 0, r->push_tex_infos);
+    r->gb_dtx++;
     r->push_tex_dirty = false;
     r->push_tex_pushed_index = n;
 }
@@ -4215,6 +4934,7 @@ static void bind_descriptor_sets(PGRAPHState *pg)
         r->pipeline_binding->layout, 1, 1,
         &r->push_ubo_sets[r->push_ubo_set_index - 1],
         2, dynamic_offsets);
+    r->gb_dub++;
 #if NV2A_PERF_LOG
     pgraph_vk_ubosz_note_bind(r->push_ubo_sets[r->push_ubo_set_index - 1],
                               dynamic_offsets);
@@ -4244,6 +4964,7 @@ static void bind_descriptor_sets(PGRAPHState *pg)
             r->pipeline_binding->layout, 0, 1,
             &r->descriptor_sets[r->descriptor_set_index - 1],
             0, NULL);
+        r->gb_dtx++;
     }
 }
 
@@ -4514,6 +5235,7 @@ static void begin_render_pass(PGRAPHState *pg)
     };
     xfr_rp_outer(r, false);
     xfr_census_begin(pg, &begin_state, vp_width, vp_height);
+    gb_pass_begin(r, &begin_state, vp_width, vp_height);
     vkCmdBeginRenderPass(r->command_buffer, &render_pass_begin_info,
                          VK_SUBPASS_CONTENTS_INLINE);
     r->in_render_pass = true;
@@ -4529,6 +5251,7 @@ static void begin_render_pass(PGRAPHState *pg)
                             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                             r->gpu_ts_pool, slot);
     }
+    gb_pass_begun(r);
 }
 
 void end_render_pass(PGRAPHVkState *r)
@@ -4551,6 +5274,8 @@ void end_render_pass(PGRAPHVkState *r)
 #if NV2A_PERF_LOG
         DW_INC(BRK);
 #endif
+        gb_pass_ending(r);
+        gb_pass_end_in(r);
         if (r->gpu_ts_supported && gpu_ts_inrp() &&
             r->gpu_ts_rp_index < GPU_TS_MAX_RENDER_PASSES) {
             uint32_t base = r->current_frame * GPU_TS_QUERIES_PER_CB;
@@ -4564,6 +5289,7 @@ void end_render_pass(PGRAPHVkState *r)
         r->in_render_pass = false;
         xfr_census_end(r);
         xfr_rp_outer(r, true);
+        gb_pass_end_out(r);
     }
 }
 
@@ -5432,6 +6158,7 @@ static void gpu_ts_readback(PGRAPHVkState *r, int frame)
         nonrender_ns = 0;
     }
     gpu_xfr_frame(r, frame, total_ns, nonrender_ns);
+    gb_readback(r, frame);
 
     g_nv2a_stats.phase_working.gpu_total_ns += total_ns;
     g_nv2a_stats.phase_working.gpu_render_ns += render_ns;
@@ -6406,6 +7133,7 @@ void pgraph_vk_begin_command_buffer(PGRAPHState *pg)
         gpu_ts_read[r->current_frame] = false;
     }
     gpu_xfr_frame_begin(pg);
+    gb_frame_begin(r);
 }
 
 // FIXME: Refactor below
@@ -7776,6 +8504,7 @@ static void begin_draw(PGRAPHState *pg)
         nv2a_profile_inc_counter(NV2A_PROF_PIPELINE_BIND);
         vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                           r->pipeline_binding->pipeline);
+        gb_note_bind(r, r->pipeline_binding->pipeline);
         bind_uber_zero_buffer(r);
         r->pipeline_binding_changed = false;
         r->pipeline_binding->draw_time = pg->draw_time;
@@ -8033,6 +8762,11 @@ static void begin_draw(PGRAPHState *pg)
         }
     }
 
+    if (gb.cur >= 0 && !pg->clearing) {
+        gb_batch_open(r, r->pipeline_binding,
+                      pgraph_vk_effective_blend_reg(pg),
+                      pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_0));
+    }
     r->in_draw = true;
     pgraph_vk_vtxhz_commit(r);
 }
@@ -8044,6 +8778,7 @@ static void end_draw(PGRAPHState *pg)
     assert(r->in_command_buffer);
     assert(r->in_render_pass);
 
+    gb_batch_fold(r, true);
     if (pg->clearing) {
         OPT_STAT_INC(rp_break_clear);
 #if NV2A_PERF_LOG
@@ -8231,6 +8966,7 @@ static bool upload_draw_uniforms(PGRAPHState *pg, size_t offsets_out[2])
             pg, BUFFER_UNIFORM_STAGING, &data, &size, 1,
             r->device_props.limits.minUniformBufferOffsetAlignment);
     }
+    r->gb_ubo_b += total; /* hakuX-gpubrk */
 #if NV2A_PERF_LOG
     pgraph_vk_ubosz_note_upload(pg, 1);
 #endif
@@ -8500,6 +9236,7 @@ static void rebind_ubo_dynamic_offsets(PGRAPHState *pg, uint32_t off0,
         r->pipeline_binding->layout, 1, 1,
         &r->push_ubo_sets[r->push_ubo_set_index - 1],
         2, dyn_off);
+    r->gb_dub++;
 #if NV2A_PERF_LOG
     pgraph_vk_ubosz_note_bind(r->push_ubo_sets[r->push_ubo_set_index - 1],
                               dyn_off);
@@ -8692,6 +9429,7 @@ static void flush_draw_queue_internal(NV2AState *d)
             rebind_ubo_dynamic_offsets(pg, (uint32_t)ubo_offsets[0][0],
                                        (uint32_t)ubo_offsets[0][1]);
             vkCmdDrawIndexed(r->command_buffer, total_indices, 1, 0, 0, 0);
+            gb_draw(r, total_indices, 1);
         } else {
             int i = 0;
             while (i < entry_count) {
@@ -8708,6 +9446,7 @@ static void flush_draw_queue_internal(NV2AState *d)
                 uint32_t first = idx_offsets[i];
                 uint32_t count = idx_offsets[j - 1] + idx_counts[j - 1] - first;
                 vkCmdDrawIndexed(r->command_buffer, count, 1, first, 0, 0);
+                gb_draw(r, count, 1);
                 i = j;
             }
         }
@@ -8770,6 +9509,7 @@ static void flush_draw_queue_internal(NV2AState *d)
                                  buffer_offset, VK_INDEX_TYPE_UINT32);
             vkCmdDrawIndexed(r->command_buffer, prim_rw.num_indices,
                              1, 0, 0, 0);
+            gb_draw(r, prim_rw.num_indices, 1);
         } else if (!has_uniform_changes && entry_count > 1) {
             VkDrawIndirectCommand cmds[DRAW_QUEUE_MAX];
             for (int i = 0; i < entry_count; i++) {
@@ -8789,6 +9529,11 @@ static void flush_draw_queue_internal(NV2AState *d)
                               r->storage_buffers[BUFFER_INDEX].buffer,
                               buffer_offset, entry_count,
                               sizeof(VkDrawIndirectCommand));
+            uint64_t gb_nv = 0;
+            for (int i = 0; i < entry_count; i++) {
+                gb_nv += counts_arr[i];
+            }
+            gb_draw(r, gb_nv, entry_count);
         } else if (has_uniform_changes) {
             int i = 0;
             while (i < entry_count) {
@@ -8826,15 +9571,22 @@ static void flush_draw_queue_internal(NV2AState *d)
                                       r->storage_buffers[BUFFER_INDEX].buffer,
                                       buf_off, group_count,
                                       sizeof(VkDrawIndirectCommand));
+                    uint64_t gb_nv = 0;
+                    for (int k = 0; k < group_count; k++) {
+                        gb_nv += counts_arr[i + k];
+                    }
+                    gb_draw(r, gb_nv, group_count);
                 } else {
                     vkCmdDraw(r->command_buffer, counts_arr[i], 1,
                               starts[i], 0);
+                    gb_draw(r, counts_arr[i], 1);
                 }
 
                 i = j;
             }
         } else {
             vkCmdDraw(r->command_buffer, counts_arr[0], 1, starts[0], 0);
+            gb_draw(r, counts_arr[0], 1);
         }
     }
 
@@ -9602,11 +10354,22 @@ static void emit_reorder_entry(PGRAPHState *pg, ReorderWindowEntry *e,
         nv2a_profile_inc_counter(NV2A_PROF_PIPELINE_BIND);
         vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                           e->pipeline_binding->pipeline);
+        gb_note_bind(r, e->pipeline_binding->pipeline);
         bind_uber_zero_buffer(r);
         e->pipeline_binding->draw_time = pg->draw_time;
         PIPELINE_NOTE_BIND(r, e->pipeline_binding);
         vkCmdSetViewport(r->command_buffer, 0, 1, &e->viewport);
         vkCmdSetScissor(r->command_buffer, 0, 1, &e->scissor);
+    }
+    if (gb.cur >= 0 && e->pipeline_binding) {
+#if OPT_DYNAMIC_BLEND
+        uint32_t gb_blend = r->eds3_blend_supported
+                                ? e->dyn_blend
+                                : e->pipeline_binding->key.regs[0];
+#else
+        uint32_t gb_blend = e->pipeline_binding->key.regs[0];
+#endif
+        gb_batch_open(r, e->pipeline_binding, gb_blend, e->dyn_control_0);
     }
 
     /*
@@ -9634,6 +10397,7 @@ static void emit_reorder_entry(PGRAPHState *pg, ReorderWindowEntry *e,
             vkCmdPushConstants(r->command_buffer, e->layout,
                                VK_SHADER_STAGE_GEOMETRY_BIT, 0,
                                GEOM_PUSH_CONSTANT_SIZE, values);
+            r->gb_push_b += GEOM_PUSH_CONSTANT_SIZE;
         }
     }
 
@@ -9799,6 +10563,7 @@ static void emit_reorder_entry(PGRAPHState *pg, ReorderWindowEntry *e,
                                 VK_PIPELINE_BIND_POINT_GRAPHICS,
                                 e->layout, 1, 1, &e->descriptor_set,
                                 2, e->dynamic_offsets);
+        r->gb_dub++;
 #if NV2A_PERF_LOG
         pgraph_vk_ubosz_note_bind(e->descriptor_set, e->dynamic_offsets);
 #endif
@@ -9813,6 +10578,7 @@ static void emit_reorder_entry(PGRAPHState *pg, ReorderWindowEntry *e,
                 r->command_buffer,
                 r->push_tex_update_template[e->push_template_index],
                 e->layout, 0, e->rw_push_tex_infos);
+            r->gb_dtx++;
         }
     } else {
         if (pipeline_changed ||
@@ -9821,6 +10587,7 @@ static void emit_reorder_entry(PGRAPHState *pg, ReorderWindowEntry *e,
                                     VK_PIPELINE_BIND_POINT_GRAPHICS,
                                     e->layout, 0, 1,
                                     &e->tex_descriptor_set, 0, NULL);
+            r->gb_dtx++;
         }
     }
 
@@ -9835,6 +10602,7 @@ static void emit_reorder_entry(PGRAPHState *pg, ReorderWindowEntry *e,
                            VK_SHADER_STAGE_VERTEX_BIT, vtx_offset,
                            e->num_push_values * 4 * sizeof(float),
                            e->push_values);
+        r->gb_push_b += e->num_push_values * 4 * sizeof(float);
     }
 
     if (e->num_vertex_bindings > 0 &&
@@ -9855,17 +10623,21 @@ static void emit_reorder_entry(PGRAPHState *pg, ReorderWindowEntry *e,
                              r->storage_buffers[BUFFER_INDEX].buffer,
                              e->index_indirect_offset, VK_INDEX_TYPE_UINT32);
         vkCmdDrawIndexed(r->command_buffer, e->draw_count, 1, 0, 0, 0);
+        gb_draw(r, e->draw_count, 1);
         break;
     case RW_DRAW_INDIRECT:
         vkCmdDrawIndirect(r->command_buffer,
                           r->storage_buffers[BUFFER_INDEX].buffer,
                           e->index_indirect_offset, e->draw_count,
                           sizeof(VkDrawIndirectCommand));
+        gb_draw(r, 0, e->draw_count); /* the entries' counts are GPU-side */
         break;
     case RW_DRAW_DIRECT:
         vkCmdDraw(r->command_buffer, e->vertex_count, 1, e->first_vertex, 0);
+        gb_draw(r, e->vertex_count, 1);
         break;
     }
+    gb_batch_fold(r, true);
 }
 
 static void flush_reorder_window_internal(NV2AState *d)
@@ -10974,6 +11746,7 @@ void pgraph_vk_clear_surface(NV2AState *d, uint32_t parameter)
             vkCmdSetScissor(r->command_buffer, 0, 1, &clear_rect.rect);
             vkCmdSetBlendConstants(r->command_buffer, blend_constants);
             vkCmdDraw(r->command_buffer, 3, 1, 0, 0);
+            gb_draw(r, 3, 1);
         }
     }
 
@@ -11456,6 +12229,7 @@ static void flush_draw_one_pass(NV2AState *d)
                                  buffer_offset, VK_INDEX_TYPE_UINT32);
             vkCmdDrawIndexed(r->command_buffer, prim_rw.num_indices, 1, 0, 0,
                              0);
+            gb_draw(r, prim_rw.num_indices, 1);
         } else if (pg->draw_arrays_length > 1) {
             OPT_STAT_INC(multi_draw_indirect);
             VkDrawIndirectCommand cmds[pg->draw_arrays_length];
@@ -11475,6 +12249,11 @@ static void flush_draw_one_pass(NV2AState *d)
                               r->storage_buffers[BUFFER_INDEX].buffer,
                               buffer_offset, pg->draw_arrays_length,
                               sizeof(VkDrawIndirectCommand));
+            uint64_t gb_nv = 0;
+            for (int i = 0; i < pg->draw_arrays_length; i++) {
+                gb_nv += pg->draw_arrays_count[i];
+            }
+            gb_draw(r, gb_nv, pg->draw_arrays_length);
         } else {
             OPT_STAT_INC(multi_draw_loop);
             for (int i = 0; i < pg->draw_arrays_length; i++) {
@@ -11482,6 +12261,7 @@ static void flush_draw_one_pass(NV2AState *d)
                          count = pg->draw_arrays_count[i];
                 NV2A_VK_DPRINTF("- [%d] Start:%d Count:%d", i, start, count);
                 vkCmdDraw(r->command_buffer, count, 1, start, 0);
+                gb_draw(r, count, 1);
             }
         }
 
@@ -11572,6 +12352,7 @@ draw_arrays_done:
                              r->storage_buffers[BUFFER_INDEX].buffer,
                              buffer_offset, VK_INDEX_TYPE_UINT32);
         vkCmdDrawIndexed(r->command_buffer, draw_index_count, 1, 0, 0, 0);
+        gb_draw(r, draw_index_count, 1);
         end_draw(pg);
         pgraph_vk_end_debug_marker(r, r->command_buffer);
         NV2A_PHASE_TIMER_END_EXCL(draw_vk_cmd);
@@ -11654,8 +12435,10 @@ inline_elements_done:
                                  idx_offset, VK_INDEX_TYPE_UINT32);
             vkCmdDrawIndexed(r->command_buffer, prim_rw.num_indices, 1, 0, 0,
                              0);
+            gb_draw(r, prim_rw.num_indices, 1);
         } else {
             vkCmdDraw(r->command_buffer, pg->inline_buffer_length, 1, 0, 0);
+            gb_draw(r, pg->inline_buffer_length, 1);
         }
 
         end_draw(pg);
@@ -11749,8 +12532,10 @@ inline_buffer_done:
                                  idx_offset, VK_INDEX_TYPE_UINT32);
             vkCmdDrawIndexed(r->command_buffer, prim_rw.num_indices, 1, 0, 0,
                              0);
+            gb_draw(r, prim_rw.num_indices, 1);
         } else {
             vkCmdDraw(r->command_buffer, index_count, 1, 0, 0);
+            gb_draw(r, index_count, 1);
         }
 
         end_draw(pg);

@@ -926,6 +926,7 @@ void pgraph_vk_update_descriptor_sets(PGRAPHState *pg)
                 pg, BUFFER_UNIFORM_STAGING, &data, &size, 1,
                 r->device_props.limits.minUniformBufferOffsetAlignment);
         }
+        r->gb_ubo_b += ubo_buffer_total_size; /* hakuX-gpubrk */
 #if NV2A_PERF_LOG
         pgraph_vk_ubosz_note_upload(pg, 0);
 #endif
