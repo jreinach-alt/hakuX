@@ -118,7 +118,7 @@ SKIP_TESTS=""
 TITLE=""; SECONDS_HOLD=60; PULL_GLOB=""; EXPECT=""; NO_EXPECT=""; DEVICE=""
 # Load a save state through the dispatcher instead of driving the pause menu
 # by hand (#433, lane.savestate-req1019). See --load-state/--scene below.
-LOAD_STATE_RAW=""; HOLD_TRIGGER=""; SCENE=""
+LOAD_STATE_RAW=""; HOLD_TRIGGER=""; SCENE=""; LOAD_HDD=""
 AUDIO_CAPTURE=""; BASE_ISO=""; PERFLOG=""; ONLY_TESTS=""; PROGRAM="pgraph"
 ENV_VARS=()
 FRAMES_EVERY=0
@@ -200,7 +200,12 @@ while [ $# -gt 0 ]; do
         # axis:seconds (e.g. rt:60): hold a pad axis for a window after the
         # load, so one request covers load + a driving window. See pad.sh.
         --hold-trigger) HOLD_TRIGGER="$2"; shift 2;;
-        # Sugar for --load-state/--title/--hold-trigger, from scenes.tsv.
+        # <name>: the disk the load boots, a file in the device's x1box dir
+        # holding the snapshot the state was saved with -- a copy of the disk
+        # it was saved on, never the owner's image. See dispatcher.sh's A
+        # SCENE BOOTS A COPY OF THE DISK ITS STATE WAS SAVED ON.
+        --load-hdd) LOAD_HDD="$2"; shift 2;;
+        # Sugar for --load-state/--title/--hold-trigger/--load-hdd, from scenes.tsv.
         --scene) SCENE="$2"; shift 2;;
         --expect) EXPECT="$2"; shift 2;;
         --no-expect) NO_EXPECT="$2"; shift 2;;
@@ -215,8 +220,8 @@ while [ $# -gt 0 ]; do
 done
 
 # --scene <name> (#433, lane.savestate-req1019): sugar for --load-state,
-# --title and --hold-trigger, read from docs/testing/scenes.tsv (name,
-# title_id, slot, state_file, default_hold). This is how a request reaches a
+# --title, --hold-trigger and --load-hdd, read from docs/testing/scenes.tsv
+# (name, title_id, slot, state_file, default_hold, hdd). This is how a request reaches a
 # specific point in a game -- the owner's GTA III in-car save, first --
 # without anyone driving the pause menu by hand; the by-hand procedure this
 # replaces is docs/lanes/fpsnext1019's arm.sh. A scene only fills gaps: a
@@ -250,6 +255,9 @@ PYSCENE
     SC_SLOT=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["slot"])' "$SCROW")
     SC_STATE_FILE=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["state_file"])' "$SCROW")
     SC_HOLD=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["default_hold"])' "$SCROW")
+    # A row from before the hdd column has none; the refusal below says why.
+    SC_HDD=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("hdd") or "")' "$SCROW")
+    [ -n "$LOAD_HDD" ] || LOAD_HDD="$SC_HDD"
     if [ -z "$TITLE" ]; then
         SC_ISO=$(python3 "$(dirname "$0")/titles/titlestate.py" iso-for-tid --title-id "$SC_TID" ${DEVICE:+--device "$DEVICE"} 2>/dev/null)
         [ -n "$SC_ISO" ] || { echo "refusing to queue: scene '$SCENE' names title_id $SC_TID, and no on-device ISO name is known for it" >&2; exit 2; }
@@ -309,8 +317,10 @@ fi
 if [ -n "$LOAD_SLOT" ] || [ -n "$SCENE" ]; then
     SNAPBIN="${DISPATCH_DIR:-/home/justin/hakux-work/dispatch}/bin"
     SERVER="${DISPATCH_TREE:-/home/justin/hakuX}/docs/testing"
-    if ! grep -q scene_verdict "$SNAPBIN/dispatcher.sh" 2>/dev/null; then
-        if grep -q scene_verdict "$SERVER/dispatcher.sh" 2>/dev/null; then
+    # scene_hdd_check, not scene_verdict: a dispatcher with the load but not
+    # the scene's disk boots titles.qcow2 or the owner's image under it.
+    if ! grep -q scene_hdd_check "$SNAPBIN/dispatcher.sh" 2>/dev/null; then
+        if grep -q scene_hdd_check "$SERVER/dispatcher.sh" 2>/dev/null; then
             echo "refusing to queue: --load-state/--scene is merged but the SERVING" >&2
             echo "dispatcher still runs an older snapshot ($SNAPBIN). Restart it, or" >&2
             echo "touch dispatcher.sh to force its re-exec." >&2
@@ -324,6 +334,31 @@ if [ -n "$LOAD_SLOT" ] || [ -n "$SCENE" ]; then
         fi
         exit 2
     fi
+fi
+
+# THE LOAD'S DISK, refused here by name exactly as the dispatcher refuses it
+# at claim (dispatcher.sh scene_hdd_name_refusal, under A SCENE BOOTS A COPY
+# OF THE DISK ITS STATE WAS SAVED ON; jobs/selftest.d/99-load-state.sh holds
+# the two texts equal). Whether the file is on the device is the
+# dispatcher's to say, before it installs anything.
+scene_hdd_name_refusal() {
+    local n="$1" lc="${1,,}"
+    case "$n" in
+        "") echo "a save-state load names no hdd: a state loads only on a disk holding the snapshot it was saved with, and without one the run boots titles.qcow2 (composed from goldens: no such snapshot, the load VOIDs) or whatever hddPath names (on the Nova the owner's image, which the load would roll back); name a copy of the disk the state was saved on in the scene's scenes.tsv hdd column, or pass --load-hdd <name>"; return;;
+        */*) echo "scene hdd '$n' is a path; name a file in the device's x1box dir (where hdd.img is)"; return;;
+        .|..|-*|*[!A-Za-z0-9._-]*) echo "scene hdd '$n' is not a plain file name (letters, digits, . _ - only)"; return;;
+    esac
+    case "$lc" in
+        hdd-owner-*) echo "scene hdd '$n' is the owner's image (hdd-owner-*): a load rolls the disk it boots back to the state's snapshot, so a scene boots a copy of that image, never the image itself";;
+        titles.qcow2|hdd.img) echo "scene hdd '$n' is a harness disk (other runs rebuild and boot it); name a copy of the disk the state was saved on";;
+    esac
+}
+if [ -n "$LOAD_SLOT" ]; then
+    SHWHY=$(scene_hdd_name_refusal "$LOAD_HDD")
+    [ -z "$SHWHY" ] || { echo "refusing to queue: $SHWHY" >&2; exit 2; }
+elif [ -n "$LOAD_HDD" ]; then
+    echo "refusing to queue: --load-hdd names the disk for a save-state load, and this request loads none (--load-state/--scene)" >&2
+    exit 2
 fi
 
 # A soak request names a title instead of suites: it boots a real game and
@@ -1597,7 +1632,7 @@ TITLE_ID="$TITLE_ID" TITLE_STATE="$TITLE_STATE" IDENTIFIED="$IDENTIFIED" \
 VIDEO_SECONDS="$VIDEO_SECONDS" VIDEO_AFTER="$VIDEO_AFTER" \
 FIND_ROUTE="$FIND_ROUTE" REMAKE_PROFILE="$REMAKE_PROFILE" PATH_BROKEN="$PATH_BROKEN" SAVE="$SAVE" \
 PROFILE_CLAUSE="$PROFILE_CLAUSE" \
-LOAD_SLOT="$LOAD_SLOT" LOAD_STATE_FILE="$LOAD_STATE_FILE" HOLD_TRIGGER="$HOLD_TRIGGER" SCENE="$SCENE" \
+LOAD_SLOT="$LOAD_SLOT" LOAD_STATE_FILE="$LOAD_STATE_FILE" HOLD_TRIGGER="$HOLD_TRIGGER" SCENE="$SCENE" LOAD_HDD="$LOAD_HDD" \
 python3 - "$D/queue/.$ID.req.tmp" "$ID" "$WHO" "$PURPOSE" "$SUITES" "$REF" "$ARM" "$RUNS" "$TESTS" "$TITLE" "$SECONDS_HOLD" "$PULL_GLOB" "$EXPECT" "${EXPECT_SHA:-}" "$NO_EXPECT" "$SKIP_TESTS" "$DEVICE" "$AUDIO_CAPTURE" "$BASE_ISO" "$PERFLOG" "$ONLY_TESTS" "$FRAMES_EVERY" "$PROGRAM" ${ENV_VARS[@]+"${ENV_VARS[@]}"} <<'PY'
 import json, sys
 (p, i, who, purpose, suites, ref, arm, runs, tests, title, seconds,
@@ -1659,11 +1694,13 @@ json.dump({"id": i, "requester": who, "purpose": purpose,
            # a scene or --load-state asked for one; load_state_file is "" in
            # slot mode (use what's on the device) and a host path in file
            # mode (push, then restore the original after). hold_trigger is
-           # "axis:seconds" or "".
+           # "axis:seconds" or "". scene_hdd is the disk the load boots
+           # (--load-hdd / scenes.tsv hdd), a file in the device's x1box dir.
            "load_slot": __import__("os").environ.get("LOAD_SLOT", ""),
            "load_state_file": __import__("os").environ.get("LOAD_STATE_FILE", ""),
            "hold_trigger": __import__("os").environ.get("HOLD_TRIGGER", ""),
            "scene": __import__("os").environ.get("SCENE", ""),
+           "scene_hdd": __import__("os").environ.get("LOAD_HDD", ""),
            # The failure identified before a held title was queued again
            # (--identified; see the failure gate above). Empty when none.
            "identified": __import__("os").environ.get("IDENTIFIED", ""),
@@ -1709,6 +1746,7 @@ if r.get("title"):
                                ", route " + r["route_name"] if r.get("route") else "",
                                ", scene " + r["scene"] if r.get("scene") else
                                (", load slot " + r["load_slot"] if r.get("load_slot") else ""))
+          + (", hdd " + r["scene_hdd"] if r.get("scene_hdd") else "")
           + " [%s %s]" % (r.get("title_id") or "title ?", r.get("title_state") or "any"))
 else:
     print("%sdisc: %d suite(s) [%s], only_tests %d, skip_tests %d, runs %d"

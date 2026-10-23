@@ -870,7 +870,7 @@ PYHDD
 
 # hdd_pref_fetch <file>: the app's x1box_prefs.xml, as it is on the device
 # now, written to <file>. Exit 1 when it could not be read (no run-as, a hung
-# call). The one read set_hdd_pref and disc_hdd_prepare both start from.
+# call). The one read set_hdd_pref and hdd_pref_point both start from.
 hdd_pref_fetch() {
     local pkg="${PKG:-com.jreinach.hakux.debug}" out="$1"
     adb_call "$ADB_QUICK_TIMEOUT" "run-as cat x1box_prefs.xml (hdd)" \
@@ -948,46 +948,44 @@ restore_hdd_pref() {
 # is the one recorded. A title run that died leaves the owner's path in the
 # marker; the next request, disc or title, puts it back first.
 #
-# disc_hdd_prepare <rdir>: 0 = go ahead, 1 = hddPath is another image and could
-# not be moved (DISC_HDD_WAS says what it names); a disc must not run on it.
-# An unreadable prefs file is not a refusal (a release package has no run-as):
-# run_disc.sh reads the disk the guest actually booted from its own logcat, and
-# that is the guard then. Writes <rdir>/hdd_disc.json.
-DISC_HDD_WAS=""
-disc_hdd_prepare() {
-    local rdir="$1" want cur tmp action
-    want="$(x1box_dir)/hdd.img"
-    tmp="$D/.prefs.${DEVICE_LABEL:-$SERIAL}.hdd.disc.xml"
-    DISC_HDD_WAS=""
+# hdd_pref_point <json> <want>: point hddPath at <want> for one run, the one
+# way a disc run and a scene run both do it. Sets HDD_POINT_ACTION (kept: it
+# already named <want>, no write and no marker; set: moved, the original is in
+# the marker; failed: could not be moved; unread: the prefs file could not be
+# read) and HDD_POINT_WAS (what it named), and writes them to <json> with
+# "restored": null for hdd_pref_after to fill in.
+HDD_POINT_ACTION=""; HDD_POINT_WAS=""
+hdd_pref_point() {
+    local json="$1" want="$2" tmp
+    tmp="$D/.prefs.${DEVICE_LABEL:-$SERIAL}.hdd.point.xml"
+    HDD_POINT_ACTION=""; HDD_POINT_WAS=""
     if ! hdd_pref_fetch "$tmp"; then
-        action=unread
-        log "  HDD PREF: cannot read x1box_prefs.xml; only run_disc.sh's check of the guest's own log guards this run's disk"
+        HDD_POINT_ACTION=unread
     else
-        cur=$(hdd_pref_edit get "$tmp"); DISC_HDD_WAS="$cur"
-        if [ "$cur" = "$want" ]; then
-            action=kept
+        HDD_POINT_WAS=$(hdd_pref_edit get "$tmp")
+        if [ "$HDD_POINT_WAS" = "$want" ]; then
+            HDD_POINT_ACTION=kept
         elif set_hdd_pref "$want" "$(hdd_pref_marker)" >/dev/null; then
-            action=set
-            log "  HDD PREF: disc run boots hdd.img (hddPath was ${cur:-(unset)}; put back afterwards)"
+            HDD_POINT_ACTION=set
         else
-            action=failed
+            HDD_POINT_ACTION=failed
         fi
     fi
-    python3 - "$rdir/hdd_disc.json" "$action" "${DISC_HDD_WAS}" "$want" <<'PYHDD'
+    python3 - "$json" "$HDD_POINT_ACTION" "$HDD_POINT_WAS" "$want" <<'PYHDD'
 import json, sys
 out, action, was, want = sys.argv[1:5]
 json.dump({"action": action, "was": was, "want": want, "restored": None}, open(out, "w"), indent=1)
 PYHDD
-    [ "$action" != failed ]
 }
 
-# disc_hdd_after <rdir>: put hddPath back if disc_hdd_prepare moved it. A
-# failure leaves the marker, and the next request's restore retries.
-disc_hdd_after() {
-    local rdir="$1" ok=true
+# hdd_pref_after <json>: put hddPath back if hdd_pref_point moved it, and say
+# so in <json>. A failure leaves the marker, and the next request's restore
+# retries.
+hdd_pref_after() {
+    local json="$1" ok=true
     [ -f "$(hdd_pref_marker)" ] || return 0
-    restore_hdd_pref || { ok=false; log "  WARNING: hddPath not restored after the disc run; the next request retries"; }
-    python3 - "$rdir/hdd_disc.json" "$ok" <<'PYHDD' 2>/dev/null
+    restore_hdd_pref || { ok=false; log "  WARNING: hddPath not restored after the run; the next request retries"; }
+    python3 - "$json" "$ok" <<'PYHDD' 2>/dev/null
 import json, sys
 p = sys.argv[1]
 d = json.load(open(p))
@@ -996,6 +994,26 @@ json.dump(d, open(p, "w"), indent=1)
 PYHDD
     return 0
 }
+
+# disc_hdd_prepare <rdir>: 0 = go ahead, 1 = hddPath is another image and could
+# not be moved (DISC_HDD_WAS says what it names); a disc must not run on it.
+# An unreadable prefs file is not a refusal (a release package has no run-as):
+# run_disc.sh reads the disk the guest actually booted from its own logcat, and
+# that is the guard then. Writes <rdir>/hdd_disc.json.
+DISC_HDD_WAS=""
+disc_hdd_prepare() {
+    local rdir="$1"
+    hdd_pref_point "$rdir/hdd_disc.json" "$(x1box_dir)/hdd.img"
+    DISC_HDD_WAS="$HDD_POINT_WAS"
+    case "$HDD_POINT_ACTION" in
+        unread) log "  HDD PREF: cannot read x1box_prefs.xml; only run_disc.sh's check of the guest's own log guards this run's disk";;
+        set) log "  HDD PREF: disc run boots hdd.img (hddPath was ${DISC_HDD_WAS:-(unset)}; put back afterwards)";;
+    esac
+    [ "$HDD_POINT_ACTION" != failed ]
+}
+
+# disc_hdd_after <rdir>: put hddPath back if disc_hdd_prepare moved it.
+disc_hdd_after() { hdd_pref_after "$1/hdd_disc.json"; }
 
 # LOAD A SAVE STATE WITHOUT DRIVING THE PAUSE MENU (#433, lane.savestate-req1019).
 #
@@ -1186,6 +1204,110 @@ restore_scene_pref() {
         log "  SCENE: restore had at least one failure; see the lines above"
     fi
     return $rc
+}
+
+# A SCENE BOOTS A COPY OF THE DISK ITS STATE WAS SAVED ON (#433).
+#
+# Every save takes a disk snapshot and names it in the state (hxs.c
+# make_disk_snapshot, meta disk_snap), and a load refuses
+# disk-snapshot-missing unless the disk booted now holds that snapshot by
+# name; then it takes an undo-load snapshot and rolls the disk back to the
+# state's (bdrv_all_goto_snapshot). So a load needs the disk the state was
+# saved on, and it writes to that disk. A title run's own disk, titles.qcow2,
+# is composed from goldens and rebuilt once a run writes to it, so it keeps
+# no state's snapshot; on a device with no titles
+# registry, or HAKUX_TITLES_DISK=0, the run boots whatever hddPath names,
+# which on the Nova is the owner's image: a load there rolls the owner's
+# disk back. A byte copy of the qcow2 keeps its internal snapshots, and the
+# snapshot names carry the states dir's id, not the disk's path, so a copy
+# made with the app stopped loads every state the original does.
+#
+# So a scene names its disk (scenes.tsv `hdd`, or request.sh --load-hdd): a
+# file in x1box_dir(). scene_hdd_check refuses, before the install, a load
+# that names none, a name that is the owner's image or a harness disk, and a
+# name the device does not have. scene_hdd_prepare points hddPath at it in
+# place of titles_disk_prepare, through hdd_pref_point (the disc runs' one
+# marker and readback), and scene_hdd_after puts the pref back. The copy is
+# the scene's own: a load leaves it rolled back to the state, which is where
+# the next load of that state starts anyway.
+
+# scene_hdd_name_refusal <name>: why a scene may not boot <name>, or nothing.
+# Lower-cased first: the device's shared storage matches names without case.
+scene_hdd_name_refusal() {
+    local n="$1" lc="${1,,}"
+    case "$n" in
+        "") echo "a save-state load names no hdd: a state loads only on a disk holding the snapshot it was saved with, and without one the run boots titles.qcow2 (composed from goldens: no such snapshot, the load VOIDs) or whatever hddPath names (on the Nova the owner's image, which the load would roll back); name a copy of the disk the state was saved on in the scene's scenes.tsv hdd column, or pass --load-hdd <name>"; return;;
+        */*) echo "scene hdd '$n' is a path; name a file in the device's x1box dir (where hdd.img is)"; return;;
+        .|..|-*|*[!A-Za-z0-9._-]*) echo "scene hdd '$n' is not a plain file name (letters, digits, . _ - only)"; return;;
+    esac
+    case "$lc" in
+        hdd-owner-*) echo "scene hdd '$n' is the owner's image (hdd-owner-*): a load rolls the disk it boots back to the state's snapshot, so a scene boots a copy of that image, never the image itself";;
+        titles.qcow2|hdd.img) echo "scene hdd '$n' is a harness disk (other runs rebuild and boot it); name a copy of the disk the state was saved on";;
+    esac
+}
+
+# scene_hdd_check <req> <rdir>: 0 = no load, or the named disk is there; 3 =
+# refused, the reason in <rdir>/scene_hdd.refused; 1 = the device did not
+# answer. Run before the install, so a refused scene changes nothing.
+scene_hdd_check() {   # <req> <rdir>
+    local req="$1" rdir="$2" title load_slot name why p ans
+    title=$(jq_get "$req" title "")
+    load_slot=$(jq_get "$req" load_slot "")
+    name=$(jq_get "$req" scene_hdd "")
+    [ -n "$title" ] || return 0
+    [ -n "$load_slot$name" ] || return 0
+    why=$(scene_hdd_name_refusal "$name")
+    if [ -z "$why" ]; then
+        p="$(x1box_dir)/$name"
+        ans=$(adb_call "$ADB_QUICK_TIMEOUT" "test scene hdd $name" \
+            shell "if [ -f '$p' ]; then echo file; elif [ -e '$p' ]; then echo other; else echo none; fi" \
+            2>/dev/null | tr -d '\r' | head -1)
+        [ -s "${ADB_HUNG_FILE:-}" ] && return 1
+        case "$ans" in
+            file) return 0;;
+            none) why="scene hdd '$name' does not exist on the device ($p); copy the disk the state was saved on there first, with the app stopped";;
+            other) why="scene hdd '$name' on the device ($p) is not a file";;
+            *) return 1;;
+        esac
+    fi
+    printf '%s\n' "$why" > "$rdir/scene_hdd.refused"
+    log "  SCENE HDD: REFUSED: $why"
+    return 3
+}
+
+# scene_hdd_prepare <rdir> <req>: the title run's disk is the scene's copy.
+# Mode 660 first (THE DISK MUST BE MODE 660), then hddPath, so a failure
+# leaves the pref alone. Writes <rdir>/hdd_scene.json (hdd_pref_point) and
+# <rdir>/hdd.json, the record of the disk the run booted. 0, or 1.
+scene_hdd_prepare() {   # <rdir> <req>
+    local rdir="$1" req="$2" name want mode0
+    name=$(jq_get "$req" scene_hdd "")
+    want="$(x1box_dir)/$name"
+    mode0=$(dev_mode "$want")
+    dev_make_660 "$want" || { log "  SCENE HDD: cannot make $want mode 660"; return 1; }
+    hdd_pref_point "$rdir/hdd_scene.json" "$want"
+    case "$HDD_POINT_ACTION" in
+        kept|set) ;;
+        unread) log "  SCENE HDD: cannot read x1box_prefs.xml, so hddPath cannot be pointed at $name; the load must not run on whatever it names"; return 1;;
+        *) log "  SCENE HDD: could not point hddPath at $want (it names ${HDD_POINT_WAS:-(unset)})"; return 1;;
+    esac
+    python3 - "$rdir/hdd.json" "$want" "$name" "$mode0" <<'PYHDD'
+import json, sys
+out, path, name, mode0 = sys.argv[1:5]
+json.dump({"path": path, "split": "off: scene hdd %s" % name, "scene_hdd": name,
+           "mode_found": mode0 or None, "mode": "660"}, open(out, "w"), indent=1)
+PYHDD
+    if [ "$HDD_POINT_ACTION" = kept ]; then
+        log "  hddPath already names $want (scene hdd; nothing to put back)"
+    else
+        log "  hddPath -> $want (scene hdd; was ${HDD_POINT_WAS:-(unset)}, put back afterwards)"
+    fi
+}
+
+# scene_hdd_after <rdir>: put hddPath back after a scene run, on every exit.
+scene_hdd_after() {   # <rdir>
+    [ -f "$1/hdd_scene.json" ] || { restore_hdd_pref; return $?; }
+    hdd_pref_after "$1/hdd_scene.json"
 }
 
 SCENE_WATCH_PID=""
@@ -2662,6 +2784,18 @@ serve_one() {
     # build before it drains nothing.
     [ ! -f "$rdir/battery.json" ] || python3 -c 'import json,sys,time
 p=sys.argv[1]; b=json.load(open(p)); b["t_device"]=time.time(); json.dump(b,open(p,"w"))' "$rdir/battery.json" 2>/dev/null
+    # A save-state load's disk, by name and on the device, before anything is
+    # installed or launched (see A SCENE BOOTS A COPY). No load, no adb call.
+    local shrc; scene_hdd_check "$req" "$rdir"; shrc=$?
+    if [ "$shrc" = 3 ]; then
+        echo "refused before the install: $(cat "$rdir/scene_hdd.refused" 2>/dev/null)" > "$rdir/ERROR"
+        log "  SCENE HDD REFUSED"
+        mv "$req" "$rdir/request.json"; return 0
+    elif [ "$shrc" != 0 ]; then
+        adb_error "could not check the scene's hdd on the device; see dispatcher.log" > "$rdir/ERROR"
+        log "  SCENE HDD CHECK FAILED"
+        mv "$req" "$rdir/request.json"; return 0
+    fi
     adb_call "$ADB_INSTALL_TIMEOUT" "adb install -r" install -r "$apk" 2>&1 | grep -q Success || {
         adb_error "install failed" > "$rdir/ERROR"; log "  INSTALL FAILED: $(cat "$rdir/ERROR")"
         mv "$req" "$rdir/request.json"; maybe_run_doctor "$id" "$rdir"; return 0
@@ -2771,9 +2905,11 @@ PYEOF
         # Which title, and the state its route was written for (request.sh
         # --route, titlestate.py resolve-route). A request queued before that
         # carries neither: its title from the ISO name, state `any`.
-        local ttid tstate tsave trc pbsearched
+        local ttid tstate tsave trc pbsearched scene_hdd dwhat
         ttid=$(jq_get "$req" title_id "")
         [ -n "$ttid" ] || ttid=$(python3 "$TITLESTATE" tid-for-iso "$title" 2>/dev/null)
+        # A scene's own disk, in place of the titles disk (A SCENE BOOTS A COPY).
+        scene_hdd=$(jq_get "$req" scene_hdd "")
 
         # --load-state/--scene (#433): isolate the named slot on the device
         # before anything else touches it, so every refusal path below has
@@ -2819,7 +2955,13 @@ PYEOF
         # title's FIRST golden (never a replace).
         ensure_profile_restored "$ttid" "$tstate" "$rdir" "$req"
 
-        titles_disk_prepare "$id" "$rdir" "$req_env" "$ttid" "$tstate" "$tsave"; trc=$?
+        if [ -n "$scene_hdd" ]; then
+            dwhat="the scene's disk $scene_hdd"
+            scene_hdd_prepare "$rdir" "$req"; trc=$?
+        else
+            dwhat="the titles disk"
+            titles_disk_prepare "$id" "$rdir" "$req_env" "$ttid" "$tstate" "$tsave"; trc=$?
+        fi
         if [ "$trc" = 3 ]; then
             pbsearched=$(python3 -c 'import json,sys
 try: print(", ".join(json.load(open(sys.argv[1])).get("searched") or []))
@@ -2830,13 +2972,15 @@ except Exception: print("")' "$rdir/profile-backup.json" 2>/dev/null)
             restore_scene_pref
             mv "$req" "$rdir/request.json"; return 0
         elif [ "$trc" != 0 ]; then
-            adb_error "could not prepare the titles disk; see dispatcher.log" > "$rdir/ERROR"
-            log "  TITLES DISK SETUP FAILED"
-            restore_hdd_pref
+            adb_error "could not prepare $dwhat; see dispatcher.log" > "$rdir/ERROR"
+            log "  TITLES DISK SETUP FAILED ($dwhat)"
+            scene_hdd_after "$rdir"
             restore_scene_pref
             mv "$req" "$rdir/request.json"; maybe_run_doctor "$id" "$rdir"; return 0
         fi
-        verify_profile_on_device "$ttid" "$tstate" "$rdir"; trc=$?
+        # The scene's copy carries the owner's profile, not a composed save.
+        trc=0
+        [ -n "$scene_hdd" ] || { verify_profile_on_device "$ttid" "$tstate" "$rdir"; trc=$?; }
         if [ "$trc" = 3 ]; then
             echo "refused before the soak: $(cat "$rdir/hdd.refused" 2>/dev/null)" > "$rdir/ERROR"
             log "  PROFILE VERIFY REFUSED"
@@ -2850,7 +2994,7 @@ except Exception: print("")' "$rdir/profile-backup.json" 2>/dev/null)
         refmsg=$(write_route_refs "$rdir" "$req") || {
             echo "refused before the soak: ${refmsg:-a route_refs entry failed validation}" > "$rdir/ERROR"
             log "  ROUTE REFS REFUSED: ${refmsg:-?}"
-            restore_hdd_pref
+            scene_hdd_after "$rdir"
             restore_scene_pref
             mv "$req" "$rdir/request.json"; return 0
         }
@@ -2874,7 +3018,11 @@ except Exception: print("")' "$rdir/profile-backup.json" 2>/dev/null)
         stop_frame_capture
         stop_soak_video
         stop_scene_watch
-        titles_disk_after "$id" "$rdir"
+        if [ -n "$scene_hdd" ]; then
+            scene_hdd_after "$rdir"
+        else
+            titles_disk_after "$id" "$rdir"
+        fi
         local scene_void; scene_void=$(scene_verdict "$rdir" "$req" "$sha")
         restore_scene_pref || log "  WARNING: scene slots not restored; the next request retries"
         [ -z "$scene_void" ] || log "  SCENE VOID: $scene_void"
@@ -2913,16 +3061,18 @@ def _battery(rdir):
         return None
 # WHICH DISK THE TITLE BOOTED (titles_disk_prepare): its device path, sha256
 # at the start, the plans that made it current, and what the post-run
-# harvest found. None before the split existed.
+# harvest found. None before the split existed. A scene's own disk
+# (scene_hdd_prepare) carries `pref`: how hddPath was moved and put back.
 def _hdd(rdir):
     try:
         h = json.load(open(os.path.join(rdir, "hdd.json")))
     except (OSError, ValueError):
         return None
-    try:
-        h["after"] = json.load(open(os.path.join(rdir, "hdd.after.json")))
-    except (OSError, ValueError):
-        pass
+    for key, name in (("after", "hdd.after.json"), ("pref", "hdd_scene.json")):
+        try:
+            h[key] = json.load(open(os.path.join(rdir, name)))
+        except (OSError, ValueError):
+            pass
     return h
 # THE SCREEN VIDEO, read straight from the mp4: there is no ffmpeg or
 # ffprobe on this host and none is installed. `mvhd` (inside `moov`) gives

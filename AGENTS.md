@@ -934,9 +934,9 @@ Hard-won operational facts, each of which cost real time:
 ### Loading a scene without driving the device
 
 `request.sh --scene <name>` loads a named scene from `docs/testing/scenes.tsv`
-(name, title id, state file, slot, default hold); `--load-state
-<slot-or-file>` and `--hold-trigger rt:<seconds>` take the same scene apart
-into its two parts for a one-off. Either way the dispatcher puts the state
+(name, title id, slot, state file, default hold, hdd); `--load-state
+<slot-or-file>`, `--hold-trigger rt:<seconds>` and `--load-hdd <name>` take
+the same scene apart for a one-off. Either way the dispatcher puts the state
 where the app's auto-load reads it, loads it, and waits for `[savestate]
 op=load slot=<N> ok=1` in logcat before the run continues -- nobody drives the
 pause menu by hand to reach a scene. A hold trigger held after the load is
@@ -948,6 +948,15 @@ the result VOID with the reason, never a silent run from the title screen.
 The state file and the `savestate_auto_load` pref are restored after every
 run, pass or VOID; `--load-state` at queue time refuses a slot or file that
 does not exist, before anything is dispatched.
+
+A load also needs the disk the state was saved on: every save snapshots the
+disk, a load refuses `disk-snapshot-missing` without that snapshot, and a load
+rolls the disk it boots back to it. So a load boots `hdd`, a file in the
+device's x1box dir that is a **copy** of that disk (a byte copy of the qcow2
+keeps its snapshots; make it with the app stopped). hddPath points at it for
+the run and is put back after. A load that names no hdd, a name matching
+`hdd-owner-*` (the owner's image), `titles.qcow2` or `hdd.img`, and a name the
+device does not have are refused before anything is installed.
 
 ### Arming a frame dump without a button
 
