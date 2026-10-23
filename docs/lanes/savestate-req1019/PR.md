@@ -1,14 +1,16 @@
 # savestate-req1019: load a save state through request.sh -- no hand-driving to reach a scene (#433)
 
-State: draft
+State: ready
 
 Lane: savestate-req1019          Issue: #433
 Base: master @ b4bdccd82f (the scene disk below is built on suitesha1022's hddPath helpers)
 Files: docs/testing/request.sh, docs/testing/dispatcher.sh, docs/testing/scenes.tsv, docs/testing/jobs/selftest.d/99-load-state.sh, docs/testing/jobs/roles/lane.md, AGENTS.md, docs/lanes/savestate-req1019/**
 Prediction: none: no arm (mechanical feature work with a falsifier fragment, not a pixel/perf claim)
 Needs device: yes (one proof run)    Needs NDK: no (mechanism (a): no APK change)
-Selftest: 99-load-state -- a scene boots its own copy of the disk (hddPath set, read back, put back), and a scene
-  naming no disk, the owner's image, a harness disk or a missing file is refused before the install; six mutants
+Selftest: 99-load-state 50-arms-requeue 51-dispatch-hardening 99-disc-hdd -- 99-load-state: a scene boots its own
+  copy of the disk (hddPath set, read back, put back), and a scene naming no disk, the owner's image, a harness disk
+  or a missing file is refused before the install; six mutants. 99-disc-hdd: the disc path shares the factored
+  hdd_pref_point/hdd_pref_after. 50 + 51: serve_one's branch and the queue guard (51 needs 50's fixture).
 
 Mechanism (a) built, no APK change: `request.sh --scene <name>` (sugar for `--load-state` +
 `--hold-trigger`, from `docs/testing/scenes.tsv`) and `--load-state <slot-or-file>` isolate the target
@@ -36,7 +38,10 @@ failure mode request.sh's existing `--skip-tests`/`--audio-capture`/`--only-test
 now correctly refuses at queue time instead of running. Selftest case (f) (3 checks) covers the new guard
 directly. `NOTES.md` has the full incident writeup and the exact command to re-run once folded.
 
-State stays `draft` until that device proof is run and recorded here, per the brief.
+Ready without the device proof (lane.local 2026-10-23 07:55 PDT, owner: "Proceed with the next steps, you have full
+control of the device"): the proof cannot run before the fold, because the service runs master's tree. It runs
+first thing after the fold, on the GTA III heavy saves of 10-23 and `hdd-scene-gta3.img` (made 07:46, a byte copy
+of the owner's image, sha256 44f12160...), and is recorded on #433.
 
 Board request filed (`$DISPATCH_DIR/board-requests/savestate-req1019.md`) for the files above -- several
 show as held in territory.toml by rows whose own notes say RELEASED/FOLDED and that have no live
