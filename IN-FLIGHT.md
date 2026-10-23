@@ -126,6 +126,7 @@ No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-23 savestate-req1019: load a save state through request.sh -- no hand-driving to reach a scene (#433)
 - 2026-10-23 suitesha1022: a disc run boots the harness's disk, and a run on any other disk is refused by name
 - 2026-10-22 holdpid1022: hold.sh's owner-play capture never confirms itself, because systemd expands `$` in the script before bash sees it
 - 2026-10-22 hangplay1022: a dark screen that lasts is a hang, and a screen held as leaning play stays so (#433)
@@ -137,6 +138,5 @@ No branch is being worked right now.
 - 2026-10-19 Fix the 10-19 11:14 master-red: a usage-meter time bomb and a hold-tiers clock race
 - 2026-10-19 fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433)
 - 2026-10-19 fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433)
-- 2026-10-19 Nova priority tiers that actually hold: screening yields to FPS and release-fix work
 
-_Updated 2026-10-23 09:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-23 09:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
