@@ -25,6 +25,26 @@
 # through wslpath -u, same as dev_push's own wslpath -w. Every call is
 # logged to $LS_ADBLOG.
 #
+# THE FAKE DEVICE IS APP-ONLY, AS THE REAL ONE IS (lane.scenewrite1023). On
+# the Nova a title's states dir is `drwxr-s--- u0_a145 ext_data_rw`: `adb
+# shell` (uid shell, group ext_data_rw) reads it and cannot create, rename or
+# delete in it, until `run-as <pkg> chmod g+w` opens it. This fragment's fake
+# ran every `shell` and `push` as the host user, so nothing it did could ever
+# show that split, and the scene path shipped on a comment saying the dir was
+# shell-writable. Now the host user stands in for the shell user and the
+# kernel does the refusing: a states dir the fake marks app-only is host
+# mode 555 (owner-readable, not owner-writable), so a plain-shell or push
+# create, `mv`, `cp` into, `rm` or `.new` fails with a real EACCES, while
+# `ls`, `stat` and `sha256sum` still work. `run-as <pkg> chmod g+w|g-w <dir>`
+# is translated to u+w|u-w (the owner changing its own dir) and `run-as` of
+# anything else may write a closed dir (it is the owner). Faults are files,
+# so a case switches one on by creating it and ls_reset_device clears them:
+#   fault.stuck      run-as chmod does nothing (a dir run-as cannot open)
+#   fault.failmv     text; a plain-shell `mv` whose command contains it fails
+#   fault.failmv.lie with fault.failmv: the mv does nothing and says it worked
+# The kernel only refuses a non-root user, so the (k0) probe says so loudly
+# when this runs as root.
+#
 # perf/pad.sh is NOT faked: ROUTE_DRY=1 (its own dry mode, already used by
 # route.sh --dry) makes it print what it would send and touch no device, so
 # start_scene_watch's real RT_DOWN/RT_RELEASED path runs for real, against
@@ -47,6 +67,19 @@
 # and writes to it as a load does. Six mutants, each one exact substitution
 # on a mirror copy, each reinstating the weaker rule one check above exists
 # to refuse; each must turn that check red.
+#
+# THE STATES DIR (k), lane.scenewrite1023, against the app-only fake: (k0) the
+# fake itself behaves as the device does; (k1) a closed dir plus a host-file
+# push -- set_scene_pref opens it, backs up, pushes, parks, and restore puts
+# every file back byte for byte and the mode back; (k1b) a dir that is already
+# open is neither chmodded nor closed; (k2) a dir run-as cannot open fails
+# with the named reason and nothing on the device changes; (k3, k3b) a park
+# that fails, and one that lies about it, fail the setup with the files it had
+# already moved back; (k5) the app's lower-case dir for an upper-case ttid;
+# (k6, k7) a missing dir and a request with no title id. Mutants: the open
+# step dropped (k1), the restore's close dropped (k1), a failed park ignored as
+# `&& parked+=` ignored it, with and without the listing that backs the mv
+# status (k3, k3b).
 
 _ls_dg_real() { realpath -m -- "$1" 2>/dev/null; }
 LS="$T/ls"
@@ -55,9 +88,11 @@ case "$(_ls_dg_real "$LS")" in
     *) echo "SELFTEST GUARD: 99-load-state.sh refuses to run, nothing removed: $LS is not under \${TMPDIR:-/tmp} or /tmp" >&2
        fail=$((${fail:-0} + 1)); return 1 2>/dev/null || exit 1 ;;
 esac
+# A closed states dir is host mode 555, which rm -rf cannot empty: open them first.
+chmod -R u+w "$LS" 2>/dev/null
 rm -rf "$LS"
 mkdir -p "$LS/bin" "$LS/src" "$LS/device/x1box/states/5454000e" "$LS/device/data/shared_prefs" "$LS/dispatch/logs" "$LS/mut"
-export LS_DEV="$LS/device" LS_ADBLOG="$LS/adb.log"
+export LS_DEV="$LS/device" LS_ADBLOG="$LS/adb.log" LS_FAKE="$LS/fault"
 : > "$LS_ADBLOG"
 
 cat > "$LS/bin/adb" <<'SH'
@@ -66,6 +101,8 @@ echo "ADB $*" >> "$LS_ADBLOG"
 [ "$1" = devices ] && { printf 'List of devices attached\nee317437\tdevice\n'; exit 0; }
 [ "$1" = -s ] && shift 2
 sub="$1"; shift
+# The host user is the shell user; a states dir the fake marks app-only is
+# host mode 555, so the kernel refuses its writes (header comment).
 case "$sub" in
     shell)
         cmd="$1"
@@ -73,9 +110,33 @@ case "$sub" in
             "am force-stop "*) exit 0 ;;
             run-as*)
                 rest="${cmd#run-as }"; rest="${rest#* }"
-                ( cd "$LS_DEV/data" && bash -c "$rest" )
-                exit $? ;;
-            *) bash -c "$cmd"; exit $? ;;
+                case "$rest" in
+                    "chmod g+w "*|"chmod g-w "*)
+                        # The app (the owner) changing the group bit of its dir:
+                        # for the host user that is the owner bit.
+                        [ -e "$LS_FAKE.stuck" ] && exit 0
+                        read -r _ op path <<<"$rest"
+                        path="${path#\'}"; path="${path%\'}"
+                        case "$op" in g+w) chmod u+w "$path";; g-w) chmod u-w "$path";; esac
+                        exit $? ;;
+                    *)
+                        # Anything else run-as does may write a closed dir: it owns it.
+                        closed=$(find "$LS_DEV/x1box/states" -type d ! -perm -u+w 2>/dev/null)
+                        for d in $closed; do chmod u+w "$d"; done
+                        ( cd "$LS_DEV/data" && bash -c "$rest" ); rc=$?
+                        for d in $closed; do chmod u-w "$d"; done
+                        exit $rc ;;
+                esac ;;
+            *)
+                if [ -s "$LS_FAKE.failmv" ]; then
+                    pat=$(cat "$LS_FAKE.failmv")
+                    case "$cmd" in
+                        *"mv "*"$pat"*)
+                            [ -e "$LS_FAKE.failmv.lie" ] && exit 0
+                            echo "mv: failed to rename: Permission denied" >&2; exit 1 ;;
+                    esac
+                fi
+                bash -c "$cmd"; exit $? ;;
         esac ;;
     push)
         src=$(wslpath -u "$1" 2>/dev/null) || src="$1"
@@ -86,10 +147,20 @@ esac
 SH
 chmod +x "$LS/bin/adb"
 
+# ls_reset_device [open] [slot1]: the fake device as a fresh Nova title has
+# it -- the states dir the app's (555) unless "open" (the Nova's 5454000e after
+# lane.local's by-hand chmod) -- and no fault switched on. "slot1" adds a third
+# slot file, for a case that needs two files to park.
 ls_reset_device() {
-    printf 'ORIGINAL-SLOT5' > "$LS_DEV/x1box/states/5454000e/slot5.hxs"
-    printf 'ORIGINAL-SLOT3' > "$LS_DEV/x1box/states/5454000e/slot3.hxs"
-    rm -f "$LS_DEV/x1box/states/5454000e/"*.hld
+    local d="$LS_DEV/x1box/states/5454000e" a
+    chmod -R u+w "$LS_DEV/x1box/states" 2>/dev/null
+    rm -rf "$LS_DEV/x1box/states"
+    mkdir -p "$d"
+    printf 'ORIGINAL-SLOT5' > "$d/slot5.hxs"
+    printf 'ORIGINAL-SLOT3' > "$d/slot3.hxs"
+    for a in "$@"; do [ "$a" = slot1 ] && printf 'ORIGINAL-SLOT1' > "$d/slot1.hxs"; done
+    chmod 660 "$d"/*.hxs
+    rm -f "$LS_FAKE".*
     cat > "$LS_DEV/data/shared_prefs/x1box_prefs.xml" <<'XML'
 <?xml version='1.0' encoding='utf-8' standalone='yes' ?>
 <map>
@@ -99,6 +170,12 @@ ls_reset_device() {
 XML
     # Every label: device_env names ee317437 nova, whatever DEVICE_LABEL was.
     rm -f "$LS/dispatch/.scene_pref."* "$LS/dispatch/.scene_files."*
+    # states/ is the app's too (shell cannot make a title dir in it).
+    case " $* " in
+        *" open "*) chmod 755 "$d";;
+        *)          chmod 555 "$d";;
+    esac
+    chmod 555 "$LS_DEV/x1box/states"
 }
 
 ls_req() {   # <path> <load_slot> <load_state_file> <hold_trigger>
@@ -553,6 +630,348 @@ esac
 [ -f "$RDIR/request.json" ] && [ ! -e "$LS/dispatch/running/lsj2.req" ] && ok "(j2) the request left running/ for its result dir" || bad "(j2) the refused request was not moved to its result dir"
 ls_owner_intact && cmp -s "$LS/prefs.before" "$LS_PREFS" && ok "(j2) the owner's image and the prefs are untouched" || bad "(j2) the refusal changed the owner's image or the prefs"
 
+# ----------------------------------------------- (k) the states dir is app-only
+# A scene writes into x1box/states/<ttid>/, which the app made and `adb shell`
+# can read and cannot write (the header). Each case below runs the real
+# set_scene_pref/restore_scene_pref against the fake's closed dir, reads the
+# device back by the host paths, and records its findings as lines in
+# <rdir>/facts ("ok   text" / "bad  text") through ls_f. The same scenario is
+# then run against a mutant, which must produce at least one "bad" line.
+LS_SD="$LS_DEV/x1box/states/5454000e"
+printf 'PUSHED-STATE' > "$LS/src/heavy2.hxs"
+
+ls_manifest() {   # every name in the title's dir with its mode, then each file's sha256
+    find "$LS_SD" -mindepth 1 -printf '%f %m\n' 2>/dev/null | sort
+    find "$LS_SD" -mindepth 1 -type f -exec sha256sum {} + 2>/dev/null | sed "s|  $LS_SD/|  |" | sort -k2
+}
+ls_f() {   # <facts file> <text> <command...>: append "ok   <text>" or "bad  <text>"
+    local out="$1" text="$2"; shift 2
+    if "$@" >/dev/null 2>&1; then echo "ok   $text" >> "$out"; else echo "bad  $text" >> "$out"; fi
+}
+ls_facts_show() {   # <rdir>: the facts through ok/bad; with the log and manifest diff when any is bad
+    local l
+    while IFS= read -r l; do
+        case "$l" in
+            "ok   "*) ok "${l#ok   }";;
+            "bad  "*) bad "${l#bad  }";;
+        esac
+    done < "$1/facts"
+    if grep -q '^bad' "$1/facts"; then
+        tail -n 25 "$1/log" 2>/dev/null | sed 's/^/        log: /'
+        [ ! -s "$1/manifest.diff" ] || sed 's/^/        manifest: /' "$1/manifest.diff"
+    fi
+}
+ls_facts_red() { grep -q '^bad' "$1/facts"; }   # <rdir>: a mutant's case found something wrong
+ls_marker() { ls -A "$LS/dispatch" | grep '^\.scene_files\.' | head -1; }
+ls_no_marker() { [ -z "$(ls_marker)" ]; }
+ls_log_since() { sed -n "$(($1 + 1)),\$p" "$LS_ADBLOG"; }   # <adb.log line count taken before>
+ls_count_since() { ls_log_since "$1" | grep -c -- "$2"; }
+ls_no_writes_since() { ! ls_log_since "$1" | grep -qE ' push | shell (cp|mv|rm|touch|mkdir|chmod 660) '; }
+ls_has() { case "$1" in *"$2"*) return 0;; esac; return 1; }   # <text> <substring>
+ls_lacks() { ! grep -qF -- "$1" "$2"; }                        # <text> <file>
+
+echo "== load-state (k0): the fake device refuses what the real one refuses, and run-as can still write"
+ls_reset_device
+LS_ADB="$LS/bin/adb" LS_PKG=com.jreinach.hakux.debug
+if "$LS_ADB" shell "touch '$LS_SD/probe'" >/dev/null 2>&1; then
+    bad "(k0) a plain-shell create worked in the app-only dir (uid $(id -u): the kernel does not refuse root, so no (k) case would prove anything)"
+    rm -f "$LS_SD/probe"
+else
+    ok "(k0) a plain-shell create in the app-only dir is refused"
+fi
+"$LS_ADB" shell "mv '$LS_SD/slot3.hxs' '$LS_SD/slot3.hxs.hld'" >/dev/null 2>&1
+[ -e "$LS_SD/slot3.hxs" ] && [ ! -e "$LS_SD/slot3.hxs.hld" ] && ok "(k0) a plain-shell mv in it is refused" || bad "(k0) a plain-shell mv worked in the app-only dir"
+"$LS_ADB" shell "rm -f '$LS_SD/slot3.hxs'" >/dev/null 2>&1
+[ -e "$LS_SD/slot3.hxs" ] && ok "(k0) a plain-shell rm in it is refused" || bad "(k0) a plain-shell rm worked in the app-only dir"
+"$LS_ADB" push "$LS/src/heavy2.hxs" "$LS_SD/p.new" >/dev/null 2>&1
+[ ! -e "$LS_SD/p.new" ] && ok "(k0) an adb push into it is refused" || bad "(k0) an adb push worked in the app-only dir"
+[ "$("$LS_ADB" shell "ls '$LS_SD'" | tr '\n' ' ')" = "slot3.hxs slot5.hxs " ] \
+    && [ "$("$LS_ADB" shell "stat -c %s '$LS_SD/slot5.hxs'")" = 14 ] \
+    && [ "$("$LS_ADB" shell "sha256sum '$LS_SD/slot5.hxs'" | cut -d' ' -f1)" = "$(sha256sum "$LS_SD/slot5.hxs" | cut -d' ' -f1)" ] \
+    && ok "(k0) ls, stat and sha256sum still work from the plain shell" || bad "(k0) a read from the plain shell failed in the app-only dir"
+"$LS_ADB" shell "run-as $LS_PKG touch '$LS_SD/probe'" >/dev/null 2>&1
+[ -e "$LS_SD/probe" ] && [ "$(stat -c %a "$LS_SD")" = 555 ] && ok "(k0) run-as writes into it, and the dir is still closed afterwards" || bad "(k0) run-as could not write the app-only dir"
+chmod u+w "$LS_SD"; rm -f "$LS_SD/probe"; chmod u-w "$LS_SD"
+"$LS_ADB" shell "run-as $LS_PKG chmod g+w '$LS_SD'" >/dev/null 2>&1
+"$LS_ADB" shell "touch '$LS_SD/probe'" >/dev/null 2>&1
+[ -e "$LS_SD/probe" ] && [ "$(stat -c %a "$LS_SD")" = 755 ] && ok "(k0) after run-as chmod g+w the plain shell can create in it" || bad "(k0) run-as chmod g+w did not open the dir"
+"$LS_ADB" push "$LS/src/heavy2.hxs" "$LS_SD/p.new" >/dev/null 2>&1
+[ "$(cat "$LS_SD/p.new" 2>/dev/null)" = PUSHED-STATE ] && ok "(k0) and an adb push lands in it" || bad "(k0) an adb push did not land in the opened dir"
+"$LS_ADB" shell "rm -f '$LS_SD/probe' '$LS_SD/p.new'" >/dev/null 2>&1
+"$LS_ADB" shell "run-as $LS_PKG chmod g-w '$LS_SD'" >/dev/null 2>&1
+"$LS_ADB" shell "touch '$LS_SD/probe'" >/dev/null 2>&1
+[ ! -e "$LS_SD/probe" ] && [ "$(stat -c %a "$LS_SD")" = 555 ] && ok "(k0) run-as chmod g-w closes it again" || bad "(k0) run-as chmod g-w did not close the dir"
+: > "$LS_FAKE.stuck"
+"$LS_ADB" shell "run-as $LS_PKG chmod g+w '$LS_SD'" >/dev/null 2>&1
+"$LS_ADB" shell "touch '$LS_SD/probe'" >/dev/null 2>&1
+[ ! -e "$LS_SD/probe" ] && [ "$(stat -c %a "$LS_SD")" = 555 ] && ok "(k0) with the stuck fault on, run-as chmod g+w opens nothing" || bad "(k0) the stuck fault did not hold the dir closed"
+ls_reset_device
+
+# ls_k1 <dispatcher.sh> <rdir> [open]: a host-file load into slot 5 -- backup,
+# push, park, load, restore -- on a closed dir, or an already-open one.
+ls_k1() {
+    local disp="$1" rdir="$2" kind="${3:-closed}" F="$2/facts" N0 modein=555 wantmb="555 dr-xr-xr-x" wantop=True
+    rm -rf "$rdir"; mkdir -p "$rdir"; : > "$F"
+    if [ "$kind" = open ]; then modein=755 wantmb="" wantop=False; ls_reset_device open; else ls_reset_device; fi
+    ls_req "$rdir/req.json" 5 "$LS/src/heavy2.hxs" ""
+    ls_manifest > "$rdir/before"
+    N0=$(wc -l < "$LS_ADBLOG")
+    (
+        ls_src "$disp"
+        set_scene_pref "$rdir/req.json" "$rdir" 5454000e; set_rc=$?
+        ls_f "$F" "set_scene_pref returned 0 for a host-file load into the $kind dir" [ "$set_rc" = 0 ]
+        ls_f "$F" "mid-run the dir is writable by adb shell (mode 755)" [ "$(stat -c %a "$LS_SD")" = 755 ]
+        ls_f "$F" "mid-run slot5 holds the pushed state, mode 660" [ "$(cat "$LS_SD/slot5.hxs" 2>/dev/null):$(stat -c %a "$LS_SD/slot5.hxs" 2>/dev/null)" = PUSHED-STATE:660 ]
+        ls_f "$F" "mid-run the displaced slot5 is kept as slot5.hxs.orig.hld" [ "$(cat "$LS_SD/slot5.hxs.orig.hld" 2>/dev/null)" = ORIGINAL-SLOT5 ]
+        ls_f "$F" "mid-run slot3 is parked, not deleted, and no slot file is left to win the auto-load" \
+            [ "$(cat "$LS_SD/slot3.hxs.hld" 2>/dev/null):$([ -e "$LS_SD/slot3.hxs" ] && echo there || echo gone)" = ORIGINAL-SLOT3:gone ]
+        ls_f "$F" "mid-run savestate_auto_load is true" ls_pref_is true
+        ls_f "$F" "mid-run the marker holds the plan (opened=$wantop, pushed, slot3.hxs, mode '$wantmb')" \
+            ls_json "$LS/dispatch/$(ls_marker)" "d['opened'] is $wantop and d['pushed'] is True and d['parked'] == ['slot3.hxs'] and d['mode_before'] == '$wantmb'"
+        printf '10-23 12:00:00.000  111  111 I hakuX-lane: [savestate] op=load slot=5 ok=1 build=test\n' > "$rdir/logcat.txt"
+        start_scene_watch "$rdir" "$rdir/req.json"
+        wait "$SCENE_WATCH_PID" 2>/dev/null
+        scene_verdict "$rdir" "$rdir/req.json" testsha > "$rdir/verdict.out"
+        ls_f "$F" "the load line is a good load (no void)" [ ! -s "$rdir/verdict.out" ]
+        restore_scene_pref; rrc=$?
+        ls_f "$F" "restore_scene_pref returned 0" [ "$rrc" = 0 ]
+    ) 2> "$rdir/log"
+    ls_manifest > "$rdir/after"
+    diff "$rdir/before" "$rdir/after" > "$rdir/manifest.diff"
+    ls_f "$F" "after restore every file is back: names, modes and sha256 as before" [ ! -s "$rdir/manifest.diff" ]
+    ls_f "$F" "after restore the dir mode is $modein again" [ "$(stat -c %a "$LS_SD")" = "$modein" ]
+    ls_f "$F" "after restore savestate_auto_load is false again" ls_pref_is false
+    ls_f "$F" "after restore no scene marker is left" ls_no_marker
+    if [ "$kind" = open ]; then
+        ls_f "$F" "an already-open dir is neither chmodded nor closed" [ "$(ls_count_since "$N0" 'chmod g[+-]w')" = 0 ]
+        ls_f "$F" "the log does not claim to have opened it" ls_lacks "SCENE: opened" "$rdir/log"
+    else
+        ls_f "$F" "the dir was opened once and closed once" [ "$(ls_count_since "$N0" 'chmod g+w'):$(ls_count_since "$N0" 'chmod g-w')" = 1:1 ]
+        ls_f "$F" "the log names the dir and its mode before and after opening" \
+            grep -qF "SCENE: opened $LS_SD for adb shell: 555 dr-xr-xr-x -> 755 drwxr-xr-x (run-as chmod g+w)" "$rdir/log"
+        ls_f "$F" "the log names the mode it closed the dir back to" \
+            grep -qF "SCENE: closed $LS_SD again: mode 555 dr-xr-xr-x (was 555 dr-xr-xr-x before the run)" "$rdir/log"
+    fi
+}
+echo "== load-state (k1): a closed dir plus a host-file push -- opened, backed up, pushed, parked, loaded, restored"
+ls_k1 "$TESTING/dispatcher.sh" "$LS/rdir-k1"
+ls_facts_show "$LS/rdir-k1"
+echo "== load-state (k1b): the same load into a dir that is already open"
+ls_k1 "$TESTING/dispatcher.sh" "$LS/rdir-k1b" open
+ls_facts_show "$LS/rdir-k1b"
+
+# ls_k2 <dispatcher.sh> <rdir>: run-as chmod does nothing (a dir run-as cannot open).
+ls_k2() {
+    local disp="$1" rdir="$2" F="$2/facts" N0 msg
+    rm -rf "$rdir"; mkdir -p "$rdir"; : > "$F"
+    ls_reset_device; : > "$LS_FAKE.stuck"
+    ls_req "$rdir/req.json" 5 "$LS/src/heavy2.hxs" ""
+    ls_manifest > "$rdir/before"; cp "$LS_PREFS" "$rdir/prefs.before"
+    N0=$(wc -l < "$LS_ADBLOG")
+    (
+        ls_src "$disp"
+        set_scene_pref "$rdir/req.json" "$rdir" 5454000e; echo $? > "$rdir/set.rc"
+        printf '%s' "$SCENE_WHY" > "$rdir/why"
+    ) 2> "$rdir/log"
+    msg="$LS_SD is not writable by adb shell; run-as chmod g+w did not open it"
+    ls_f "$F" "set_scene_pref returned 1 for a dir run-as cannot open" [ "$(cat "$rdir/set.rc" 2>/dev/null)" = 1 ]
+    ls_f "$F" "the reason is exactly '<sdir> is not writable by adb shell; run-as chmod g+w did not open it'" [ "$(cat "$rdir/why" 2>/dev/null)" = "$msg" ]
+    ls_f "$F" "the log carries 'SCENE: <that reason>'" grep -qF "SCENE: $msg" "$rdir/log"
+    ls_f "$F" "the log names the dir's mode before and after the chmod" \
+        grep -qF "SCENE: $LS_SD mode 555 dr-xr-xr-x -> 555 dr-xr-xr-x after run-as chmod g+w" "$rdir/log"
+    ls_manifest > "$rdir/after"; diff "$rdir/before" "$rdir/after" > "$rdir/manifest.diff"
+    ls_f "$F" "the dir's files are unchanged" [ ! -s "$rdir/manifest.diff" ]
+    ls_f "$F" "the dir's mode is unchanged (555)" [ "$(stat -c %a "$LS_SD")" = 555 ]
+    ls_f "$F" "x1box_prefs.xml is unchanged" cmp -s "$rdir/prefs.before" "$LS_PREFS"
+    ls_f "$F" "no scene marker is left" ls_no_marker
+    ls_f "$F" "no push, cp, mv, rm or touch was sent to the device" ls_no_writes_since "$N0"
+}
+echo "== load-state (k2): a dir run-as cannot open -- the named failure, and nothing changes"
+ls_k2 "$TESTING/dispatcher.sh" "$LS/rdir-k2"
+ls_facts_show "$LS/rdir-k2"
+
+# ls_k3 <dispatcher.sh> <rdir> [lie]: the park of slot3 fails (slot1 is parked
+# before it and has to come back); with `lie` the mv reports success and moves nothing.
+ls_k3() {
+    local disp="$1" rdir="$2" kind="${3:-fail}" F="$2/facts" want
+    rm -rf "$rdir"; mkdir -p "$rdir"; : > "$F"
+    ls_reset_device slot1
+    printf "slot3.hxs' '" > "$LS_FAKE.failmv"
+    [ "$kind" = lie ] && : > "$LS_FAKE.failmv.lie"
+    ls_req "$rdir/req.json" 5 "$LS/src/heavy2.hxs" ""
+    ls_manifest > "$rdir/before"
+    (
+        ls_src "$disp"
+        set_scene_pref "$rdir/req.json" "$rdir" 5454000e; echo $? > "$rdir/set.rc"
+        printf '%s' "$SCENE_WHY" > "$rdir/why"
+    ) 2> "$rdir/log"
+    if [ "$kind" = lie ]; then want="slot3.hxs is still in $LS_SD"; else want="could not park slot3.hxs"; fi
+    ls_f "$F" "set_scene_pref returned 1: a failed park ($kind) fails the setup" [ "$(cat "$rdir/set.rc" 2>/dev/null)" = 1 ]
+    ls_f "$F" "the reason names slot3.hxs ('$want...')" ls_has "$(cat "$rdir/why" 2>/dev/null)" "$want"
+    ls_manifest > "$rdir/after"; diff "$rdir/before" "$rdir/after" > "$rdir/manifest.diff"
+    ls_f "$F" "every file is back as it was: slot1 (parked before the failure), slot3, and slot5 (pushed, then restored)" [ ! -s "$rdir/manifest.diff" ]
+    ls_f "$F" "slot1 is back under its own name, with its own bytes" [ "$(cat "$LS_SD/slot1.hxs" 2>/dev/null)" = ORIGINAL-SLOT1 ]
+    ls_f "$F" "slot5 holds its original bytes again" [ "$(cat "$LS_SD/slot5.hxs" 2>/dev/null)" = ORIGINAL-SLOT5 ]
+    ls_f "$F" "the dir is closed again (555)" [ "$(stat -c %a "$LS_SD")" = 555 ]
+    ls_f "$F" "savestate_auto_load was never turned on" ls_pref_is false
+    ls_f "$F" "no scene marker is left" ls_no_marker
+}
+echo "== load-state (k3): a park that fails -- the setup fails, the files it moved come back"
+ls_k3 "$TESTING/dispatcher.sh" "$LS/rdir-k3"
+ls_facts_show "$LS/rdir-k3"
+echo "== load-state (k3b): a park that reports success and moves nothing -- caught by listing the dir"
+ls_k3 "$TESTING/dispatcher.sh" "$LS/rdir-k3b" lie
+ls_facts_show "$LS/rdir-k3b"
+
+echo "== load-state (k5): an upper-case title id names the app's lower-case dir"
+RDIR="$LS/rdir-k5"; rm -rf "$RDIR"; mkdir -p "$RDIR"; LS_KF="$RDIR/facts"; : > "$LS_KF"
+ls_reset_device
+ls_req "$RDIR/req.json" 5 "" ""
+ls_manifest > "$RDIR/before"
+(
+    ls_src "$TESTING/dispatcher.sh"
+    set_scene_pref "$RDIR/req.json" "$RDIR" 5454000E; set_rc=$?
+    ls_f "$LS_KF" "set_scene_pref returned 0 for 5454000E" [ "$set_rc" = 0 ]
+    ls_f "$LS_KF" "the marker names .../states/5454000e (lower case)" ls_json "$LS/dispatch/$(ls_marker)" "d['dir'] == '$LS_SD'"
+    restore_scene_pref; echo $? > "$RDIR/restore.rc"
+) 2> "$RDIR/log"
+ls_f "$LS_KF" "restore_scene_pref returned 0" [ "$(cat "$RDIR/restore.rc" 2>/dev/null)" = 0 ]
+ls_f "$LS_KF" "the log never spells the dir 5454000E" ls_lacks "5454000E" "$RDIR/log"
+ls_manifest > "$RDIR/after"; diff "$RDIR/before" "$RDIR/after" > "$RDIR/manifest.diff"
+ls_f "$LS_KF" "every file is back, the dir is closed again" [ "$(stat -c %a "$LS_SD")" = 555 -a ! -s "$RDIR/manifest.diff" ]
+ls_facts_show "$RDIR"
+
+echo "== load-state (k6): a title with no states dir -- refused with the reason, nothing created"
+RDIR="$LS/rdir-k6"; rm -rf "$RDIR"; mkdir -p "$RDIR"; LS_KF="$RDIR/facts"; : > "$LS_KF"
+ls_reset_device
+chmod -R u+w "$LS_DEV/x1box/states"; rm -rf "$LS_SD"; chmod 555 "$LS_DEV/x1box/states"
+ls_req "$RDIR/req.json" 5 "$LS/src/heavy2.hxs" ""
+cp "$LS_PREFS" "$RDIR/prefs.before"
+LS_KN0=$(wc -l < "$LS_ADBLOG")
+(
+    ls_src "$TESTING/dispatcher.sh"
+    set_scene_pref "$RDIR/req.json" "$RDIR" 5454000e; echo $? > "$RDIR/set.rc"
+    printf '%s' "$SCENE_WHY" > "$RDIR/why"
+) 2> "$RDIR/log"
+ls_f "$LS_KF" "set_scene_pref returned 1" [ "$(cat "$RDIR/set.rc" 2>/dev/null)" = 1 ]
+ls_f "$LS_KF" "the reason says the dir does not exist" ls_has "$(cat "$RDIR/why" 2>/dev/null)" "$LS_SD does not exist"
+ls_f "$LS_KF" "no dir was made" [ ! -e "$LS_SD" ]
+ls_f "$LS_KF" "x1box_prefs.xml is unchanged" cmp -s "$RDIR/prefs.before" "$LS_PREFS"
+ls_f "$LS_KF" "no scene marker is left" ls_no_marker
+ls_f "$LS_KF" "nothing was written to the device" ls_no_writes_since "$LS_KN0"
+ls_facts_show "$RDIR"
+
+echo "== load-state (k7): a request with no title id -- refused, nothing touched"
+RDIR="$LS/rdir-k7"; rm -rf "$RDIR"; mkdir -p "$RDIR"; LS_KF="$RDIR/facts"; : > "$LS_KF"
+ls_reset_device
+ls_req "$RDIR/req.json" 5 "$LS/src/heavy2.hxs" ""
+ls_manifest > "$RDIR/before"
+LS_KN0=$(wc -l < "$LS_ADBLOG")
+(
+    ls_src "$TESTING/dispatcher.sh"
+    set_scene_pref "$RDIR/req.json" "$RDIR" ""; echo $? > "$RDIR/set.rc"
+    printf '%s' "$SCENE_WHY" > "$RDIR/why"
+) 2> "$RDIR/log"
+ls_manifest > "$RDIR/after"; diff "$RDIR/before" "$RDIR/after" > "$RDIR/manifest.diff"
+ls_f "$LS_KF" "set_scene_pref returned 1" [ "$(cat "$RDIR/set.rc" 2>/dev/null)" = 1 ]
+ls_f "$LS_KF" "the reason says the request names no title id" ls_has "$(cat "$RDIR/why" 2>/dev/null)" "names no title id"
+ls_f "$LS_KF" "the dir is unchanged and closed" [ "$(stat -c %a "$LS_SD")" = 555 -a ! -s "$RDIR/manifest.diff" ]
+ls_f "$LS_KF" "nothing was written to the device" ls_no_writes_since "$LS_KN0"
+ls_facts_show "$RDIR"
+
+# ------------------------------------------ (l) a scene gets no recorded boot route
+# A recorded route is written from a cold boot; a scene starts mid-game from a
+# saved state, and its own input is --hold-trigger. Two places attach a route
+# to a request that names none: request.sh at queue time (dispatchdoctor1017
+# 1b, a title's suggest-route) and ensure_route_attached at claim. The 10-23
+# replay of heavy2.hxs (--load-state, no --route) got gta-3.route from the
+# first and was void. Both are the real code here, against the real
+# titlestate.py, targets.toml and routes/: the only fixture is a scratch
+# dispatch dir holding a golden for GTA III, which is what lets request.sh
+# queue at all (the profile gate refuses a title with none). suggest-route's
+# answer is never written by hand. An adb that fails and logs stands where the
+# device would be; the (l) facts say it was never asked.
+LS_LQ="$LS/dispatch-l"; LS_LTREE="$LS/tree-l"
+LS_LTITLE=5454000E-Grand_Theft_Auto_III.xiso.iso
+ls_l_setup() {
+    rm -rf "$LS_LQ" "$LS_LTREE" "$LS/bin-l" "$LS/l-adb.log"
+    mkdir -p "$LS_LQ"/{queue,running,results,expect,bin,titlestate} "$LS/bin-l" "$LS_LTREE/docs/testing"
+    printf '#!/bin/sh\necho "$*" >> %s\nexit 1\n' "$LS/l-adb.log" > "$LS/bin-l/adb"; chmod +x "$LS/bin-l/adb"
+    cp "$TESTING/dispatcher.sh" "$LS_LQ/bin/dispatcher.sh"
+    cp "$TESTING/dispatcher.sh" "$LS_LTREE/docs/testing/dispatcher.sh"
+    printf '%s' '{"titles": {"5454000E": {"golden": {"save": "9153c63300da", "status": "golden", "how": "seed", "by": "selftest", "utc": "2026-10-23T00:00:00Z"}, "history": []}}}' \
+        > "$LS_LQ/titlestate/golden.json"
+}
+# ls_l_req <label> <request.sh> <args...>: queue one GTA III soak; leaves
+# $LS/l-<label>.rc, .out (its stderr and stdout) and .req (the queued request).
+ls_l_req() {
+    local label="$1" rsh="$2"; shift 2
+    rm -f "$LS_LQ/queue/"* "$LS/l-$label."*
+    PATH="$LS/bin-l:$PATH" DISPATCH_DIR="$LS_LQ" DISPATCH_TREE="$LS_LTREE" bash "$rsh" --who ls-selftest \
+        --title "$LS_LTITLE" --no-expect "selftest (l)" "$@" > "$LS/l-$label.out" 2>&1
+    echo $? > "$LS/l-$label.rc"
+    mv "$LS_LQ/queue/"*.req "$LS/l-$label.req" 2>/dev/null
+    return 0
+}
+ls_l_queued() { [ "$(cat "$LS/l-$1.rc" 2>/dev/null)" = 0 ] && [ -s "$LS/l-$1.req" ]; }   # <label>
+# <label>: queued, carries a load, and no route of any kind -- not merely "no route
+# field", since a request that never queued has none either.
+ls_l_noroute() {
+    ls_l_queued "$1" \
+        && ls_json "$LS/l-$1.req" "d.get('load_slot') and not d.get('route_name') and not d.get('route') and not d.get('route_refs')" \
+        && ls_lacks "attaching recorded route" "$LS/l-$1.out"
+}
+# ls_l <request.sh> <dispatcher.sh> <rdir> <queue|claim|both>: the (l) facts.
+ls_l() {
+    local rsh="$1" disp="$2" rdir="$3" part="$4" F="$3/facts" kind
+    rm -rf "$rdir"; mkdir -p "$rdir"; : > "$F"
+    if [ "$part" != claim ]; then
+        ls_l_setup
+        ls_l_req ctl "$rsh"
+        ls_f "$F" "queue control: with no --route and no load, request.sh queues and attaches gta-3 (so an attach is visible here)" \
+            ls_json "$LS/l-ctl.req" "d.get('route_name') == 'gta-3' and d.get('route') and not d.get('load_slot')"
+        ls_f "$F" "queue control: and says so on stderr" grep -qF "attaching recorded route 'gta-3'" "$LS/l-ctl.out"
+        ls_l_req file "$rsh" --load-state "$LS/src/heavy2.hxs" --load-hdd hdd-scene-gta3.img
+        ls_f "$F" "--load-state <file>, no --route: queued with load_slot 10 and no route" ls_l_noroute file
+        ls_l_req slot "$rsh" --load-state 5 --load-hdd hdd-scene-gta3.img
+        ls_f "$F" "--load-state 5, no --route: queued with load_slot 5 and no route" ls_l_noroute slot
+        ls_l_req scene "$rsh" --scene gta3-incar
+        ls_f "$F" "--scene gta3-incar, no --route: queued with its slot and no route" ls_l_noroute scene
+        ls_l_req named "$rsh" --load-state "$LS/src/heavy2.hxs" --load-hdd hdd-scene-gta3.img --route gta-3
+        ls_f "$F" "--load-state <file> --route gta-3: the named route still travels with the request" \
+            ls_json "$LS/l-named.req" "d.get('route_name') == 'gta-3' and d.get('route') and d.get('load_slot')"
+        ls_l_req survey "$rsh" --load-state "$LS/src/heavy2.hxs" --load-hdd hdd-scene-gta3.img --route survey
+        ls_f "$F" "--load-state <file> --route survey: stays the survey it was typed as, not replaced by gta-3" \
+            ls_json "$LS/l-survey.req" "d.get('route_name') == 'survey' and d.get('load_slot')"
+        ls_f "$F" "the device was never asked (the stand-in adb logged no call)" [ ! -s "$LS/l-adb.log" ]
+    fi
+    if [ "$part" != queue ]; then
+        for kind in noload load survey; do
+            python3 -c 'import json,sys
+d = dict(title_id="5454000e")
+if sys.argv[2] != "noload": d["load_slot"] = "10"
+if sys.argv[2] == "survey": d["route_name"] = "survey"
+json.dump(d, open(sys.argv[1], "w"))' "$rdir/c-$kind.json" "$kind"
+            cp "$rdir/c-$kind.json" "$rdir/c-$kind.before"; mkdir -p "$rdir/c-$kind"
+            (
+                ls_src "$disp"
+                ensure_route_attached 5454000e "$LS_LTITLE" "$rdir/c-$kind" "$rdir/c-$kind.json"; echo $? > "$rdir/c-$kind.rc"
+            ) >/dev/null 2> "$rdir/log"
+        done
+        ls_f "$F" "claim control: a request with no route and no load is given gta-3 at claim (so an attach is visible here)" \
+            ls_json "$rdir/c-noload.json" "d.get('route_name') == 'gta-3' and d.get('route')"
+        ls_f "$F" "a request that loads a state and names no route is left byte for byte as queued" cmp -s "$rdir/c-load.before" "$rdir/c-load.json"
+        ls_f "$F" "and the claim goes on (rc 0, no route.refused), the inputs note saying why no route" \
+            grep -qF "none attached: the request loads a save state" "$rdir/c-load/inputs.txt"
+        ls_f "$F" "a loading request that named the survey keeps it" cmp -s "$rdir/c-survey.before" "$rdir/c-survey.json"
+        ls_f "$F" "the loading requests claimed with rc 0 and no route.refused" \
+            [ "$(cat "$rdir/c-load.rc" "$rdir/c-survey.rc" 2>/dev/null | tr '\n' ' ')" = "0 0 " -a ! -e "$rdir/c-load/route.refused" -a ! -e "$rdir/c-survey/route.refused" ]
+    fi
+}
+echo "== load-state (l): a request that loads a state gets no recorded boot route, at queue time or at claim; a named --route still travels"
+ls_l "$TESTING/request.sh" "$TESTING/dispatcher.sh" "$LS/rdir-l" both
+ls_facts_show "$LS/rdir-l"
+
 # ------------------------------------------------ the scene's disk: mutants
 echo "== load-state MUTANTS: each reinstates a weaker rule; the check above that refuses it must fail"
 LS_MUT_HDD_SET='        elif set_hdd_pref "$want" "$(hdd_pref_marker)" >/dev/null; then'
@@ -621,6 +1040,119 @@ if [ -n "$LS_M" ]; then
 fi
 ls_reset_hdd
 
+# ------------------------------------------------- (k) mutants: the permission
+echo "== load-state (k) MUTANTS: the weaker rule each case exists to refuse; that case must go red"
+LS_MUT_OPEN='        scene_dir_open "$sdir" || { rm -f "$marker"; return 1; }'
+LS_MUT_CLOSE='            scene_dir_chmod "$m_dir" g-w'
+LS_MUT_PARK='            || { scene_abort "could not park $f ($sdir/$f.hld): another slot file could win the auto-load"; return 1; }'
+LS_MUT_LIST='    if [ -n "$left" ] || [ -s "${ADB_HUNG_FILE:-}" ]; then'
+
+# 1. the dir is never opened: the pre-fix behaviour. The backup cp is the
+# first write and the closed dir refuses it, so (k1) fails.
+ls_mut dropopen "$LS_MUT_OPEN" '        true #MUTANT: the dir is never opened'
+if [ -n "$LS_M" ]; then
+    ls_k1 "$LS_M/dispatcher.sh" "$LS/rdir-m-dropopen"
+    ls_facts_red "$LS/rdir-m-dropopen" \
+        && ok "MUTANT dropopen: with the open step dropped, (k1) goes red ($(grep -c '^bad' "$LS/rdir-m-dropopen/facts") of $(wc -l < "$LS/rdir-m-dropopen/facts") facts)" \
+        || bad "MUTANT dropopen: (k1) stayed green with the open step dropped -- the fake lets a closed dir be written"
+fi
+
+# 2. restore never closes what the scene opened: the dir is left at 755.
+ls_mut noclose "$LS_MUT_CLOSE" '            true #MUTANT: the dir is never closed again'
+if [ -n "$LS_M" ]; then
+    ls_k1 "$LS_M/dispatcher.sh" "$LS/rdir-m-noclose"
+    ls_facts_red "$LS/rdir-m-noclose" \
+        && ok "MUTANT noclose: with the close dropped, (k1) goes red ($(grep -c '^bad' "$LS/rdir-m-noclose/facts") of $(wc -l < "$LS/rdir-m-noclose/facts") facts)" \
+        || bad "MUTANT noclose: (k1) stayed green with the close dropped"
+fi
+
+# 3. a failed park is silent, as `&& parked+=` made it: the status is not
+# read and the dir is not listed, so setup goes on with slot3 in place.
+ls_mut silentpark "$LS_MUT_PARK" '            || true #MUTANT: a failed park is ignored'
+if [ -n "$LS_M" ] && ! ls_mutate "$LS_M/dispatcher.sh" "$LS_MUT_LIST" '    if false; then #MUTANT: the dir is not listed after parking' >/dev/null 2>&1; then
+    bad "MUTANT silentpark: could not build the second substitution (the listing check is not in dispatcher.sh exactly once)"
+    LS_M=""
+fi
+if [ -n "$LS_M" ]; then
+    ls_k3 "$LS_M/dispatcher.sh" "$LS/rdir-m-silentpark"
+    ls_facts_red "$LS/rdir-m-silentpark" \
+        && ok "MUTANT silentpark: with a failed park ignored, (k3) goes red ($(grep -c '^bad' "$LS/rdir-m-silentpark/facts") of $(wc -l < "$LS/rdir-m-silentpark/facts") facts)" \
+        || bad "MUTANT silentpark: (k3) stayed green with a failed park ignored"
+    ls_k3 "$LS_M/dispatcher.sh" "$LS/rdir-m-silentpark-b" lie
+    ls_facts_red "$LS/rdir-m-silentpark-b" \
+        && ok "MUTANT silentpark: and (k3b) goes red" || bad "MUTANT silentpark: (k3b) stayed green"
+fi
+
+# 4. only the listing dropped: a mv that says it worked and did not (the
+# fake's lie) now gets through, so (k3b) goes red; a mv that fails loudly is
+# still caught by its status, so (k3) stays green -- each check has its own case.
+ls_mut nolisting "$LS_MUT_LIST" '    if false; then #MUTANT: the dir is not listed after parking'
+if [ -n "$LS_M" ]; then
+    ls_k3 "$LS_M/dispatcher.sh" "$LS/rdir-m-nolisting" lie
+    ls_facts_red "$LS/rdir-m-nolisting" \
+        && ok "MUTANT nolisting: with the post-park listing dropped, (k3b) goes red" \
+        || bad "MUTANT nolisting: (k3b) stayed green with the listing dropped"
+    ls_k3 "$LS_M/dispatcher.sh" "$LS/rdir-m-nolisting-b"
+    ls_facts_red "$LS/rdir-m-nolisting-b" \
+        && bad "MUTANT nolisting: (k3) went red too -- the status check alone should still catch a loud failure" \
+        || ok "MUTANT nolisting: (k3) stays green: a mv that fails loudly is caught by its status alone"
+fi
+ls_reset_device
+
+# ------------------------------------------------ (l) mutants: the boot route
+echo "== load-state (l) MUTANTS: the guard dropped at queue time, and at claim; the load cases must go red and the controls stay green"
+LS_MUT_RSLOAD='[ -z "$PATH_BROKEN" ] \
+   && [ -z "$LOAD_SLOT" ]; then'
+LS_MUT_CLAIM='    if [ -n "$(jq_get "$req" load_slot "")" ]; then'
+ls_fact_is() {   # <rdir> <n> <ok|bad>: the nth fact of a facts file has that verdict
+    [ "$(sed -n "${2}p" "$1/facts" | cut -d' ' -f1)" = "$3" ]
+}
+# request.sh finds titles/ and scenes.tsv by its own path and resolves --ref by
+# `git -C <its dir>/../..`, so a mutant needs a tree shaped like the repo: the
+# siblings by symlink, request.sh a real mutated copy, the root a git repo.
+LS_MR="$LS/mut-lreq"
+rm -rf "$LS_MR"; mkdir -p "$LS_MR/docs/testing"
+for _ls_x in "$TESTING"/*; do
+    _ls_b="$(basename "$_ls_x")"
+    [ "$_ls_b" = request.sh ] || ln -s "$_ls_x" "$LS_MR/docs/testing/$_ls_b"
+done
+cp "$TESTING/request.sh" "$LS_MR/docs/testing/request.sh"
+if ! ls_mutate "$LS_MR/docs/testing/request.sh" "$LS_MUT_RSLOAD" '[ -z "$PATH_BROKEN" ]; then #MUTANT: a load gets the suggested route' >/dev/null 2>&1 \
+        || cmp -s "$LS_MR/docs/testing/request.sh" "$TESTING/request.sh"; then
+    bad "MUTANT noqueueguard: could not build it (the anchor is not in request.sh exactly once)"
+elif ! { git init -q "$LS_MR" \
+        && git -C "$LS_MR" -c core.hooksPath=/dev/null -c commit.gpgsign=false -c user.name=selftest -c user.email=selftest@invalid \
+               commit -q --allow-empty -m mutant-tree; } >/dev/null 2>&1; then
+    bad "MUTANT noqueueguard: could not make its tree a git repo (request.sh resolves --ref there)"
+else
+    ls_l "$LS_MR/docs/testing/request.sh" "$TESTING/dispatcher.sh" "$LS/rdir-m-noqueueguard" queue
+    # facts: 1-2 the control, 3-5 file/slot/scene without a route, 6 a named route, 7 the survey, 8 the device
+    if ls_fact_is "$LS/rdir-m-noqueueguard" 1 ok && ls_fact_is "$LS/rdir-m-noqueueguard" 2 ok \
+        && ls_fact_is "$LS/rdir-m-noqueueguard" 3 bad && ls_fact_is "$LS/rdir-m-noqueueguard" 4 bad \
+        && ls_fact_is "$LS/rdir-m-noqueueguard" 5 bad && ls_fact_is "$LS/rdir-m-noqueueguard" 7 bad \
+        && ls_fact_is "$LS/rdir-m-noqueueguard" 6 ok; then
+        ok "MUTANT noqueueguard: with request.sh's guard dropped, --load-state <file>, --load-state 5, --scene and the survey case go red; the control and the named route stay green"
+    else
+        bad "MUTANT noqueueguard: the (l) queue facts did not split as the guard predicts"
+        sed 's/^/        fact: /' "$LS/rdir-m-noqueueguard/facts"
+    fi
+fi
+
+# At claim: ensure_route_attached without the load_slot early return gives a
+# loading request the route again (the dispatcher's own copy of the rule).
+ls_mut noclaimguard "$LS_MUT_CLAIM" '    if false; then #MUTANT: a scene gets the boot route at claim'
+if [ -n "$LS_M" ]; then
+    ls_l "$TESTING/request.sh" "$LS_M/dispatcher.sh" "$LS/rdir-m-noclaimguard" claim
+    # facts: 1 the control, 2 byte for byte, 3 the inputs note, 4 the survey kept, 5 rc 0
+    if ls_fact_is "$LS/rdir-m-noclaimguard" 1 ok && ls_fact_is "$LS/rdir-m-noclaimguard" 2 bad \
+        && ls_fact_is "$LS/rdir-m-noclaimguard" 3 bad; then
+        ok "MUTANT noclaimguard: with ensure_route_attached's load_slot return dropped, a loading request is changed at claim and (l)'s claim facts go red; the control stays green"
+    else
+        bad "MUTANT noclaimguard: the (l) claim facts did not split as the guard predicts"
+        sed 's/^/        fact: /' "$LS/rdir-m-noclaimguard/facts"
+    fi
+fi
+
 # ------------------------------------------------------- MUTANT: drop restore
 echo "== load-state MUTANT: restore_scene_pref dropped -- case (a,d)'s restore checks must then fail"
 # dispatcher.sh sources ./devices.sh relative to its OWN directory at load
@@ -662,3 +1194,5 @@ else
 fi
 
 [ -s "$LS_ADBLOG" ] && ok "the fake adb was actually exercised (not bypassed)" || bad "the fake adb log is empty -- nothing above drove a real adb call"
+# The app-only dirs are host mode 555: open them so selftest.sh's `rm -rf "$T"` can clear them.
+chmod -R u+w "$LS" 2>/dev/null
