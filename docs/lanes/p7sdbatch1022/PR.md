@@ -8,7 +8,8 @@ Files: hw/xbox/nv2a/pgraph/vk/surface.c, hw/xbox/nv2a/pgraph/vk/renderer.h, hw/x
 Prediction: Fable on the Nova, perflog build, same route in both arms, `HAKUX_SD_BATCH=1` against `0`:
   `[sdcall] tobuf` fin 18-37/60 -> ~0; `dlSrc[dirtyIf]` -> ~0; `sd_batched[ovl+exp]` > 0; about -9 ms/flip.
   Falsifier: `tobuf` fin unchanged, or `sd_sync_reason=overflow` the largest of the three.
-Needs device: yes -- the Fable A/B below
+Pilot 1 (10-22): the counter half held in play (tobuf 60 -> 0, dirtyIf 60 -> 0, sd_batched[ovl] 60, overflow 0). The -9 ms did not: the wait moved from `[surf413] part` to `cdef`. The pair's "B is slower in the steady scene" compared different screens: A never left a cutscene and B was in play. See Pilot 1 for the falsifier for the next pair.
+Needs device: yes -- a second Fable pair in which both arms reach play (Pilot 1)
 Needs NDK: yes -- the perflog APK for the A/B; the touched C files are host-compiled under both NV2A_PERF_LOG values (Checks)
 Selftest: 99-dipwin-counters 99-fpsdiag -- 99-dipwin-counters is the only fragment that reads hw/xbox/nv2a/pgraph/vk/draw.c (its dipwin_flip/opt_stats_log_and_reset rules); 99-fpsdiag synthesizes hakuX-stall lines for fpsdiag.py. No fragment reads surface.c or renderer.h.
 
@@ -137,7 +138,7 @@ The ownership rule is therefore safe to reuse for shelved bindings, and no fallb
   - `other`: everything else.
   Finishes issued from renderer.c and texture.c are not in it. It is one global tag shared by the PFIFO and render threads, so it is an attribution, not an exact count.
 
-## Device A/B (not run)
+## Device A/B plan (run 10-22; results in Pilot 1)
 
 - **Build.** One perflog APK from this branch (`NV2A_PERF_LOG=1`), the Fable route used for the 10-19 Fable windows, the same route in both arms.
 - **Arms.** A: `--env HAKUX_SD_BATCH=0`. B: `--env HAKUX_SD_BATCH=1`.
@@ -148,6 +149,181 @@ The ownership rule is therefore safe to reuse for shelved bindings, and no fallb
   - `[surfgpu]`: `hold/hwait/hrot`
   - `hakuX-pace`: ms
 - **Where the completions move.** Watch `range` and `surfupd`. If B's `tobuf` drop reappears as `range` or `surfupd` fin at the same ms, the deferral moved the wait instead of removing it.
+
+## Pilot 1 (10-22)
+
+Both arms ran on the Nova with Fable and the perflog build of 03131e06fd, using the classifier-path route (`drive generic 300 mark`). Results are under `/home/justin/hakux-work/dispatch/results/`:
+
+- **A, `HAKUX_SD_BATCH=0`:** `1-1792708341-p7sdbatch1022-2514431`. Init line: `nv2a: HAKUX_SD_BATCH=0, deferred download cap 64`.
+- **B, `HAKUX_SD_BATCH=1`:** `1-1792708342-p7sdbatch1022-2514628`. Init line: `nv2a: HAKUX_SD_BATCH=1, deferred download cap 128`.
+- **Natural-experiment rows, with no P7 code.** These are master b944110629 runs of the same title and route from lane p1zeta1022:
+  - `1-1792704966-p1zeta1022-2080418` (`HAKUX_ZETA_D24=0`, the default path)
+  - `1-1792704964-p1zeta1022-2080209` (`=0`)
+  - `1-1792704965-p1zeta1022-2080314` (`=1`, which is not the default path: master reads that switch at `surface.c:6830`)
+
+### The pair as first read
+
+Steady scene, "[dipwin] full ~696 draws/flip":
+
+| per flip (unless stated) | A (=0) | B (=1) |
+|---|---|---|
+| fps | 23.79 | 22.14 |
+| phase Tot | 31.7 ms | 35.2 ms |
+| `[sdcall]` surfupd finishes | 1.017 | 2.0 |
+| surfupd time | 18.63 ms | 21.78 ms |
+| `dif` per 60 flips | ovl600 ovlSh0 | ovl600 ovlSh60 |
+| `sd cDef` per 60 flips | 61 | 120 |
+| `sd_sync_reason other` per 60 flips | 61 | 120 |
+| `sd_batched` | n/a | ovl60, dup ~231-235 |
+| dip bqry | ~270 | ~355 |
+
+The `[ovl1018]` census, B against A: r0c 13146 vs 285, r1d 26410 vs 548, r31 13114 vs 274, r32 533 vs 2. The dominant pair is `Z f130 sz p1024 256x256 +4096 -> C f44 sz p1024 256x256`.
+
+That reading took B to download the same zeta binding again every flip. It does not. The two arms' steady windows ran different screens.
+
+### The arms ran different screens
+
+The guest's clears per flip (dipwin `bclre`/`fl`, `draw.c:7942`, where end_draw counts a clear) separate two modes:
+
+- **3 per flip.**
+- **6 per flip.** These add one 256x256 zeta-plus-colour pass per flip. `[clr91]` (`draw.c:10646`) agrees.
+
+`bclre` sits on the same 60-flip window and timestamp as `[sdcall]`, `[surfgpu]`, `[surf413]` and the hakuX-stall line, so it is the field to gate on.
+
+| run | route (`route-state.tsv`) | steady windows (fl=60, full/fl >= 400) | clears/flip | draws/flip |
+|---|---|---|---|---|
+| A | never reached play: `time_to_play_s=` empty, `cutscene` from 145.4 s to the end at 299.4 s. Last frame `160538-060-cutscene.png` is a dialogue with "Skip Scene". | 16:06:08-16:16:55, 254 windows | 3.0 | 600-799 |
+| B | `play` from 163.6 s (`time_to_play_s=164.2`). Frame `162257-077-play.png` shows the player running. | 16:23:14-16:31:39, 187 windows | 6.0 | 600-699 |
+| master 2080418 | play, `time_to_play_s=164.5` | 15:52:04-16:01:53, 273 windows | 6.0 | 500-599 |
+| master 2080209 | play, `time_to_play_s=177.1`, then `stalled`/`play` alternating | 29 windows at 3.0 (600-699 draws), 8 at 6.0, then 200-299 draws | mixed | mixed |
+| master 2080314 (ZETA_D24=1) | never reached play | 15:33:20-15:45:38, 288 windows | 3.0 | 600-799 |
+
+So A's "steady scene" is a cutscene, and B's is play. That is the same split as between master 2080314 and master 2080418, which have no P7 code. A did run in the 6-clear mode twice (16:05:49.906, 16:06:02.898). B ran in the 3-clear mode 24 times.
+
+### Grouped by mode, B never does more than the default path
+
+These are means per 60 flips over windows with fl=60 and full/fl >= 400.
+
+| mode | run (windows) | `[sdcall]` surfupd fin / fence | tobuf fin | `Finish sd` | `sd[dl / cDef]` | `dirtyIf` | `ovlSh` | `sd_batched[ovl]` | `[surfgpu]` hwait |
+|---|---|---|---|---|---|---|---|---|---|
+| 3.0 | A (254) | 61.6 / 58.3 | 0 | 61.6 | 0 / 61.6 | 0 | 0 | 0 | 58.3 |
+| 3.0 | B (24) | 64.7 / 55.0 | 0 | 64.7 | 0 / 64.7 | 0 | 0 | 0 | 55.0 |
+| 3.0 | master 2080209 (29) | 60.9 / 59.1 | 0 | 60.9 | 0 / 60.9 | 0 | 0 | -- | 59.1 |
+| 6.0 | A (2) | 60 / 0 | 60 | 180 | 60 / 120 | 60 | 60 | 0 | 0 |
+| 6.0 | master 2080418 (282) | 60.1 / 0 | 59.9 | 179.9 | 59.9 / 120 | 59.9 | 60 | -- | 0 |
+| 6.0 | master 2080209 (8) | 60 / 0 | 60 | 180 | 60 / 120 | 60 | 60 | -- | 0 |
+| 6.0 | B (207) | 120 / 0 | 0 | 120 | 0 / 120 | 0 | 60 | 59.9 | 0 |
+
+The rows as logged:
+
+```
+A 6-clear   16:05:49.906 [sdcall] frames=60 tobuf=fin60/fence0/pre0/dl540/951.4ms surfupd=fin60/fence0/pre0/dl420/255.1ms su_upl=60 ...
+            16:05:49.906 RPBreaks:17976 Finish:240(... sd180 ...) sd[ev0 noCb0 dl60 cDef120 ...] dlSrc[defFb0 ppdFb0 dirtyIf60] dif[ovl600 ovlSh60 ...] sd_batched[ovl0 exp0 ev0 flush0 dup0]
+master 6-clr 15:58:01.828 [sdcall] frames=60 tobuf=fin60/fence0/pre0/dl528/738.1ms surfupd=fin60/fence0/pre0/dl420/272.0ms su_upl=60 ...
+            15:58:01.828 RPBreaks:14607 Finish:244(... sd180 ...) sd[ev0 noCb0 dl60 cDef120 ...] dlSrc[defFb0 ppdFb0 dirtyIf60] dif[ovl600 ovlSh60 ...]
+B 6-clear   16:29:01.844 [sdcall] frames=60 surfupd=fin120/fence0/pre0/dl954/1310.9ms su_upl=120 ...
+            16:29:01.844 RPBreaks:24378 Finish:183(... sd120 ...) sd[ev0 noCb0 dl0 cDef120 ...] dlSrc[defFb0 ppdFb0 dirtyIf0] dif[ovl600 ovlSh60 ...] sd_batched[ovl60 exp0 ev0 flush0 dup234]
+B 3-clear   16:21:10.483 [sdcall] frames=60 surfupd=fin61/fence59/pre0/dl838/1032.4ms su_upl=61 ...
+            16:21:10.483 RPBreaks:20365 Finish:122(... sd61 ...) sd[ev0 noCb0 dl0 cDef61 ...] dlSrc[... dirtyIf0] dif[ovl600 ovlSh0 ...] sd_batched[ovl0 exp0 ev0 flush0 dup236]
+```
+
+Reading the table:
+
+- **3-clear mode.** B makes one surface_update finish per flip and `ovlSh` is 0, the same as A.
+- **6-clear mode.** The default path makes 3 SURFACE_DOWN finishes per flip and B makes 2. `ovlSh` is 60 on both paths, because it counts what the guest binds.
+- **No fallback.** Across all 331 of B's windows, `sd_batched[exp0 ev0 flush0` and `overflow0` hold every time.
+
+### Mechanism: what happens each 6-clear flip
+
+In the 6-clear mode each flip draws a fresh 256x256 zeta, `Z f130 sz p1024`. The guest then binds `C f44 sz p1024 256x256` 4096 bytes below it:
+
+```
+master 2080418: [ovl1018] pair1 n=20190 r0c off=4096 Z f130 sz p1024 256x256 b4 -> C f44 sz p1024 256x256 b4
+B:              [ovl1018] pair1 n=13146 r0c off=4096 Z f130 sz p1024 256x256 b4 -> C f44 sz p1024 256x256 b4
+```
+
+1. **The active zeta's download is recorded.** `update_surface_part` calls `invalidate_overlapping_surfaces` (`surface.c:4200`). Its active loop (4213-4242) records the zeta's download (4236-4238, `sd_eviction_dl`) and invalidates the zeta (4240). The download is required: the C binding uploads from VRAM over those bytes (#7, the comment at 4221-4234).
+2. **The shelved loop retires one binding.** The loop (4246-4271) finds one draw-dirty shelved binding inside the new target each flip (`dif[ovlSh60]`, the same on both paths).
+   - **Default path.** `pgraph_vk_surface_download_if_dirty` (4264) completes the batch, which holds the zeta's download from step 1 (`sd[cDef]`). It then downloads the shelved binding with a finish of its own (`sd[dl]`). That is `[sdcall] tobuf` and `dlSrc[dirtyIf]`, and it is timed inside `[surf413] part` (`surface.c:6522`).
+   - **B.** `sd_batch_retire_shelved` (4258, body 3036-3055) records the download in the batch (`sd_batched[ovl]`) and moves the struct to `invalid_surfaces`.
+3. **The upload completes what is still pending.** `pgraph_vk_surface_update` sees the C binding upload with downloads pending and completes them with `SDC_SURF_UPDATE` (6544-6560), timed in `[surf413] cdef` (6562).
+   - **Default path.** The tobuf has already taken everything, so this surface_update does not count: `su_upl=60` per 60 flips, which is the one uploading binding per flip that both modes have.
+   - **B.** The zeta's download and the shelved binding's download are both still pending, so it counts and finishes: `su_upl=120`, `surfupd=fin120`.
+
+So B's second surfupd finish per flip is the default path's tobuf `cDef`, moved, and the tobuf's own `dl` finish is folded into it.
+
+**No binding is downloaded twice.** Each flip's zeta is a new draw generation, and its download is the one #7 requires. The default path takes it every flip too: it is in `cDef120`.
+
+**The repeat records are already skipped.** A repeat record of a binding whose download is already pending is what `sd_batched[dup]` skips: 231-235 per 60 flips on B. It is the same skip that A counts as `[surfgpu] dedup=228-240` in its 3-clear windows. That is the splice dedup in `download_surface_record_deferred` (`surface.c:1268-1280`), which the default path reaches one call later. On B the dedup in `download_surface_deferred` (2981-2986) catches the record first, so B's `[surfgpu] dedup=` is 0.
+
+### The rest of the brief's table
+
+- **fps, Tot and surfupd ms.** These are a cutscene against play at the same draw count. See Timing.
+- **The `[ovl1018]` census.** The totals are whole-run sums, and they scale with the time each run spent in the 6-clear mode. Master 2080418 has no P7 code and spent its steady windows in play, and its totals exceed B's: `r0c:20190/0 r1d:40463/50 r31:20163/26 r32:0/351`. The r32 figure is not dirty: the field reads dirty/clean, so `r32:0/533` on B and `0/2` on A are all clean. Per flip in the 6-clear mode, the census is the same on master 2080418 and on B: r0c 1.00, r31 1.00, r1d 2.00, evict372 m1f 1.00.
+- **bqry.** It follows the screen:
+  - B in play: 136 per flip at 523 draws and 360 at 692 draws.
+  - Master 2080418 in play: 174 at 546 draws.
+  - A in the cutscene: about 270 at 690 draws.
+
+### Timing, in windows matched on mode and draws
+
+The `[surf413]` `fin` column is the surface-download wait per frame. The last column is `[sdcall]` surfupd plus tobuf in ms per flip.
+
+| mode, draws/flip | run (windows) | draws | gfps | phase Tot | `[surf413]` fin | surfupd+tobuf |
+|---|---|---|---|---|---|---|
+| 3.0, 650-750 | A (254) | 689 | 22.98 | 32.06 | 18.92 | 18.96 |
+| | B (4) | 695 | 23.00 | 32.15 | 18.91 | 18.94 |
+| | master 2080209 (29) | 680 | 23.07 | 31.96 | 18.65 | 18.68 |
+| 3.0, 450-550 | B (11) | 499 | 28.82 | 26.26 | 15.26 | 15.28 |
+| | master 2080418 (4) | 501 | 27.75 | 27.48 | 15.17 | 15.20 |
+| 6.0, 500-600 | B (6) | 539 | 27.33 | 28.55 | 17.73 | 17.74 |
+| | master 2080418 (281) | 550 | 27.13 | 28.28 | 17.64 | 16.85 |
+| | master 2080209 (7) | 562 | 22.71 | 33.59 | 20.86 | 20.01 |
+| | A (1) | 540 | 23.00 | 33.90 | 20.95 | 20.11 |
+| 6.0, 650-700 | B (187) | 692 | 21.75 | 35.19 | 21.79 | 21.79 |
+| | no other run | | | | | |
+
+The `[surf413]` split shows where the wait went:
+
+```
+master 2080418 15:58:01.828 (546 draws/flip): part=13.74 cdef=4.59  fin=17.65
+B              16:20:50.172 (523 draws/flip): part=0.54  cdef=16.46 fin=16.40
+```
+
+In play, the wait moved from `part` to `cdef`. This is the first item under Risks. In this pilot the brief's goal ("B removes tobuf in the transit scenes, 8-12 ms/flip to 0") is met as a count and not as time.
+
+**This is a bound, not a value.** B has 6 matched windows in the 6-clear mode at 500-600 draws, and the two default-path master runs differ by 3.2 ms in that same band (17.64 against 20.86). The prediction's "about -9 ms/flip" is not shown. Nor is a loss: B's slowest screen (6.0 at 692 draws) has no counterpart in any other run.
+
+### Why no C change and no counter
+
+- **The target is already met in the mode where it can be.** The brief asked for one surface_update finish per flip with `ovlSh` not growing. That is what B does in the 3-clear mode.
+- **The 6-clear mode cannot get to one finish per flip here.** The default path makes 3 there and B makes 2. One would need the C binding's upload to stop waiting for the zeta's bytes. That means either skipping the download, which was reversed (#7, 1bc98b347a; Already tried), or splicing it, which is P4 (lane/p4splice1022) and not this lane.
+- **Freeing the binding where its batched download completes would change no counter.** The kept struct is not downloaded again. `invalid_surfaces` holds 7 on B (16:29:01.844) and on A (16:10:00.523), against 6 on master 2080418 in play (15:58:01.828), all on the `[surf413] ... invalid=` field. `prune_invalid_surfaces` bounds it.
+- **No counter is needed to prove the mechanism.** dipwin `bclre`, `dif[ovlSh]`, `sd_batched[ovl]`, `[sdcall] tobuf`/`su_upl` and the `[surf413] part`/`cdef` split already tell the screens apart and show where the wait sits.
+
+### Falsifier for the next pair
+
+Same route on the Nova with the perflog build: A is `HAKUX_SD_BATCH=0`, B is `=1`.
+
+1. **Validity.**
+   - The pair counts only if both arms' `route-state.tsv` has a non-empty `time_to_play_s`.
+   - Read 60-flip windows with dipwin `fl=60` and `full/fl >= 400`, grouped by `bclre/fl` (3.0 or 6.0).
+   - A pair with no mode in common is void for this question.
+2. **3.0 windows.**
+   - B's hakuX-stall `Finish sd` must be at most A's same-mode mean plus 5 per 60 flips. In Pilot 1, A was 61.6.
+   - `dif[ovlSh]` must be at most A's plus 2. In Pilot 1, A was 0.
+   - `[sdcall] surfupd` fin must be at most 66 per 60 flips.
+3. **6.0 windows.**
+   - B's `Finish sd` must be at most 125 per 60 flips. The default path is 180.
+   - `[sdcall] tobuf` fin and `dlSrc[dirtyIf]` must be 0. The default path is 60.
+   - `sd_batched[ovl]` must be within 2 of `dif[ovlSh]` (60).
+4. **Refuted (B downloads again).** In either mode, B's `Finish sd` exceeds A's same-mode mean by more than 5 per 60 flips, or `ovlSh` exceeds it by more than 2.
+5. **Time, the "-9 ms" claim.** Compare 6.0 windows matched on draws, with A and B full/fl within 25 of each other:
+   - B's `[surf413] fin` at least 3 ms/frame below A's confirms a gain.
+   - Within 1.5 ms of A's says the wait moved. In Pilot 1 that was 16.40-17.73 against 17.64.
+   - More than 1.5 ms above A's is a loss.
+
+**Open.** Whether P7 changes how much of a run the route spends in play cannot be read from one pair. The route reached play in 3 of the 5 runs above (B, 2080418, 2080209) and missed it in 2 (A, 2080314). Both outcomes occur on master without P7 code.
 
 ## Checks
 
@@ -194,6 +370,25 @@ Stall-line readers: the in-tree parsers of the RPBreaks line match substrings, w
 - `doa413/tools/phase_table.py`
 
 The appended tokens cannot be read as `sd\[`, `flu(\d+)` or `oth(\d+)`, because `sd_batched[`, `flush%d` and `other%d` do not fit those patterns.
+
+### Pilot 1 commit (PR.md only)
+
+```
+$ git -C /home/justin/hakux-work/wt/p7sdbatch1022 diff --stat
+ docs/lanes/p7sdbatch1022/PR.md | 199 ++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 197 insertions(+), 2 deletions(-)
+```
+
+- **No C file is touched, so there is nothing to compile.** The cc_wt block above (03131e06fd) stands, and the default-off path is unchanged from that commit.
+- **No log line format changed, so no parser needed a check.**
+- **Selftest:**
+
+```
+$ SELFTEST_ONLY="99-dipwin-counters 98-lane-shape 87-ops-tick" \
+    bash /home/justin/hakux-work/wt/p7sdbatch1022/docs/testing/jobs/selftest.sh
+selftest: 159 passed, 0 failed, PARTIAL: 3 of 160 fragments (fake host removed, was /tmp/hakux-selftest.ztPmZz)
+exit=0
+```
 
 ## Risks
 
