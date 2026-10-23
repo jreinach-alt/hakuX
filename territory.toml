@@ -135,6 +135,31 @@ files = ["docs/lanes/hangplay1022/**", "docs/testing/titles/drive-profiles/gener
 released = ["docs/lanes/hangplay1022/**", "docs/testing/titles/drive-profiles/generic.toml", "docs/testing/titles/drive.py", "docs/testing/titles/pathclass_selftest.py"]
 note = "CLAIMED AND RELEASED AT READY (lane.local, owner 2026-10-22 'A black screen for 30 seconds sounds like a hang.'): lane/hangplay1022 was built in the interactive session, so it has no unit and its PR.md is State: ready with the full selftest result recorded in it. Every file is released in the same commit, so no file is held by this lane. drive.py: a boot/black stretch is waited out for dark_grace_s (10), pressed with the exploration ladder after that and ROUTE FAIL at dark_fail_s (30) naming dwell, luma and presses; a screen held as leaning play stays leaning play down to LEAN_PLAY_KEEP 0.25 (entry still 0.45) unless another family holds 0.45 -- the 007 proof run (1-1792686890-decaydpad1022-3970029) pressed the ladder into live gameplay for ~400 s because the entry bar was also the keeping bar. generic.toml: dark_grace_s / dark_fail_s with the measured 9.7 s max dark among runs that reached play."
 
+[lane.holdpid1022]
+issues = []
+standing = false
+files = ["docs/lanes/holdpid1022/**", "docs/testing/jobs/hold.sh", "docs/testing/jobs/selftest.d/99-ownerplay-capture.sh"]
+released = ["docs/lanes/holdpid1022/**", "docs/testing/jobs/hold.sh", "docs/testing/jobs/selftest.d/99-ownerplay-capture.sh"]
+note = "CLAIMED AND RELEASED AT READY (lane.local 2026-10-22 PDT; harness defect, no issue; brief briefs/holdpid1022.md): hold.sh capture_ensure handed its script to systemd-run as `bash -c \"$script\"`, and systemd rewrote `$$` to `$`, so the pidfile held `$` and `take` exited 6 on 10-22. Fix: the script is written to hold/<label>.capture.sh and run as `bash <file>`; identity is PIDFILE= in /proc/<pid>/environ; the TERM trap is single-quoted. The selftest fake systemd-run now expands like the real one. Both files were free (holdcap1018/restoreprio1011 released them)."
+
+[lane.suitesha1022]
+issues = []
+standing = false
+files = ["docs/lanes/suitesha1022/**"]
+note = "STARTED (lane.local 2026-10-22 ~22:30 PDT, Sonnet; harness defect, no issue; brief briefs/suitesha1022.md): Nova disc runs return 0 captures because the debug package's hddPath is the owner's hdd-owner-1018.img while run_disc.sh pulls hdd.img. The fix will touch run_disc.sh and extract_results.py (lane.toolsmith, standing: lent at its return) and dispatcher.sh (held by lane.savestate-req1019, a draft: lane.local merges the hunks by hand at fold). Its own selftest fragment is named at return."
+
+[lane.heavycap1022]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/heavycap1022/**"]
+note = "STARTED (lane.local 2026-10-22 ~22:30 PDT, Opus; brief briefs/heavycap1022.md; base lane/drive1022): guest-CPU per-frame record, hakuX-heavy trigger, HAKUX_HEAVYSAVE auto save state outside slots 0-9/auto. Owner 10-22: nothing from the GTA work folds until GTA III meets the drive bar, so this lane does not fold; its emulator files are named here at return, for the diagnostic drive build only."
+
+[lane.gpubreak1022]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/gpubreak1022/**"]
+note = "STARTED (lane.local 2026-10-22 ~22:30 PDT, Opus; brief briefs/gpubreak1022.md; base lane/drive1022): hakuX-gpubrk per-draw GPU breakdown of the main pass and an arm table. Owner 10-22: nothing from the GTA work folds until GTA III meets the drive bar, so this lane does not fold; its emulator files are named here at return, for the diagnostic drive build only."
+
 [retired.compatpage1012]
 issues = ["433"]
 retired_utc = "2026-10-13T18:25:00Z"
