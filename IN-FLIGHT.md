@@ -11,7 +11,7 @@ No lane session is running.
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lane.local`
-- **Device queue:** 6 waiting, 1 running.
+- **Device queue:** 1 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -139,4 +139,4 @@ No branch is being worked right now.
 - 2026-10-19 fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433)
 - 2026-10-19 fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433)
 
-_Updated 2026-10-23 10:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-23 11:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
