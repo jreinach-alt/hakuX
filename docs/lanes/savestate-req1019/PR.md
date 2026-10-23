@@ -141,6 +141,10 @@ run, or the owner's data.
   `hdd_pref_after` factoring left the disc path as it was; 99-load-state 88 ok (30 s). After a log-text change in
   `scene_hdd_prepare` (a `kept` pref no longer logs "put back afterwards"), 99-load-state alone: `88 passed, 0 failed`.
 - `selftest.sh --check-shards 4`: all 162 fragments covered once.
+- The fold's widened selftest (84 fragments, 2026-10-23 07:55-08:52 PDT) gave 2496 passed, 1 failed: 99-battery-admit
+  checks the soak writer's result.json call by its exact closing line, `battery=_battery(rdir)),`, and `scene=`/`void=`
+  had been added after it. `scene` and `void` now come before `battery`, which closes the call again; the keys and
+  values written are unchanged. `SELFTEST_ONLY="99-battery-admit 99-load-state"`: 145 passed, 0 failed.
 - 99-load-state (g)-(j2) run against a fake adb whose device is a directory. Its prefs name `hdd-owner-1018.img`,
   which holds known bytes at mode 660; the copy is at mode 644. (j) calls the real `serve_one` from a mirror tree
   (`cmp` against the real dispatcher.sh) with a soak stub that records the `hddPath` it booted, and appends a

@@ -3171,9 +3171,6 @@ json.dump(dict(apk_sha=sha, kind="soak", title=title, seconds=int(seconds),
                                      for f in _frames),
                            dir="frames" if _frames else None),
                video=_video(rdir),
-               # What admitted it (battery_admit.py): battery_start, need,
-               # rate. None when the run predates admission or it was off.
-               battery=_battery(rdir),
                # --load-state/--scene (#433): None when the request named no
                # scene. void is loud and specific (no op=load within 30s, a
                # refused state, or a mid-run op=save) -- never a silent run
@@ -3181,7 +3178,11 @@ json.dump(dict(apk_sha=sha, kind="soak", title=title, seconds=int(seconds),
                # the top level catches a scene request exactly like any
                # other voided run.
                scene=scene,
-               void=(scene or {}).get("void") if scene else None),
+               void=(scene or {}).get("void") if scene else None,
+               # What admitted it (battery_admit.py): battery_start, need,
+               # rate. None when the run predates admission or it was off.
+               # Kept last: 99-battery-admit anchors on this exact line.
+               battery=_battery(rdir)),
           open(os.path.join(rdir, "result.json"), "w"), indent=2)
 print("soak done:", title, lines, "log lines")
 PYEOF
