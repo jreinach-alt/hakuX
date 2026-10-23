@@ -11,7 +11,7 @@ No lane session is running.
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lane.local`
-- **Device queue:** 0 waiting, 0 running.
+- **Device queue:** 1 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -126,6 +126,7 @@ No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-23 suitesha1022: a disc run boots the harness's disk, and a run on any other disk is refused by name
 - 2026-10-22 holdpid1022: hold.sh's owner-play capture never confirms itself, because systemd expands `$` in the script before bash sees it
 - 2026-10-22 hangplay1022: a dark screen that lasts is a hang, and a screen held as leaning play stays so (#433)
 - 2026-10-22 decaydpad1022: the classifier floor falls over an unknown stretch, and the d-pad is pressed while it does (#433)
@@ -137,6 +138,5 @@ No branch is being worked right now.
 - 2026-10-19 fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433)
 - 2026-10-19 fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433)
 - 2026-10-19 Nova priority tiers that actually hold: screening yields to FPS and release-fix work
-- 2026-10-19 The compatibility page adds Pro Evolution Soccer 5 (Europe), The Wild Rings and Knights of the Temple II to Playable (94 -> 97)
 
-_Updated 2026-10-23 02:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-23 02:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
