@@ -879,6 +879,99 @@ ls_f "$LS_KF" "the dir is unchanged and closed" [ "$(stat -c %a "$LS_SD")" = 555
 ls_f "$LS_KF" "nothing was written to the device" ls_no_writes_since "$LS_KN0"
 ls_facts_show "$RDIR"
 
+# ------------------------------------------ (l) a scene gets no recorded boot route
+# A recorded route is written from a cold boot; a scene starts mid-game from a
+# saved state, and its own input is --hold-trigger. Two places attach a route
+# to a request that names none: request.sh at queue time (dispatchdoctor1017
+# 1b, a title's suggest-route) and ensure_route_attached at claim. The 10-23
+# replay of heavy2.hxs (--load-state, no --route) got gta-3.route from the
+# first and was void. Both are the real code here, against the real
+# titlestate.py, targets.toml and routes/: the only fixture is a scratch
+# dispatch dir holding a golden for GTA III, which is what lets request.sh
+# queue at all (the profile gate refuses a title with none). suggest-route's
+# answer is never written by hand. An adb that fails and logs stands where the
+# device would be; the (l) facts say it was never asked.
+LS_LQ="$LS/dispatch-l"; LS_LTREE="$LS/tree-l"
+LS_LTITLE=5454000E-Grand_Theft_Auto_III.xiso.iso
+ls_l_setup() {
+    rm -rf "$LS_LQ" "$LS_LTREE" "$LS/bin-l" "$LS/l-adb.log"
+    mkdir -p "$LS_LQ"/{queue,running,results,expect,bin,titlestate} "$LS/bin-l" "$LS_LTREE/docs/testing"
+    printf '#!/bin/sh\necho "$*" >> %s\nexit 1\n' "$LS/l-adb.log" > "$LS/bin-l/adb"; chmod +x "$LS/bin-l/adb"
+    cp "$TESTING/dispatcher.sh" "$LS_LQ/bin/dispatcher.sh"
+    cp "$TESTING/dispatcher.sh" "$LS_LTREE/docs/testing/dispatcher.sh"
+    printf '%s' '{"titles": {"5454000E": {"golden": {"save": "9153c63300da", "status": "golden", "how": "seed", "by": "selftest", "utc": "2026-10-23T00:00:00Z"}, "history": []}}}' \
+        > "$LS_LQ/titlestate/golden.json"
+}
+# ls_l_req <label> <request.sh> <args...>: queue one GTA III soak; leaves
+# $LS/l-<label>.rc, .out (its stderr and stdout) and .req (the queued request).
+ls_l_req() {
+    local label="$1" rsh="$2"; shift 2
+    rm -f "$LS_LQ/queue/"* "$LS/l-$label."*
+    PATH="$LS/bin-l:$PATH" DISPATCH_DIR="$LS_LQ" DISPATCH_TREE="$LS_LTREE" bash "$rsh" --who ls-selftest \
+        --title "$LS_LTITLE" --no-expect "selftest (l)" "$@" > "$LS/l-$label.out" 2>&1
+    echo $? > "$LS/l-$label.rc"
+    mv "$LS_LQ/queue/"*.req "$LS/l-$label.req" 2>/dev/null
+    return 0
+}
+ls_l_queued() { [ "$(cat "$LS/l-$1.rc" 2>/dev/null)" = 0 ] && [ -s "$LS/l-$1.req" ]; }   # <label>
+# <label>: queued, carries a load, and no route of any kind -- not merely "no route
+# field", since a request that never queued has none either.
+ls_l_noroute() {
+    ls_l_queued "$1" \
+        && ls_json "$LS/l-$1.req" "d.get('load_slot') and not d.get('route_name') and not d.get('route') and not d.get('route_refs')" \
+        && ls_lacks "attaching recorded route" "$LS/l-$1.out"
+}
+# ls_l <request.sh> <dispatcher.sh> <rdir> <queue|claim|both>: the (l) facts.
+ls_l() {
+    local rsh="$1" disp="$2" rdir="$3" part="$4" F="$3/facts" kind
+    rm -rf "$rdir"; mkdir -p "$rdir"; : > "$F"
+    if [ "$part" != claim ]; then
+        ls_l_setup
+        ls_l_req ctl "$rsh"
+        ls_f "$F" "queue control: with no --route and no load, request.sh queues and attaches gta-3 (so an attach is visible here)" \
+            ls_json "$LS/l-ctl.req" "d.get('route_name') == 'gta-3' and d.get('route') and not d.get('load_slot')"
+        ls_f "$F" "queue control: and says so on stderr" grep -qF "attaching recorded route 'gta-3'" "$LS/l-ctl.out"
+        ls_l_req file "$rsh" --load-state "$LS/src/heavy2.hxs" --load-hdd hdd-scene-gta3.img
+        ls_f "$F" "--load-state <file>, no --route: queued with load_slot 10 and no route" ls_l_noroute file
+        ls_l_req slot "$rsh" --load-state 5 --load-hdd hdd-scene-gta3.img
+        ls_f "$F" "--load-state 5, no --route: queued with load_slot 5 and no route" ls_l_noroute slot
+        ls_l_req scene "$rsh" --scene gta3-incar
+        ls_f "$F" "--scene gta3-incar, no --route: queued with its slot and no route" ls_l_noroute scene
+        ls_l_req named "$rsh" --load-state "$LS/src/heavy2.hxs" --load-hdd hdd-scene-gta3.img --route gta-3
+        ls_f "$F" "--load-state <file> --route gta-3: the named route still travels with the request" \
+            ls_json "$LS/l-named.req" "d.get('route_name') == 'gta-3' and d.get('route') and d.get('load_slot')"
+        ls_l_req survey "$rsh" --load-state "$LS/src/heavy2.hxs" --load-hdd hdd-scene-gta3.img --route survey
+        ls_f "$F" "--load-state <file> --route survey: stays the survey it was typed as, not replaced by gta-3" \
+            ls_json "$LS/l-survey.req" "d.get('route_name') == 'survey' and d.get('load_slot')"
+        ls_f "$F" "the device was never asked (the stand-in adb logged no call)" [ ! -s "$LS/l-adb.log" ]
+    fi
+    if [ "$part" != queue ]; then
+        for kind in noload load survey; do
+            python3 -c 'import json,sys
+d = dict(title_id="5454000e")
+if sys.argv[2] != "noload": d["load_slot"] = "10"
+if sys.argv[2] == "survey": d["route_name"] = "survey"
+json.dump(d, open(sys.argv[1], "w"))' "$rdir/c-$kind.json" "$kind"
+            cp "$rdir/c-$kind.json" "$rdir/c-$kind.before"; mkdir -p "$rdir/c-$kind"
+            (
+                ls_src "$disp"
+                ensure_route_attached 5454000e "$LS_LTITLE" "$rdir/c-$kind" "$rdir/c-$kind.json"; echo $? > "$rdir/c-$kind.rc"
+            ) >/dev/null 2> "$rdir/log"
+        done
+        ls_f "$F" "claim control: a request with no route and no load is given gta-3 at claim (so an attach is visible here)" \
+            ls_json "$rdir/c-noload.json" "d.get('route_name') == 'gta-3' and d.get('route')"
+        ls_f "$F" "a request that loads a state and names no route is left byte for byte as queued" cmp -s "$rdir/c-load.before" "$rdir/c-load.json"
+        ls_f "$F" "and the claim goes on (rc 0, no route.refused), the inputs note saying why no route" \
+            grep -qF "none attached: the request loads a save state" "$rdir/c-load/inputs.txt"
+        ls_f "$F" "a loading request that named the survey keeps it" cmp -s "$rdir/c-survey.before" "$rdir/c-survey.json"
+        ls_f "$F" "the loading requests claimed with rc 0 and no route.refused" \
+            [ "$(cat "$rdir/c-load.rc" "$rdir/c-survey.rc" 2>/dev/null | tr '\n' ' ')" = "0 0 " -a ! -e "$rdir/c-load/route.refused" -a ! -e "$rdir/c-survey/route.refused" ]
+    fi
+}
+echo "== load-state (l): a request that loads a state gets no recorded boot route, at queue time or at claim; a named --route still travels"
+ls_l "$TESTING/request.sh" "$TESTING/dispatcher.sh" "$LS/rdir-l" both
+ls_facts_show "$LS/rdir-l"
+
 # ------------------------------------------------ the scene's disk: mutants
 echo "== load-state MUTANTS: each reinstates a weaker rule; the check above that refuses it must fail"
 LS_MUT_HDD_SET='        elif set_hdd_pref "$want" "$(hdd_pref_marker)" >/dev/null; then'
@@ -1005,6 +1098,60 @@ if [ -n "$LS_M" ]; then
         || ok "MUTANT nolisting: (k3) stays green: a mv that fails loudly is caught by its status alone"
 fi
 ls_reset_device
+
+# ------------------------------------------------ (l) mutants: the boot route
+echo "== load-state (l) MUTANTS: the guard dropped at queue time, and at claim; the load cases must go red and the controls stay green"
+LS_MUT_RSLOAD='[ -z "$PATH_BROKEN" ] \
+   && [ -z "$LOAD_SLOT" ]; then'
+LS_MUT_CLAIM='    if [ -n "$(jq_get "$req" load_slot "")" ]; then'
+ls_fact_is() {   # <rdir> <n> <ok|bad>: the nth fact of a facts file has that verdict
+    [ "$(sed -n "${2}p" "$1/facts" | cut -d' ' -f1)" = "$3" ]
+}
+# request.sh finds titles/ and scenes.tsv by its own path and resolves --ref by
+# `git -C <its dir>/../..`, so a mutant needs a tree shaped like the repo: the
+# siblings by symlink, request.sh a real mutated copy, the root a git repo.
+LS_MR="$LS/mut-lreq"
+rm -rf "$LS_MR"; mkdir -p "$LS_MR/docs/testing"
+for _ls_x in "$TESTING"/*; do
+    _ls_b="$(basename "$_ls_x")"
+    [ "$_ls_b" = request.sh ] || ln -s "$_ls_x" "$LS_MR/docs/testing/$_ls_b"
+done
+cp "$TESTING/request.sh" "$LS_MR/docs/testing/request.sh"
+if ! ls_mutate "$LS_MR/docs/testing/request.sh" "$LS_MUT_RSLOAD" '[ -z "$PATH_BROKEN" ]; then #MUTANT: a load gets the suggested route' >/dev/null 2>&1 \
+        || cmp -s "$LS_MR/docs/testing/request.sh" "$TESTING/request.sh"; then
+    bad "MUTANT noqueueguard: could not build it (the anchor is not in request.sh exactly once)"
+elif ! { git init -q "$LS_MR" \
+        && git -C "$LS_MR" -c core.hooksPath=/dev/null -c commit.gpgsign=false -c user.name=selftest -c user.email=selftest@invalid \
+               commit -q --allow-empty -m mutant-tree; } >/dev/null 2>&1; then
+    bad "MUTANT noqueueguard: could not make its tree a git repo (request.sh resolves --ref there)"
+else
+    ls_l "$LS_MR/docs/testing/request.sh" "$TESTING/dispatcher.sh" "$LS/rdir-m-noqueueguard" queue
+    # facts: 1-2 the control, 3-5 file/slot/scene without a route, 6 a named route, 7 the survey, 8 the device
+    if ls_fact_is "$LS/rdir-m-noqueueguard" 1 ok && ls_fact_is "$LS/rdir-m-noqueueguard" 2 ok \
+        && ls_fact_is "$LS/rdir-m-noqueueguard" 3 bad && ls_fact_is "$LS/rdir-m-noqueueguard" 4 bad \
+        && ls_fact_is "$LS/rdir-m-noqueueguard" 5 bad && ls_fact_is "$LS/rdir-m-noqueueguard" 7 bad \
+        && ls_fact_is "$LS/rdir-m-noqueueguard" 6 ok; then
+        ok "MUTANT noqueueguard: with request.sh's guard dropped, --load-state <file>, --load-state 5, --scene and the survey case go red; the control and the named route stay green"
+    else
+        bad "MUTANT noqueueguard: the (l) queue facts did not split as the guard predicts"
+        sed 's/^/        fact: /' "$LS/rdir-m-noqueueguard/facts"
+    fi
+fi
+
+# At claim: ensure_route_attached without the load_slot early return gives a
+# loading request the route again (the dispatcher's own copy of the rule).
+ls_mut noclaimguard "$LS_MUT_CLAIM" '    if false; then #MUTANT: a scene gets the boot route at claim'
+if [ -n "$LS_M" ]; then
+    ls_l "$TESTING/request.sh" "$LS_M/dispatcher.sh" "$LS/rdir-m-noclaimguard" claim
+    # facts: 1 the control, 2 byte for byte, 3 the inputs note, 4 the survey kept, 5 rc 0
+    if ls_fact_is "$LS/rdir-m-noclaimguard" 1 ok && ls_fact_is "$LS/rdir-m-noclaimguard" 2 bad \
+        && ls_fact_is "$LS/rdir-m-noclaimguard" 3 bad; then
+        ok "MUTANT noclaimguard: with ensure_route_attached's load_slot return dropped, a loading request is changed at claim and (l)'s claim facts go red; the control stays green"
+    else
+        bad "MUTANT noclaimguard: the (l) claim facts did not split as the guard predicts"
+        sed 's/^/        fact: /' "$LS/rdir-m-noclaimguard/facts"
+    fi
+fi
 
 # ------------------------------------------------------- MUTANT: drop restore
 echo "== load-state MUTANT: restore_scene_pref dropped -- case (a,d)'s restore checks must then fail"

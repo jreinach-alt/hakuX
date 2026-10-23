@@ -10,6 +10,7 @@ Needs device: yes (one proof run after the fold, queued by lane.local; the lane 
 Needs NDK: no
 Selftest: 99-load-state 99-battery-admit 99-disc-hdd -- 99-load-state: a scene write into an app-only states dir
   (fake dirs host mode 555, plain-shell writes refused), a dir run-as cannot open, a failing park, with four mutants;
+  and (l), a request that loads a state gets no recorded boot route from request.sh or at claim, with two mutants;
   99-battery-admit and 99-disc-hdd: the neighbours that source the same dispatcher.sh functions
 
 ## Step 0: already tried
@@ -30,8 +31,12 @@ of docs/lanes/*/ and docs/testing/ for `ext_data_rw`, `chmod g+w`, `run-as .* st
 | 10-23 09:45 | dispatch/logs/dispatcher.log; result 1-1792773923-fps30replay1023-2457071 | First real `--load-state <host .hxs>`: `SCENE: push of .../heavy2.hxs -> .../states/5454000E/auto.hxs failed`, `SCENE SETUP FAILED` before anything was parked | The failure this lane fixes | `adb shell` (uid shell, group `ext_data_rw`) reads the dir but cannot create in it |
 | 10-23 09:47-09:49 | lane.local, in the brief | `x1box/` shell-writable; `states/` and `states/5454000e/` not (`drwxr-s--- u0_a145`); `states/4d530065/` writable (`drwxrws---`); `run-as <debug pkg>` is u0_a145 and writes; `run-as ... chmod g+w states/5454000e` made shell `test -w` yes, and it persists | The recipe, applied by hand to one title | Built here as the automatic step, for every title. Only 5454000e is open on the Nova; every other dir is still closed, so the fake must not assume an open dir |
 
+| 10-17 | 9a177a6f82 (dispatchdoctor1017 Section 1b); docs/lanes/dispatchdoctor1017/{NOTES,PR}.md; request.sh "dispatchdoctor1017 Section 1b", dispatcher.sh `ensure_route_attached` | A soak that typed no `--route` (or `survey`) gets the title's `suggest-route` answer attached, at queue time and again at claim; skipped for `--find-route`, `--remake-profile`, `--path-broken`. Owner 10-17: "no route (or only survey)" | Built and selftest-green for a cold-boot soak. Its skip list names three deliberate intents; it names no load | Does not cover a load. A `--load-state`/`--scene` request starts mid-game, and nothing in either guard asks. The two places are fixed here (A) |
+| 10-23 | coordinator addendum ce679c6d30 (the lane.local replay of heavy2.hxs, `--load-state`, no `--route`) | request.sh attached `gta-3.route` (A x16, steering from 55 s, recorded from a cold boot) to a request that loads a mid-game state; the replay was void | The failure A fixes | The fix is a guard in the attach condition, not a new flag: an explicit `--route` still attaches, and a scene's own input is `--hold-trigger` |
+
 No row is a states-dir write that already worked from code. The earlier lanes handled the mode of a pushed file
-(hddperm, devpushro), or the app's own writes (savestate1011); the open dir on the Nova was a hand step.
+(hddperm, devpushro), or the app's own writes (savestate1011); the open dir on the Nova was a hand step. No row is a
+route guard for a load: dispatchdoctor1017 skipped three intents and none was a load.
 
 ## What this lane builds
 
@@ -48,3 +53,9 @@ No row is a states-dir write that already worked from code. The earlier lanes ha
 4. **chmod, not a run-as copy**, argued in NOTES.md.
 5. **99-load-state.sh falsifier.** The fake device has app-only dirs (host mode 555, a plain-shell write fails); cases
    k0-k7; four mutants (`dropopen`, `noclose`, `silentpark`, `nolisting`) each cmp-verified and each turns its case red.
+6. **A: a request that loads a state gets no recorded boot route.** request.sh's Section 1b attach block skips
+   `--load-state`/`--scene` requests (`&& [ -z "$LOAD_SLOT" ]`); an explicit `--route` still attaches. dispatcher.sh
+   `ensure_route_attached` returns before its own attach when the request has a `load_slot` (the claim-time twin,
+   not in the addendum: a route-less request from an older request.sh would otherwise get gta-3 there) and says why
+   in the inputs note. Falsifier (l) in 99-load-state.sh, against the real `suggest-route`, `targets.toml` and
+   `routes/`; two cmp-verified mutants (`noqueueguard`, `noclaimguard`).

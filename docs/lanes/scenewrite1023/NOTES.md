@@ -100,3 +100,47 @@ status alone. That last mutant is what shows the listing check is not redundant.
   measured; the fake uses 660. The first scene on a second title is the measurement.
 - **A dir left open is harmless to the app.** The app owns it; g+w gives the group (`ext_data_rw`) write, and shell
   is already in that group. It is the mode restore puts back, not a safety property.
+
+## A: a request that loads a state gets no recorded boot route (commit 2, coordinator addendum ce679c6d30)
+
+The 10-23 replay of heavy2.hxs (`--load-state`, no `--route`) was void: request.sh attached `gta-3.route`. The
+"dispatchdoctor1017 Section 1b" block (request.sh, before the `if [ -n "$ROUTE" ]` resolve) asks
+`titlestate.py suggest-route` for a title that typed no `--route` (or `--route survey`), and GTA III's
+`targets.toml` entry names `route = "gta-3"`. That route is recorded from a cold boot: A x16 and steering from 55 s.
+A scene starts mid-game from a saved state, so those inputs land on a world they were not made for. A scene's own
+input is `--hold-trigger`.
+
+**request.sh** now skips the attach when `LOAD_SLOT` is set (`&& [ -z "$LOAD_SLOT" ]`, with a comment). `--load-state
+<file>`, `--load-state <n>` and `--scene` all set `LOAD_SLOT` before this block. An explicit `--route <x>` still
+attaches, because the attach block is only the suggestion; a named route is resolved below it as before. A
+`--route survey` with a load stays the survey.
+
+**dispatcher.sh `ensure_route_attached`** needed the same rule, and this was not in the addendum. The dispatcher
+attaches a route at claim time too (serve_one, after `set_scene_pref`), for a request that carries none, from the
+same `suggest-route`. A request that reached the queue without a route (queued by an older request.sh, or by hand)
+would have got gta-3 there and the replay would have been void the same way. It now returns 0 before the attach when
+the request has a `load_slot`, writing `none attached: the request loads a save state` to the inputs note so a
+result says why it ran with no route. The request file is left byte for byte as queued. A request that named a route
+is not touched on either path: only the suggestion is skipped.
+
+**What the fragment tests (99-load-state.sh, section l).** The real request.sh runs against the real
+`titlestate.py`, `targets.toml` and `routes/`; suggest-route's answer is never written by hand. The one fixture is a
+scratch dispatch dir whose `titlestate/golden.json` holds a golden for GTA III, which is what lets request.sh queue
+at all (the profile gate refuses a title with none). A stand-in `adb` that fails and logs sits where the device
+would be; the last queue fact says it was never asked. The control (no `--route`, no load) must queue with
+`route_name: gta-3` and say `attaching recorded route 'gta-3'` on stderr, so an attach is visible in this setup. Then
+`--load-state <file>`, `--load-state 5` and `--scene gta3-incar` must queue with `load_slot` and no `route_name`,
+`route` or `route_refs`; `--route gta-3` and `--route survey` with a load must keep what they named. At claim, the
+real `ensure_route_attached` runs on a request with no load (control: gets gta-3), with `load_slot` 10 (left byte for
+byte, the inputs note names the reason) and with `load_slot` and `route_name: survey` (left as is).
+
+Two mutants, each by exact substitution and cmp-verified: `noqueueguard` (request.sh without the `LOAD_SLOT`
+condition) turns the three no-route facts and the survey fact red while the control and the named route stay green;
+`noclaimguard` (`ensure_route_attached`'s `load_slot` test replaced by `false`) turns the byte-for-byte and the inputs
+note facts red while its control stays green. The request.sh mutant needs a tree shaped like the repo, since request.sh
+finds `titles/` and `scenes.tsv` by its own path and resolves `--ref` with `git -C <its dir>/../..`: siblings by
+symlink, request.sh a real mutated copy, the root a one-commit git repo in the scratch dir.
+
+**`--load-hdd` is required with a load.** A `--load-state` without `--load-hdd` is refused by request.sh at queue
+time (the scene's disk rule from 10-22), so the (l) cases pass `--load-hdd hdd-scene-gta3.img`; `--scene` takes its
+disk from `scenes.tsv`. Nothing here reads that disk.

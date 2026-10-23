@@ -1406,8 +1406,16 @@ fi
 # that an attach would second-guess -- --find-route in particular means "I
 # know of no route, go blind", which a silently-attached one would quietly
 # defeat. See NOTES.md for this reading of the brief.
+# Never on a --load-state/--scene request either (scenewrite1023): a recorded
+# route is written from a cold boot, and a scene starts mid-game from a saved
+# state, so the route's first steps (gta-3.route: A x16, steering from 55 s)
+# land on a world they were not made for. The 10-23 replay of heavy2.hxs got
+# gta-3.route this way and the run was void. A scene's own input is
+# --hold-trigger. An explicit --route still attaches below; only the
+# suggestion is skipped.
 if [ -n "$TITLE" ] && [ -n "$TITLE_ID" ] && { [ -z "$ROUTE" ] || [ "$ROUTE" = survey ]; } \
-   && [ -z "$FIND_ROUTE" ] && [ -z "$REMAKE_PROFILE" ] && [ -z "$PATH_BROKEN" ]; then
+   && [ -z "$FIND_ROUTE" ] && [ -z "$REMAKE_PROFILE" ] && [ -z "$PATH_BROKEN" ] \
+   && [ -z "$LOAD_SLOT" ]; then
     SUG=$(python3 "$TS_PY" suggest-route --title-id "$TITLE_ID" 2>/dev/null)
     SUGNAME=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("name") or "")' "$SUG" 2>/dev/null)
     if [ -n "$SUGNAME" ]; then

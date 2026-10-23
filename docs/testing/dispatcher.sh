@@ -2030,6 +2030,17 @@ ensure_route_attached() {
         inputs_note "$rdir" route "'$cur', named by the request (left as is)"
         return 0
     fi
+    # Never on a request that loads a save state (scenewrite1023), the same
+    # rule as request.sh's queue-time attach and for the same reason: a
+    # recorded route is written from a cold boot, a scene starts mid-game, and
+    # a scene's own input is its hold trigger. Without this guard a request
+    # that request.sh left route-less would get the boot route here, at claim,
+    # and the 10-23 replay of heavy2.hxs would be voided all the same. A route
+    # the request names is handled above and kept.
+    if [ -n "$(jq_get "$req" load_slot "")" ]; then
+        inputs_note "$rdir" route "none attached: the request loads a save state (load_slot $(jq_get "$req" load_slot "")), which starts mid-game, and a recorded route starts from boot${cur:+; the generic survey the request named is left as is}"
+        return 0
+    fi
     if [ -z "$ttid" ]; then
         inputs_note "$rdir" route "none: '$title' has no TitleID, so no recorded route can be looked up${cur:+ (running the survey the request asked for)}"
         return 0
