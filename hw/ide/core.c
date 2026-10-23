@@ -43,6 +43,8 @@
 #include "system/runstate.h"
 #include "ide-internal.h"
 #include "trace.h"
+#include "system/cpus.h"            /* qemu_in_vcpu_thread(), heavycap */
+#include "hw/xbox/nv2a/heavycap.h"
 #ifdef __ANDROID__
 #include <android/log.h>
 #define IDE425_LOG(...) \
@@ -66,6 +68,70 @@ static struct {
     int64_t dma_bytes, dma_sum, dma_max, dev_sum, dev_max;
     int64_t gap_sum, gap_max, drain_sum, drain_max;
 } ide425;
+
+/*
+ * heavycap1022 (#433): never-reset IDE totals for the per-guest-frame record
+ * (hw/xbox/nv2a/heavycap.h), read by the PFIFO thread at each guest flip.
+ * [ide425] above resets every 2 s window and times with QEMU_CLOCK_HOST, the
+ * wall clock, which steps; these use get_clock() (CLOCK_MONOTONIC) and are
+ * timed only while heavycap is on. Every writer holds the BQL.
+ *
+ *   vcpu_ns   time the vCPU thread spent inside an IDE submit
+ *             (blk_aio_preadv for ATAPI and buffered PIO, dma_blk_read/write
+ *             for the HDD's DMA), the cancel drain, or atapi's synchronous
+ *             sector read: the guest is stopped for it
+ *   other_ns  the same on any other thread (the main loop, which resubmits
+ *             from the completion callbacks)
+ *   sync_ns   atapi cd_read_sector_sync, any thread (also in vcpu/other)
+ *   dev_ns    command to IRQ: the guest-visible device latency
+ *   bytes, cmds, irqs
+ */
+static struct {
+    uint64_t vcpu_ns, other_ns, sync_ns, dev_ns, bytes, cmds, irqs;
+    int64_t t_cmd;
+} hc_ide;
+
+static inline int64_t hc_ide_t0(void)
+{
+    return hakux_heavycap_on() ? get_clock() : 0;
+}
+
+static void hc_ide_book(int64_t t0, uint64_t bytes)
+{
+    int64_t d;
+
+    if (!t0) {
+        return;
+    }
+    d = get_clock() - t0;
+    d = d > 0 ? d : 0;
+    if (qemu_in_vcpu_thread()) {
+        HC_ADD(&hc_ide.vcpu_ns, (uint64_t)d);
+    } else {
+        HC_ADD(&hc_ide.other_ns, (uint64_t)d);
+    }
+    HC_ADD(&hc_ide.bytes, bytes);
+}
+
+void hakux_hc_ide_sync(int64_t t0, uint64_t bytes)
+{
+    if (t0) {
+        int64_t d = get_clock() - t0;
+        HC_ADD(&hc_ide.sync_ns, (uint64_t)(d > 0 ? d : 0));
+        hc_ide_book(t0, bytes);
+    }
+}
+
+void hakux_ide_totals(HakuxHcIde *o)
+{
+    o->vcpu_ns = __atomic_load_n(&hc_ide.vcpu_ns, __ATOMIC_RELAXED);
+    o->other_ns = __atomic_load_n(&hc_ide.other_ns, __ATOMIC_RELAXED);
+    o->sync_ns = __atomic_load_n(&hc_ide.sync_ns, __ATOMIC_RELAXED);
+    o->dev_ns = __atomic_load_n(&hc_ide.dev_ns, __ATOMIC_RELAXED);
+    o->bytes = __atomic_load_n(&hc_ide.bytes, __ATOMIC_RELAXED);
+    o->cmds = __atomic_load_n(&hc_ide.cmds, __ATOMIC_RELAXED);
+    o->irqs = __atomic_load_n(&hc_ide.irqs, __ATOMIC_RELAXED);
+}
 
 /* These values were based on a Seagate ST3500418AS but have been modified
    to make more sense in QEMU */
@@ -743,8 +809,10 @@ BlockAIOCB *ide_buffered_readv(IDEState *s, int64_t sector_num,
     qemu_iovec_init_buf(&req->qiov, blk_blockalign(s->blk, iov->size),
                         iov->size);
 
+    int64_t hc_t0 = hc_ide_t0();
     aioreq = blk_aio_preadv(s->blk, sector_num << BDRV_SECTOR_BITS,
                             &req->qiov, 0, ide_buffered_readv_cb, req);
+    hc_ide_book(hc_t0, iov->size);
 
     QLIST_INSERT_HEAD(&s->buffered_requests, req, list);
     return aioreq;
@@ -785,10 +853,12 @@ void ide_cancel_dma_sync(IDEState *s)
      */
     if (s->bus->dma->aiocb) {
         int64_t t0 = qemu_clock_get_ns(QEMU_CLOCK_HOST), d;
+        int64_t hc_t0 = hc_ide_t0();
 
         trace_ide_cancel_dma_sync_remaining();
         blk_drain(s->blk);
         assert(s->bus->dma->aiocb == NULL);
+        hc_ide_book(hc_t0, 0);
         d = qemu_clock_get_ns(QEMU_CLOCK_HOST) - t0;
         ide425.drain_n++;
         ide425.drain_sum += d;
@@ -1098,14 +1168,17 @@ static void ide_dma_cb(void *opaque, int ret)
     }
 
     offset = sector_num << BDRV_SECTOR_BITS;
+    int64_t hc_t0 = hc_ide_t0();
     switch (s->dma_cmd) {
     case IDE_DMA_READ:
         s->bus->dma->aiocb = dma_blk_read(s->blk, &s->sg, offset,
                                           BDRV_SECTOR_SIZE, ide_dma_cb, s);
+        hc_ide_book(hc_t0, s->sg.size);
         break;
     case IDE_DMA_WRITE:
         s->bus->dma->aiocb = dma_blk_write(s->blk, &s->sg, offset,
                                            BDRV_SECTOR_SIZE, ide_dma_cb, s);
+        hc_ide_book(hc_t0, s->sg.size);
         break;
     case IDE_DMA_TRIM:
         s->bus->dma->aiocb = dma_blk_io(&s->sg, offset, BDRV_SECTOR_SIZE,
@@ -2354,6 +2427,10 @@ void ide_bus_exec_cmd(IDEBus *bus, uint32_t val)
             ide425.t_irq = 0;
         }
         ide425.t_cmd = now;
+        if (hakux_heavycap_on()) {
+            HC_ADD(&hc_ide.cmds, 1);
+            hc_ide.t_cmd = get_clock();
+        }
     }
 
     complete = ide_cmd_table[val].handler(s, val);
@@ -3030,6 +3107,14 @@ void ide_bus_set_irq(IDEBus *bus)
             ide425.dev_sum += d;
             ide425.dev_max = MAX(ide425.dev_max, d);
             ide425.t_cmd = 0;
+        }
+        if (hakux_heavycap_on()) {
+            HC_ADD(&hc_ide.irqs, 1);
+            if (hc_ide.t_cmd) {
+                int64_t hd = get_clock() - hc_ide.t_cmd;
+                HC_ADD(&hc_ide.dev_ns, (uint64_t)(hd > 0 ? hd : 0));
+                hc_ide.t_cmd = 0;
+            }
         }
         ide425.t_irq = now;
         ide425_tick();

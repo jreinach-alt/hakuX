@@ -463,6 +463,7 @@ uint64_t hakux_tb_codegen;
 
 #ifdef XBOX
 #include "hw/xbox/nv2a/debug.h"     /* nv2a_perflog_on() */
+#include "hw/xbox/nv2a/heavycap.h"  /* hakux_heavycap_on(), HC_ADD */
 /*
  * #787: tb_gen_code's own wall time, so a window can say how much of the
  * vCPU's time went to translation. Booked by the wrapper below around every
@@ -479,6 +480,11 @@ uint64_t hakux_tb_codegen;
  * hakux_tlb68_tick() in cputlb.c. Timed only while the perflog run-time
  * switch is on (#433, perflog1016; always in a perflog build): off, the
  * wrapper is a load, a branch and a tail call to tb_gen_code_body.
+ *
+ * heavycap1022: also timed while heavycap is on (HAKUX_HEAVYCAP=1), whose
+ * per-frame record reads gc, gc_ns and cg_ns from the PFIFO thread
+ * (hakux_tcg_totals() in cputlb.c): the adds are relaxed atomic stores so
+ * that read is a defined one. max_ns stays the tick's.
  */
 uint64_t hakux_tcg787_gc;
 uint64_t hakux_tcg787_gc_ns;
@@ -489,7 +495,7 @@ static TranslationBlock *tb_gen_code_body(CPUState *cpu, TCGTBCPUState s);
 
 TranslationBlock *tb_gen_code(CPUState *cpu, TCGTBCPUState s)
 {
-    if (!nv2a_perflog_on()) {
+    if (!nv2a_perflog_on() && !hakux_heavycap_on()) {
         return tb_gen_code_body(cpu, s);
     }
     uint64_t cg0 = hakux_tb_codegen;
@@ -497,10 +503,10 @@ TranslationBlock *tb_gen_code(CPUState *cpu, TCGTBCPUState s)
     TranslationBlock *tb = tb_gen_code_body(cpu, s);
     uint64_t dt = get_clock() - t0;
 
-    hakux_tcg787_gc++;
-    hakux_tcg787_gc_ns += dt;
+    HC_ADD(&hakux_tcg787_gc, 1);
+    HC_ADD(&hakux_tcg787_gc_ns, dt);
     if (hakux_tb_codegen != cg0) {
-        hakux_tcg787_cg_ns += dt;
+        HC_ADD(&hakux_tcg787_cg_ns, dt);
     }
     if (dt > hakux_tcg787_max_ns) {
         hakux_tcg787_max_ns = dt;

@@ -20,6 +20,7 @@
  */
 
 #include "nv2a_int.h"
+#include "hw/xbox/nv2a/heavycap.h"      /* heavycap1022: VBLANK ack */
 
 uint64_t pcrtc_read(void *opaque, hwaddr addr, unsigned int size)
 {
@@ -55,6 +56,12 @@ void pcrtc_write(void *opaque, hwaddr addr, uint64_t val, unsigned int size)
 
     switch (addr) {
     case NV_PCRTC_INTR_0:
+        /* heavycap1022: the guest acknowledges a pending VBLANK; raise to
+         * here is the record's vack. Under the BQL, as the raise. */
+        if (hakux_heavycap_on() &&
+            (d->pcrtc.pending_interrupts & val & NV_PCRTC_INTR_0_VBLANK)) {
+            hakux_hc_vblank_ack(qemu_clock_get_ns(QEMU_CLOCK_REALTIME));
+        }
         d->pcrtc.pending_interrupts &= ~val;
         nv2a_update_irq(d);
         break;

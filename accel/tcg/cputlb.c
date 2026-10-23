@@ -56,6 +56,7 @@
 #ifdef XBOX
 #include "tb-context.h"
 #include "hw/xbox/nv2a/debug.h"     /* nv2a_perflog_on(), for [tcg787] */
+#include "hw/xbox/nv2a/heavycap.h"  /* hakux_heavycap_on(), HC_ADD */
 #endif
 
 
@@ -193,6 +194,12 @@ extern uint64_t hakux_tcg424_cbb;
  * gap inside it is not detected (two flips inside one 2 s window). pl=1
  * stays on the line for its readers. cpu-exec.c's [tpc787] is still a
  * perflog build's only. vCPU thread only.
+ *
+ * heavycap1022: gus, cgus, ffus and pfus are also timed while heavycap is on
+ * (HAKUX_HEAVYCAP=1), and hakux_tcg_totals() below reads them from the PFIFO
+ * thread at each guest flip, so their adds are relaxed atomic stores. tfus
+ * (tlb_fill_align, the most frequent hook) stays perflog-only. The [tcg787]
+ * line still needs the perflog switch at both ends of its window.
  */
 #ifdef XBOX
 #define HAKUX_TCG787 1
@@ -415,6 +422,18 @@ static void hakux_tcg787_tick(unsigned window, int64_t dt_ms)
     p_tf = hakux_tcg787_tf;
     p_tfr = hakux_tcg787_tfr;
     p_tfns = hakux_tcg787_tf_ns;
+}
+
+/* heavycap1022: never-reset totals for the per-frame record (PFIFO thread). */
+void hakux_tcg_totals(HakuxHcTcg *o)
+{
+    o->gen_n = __atomic_load_n(&hakux_tcg787_gc, __ATOMIC_RELAXED);
+    o->gen_ns = __atomic_load_n(&hakux_tcg787_gc_ns, __ATOMIC_RELAXED);
+    o->cg_ns = __atomic_load_n(&hakux_tcg787_cg_ns, __ATOMIC_RELAXED);
+    o->flush_ns = __atomic_load_n(&hakux_tcg787_ff_ns, __ATOMIC_RELAXED) +
+                  __atomic_load_n(&hakux_tcg787_pf_ns, __ATOMIC_RELAXED);
+    o->tf_ns = __atomic_load_n(&hakux_tcg787_tf_ns, __ATOMIC_RELAXED);
+    o->tb_flushes = qatomic_read(&tb_ctx.tb_flush_count);
 }
 #endif
 
@@ -841,7 +860,7 @@ static void tlb_flush_by_mmuidx_async_work(CPUState *cpu, run_on_cpu_data data)
     MMUIdxMap all_dirty, work, to_clean;
     int64_t now = get_clock_realtime();
 #if HAKUX_TCG787
-    int64_t t787 = nv2a_perflog_on() ? get_clock() : 0;
+    int64_t t787 = nv2a_perflog_on() || hakux_heavycap_on() ? get_clock() : 0;
 #endif
 
     assert_cpu_is_self(cpu);
@@ -874,7 +893,7 @@ static void tlb_flush_by_mmuidx_async_work(CPUState *cpu, run_on_cpu_data data)
     tcg_flush_jmp_cache(cpu);
 #if HAKUX_TCG787
     if (unlikely(t787)) {
-        hakux_tcg787_ff_ns += get_clock() - t787;
+        HC_ADD(&hakux_tcg787_ff_ns, get_clock() - t787);
     }
 #endif
 
@@ -1022,7 +1041,7 @@ static void tlb_flush_page_by_mmuidx_async_0(CPUState *cpu,
 {
     int mmu_idx;
 #if HAKUX_TCG787
-    int64_t t787 = nv2a_perflog_on() ? get_clock() : 0;
+    int64_t t787 = nv2a_perflog_on() || hakux_heavycap_on() ? get_clock() : 0;
 #endif
 
     assert_cpu_is_self(cpu);
@@ -1048,7 +1067,7 @@ static void tlb_flush_page_by_mmuidx_async_0(CPUState *cpu,
     tb_jmp_cache_clear_page(cpu, addr);
 #if HAKUX_TCG787
     if (unlikely(t787)) {
-        hakux_tcg787_pf_ns += get_clock() - t787;
+        HC_ADD(&hakux_tcg787_pf_ns, get_clock() - t787);
     }
 #endif
 }
@@ -1987,7 +2006,7 @@ static bool tlb_fill_align(CPUState *cpu, vaddr addr, MMUAccessType type,
     ok = tlb_fill_align_body(cpu, addr, type, mmu_idx, memop, size, probe,
                              ra);
     hakux_tcg787_tfr++;
-    hakux_tcg787_tf_ns += get_clock() - t0;
+    HC_ADD(&hakux_tcg787_tf_ns, get_clock() - t0);  /* heavycap reads it */
     return ok;
 }
 

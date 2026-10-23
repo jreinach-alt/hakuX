@@ -33,6 +33,8 @@
 #include "exec/translation-block.h"
 #include "tcg/tcg.h"
 #include "hw/xbox/nv2a/pgraph/profile.h"   /* #433 frametrace */
+#include "hw/xbox/nv2a/heavycap.h"         /* #433 heavycap1022 */
+#include "qemu/seqlock.h"
 #include "qemu/atomic.h"
 #include "qemu/rcu.h"
 #include "exec/log.h"
@@ -1210,6 +1212,53 @@ static int64_t rrw_t;                   /* its start, or the open wake's */
 static int64_t rrw_busy0;               /* the open busy period's start */
 static RR425Wake *rrw_open;             /* wake whose busy period is open */
 
+/*
+ * heavycap1022: the same idle stretches as never-reset totals by wake class,
+ * for the per-guest-frame record (hw/xbox/nv2a/heavycap.h), which reads them
+ * from the PFIFO thread at each guest flip. Written by the vCPU only, under a
+ * seqlock, so a read sees a stretch either open (hc_rrw_t0, counted to the
+ * reader's clock) or closed and booked to its class, never both. A stretch
+ * still open at a flip is in that frame's total; its class is known only
+ * when it ends, so its class share lands in the frame it ends in.
+ */
+static QemuSeqLock hc_rrw_sq;
+static int64_t hc_rrw_t0;               /* the open stretch's start, 0 none */
+static uint64_t hc_rrw_closed;
+static uint64_t hc_rrw_cls_ns[HAKUX_HC_NI], hc_rrw_cls_n[HAKUX_HC_NI];
+
+static int hc_rrw_class(uint32_t key)
+{
+    unsigned vec = key & 0xff, units = (key >> 8) & 0xff;
+
+    if (vec == 0x33) {                  /* IRQ3, NV2A */
+        return units & 2 ? HAKUX_HC_I_VBL : HAKUX_HC_I_NV2A;   /* 2: PCRTC */
+    }
+    return vec == 0x30 ? HAKUX_HC_I_PIT : vec == 0x3e ? HAKUX_HC_I_IDE
+                                                      : HAKUX_HC_I_OTHER;
+}
+
+bool hakux_rrw_idle_totals(HakuxHcIdle *o)
+{
+    for (int tries = 0; tries < 8; tries++) {
+        unsigned s = seqlock_read_begin(&hc_rrw_sq);
+        int64_t t0 = qatomic_read(&hc_rrw_t0);
+
+        o->total_ns = qatomic_read(&hc_rrw_closed);
+        for (int k = 0; k < HAKUX_HC_NI; k++) {
+            o->cls_ns[k] = qatomic_read(&hc_rrw_cls_ns[k]);
+            o->cls_n[k] = qatomic_read(&hc_rrw_cls_n[k]);
+        }
+        if (!seqlock_read_retry(&hc_rrw_sq, s)) {
+            if (t0) {
+                int64_t now = get_clock();
+                o->total_ns += now > t0 ? (uint64_t)(now - t0) : 0;
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
 static RR425Wake *rrw_slot(uint32_t key)
 {
     for (int i = 0; i < RRW_N; i++) {
@@ -1268,6 +1317,11 @@ static void rrw_sti(CPUState *cpu, uint32_t pc)
     if (hakux_ft_enabled()) {
         hakux_ft_gidle_begin();
     }
+    if (hakux_heavycap_on()) {
+        seqlock_write_begin(&hc_rrw_sq);
+        qatomic_set(&hc_rrw_t0, now);
+        seqlock_write_end(&hc_rrw_sq);
+    }
 }
 
 /* cpu_handle_interrupt took an interrupt. */
@@ -1288,6 +1342,18 @@ static void rrw_wake(void)
     rrw_idle = false;
     if (hakux_ft_enabled()) {
         hakux_ft_gidle_end();
+    }
+    if (hakux_heavycap_on() && hc_rrw_t0) {
+        /* Booked even when the [rr425w] table is full (w NULL). */
+        int c = hc_rrw_class(key);
+        uint64_t d = now > hc_rrw_t0 ? (uint64_t)(now - hc_rrw_t0) : 0;
+
+        seqlock_write_begin(&hc_rrw_sq);
+        qatomic_set(&hc_rrw_closed, hc_rrw_closed + d);
+        qatomic_set(&hc_rrw_cls_ns[c], hc_rrw_cls_ns[c] + d);
+        qatomic_set(&hc_rrw_cls_n[c], hc_rrw_cls_n[c] + 1);
+        qatomic_set(&hc_rrw_t0, 0);
+        seqlock_write_end(&hc_rrw_sq);
     }
     if (w) {
         int64_t idle = now - rrw_t;

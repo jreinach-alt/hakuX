@@ -29,6 +29,8 @@
  * it without QEMU; this is its one implementation. */
 #define HAKUX_FT_IMPLEMENTATION
 #include "hw/xbox/nv2a/pgraph/profile.h"
+#include "hw/xbox/nv2a/heavycap.h"      /* #433 heavycap1022 */
+#include "hw/xbox/nv2a/heavyrule.h"
 #ifdef CONFIG_VULKAN
 #include <volk.h>
 #ifdef __ANDROID__
@@ -400,14 +402,559 @@ static struct {
     uint32_t frames;
 } lw_win;
 
+/* ======================================================================
+ * #433 heavycap1022: the per-guest-frame record (hw/xbox/nv2a/heavycap.h).
+ *
+ * One record per guest frame, flip to flip, in a ring of HC_RING. Each field
+ * is what the vCPU (or the device, or the GPU) spent in that frame, in us,
+ * differenced from never-reset totals read here at the flip:
+ *
+ *   g     flip to flip, get_clock()                     (this file)
+ *   dr    draws: BEGIN_END begins since the last flip    (pgraph.c)
+ *   vb    VBLANKs fired, g_nv2a_stats.pacing.vblank_fired
+ *   gpu   host GPU main pass: phase_working.gpu_render_ns (vk/draw.c's
+ *         timestamp readback; may land a frame late)
+ *   gi    guest idle, the kernel's sti;nop;nop;cli loop  (cpu-exec.c)
+ *   ivb inv itm iide ioth   ... by the interrupt that ended each stretch:
+ *         VBLANK, other NV2A, PIT, IDE, other; iw = stretches ended
+ *   hlt bql pfl pgl   the vCPU halted, waiting for the BQL, for pfifo.lock,
+ *         for pgraph.lock (the frametrace waits, profile.h); nw = waits
+ *   mm    vCPU MMIO dispatch (frametrace; includes pfl and pgl)
+ *   io iom   IDE/ATAPI submit, drain and sync read on the vCPU / any other
+ *         thread; dev = command-to-IRQ latency; kb, cmd     (hw/ide/)
+ *   tc cg tn   tb_gen_code, its codegen part, translations  (translate-all.c)
+ *   fl    TLB flushes, full and page; tbf = whole-cache tb_flushes;
+ *         tf = TLB miss fills (perflog switch only)          (cputlb.c)
+ *   vack nack vdef vmiss   VBLANK raise to the guest's PCRTC acknowledge
+ *         (sum, count), raised late by the deferral, raised still pending
+ *         (nv2a.c, pcrtc.c)
+ *   res   g - max(gi, hlt) - bql - pfl - pgl - io - tc - fl: guest code
+ *         running, signed (the parts overlap a little; max(gi, hlt) is
+ *         hakux_ft_attribute()'s guest-idle rule)
+ *   trig sv   HC_TRIG_* bits / HC_SAVE_* bits this record fired
+ *   lg    this hook's own time on the previous flip, logging included
+ *   bad   1: the idle read failed, 2: the wait read failed (their deltas
+ *         roll into the next record), 4: a heavy save ran in this frame
+ *         (its pause is in g), so the frame fires no trigger and feeds no
+ *         save rule: the capture never triggers on itself
+ *
+ * The trigger and the limits are heavyrule.h's. The block is printed a few
+ * lines per flip once its HC_POST records exist, so no flip pays for all 62.
+ * PFIFO thread only, holding the PFIFO and pgraph locks: keep it cheap.
+ * ====================================================================== */
+int hakux_hc_on;
+uint32_t hakux_hc_draws;
+
+#define HC_RING 256
+#define HC_LINES 4              /* block lines printed per flip */
+QEMU_BUILD_BUG_ON(HC_RING < HC_PRE + 1 + HC_POST +
+                  (HC_PRE + 1 + HC_POST + 1) / HC_LINES + 2);
+#define HC_SUM_NS 2000000000LL
+
+typedef struct HcRec {
+    uint32_t f, t;                      /* frame_count; flip, monotonic ms */
+    uint32_t g, dr, vb, gpu;
+    uint32_t gi, icls[HAKUX_HC_NI], iw;
+    uint32_t hlt, bql, pfl, pgl, nw, mm;
+    uint32_t io, iom, dev, kb, cmd;
+    uint32_t tc, cg, tn, fl, tbf, tf;
+    uint32_t vack, nack, vdef, vmiss;
+    uint32_t trig, sv, lg, bad;
+    int32_t res;
+} HcRec;
+
+typedef struct HcTot {
+    HakuxHcIdle idle;
+    uint64_t w[HAKUX_FT_NW], nw, mm;
+    HakuxHcIde ide;
+    HakuxHcTcg tcg;
+    uint64_t vack, nack, vdef, vmiss;
+    unsigned vb;
+} HcTot;
+
+/* VBLANK raise/acknowledge: written under the BQL, read at the flip. */
+static int64_t hc_vbl_t;                        /* BQL only */
+static uint64_t hc_vbl_ack_ns, hc_vbl_nack, hc_vbl_def, hc_vbl_miss;
+
+static struct {
+    bool started;
+    int64_t prev_t;
+    HcTot prev;
+    HcRec ring[HC_RING];
+    uint32_t seq;                       /* records pushed */
+    uint32_t draws_bar;
+    bool save_on;
+    uint32_t self_prev;
+    /* the block */
+    HcBlockRule br;
+    int blk;                            /* 0 none, 1 collecting, 2 printing */
+    uint32_t blk_c, blk_id, blk_sup, blk_trig, blk_pre;
+    int blk_i;                          /* next line, -pre .. HC_POST */
+    /* the summary window */
+    int64_t sum_t0;
+    uint32_t sum_n, sum_slow, sum_heavy, sum_gpu, sum_selfmax;
+    uint64_t sum_self, sum_dr, sum_vb;
+    int64_t sum_res;
+    uint64_t s[32];                     /* per-field us sums, hc_sum_f[] */
+    /* the save */
+    HcSaveRule sr;
+    uint32_t saves_posted, saves_busy, save_done_seen;
+    bool nosaver_logged;
+} hc;
+
+static bool (*hc_saver)(void);
+static int hc_save_busy;                /* posted, not yet saved() */
+static uint32_t hc_save_done;           /* saved() calls */
+static HcRec hc_save_rec;
+static unsigned hc_save_why;
+
+static void __attribute__((format(printf, 1, 2))) hc_log(const char *fmt, ...)
+{
+    char b[640];
+    va_list ap;
+
+    va_start(ap, fmt);
+    vsnprintf(b, sizeof(b), fmt, ap);
+    va_end(ap);
+#ifdef __ANDROID__
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-heavy", "%s", b);
+#else
+    fprintf(stderr, "hakuX-heavy: %s\n", b);
+#endif
+}
+
+void hakux_heavycap_init(void)
+{
+    const char *e = getenv("HAKUX_HEAVYCAP");
+    const char *s = getenv("HAKUX_HEAVYSAVE");
+    const char *dr = getenv("HAKUX_HEAVYCAP_DRAWS");
+    bool on = NV2A_PERF_LOG || (e && !strcmp(e, "1"));
+
+    hc.save_on = s && !strcmp(s, "1");
+    on = on || hc.save_on;              /* a save needs the record */
+    if (!on) {
+        return;
+    }
+    hc.draws_bar = HC_DRAWS_DEFAULT;
+    if (dr && *dr) {
+        unsigned long v = strtoul(dr, NULL, 10);
+        if (v > 0 && v < 1000000) {
+            hc.draws_bar = (uint32_t)v;
+        }
+    }
+    /* The vCPU's waits come from the frametrace hooks; with no
+     * HAKUX_FRAMETRACE=1 turn on only those. */
+    hakux_ft_init_hooks();
+    hc_log("[heavycap] on: perflog_build=%d draws_bar=%u save=%d ring=%d "
+           "pre=%d post=%d block_gap_s=%lld save_gap_s=%lld keep=%d "
+           "ft_full=%d (rules: hw/xbox/nv2a/heavyrule.h)",
+           NV2A_PERF_LOG, hc.draws_bar, hc.save_on ? 1 : 0, HC_RING, HC_PRE,
+           HC_POST, HC_BLOCK_GAP_NS / 1000000000LL,
+           HC_SAVE_GAP_NS / 1000000000LL, HC_KEEP, hakux_ft_full);
+    __atomic_store_n(&hakux_hc_on, 1, __ATOMIC_RELEASE);
+}
+
+void hakux_hc_vblank_raise(bool was_pending, bool deferred, int64_t now)
+{
+    if (!hc_vbl_t) {
+        hc_vbl_t = now;                 /* a miss keeps the first raise */
+    }
+    if (was_pending) {
+        HC_ADD(&hc_vbl_miss, 1);
+    }
+    if (deferred) {
+        HC_ADD(&hc_vbl_def, 1);
+    }
+}
+
+void hakux_hc_vblank_ack(int64_t now)
+{
+    if (hc_vbl_t) {
+        int64_t d = now - hc_vbl_t;
+        HC_ADD(&hc_vbl_ack_ns, (uint64_t)(d > 0 ? d : 0));
+        HC_ADD(&hc_vbl_nack, 1);
+        hc_vbl_t = 0;
+    }
+}
+
+void hakux_heavycap_set_saver(bool (*post)(void))
+{
+    __atomic_store_n(&hc_saver, post, __ATOMIC_RELEASE);
+}
+
+static uint32_t hc_us(uint64_t a, uint64_t b)
+{
+    uint64_t d = a > b ? (a - b) / 1000 : 0;
+    return d > 0xffffffffu ? 0xffffffffu : (uint32_t)d;
+}
+
+static uint32_t hc_n32(uint64_t a, uint64_t b)
+{
+    uint64_t d = a > b ? a - b : 0;
+    return d > 0xffffffffu ? 0xffffffffu : (uint32_t)d;
+}
+
+static int hc_put_ms(char *b, int o, int n, const char *k, int64_t us)
+{
+    if (o >= 0 && o < n) {
+        uint64_t a = (uint64_t)(us < 0 ? -us : us);
+        o += snprintf(b + o, n - o, " %s=%s%llu.%02llu", k, us < 0 ? "-" : "",
+                      (unsigned long long)(a / 1000),
+                      (unsigned long long)(a % 1000 / 10));
+    }
+    return o;
+}
+
+static int hc_put_n(char *b, int o, int n, const char *k, uint64_t v)
+{
+    if (o >= 0 && o < n) {
+        o += snprintf(b + o, n - o, " %s=%llu", k, (unsigned long long)v);
+    }
+    return o;
+}
+
+static const char *const hc_icls_name[HAKUX_HC_NI] = {
+    "ivb", "inv", "itm", "iide", "ioth",
+};
+
+/* One record's fields, " f=.. t=.. g=.." (ms with 2 decimals for times). */
+static void hc_fmt_rec(char *b, int n, const HcRec *r)
+{
+    int o = 0;
+
+    b[0] = 0;
+    o = hc_put_n(b, o, n, "f", r->f);
+    o = hc_put_n(b, o, n, "t", r->t);
+    o = hc_put_ms(b, o, n, "g", r->g);
+    o = hc_put_n(b, o, n, "dr", r->dr);
+    o = hc_put_n(b, o, n, "vb", r->vb);
+    o = hc_put_ms(b, o, n, "gpu", r->gpu);
+    o = hc_put_ms(b, o, n, "gi", r->gi);
+    for (int k = 0; k < HAKUX_HC_NI; k++) {
+        o = hc_put_ms(b, o, n, hc_icls_name[k], r->icls[k]);
+    }
+    o = hc_put_n(b, o, n, "iw", r->iw);
+    o = hc_put_ms(b, o, n, "hlt", r->hlt);
+    o = hc_put_ms(b, o, n, "bql", r->bql);
+    o = hc_put_ms(b, o, n, "pfl", r->pfl);
+    o = hc_put_ms(b, o, n, "pgl", r->pgl);
+    o = hc_put_n(b, o, n, "nw", r->nw);
+    o = hc_put_ms(b, o, n, "mm", r->mm);
+    o = hc_put_ms(b, o, n, "io", r->io);
+    o = hc_put_ms(b, o, n, "iom", r->iom);
+    o = hc_put_ms(b, o, n, "dev", r->dev);
+    o = hc_put_n(b, o, n, "kb", r->kb);
+    o = hc_put_n(b, o, n, "cmd", r->cmd);
+    o = hc_put_ms(b, o, n, "tc", r->tc);
+    o = hc_put_ms(b, o, n, "cg", r->cg);
+    o = hc_put_n(b, o, n, "tn", r->tn);
+    o = hc_put_ms(b, o, n, "fl", r->fl);
+    o = hc_put_n(b, o, n, "tbf", r->tbf);
+    o = hc_put_ms(b, o, n, "tf", r->tf);
+    o = hc_put_ms(b, o, n, "vack", r->vack);
+    o = hc_put_n(b, o, n, "nack", r->nack);
+    o = hc_put_n(b, o, n, "vdef", r->vdef);
+    o = hc_put_n(b, o, n, "vmiss", r->vmiss);
+    o = hc_put_ms(b, o, n, "res", r->res);
+    o = hc_put_n(b, o, n, "trig", r->trig);
+    o = hc_put_n(b, o, n, "sv", r->sv);
+    o = hc_put_n(b, o, n, "lg", r->lg);
+    hc_put_n(b, o, n, "bad", r->bad);
+}
+
+static const char *hc_why_name(unsigned why)
+{
+    return why == (HC_SAVE_DRAWS | HC_SAVE_SLOW) ? "draws+slow"
+         : why == HC_SAVE_DRAWS ? "draws" : why == HC_SAVE_SLOW ? "slow" : "-";
+}
+
+void hakux_heavycap_saved(const char *name, int ok, int64_t pause_ms,
+                          int64_t total_ms)
+{
+    char rb[560];
+
+    hc_fmt_rec(rb, sizeof(rb), &hc_save_rec);
+    hc_log("[heavycap] save %s ok=%d ms=%lld pause_ms=%lld why=%s |%s",
+           name ? name : "-", ok ? 1 : 0, (long long)total_ms,
+           (long long)pause_ms, hc_why_name(hc_save_why), rb);
+    __atomic_fetch_add(&hc_save_done, 1, __ATOMIC_RELEASE);
+    __atomic_store_n(&hc_save_busy, 0, __ATOMIC_RELEASE);
+}
+
+/* PFIFO thread: hand the save to the saver's thread, never wait for it. */
+static void hc_save_post(const HcRec *r, unsigned why)
+{
+    bool (*post)(void) = __atomic_load_n(&hc_saver, __ATOMIC_ACQUIRE);
+    int idle = 0;
+    char rb[560];
+
+    if (!post) {
+        if (!hc.nosaver_logged) {
+            hc.nosaver_logged = true;
+            hc_fmt_rec(rb, sizeof(rb), r);
+            hc_log("[heavycap] save - ok=0 ms=0 why=%s no saver registered "
+                   "(the Android savestate module registers it) |%s",
+                   hc_why_name(why), rb);
+        }
+        return;
+    }
+    if (!__atomic_compare_exchange_n(&hc_save_busy, &idle, 1, false,
+                                     __ATOMIC_ACQUIRE, __ATOMIC_RELAXED)) {
+        hc.saves_busy++;
+        hc_log("[heavycap] save - ok=0 ms=0 why=%s busy: the previous heavy "
+               "save has not finished", hc_why_name(why));
+        return;
+    }
+    hc_save_rec = *r;
+    hc_save_why = why;
+    if (!post()) {
+        __atomic_store_n(&hc_save_busy, 0, __ATOMIC_RELEASE);
+        hc_fmt_rec(rb, sizeof(rb), r);
+        hc_log("[heavycap] save - ok=0 ms=0 why=%s not posted |%s",
+               hc_why_name(why), rb);
+        return;
+    }
+    hc.saves_posted++;
+}
+
+static void hc_read(HcTot *t, uint32_t *bad)
+{
+    const HcTot *p = &hc.prev;
+
+    if (!hakux_rrw_idle_totals(&t->idle)) {
+        t->idle = p->idle;
+        *bad |= 1;
+    }
+    if (!hakux_ft_enabled() || !hakux_ft_vcpu_waits(t->w, &t->nw, &t->mm)) {
+        memcpy(t->w, p->w, sizeof(t->w));
+        t->nw = p->nw;
+        t->mm = p->mm;
+        *bad |= 2;
+    }
+    hakux_ide_totals(&t->ide);
+    hakux_tcg_totals(&t->tcg);
+    t->vack = __atomic_load_n(&hc_vbl_ack_ns, __ATOMIC_RELAXED);
+    t->nack = __atomic_load_n(&hc_vbl_nack, __ATOMIC_RELAXED);
+    t->vdef = __atomic_load_n(&hc_vbl_def, __ATOMIC_RELAXED);
+    t->vmiss = __atomic_load_n(&hc_vbl_miss, __ATOMIC_RELAXED);
+    t->vb = g_nv2a_stats.pacing.vblank_fired;
+}
+
+/* The summary's per-frame means: field offsets into HcRec, in print order. */
+#define HC_F(name, field) { name, offsetof(HcRec, field) }
+static const struct { const char *k; size_t off; } hc_sum_f[] = {
+    HC_F("g", g), HC_F("gpu", gpu), HC_F("gi", gi),
+    HC_F("ivb", icls[HAKUX_HC_I_VBL]), HC_F("inv", icls[HAKUX_HC_I_NV2A]),
+    HC_F("itm", icls[HAKUX_HC_I_PIT]), HC_F("iide", icls[HAKUX_HC_I_IDE]),
+    HC_F("ioth", icls[HAKUX_HC_I_OTHER]), HC_F("hlt", hlt), HC_F("bql", bql),
+    HC_F("pfl", pfl), HC_F("pgl", pgl), HC_F("mm", mm), HC_F("io", io),
+    HC_F("iom", iom), HC_F("dev", dev), HC_F("tc", tc), HC_F("cg", cg),
+    HC_F("fl", fl), HC_F("tf", tf), HC_F("vack", vack),
+};
+#undef HC_F
+QEMU_BUILD_BUG_ON(ARRAY_SIZE(hc_sum_f) > ARRAY_SIZE(hc.s));
+
+static void hc_sum_add(const HcRec *r)
+{
+    for (size_t k = 0; k < ARRAY_SIZE(hc_sum_f); k++) {
+        hc.s[k] += *(const uint32_t *)((const char *)r + hc_sum_f[k].off);
+    }
+    hc.sum_n++;
+    hc.sum_dr += r->dr;
+    hc.sum_vb += r->vb;
+    hc.sum_res += r->res;
+    hc.sum_slow += (r->trig & HC_TRIG_SLOW) != 0;
+    hc.sum_heavy += (r->trig & HC_TRIG_DRAWS) != 0;
+    hc.sum_gpu += (r->trig & HC_TRIG_GPU) != 0;
+}
+
+/* Every 2 s of flips: each field's ms per guest frame over the window. */
+static void hc_sum_emit(int64_t now)
+{
+    char b[640];
+    int o = 0, n = sizeof(b);
+    uint32_t fn = hc.sum_n ? hc.sum_n : 1;
+
+    b[0] = 0;
+    o = hc_put_n(b, o, n, "n", hc.sum_n);
+    o = hc_put_ms(b, o, n, "span", (now - hc.sum_t0) / 1000);
+    for (size_t k = 0; k < ARRAY_SIZE(hc_sum_f); k++) {
+        o = hc_put_ms(b, o, n, hc_sum_f[k].k, (int64_t)(hc.s[k] / fn));
+    }
+    o = hc_put_ms(b, o, n, "res", hc.sum_res / (int64_t)fn);
+    o = hc_put_n(b, o, n, "dr", hc.sum_dr / fn);
+    o = hc_put_n(b, o, n, "vb100", hc.sum_vb * 100 / fn);
+    o = hc_put_n(b, o, n, "slow", hc.sum_slow);
+    o = hc_put_n(b, o, n, "heavy", hc.sum_heavy);
+    o = hc_put_n(b, o, n, "gpuslow", hc.sum_gpu);
+    o = hc_put_n(b, o, n, "self_us", hc.sum_self / fn);
+    o = hc_put_n(b, o, n, "self_max_us", hc.sum_selfmax);
+    o = hc_put_n(b, o, n, "sup", hc.br.suppressed);
+    o = hc_put_n(b, o, n, "blocks", hc.blk_id);
+    o = hc_put_n(b, o, n, "saves", hc.saves_posted);
+    hc_put_n(b, o, n, "save_refused", hc.sr.refused);
+    hc_log("[hcsum]%s", b);
+    memset(hc.s, 0, sizeof(hc.s));
+    hc.sum_n = hc.sum_slow = hc.sum_heavy = hc.sum_gpu = hc.sum_selfmax = 0;
+    hc.sum_self = hc.sum_dr = hc.sum_vb = 0;
+    hc.sum_res = 0;
+    hc.sum_t0 = now;
+}
+
+/* A block's lines, HC_LINES per flip once its HC_POST records exist. */
+static void hc_block_step(void)
+{
+    char rb[560];
+
+    if (hc.blk == 1) {
+        if (hc.seq - 1 - hc.blk_c < HC_POST) {
+            return;
+        }
+        hc_log("[hcblk] b=%u f=%u trig=%u sup=%u pre=%u post=%d draws_bar=%u",
+               hc.blk_id, hc.ring[hc.blk_c % HC_RING].f, hc.blk_trig,
+               hc.blk_sup, hc.blk_pre, HC_POST, hc.draws_bar);
+        hc.blk = 2;
+        hc.blk_i = -(int)hc.blk_pre;
+        return;
+    }
+    for (int k = 0; k < HC_LINES && hc.blk_i <= HC_POST; k++, hc.blk_i++) {
+        hc_fmt_rec(rb, sizeof(rb),
+                   &hc.ring[(hc.blk_c + (uint32_t)hc.blk_i) % HC_RING]);
+        hc_log("b=%u i=%d%s", hc.blk_id, hc.blk_i, rb);
+    }
+    if (hc.blk_i > HC_POST) {
+        hc.blk = 0;
+    }
+}
+
+static void hc_flip(void)
+{
+    int64_t now = get_clock();
+    HcTot t;
+    HcRec r;
+    const HcTot *p = &hc.prev;
+    uint32_t bad = 0;
+    uint32_t idle, self, sd;
+
+    memset(&t, 0, sizeof(t));
+    hc_read(&t, &bad);
+    if (!hc.started) {
+        hc.started = true;
+        hc.prev_t = now;
+        hc.prev = t;
+        hc.sum_t0 = now;
+        hakux_hc_draws = 0;
+        return;
+    }
+    memset(&r, 0, sizeof(r));
+    r.f = g_nv2a_stats.frame_count + 1;     /* the frame this flip ends */
+    r.t = (uint32_t)(now / 1000000);
+    r.g = hc_us((uint64_t)now, (uint64_t)hc.prev_t);
+    r.dr = hakux_hc_draws;
+    hakux_hc_draws = 0;
+    r.vb = t.vb - p->vb;
+    r.gpu = hc_us((uint64_t)MAX(g_nv2a_stats.phase_working.gpu_render_ns, 0),
+                  0);
+    r.gi = hc_us(t.idle.total_ns, p->idle.total_ns);
+    for (int k = 0; k < HAKUX_HC_NI; k++) {
+        r.icls[k] = hc_us(t.idle.cls_ns[k], p->idle.cls_ns[k]);
+        r.iw += hc_n32(t.idle.cls_n[k], p->idle.cls_n[k]);
+    }
+    r.hlt = hc_us(t.w[HAKUX_FT_W_HALT], p->w[HAKUX_FT_W_HALT]);
+    r.bql = hc_us(t.w[HAKUX_FT_W_BQL], p->w[HAKUX_FT_W_BQL]);
+    r.pfl = (bad & 2)
+        ? hc_us((uint64_t)MAX(g_nv2a_stats.cpu_working.lock_wait_ns, 0), 0)
+        : hc_us(t.w[HAKUX_FT_W_PFIFO_LOCK], p->w[HAKUX_FT_W_PFIFO_LOCK]);
+    r.pgl = hc_us(t.w[HAKUX_FT_W_PGRAPH_LOCK], p->w[HAKUX_FT_W_PGRAPH_LOCK]);
+    r.nw = hc_n32(t.nw, p->nw);
+    r.mm = hc_us(t.mm, p->mm);
+    r.io = hc_us(t.ide.vcpu_ns, p->ide.vcpu_ns);
+    r.iom = hc_us(t.ide.other_ns, p->ide.other_ns);
+    r.dev = hc_us(t.ide.dev_ns, p->ide.dev_ns);
+    r.kb = hc_n32(t.ide.bytes, p->ide.bytes) / 1024;
+    r.cmd = hc_n32(t.ide.cmds, p->ide.cmds);
+    r.tc = hc_us(t.tcg.gen_ns, p->tcg.gen_ns);
+    r.cg = hc_us(t.tcg.cg_ns, p->tcg.cg_ns);
+    r.tn = hc_n32(t.tcg.gen_n, p->tcg.gen_n);
+    r.fl = hc_us(t.tcg.flush_ns, p->tcg.flush_ns);
+    r.tbf = hc_n32(t.tcg.tb_flushes, p->tcg.tb_flushes);
+    r.tf = hc_us(t.tcg.tf_ns, p->tcg.tf_ns);
+    r.vack = hc_us(t.vack, p->vack);
+    r.nack = hc_n32(t.nack, p->nack);
+    r.vdef = hc_n32(t.vdef, p->vdef);
+    r.vmiss = hc_n32(t.vmiss, p->vmiss);
+    idle = MAX(r.gi, r.hlt);
+    r.res = (int32_t)((int64_t)r.g - idle - r.bql - r.pfl - r.pgl - r.io -
+                      r.tc - r.fl);
+    r.lg = hc.self_prev;
+    /* A heavy save posted, running, or finished since the last flip: this
+     * frame holds its pause (or part of it), not the scene's cost. */
+    sd = __atomic_load_n(&hc_save_done, __ATOMIC_ACQUIRE);
+    if (__atomic_load_n(&hc_save_busy, __ATOMIC_ACQUIRE) ||
+        sd != hc.save_done_seen) {
+        bad |= 4;
+        hc.save_done_seen = sd;
+    }
+    r.bad = bad;
+    hc.prev = t;
+    hc.prev_t = now;
+
+    if (!(bad & 4)) {
+        r.trig = hc_trigger((int64_t)r.g * 1000, r.dr,
+                            MAX(g_nv2a_stats.phase_working.gpu_render_ns, 0),
+                            hc.draws_bar);
+        if (hc.save_on) {
+            r.sv = hc_save_check(&hc.sr, now, (int64_t)r.g * 1000, r.dr,
+                                 hc.draws_bar);
+        }
+    }
+    hc.ring[hc.seq % HC_RING] = r;
+    if (r.trig) {
+        uint32_t sup = 0;
+        if (hc_block_admit(&hc.br, now, hc.blk != 0, &sup)) {
+            hc.blk = 1;
+            hc.blk_c = hc.seq;
+            hc.blk_id++;
+            hc.blk_sup = sup;
+            hc.blk_trig = r.trig;
+            hc.blk_pre = MIN((uint32_t)HC_PRE, hc.seq);  /* records before */
+        }
+    }
+    hc.seq++;
+    if (hc.blk) {
+        hc_block_step();
+    }
+    if (r.sv) {
+        hc_save_post(&r, r.sv);
+    }
+    hc_sum_add(&r);
+    if (now - hc.sum_t0 >= HC_SUM_NS) {
+        hc_sum_emit(now);
+    }
+
+    self = hc_us((uint64_t)get_clock(), (uint64_t)now);
+    hc.self_prev = self;
+    hc.sum_self += self;
+    hc.sum_selfmax = MAX(hc.sum_selfmax, self);
+}
+
 void nv2a_profile_flip_stall(void)
 {
     int64_t now = qemu_clock_get_us(QEMU_CLOCK_REALTIME);
     int64_t render_time = (now-g_nv2a_stats.last_flip_time)/1000;
 
+    /* #433 heavycap1022: the per-guest-frame record, first of all, for the
+     * same reason as the frametrace below (it reads the GPU and lock-wait
+     * accumulators the snapshots reset). Off, one load and a branch. */
+    if (hakux_heavycap_on()) {
+        hc_flip();
+    }
+
     /* #433 frametrace: first, while the per-frame accumulators it reads
-     * still hold this frame (the snapshots below reset them). */
-    if (hakux_ft_enabled()) {
+     * still hold this frame (the snapshots below reset them). Not when
+     * heavycap turned on only its hooks (hakux_ft_full 0): no log, no
+     * writer thread, no Vulkan interposer then. */
+    if (hakux_ft_enabled() && hakux_ft_full) {
         const CpuTimingWork *cw = &g_nv2a_stats.cpu_working;
         HakuxFtExt x = {
             .lockw_ns = cw->lock_wait_ns,
