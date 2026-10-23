@@ -1,6 +1,6 @@
 # holdpid1022: hold.sh's owner-play capture never confirms itself, because systemd expands `$` in the script before bash sees it
 
-State: draft
+State: ready
 
 Lane: holdpid1022            Issue: none (harness defect, dispatched directly)
 Base: master @ b944110629
