@@ -8,7 +8,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 No lane session is running.
 
-- **Handhelds:** 2 connected.
+- **Handhelds:** 1 connected.
   - Nova: held by `lane.local-rf10`
   - Thor: held by `lane.local`
 - **Device queue:** 0 waiting, 0 running.
@@ -139,4 +139,4 @@ No branch is being worked right now.
 - 2026-10-19 Fix the 10-19 11:14 master-red: a usage-meter time bomb and a hold-tiers clock race
 - 2026-10-19 fpsnext1019: GTA III driving, Blinx 2 and Fable toward 30 fps (#433)
 
-_Updated 2026-10-24 13:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-24 14:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
