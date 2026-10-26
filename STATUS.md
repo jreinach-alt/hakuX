@@ -1,12 +1,12 @@
 # hakuX status
 
-_updated 2026-10-26 14:16 PDT_
+_updated 2026-10-26 14:48 PDT_
 
-0.6: Measured 268 / 300 · Playable 97 / 110.
+0.6: Measured 172 / 300 · Playable 97 / 110.
 
 ## How close is 0.6?
 
-Measured **268** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓▓▓░`
+Measured **172** / 300&nbsp;&nbsp;`▓▓▓▓▓▓░░░░`
 
 Playable **97** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓▓▓░`
 
@@ -35,44 +35,44 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | Title | Status | fps |
 |---|---|---|
 | **187: Ride or Die** | 🟢 Playable | **59.9**<br>Nova, Oct 11 |
-| **25 to Life** | 🟢 Playable | **59.9**<br>Nova, Oct 13 |
+| **25 to Life** | 🟢 Playable | **35.7**<br>Thor, Sep 26 |
 | **50 Cent: Bulletproof** | 🟢 Playable | **30.0**<br>Nova, Sep 30 |
-| **Alias** | 🟢 Playable | **30.0**<br>Nova, Oct 14 |
+| **Alias** | 🟢 Playable | **20.4**<br>Thor, Sep 28 |
 | **Alien Hominid** | 🟢 Playable | **59.9**<br>Thor, Oct 1 |
-| **AMF Bowling 2004** | 🟢 Playable | **59.9**<br>Nova, Oct 5 |
-| **ATV Quad Power Racing 2** | 🟢 Playable | **59.9**<br>Nova, Oct 13 |
+| **AMF Bowling 2004** | 🟢 Playable | **59.9**<br>Nova, Oct 11 |
+| **ATV Quad Power Racing 2** | 🟢 Playable |  |
 | **Avatar: The Last Airbender** | 🟢 Playable |  |
 | **Azurik: Rise of Perathia** | 🟢 Playable | **30.0**<br>Nova, Sep 29 |
 | **Backyard Wrestling 2: There Goes the Neighborhood** | 🟢 Playable |  |
 | **Bad Boys: Miami Takedown** | 🟢 Playable |  |
 | **Baldur's Gate: Dark Alliance** | 🟢 Playable | **59.9**<br>Nova, Sep 30 |
-| **Blade II** | 🟢 Playable | **30.0**<br>Nova, Oct 7 |
+| **Blade II** | 🟢 Playable | **30.0**<br>Nova, Oct 11 |
 | **BloodRayne 2** | 🟢 Playable |  |
-| **Blowout** | 🟢 Playable | **30.0**<br>Nova, Oct 6 |
+| **Blowout** | 🟢 Playable | **30.0**<br>Nova, Oct 11 |
 | **Burnout Revenge** | 🟢 Playable | **54.8**<br>Nova, Oct 12 |
-| **Call of Duty 3** | 🟢 Playable | **29.4**<br>Nova, Oct 6 |
-| **Capcom vs. SNK 2 EO** | 🟢 Playable | **59.8**<br>Nova, Oct 7 |
+| **Call of Duty 3** | 🟢 Playable | **29.4**<br>Nova, Sep 26 |
+| **Capcom vs. SNK 2 EO** | 🟢 Playable | **59.9**<br>Nova, Oct 11 |
 | **Castlevania: Curse of Darkness** | 🟢 Playable | **59.9**<br>Thor, Oct 1 |
-| **Cel Damage** | 🟢 Playable | **29.9**<br>Nova, Oct 7 |
+| **Cel Damage** | 🟢 Playable |  |
 | **Conan (Europe)** | 🟢 Playable |  |
 | **Conspiracy: Weapons of Mass Destruction** | 🟢 Playable |  |
 | **Crimson Skies: High Road to Revenge** | 🟢 Playable | **30.0**<br>Nova, Oct 13 |
 | **Dance Dance Revolution Ultramix 3** | 🟢 Playable |  |
-| **Dark Summit** | 🟢 Playable | **45.9**<br>Nova, Oct 4 |
+| **Dark Summit** | 🟢 Playable | **59.9**<br>Nova, Oct 11 |
 | **David Beckham Soccer** | 🟢 Playable |  |
 | **Dead or Alive 3** | 🟢 Playable | **50.1**<br>Nova, Oct 12 |
 | **ESPN Major League Baseball** | 🟢 Playable |  |
 | **ESPN MLS ExtraTime 2002** | 🟢 Playable |  |
 | **Family Guy Video Game** | 🟢 Playable | **30.0**<br>Thor, Oct 1 |
-| **Fight Club** | 🟢 Playable | **43.4**<br>Nova, Oct 6 |
+| **Fight Club** | 🟢 Playable | **59.9**<br>Nova, Oct 11 |
 | **FILA World Tour Tennis** | 🟢 Playable |  |
-| **Future Tactics: The Uprising** | 🟢 Playable | **59.9**<br>Nova, Oct 7 |
-| **Genma Onimusha** | 🟢 Playable | **59.9**<br>Nova, Oct 13 |
+| **Future Tactics: The Uprising** | 🟢 Playable | **59.9**<br>Nova, Oct 11 |
+| **Genma Onimusha** | 🟢 Playable |  |
 | **Grabbed by the Ghoulies** | 🟢 Playable | **30.0**<br>Nova, Oct 17 |
-| **Guilty Gear XX #Reload** | 🟢 Playable | **59.9**<br>Nova, Oct 6 |
+| **Guilty Gear XX #Reload** | 🟢 Playable |  |
 | **Gunvalkyrie** | 🟢 Playable | **59.9**<br>Nova, Oct 3 |
 | **Halo: Combat Evolved** | 🟢 Playable | **30.0**<br>Nova, Oct 3 |
-| **Harry Potter and the Philosopher's Stone** | 🟢 Playable | **41.5**<br>Nova, Oct 13 |
+| **Harry Potter and the Philosopher's Stone** | 🟢 Playable |  |
 | **Hello Kitty: Roller Rescue** | 🟢 Playable |  |
 | **Indigo Prophecy** | 🟢 Playable |  |
 | **Jacked** | 🟢 Playable |  |
@@ -84,232 +84,136 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | **Legacy of Kain: Defiance** | 🟢 Playable | **29.0**<br>Nova, Oct 11 |
 | **Lemony Snicket's A Series of Unfortunate Events (USA)** | 🟢 Playable |  |
 | **Manhunt** | 🟢 Playable |  |
-| **Marvel Nemesis: Rise of the Imperfects** | 🟢 Playable | **30.0**<br>Nova, Oct 6 |
+| **Marvel Nemesis: Rise of the Imperfects** | 🟢 Playable |  |
 | **Mat Hoffman's Pro BMX 2** | 🟢 Playable |  |
 | **Max Payne** | 🟢 Playable |  |
 | **Max Payne 2: The Fall of Max Payne** | 🟢 Playable | **59.9**<br>Nova, Oct 11 |
 | **Mercenaries: Playground of Destruction** | 🟢 Playable |  |
 | **Micro Machines (Europe)** | 🟢 Playable |  |
-| **MLB SlugFest - Loaded** | 🟢 Playable | **58.9**<br>Nova, Oct 5 |
-| **MLB SlugFest 2003** | 🟢 Playable | **59.9**<br>Nova, Oct 5 |
-| **MLB SlugFest 2004** | 🟢 Playable | **44.4**<br>Nova, Oct 5 |
-| **Mortal Kombat: Armageddon** | 🟢 Playable | **59.2**<br>Nova, Oct 6 |
+| **MLB SlugFest - Loaded** | 🟢 Playable |  |
+| **MLB SlugFest 2003** | 🟢 Playable | **59.9**<br>Nova, Oct 11 |
+| **MLB SlugFest 2004** | 🟢 Playable | **59.9**<br>Nova, Oct 11 |
+| **Mortal Kombat: Armageddon** | 🟢 Playable | **30.0**<br>Nova, Oct 11 |
 | **Mortal Kombat: Shaolin Monks** | 🟢 Playable | **59.9**<br>Nova, Oct 18 |
-| **MTV Celebrity Deathmatch** | 🟢 Playable | **57.2**<br>Nova, Oct 4 |
+| **MTV Celebrity Deathmatch** | 🟢 Playable | **59.9**<br>Nova, Oct 11 |
 | **MVP Baseball 2003** | 🟢 Playable |  |
-| **NBA 2K2** | 🟢 Playable | **57.0**<br>Nova, Oct 5 |
-| **NBA 2K3** | 🟢 Playable | **42.9**<br>Nova, Oct 6 |
-| **NBA Live 07** | 🟢 Playable | **20.0**<br>Nova, Oct 6 |
-| **NBA Live 2004** | 🟢 Playable | **35.5**<br>Nova, Oct 6 |
-| **Need for Speed: Most Wanted** | 🟢 Playable | **25.8**<br>Nova, Oct 5 |
-| **NFL Blitz 2002** | 🟢 Playable | **45.0**<br>Nova, Oct 5 |
-| **Pac-Man World 2** | 🟢 Playable | **59.9**<br>Nova, Oct 13 |
-| **Panzer Dragoon Orta** | 🟢 Playable | **54.1**<br>Nova, Oct 3 |
+| **NBA 2K2** | 🟢 Playable | **59.9**<br>Nova, Oct 11 |
+| **NBA 2K3** | 🟢 Playable | **59.9**<br>Nova, Oct 11 |
+| **NBA Live 07** | 🟢 Playable | **47.7**<br>Nova, Oct 10 |
+| **NBA Live 2004** | 🟢 Playable |  |
+| **Need for Speed: Most Wanted** | 🟢 Playable | **59.9**<br>Nova, Oct 11 |
+| **NFL Blitz 2002** | 🟢 Playable |  |
+| **Pac-Man World 2** | 🟢 Playable |  |
+| **Panzer Dragoon Orta** | 🟢 Playable | **59.9**<br>Nova, Oct 11 |
 | **Pro Evolution Soccer 5 (Europe)** | 🟢 Playable |  |
-| **RalliSport Challenge** | 🟢 Playable | **59.9**<br>Nova, Oct 4 |
-| **Ratatouille** | 🟢 Playable | **52.8**<br>Nova, Oct 6 |
-| **Rayman 3 Hoodlum Havoc** | 🟢 Playable | **59.9**<br>Nova, Oct 13 |
+| **RalliSport Challenge** | 🟢 Playable | **42.6**<br>Nova, Oct 4 |
+| **Ratatouille** | 🟢 Playable |  |
+| **Rayman 3 Hoodlum Havoc** | 🟢 Playable |  |
 | **Ricky Ponting International Cricket 2005** | 🟢 Playable |  |
-| **Rogue Trooper** | 🟢 Playable | **58.9**<br>Nova, Oct 6 |
+| **Rogue Trooper** | 🟢 Playable | **59.9**<br>Nova, Oct 11 |
 | **Scooby-Doo! Mystery Mayhem (Europe)** | 🟢 Playable |  |
 | **Scooby-Doo! Unmasked (Europe)** | 🟢 Playable |  |
 | **Shadow of Memories (Europe)** | 🟢 Playable |  |
-| **Shrek 2** | 🟢 Playable | **29.8**<br>Nova, Oct 13 |
+| **Shrek 2** | 🟢 Playable |  |
 | **Slam Tennis** | 🟢 Playable |  |
-| **Spikeout: Battle Street** | 🟢 Playable | **59.9**<br>Nova, Oct 3 |
+| **Spikeout: Battle Street** | 🟢 Playable | **59.9**<br>Nova, Oct 11 |
 | **SpongeBob SquarePants: Battle for Bikini Bottom** | 🟢 Playable |  |
 | **The Lord of the Rings: The Fellowship of the Ring** | 🟢 Playable |  |
-| **The Simpsons Hit & Run** | 🟢 Playable | **37.9**<br>Nova, Oct 4 |
+| **The Simpsons Hit & Run** | 🟢 Playable |  |
 | **The Wild Rings** | 🟢 Playable |  |
-| **TimeSplitters 2** | 🟢 Playable | **59.9**<br>Nova, Oct 13 |
-| **ToeJam & Earl III: Mission to Earth** | 🟢 Playable | **42.1**<br>Nova, Oct 3 |
+| **TimeSplitters 2** | 🟢 Playable |  |
+| **ToeJam & Earl III: Mission to Earth** | 🟢 Playable | **23.7**<br>Nova, Oct 2 |
 | **Tony Hawk's Pro Skater 2x** | 🟢 Playable | **59.8**<br>Thor, Oct 1 |
-| **Tony Hawk's Pro Skater 4** | 🟢 Playable | **56.6**<br>Nova, Oct 13 |
+| **Tony Hawk's Pro Skater 4** | 🟢 Playable |  |
 | **Tony Hawk's Underground 2** | 🟢 Playable |  |
 | **Tork: Prehistoric Punk** | 🟢 Playable | **30.0**<br>Thor, Sep 30 |
 | **TY the Tasmanian Tiger** | 🟢 Playable |  |
-| **World Soccer Winning Eleven 9** | 🟢 Playable | **59.9**<br>Nova, Oct 6 |
+| **World Soccer Winning Eleven 9** | 🟢 Playable | **59.9**<br>Nova, Oct 11 |
 | **WWE Raw 2** | 🟢 Playable | **59.9**<br>Nova, Oct 11 |
 | **X-Men: The Official Game (Europe)** | 🟢 Playable |  |
 | **Arctic Thunder** | 🟡 Below 30 fps | **21.4**<br>Thor, Sep 27 |
 | **Black** | 🟡 Below 30 fps | **7.5**<br>Thor, Sep 26 |
+| **BloodRayne** | 🟡 Below 30 fps | **25.6**<br>Thor, Sep 28 |
 | **Brute Force** | 🟡 Below 30 fps | **13.2**<br>Thor, Sep 27 |
 | **Burnout** | 🟡 Below 30 fps | **10.8**<br>Thor, Sep 27 |
 | **Counter-Strike** | 🟡 Below 30 fps | **25.9**<br>Nova, Oct 3 |
 | **Crash Twinsanity** | 🟡 Below 30 fps | **15.7**<br>Thor, Sep 27 |
 | **Galleon** | 🟡 Below 30 fps | **24.7**<br>Thor, Sep 30 |
 | **Midnight Club 3: DUB Edition** | 🟡 Below 30 fps | **28.9**<br>Nova, Oct 12 |
-| **AMF Xtreme Bowling** | 🔴 Crashes or hangs | **58.7**<br>Nova, Oct 5 |
+| **NBA Live 06** | 🟡 Below 30 fps | **20.1**<br>Nova, Oct 9 |
+| **NBA Live 2005** | 🟡 Below 30 fps | **25.7**<br>Nova, Oct 9 |
+| **Spider-Man 2** | 🟡 Below 30 fps | **29.6**<br>Nova, Oct 9 |
 | **Blood Wake** | 🔴 Crashes or hangs | **37.4**<br>Thor, Sep 27 |
 | **Bruce Lee: Quest of the Dragon** | 🔴 Crashes or hangs | **59.9**<br>Thor, Sep 26 |
 | **Capcom Classics Collection Vol. 2** | 🔴 Crashes or hangs | **59.9**<br>Thor, Sep 30 |
-| **Conflict Vietnam USA** | 🔴 Crashes or hangs | **29.9**<br>Nova, Oct 15 |
-| **Die Hard Vendetta Europe En Fr Es It** | 🔴 Crashes or hangs |  |
 | **Dino Crisis 3** | 🔴 Crashes or hangs | **27.2**<br>Nova, Oct 2 |
 | **Fuzion Frenzy** | 🔴 Crashes or hangs | **30.6**<br>Nova, Sep 27 |
-| **Magi Death Fight Japan** | 🔴 Crashes or hangs |  |
 | **Midtown Madness 3** | 🔴 Crashes or hangs | **3.1**<br>Thor, Sep 27 |
-| **Mission Impossible Operation Surma USA** | 🔴 Crashes or hangs | **6.9**<br>Nova, Oct 12 |
 | **Project Gotham Racing** | 🔴 Crashes or hangs | **14.3**<br>Thor, Sep 26 |
 | **Sonic Heroes** | 🔴 Crashes or hangs | **59.9**<br>Thor, Oct 1 |
 | **Super Monkey Ball Deluxe** | 🔴 Crashes or hangs | **48.1**<br>Thor, Oct 1 |
 | **Tony Hawk's Pro Skater 3** | 🔴 Crashes or hangs | **59.9**<br>Thor, Oct 1 |
-| **Top Spin** | 🔴 Crashes or hangs | **30.3**<br>Nova, Oct 18 |
 | **007: Agent Under Fire** | 🔵 Measured, not rated yet | **22.1**<br>Nova, Sep 30 |
-| **007: Nightfire** | 🔵 Measured, not rated yet | **40.0**<br>Nova, Oct 6 |
-| **4x4 Evo 2** | 🔵 Measured, not rated yet | **53.2**<br>Nova, Oct 13 |
-| **Aeon Flux** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 13 |
-| **Aliens Versus Predator: Extinction** | 🔵 Measured, not rated yet | **31.0**<br>Nova, Oct 5 |
+| **007: Nightfire** | 🔵 Measured, not rated yet | **35.3**<br>Nova, Oct 5 |
+| **Aliens Versus Predator: Extinction** | 🔵 Measured, not rated yet | **31.0**<br>Nova, Oct 4 |
 | **Amped 2** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 18 |
-| **Amped: Freestyle Snowboarding** | 🔵 Measured, not rated yet | **20.6**<br>Nova, Oct 4 |
-| **Area 51** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 8 |
-| **Arx Fatalis** | 🔵 Measured, not rated yet | **43.9**<br>Nova, Oct 7 |
-| **Auto Modellista** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 6 |
-| **Backyard Wrestling 2 There Goes the Neighborhood USA** | 🔵 Measured, not rated yet | **40.8**<br>Nova, Oct 14 |
-| **Bad Boys Miami Takedown USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 14 |
-| **Batman Begins** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 6 |
-| **Batman Dark Tomorrow** | 🔵 Measured, not rated yet | **56.5**<br>Nova, Oct 7 |
-| **Battlefield 2: Modern Combat** | 🔵 Measured, not rated yet | **29.9**<br>Nova, Oct 18 |
-| **Battlestar Galactica USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 13 |
-| **Beyond Good & Evil** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 6 |
-| **Big Bumpin USA** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 15 |
-| **Big Mutha Truckers USA** | 🔵 Measured, not rated yet | **45.0**<br>Nova, Oct 14 |
+| **Amped: Freestyle Snowboarding** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 12 |
+| **Area 51** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 12 |
+| **Battlefield 2: Modern Combat** | 🔵 Measured, not rated yet | **29.9**<br>Nova, Oct 1 |
 | **Bistro Cupid** | 🔵 Measured, not rated yet | **34.4**<br>Thor, Sep 30 |
 | **Black Stone: Magic & Steel** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 2 |
-| **Blazing Angels Squadrons of WWII USA Europe En Fr De Es It** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 13 |
 | **Blinx 2: Battle of Time & Space ~ Blinx 2: Masters of Time & Space** | 🔵 Measured, not rated yet | **29.3**<br>Nova, Sep 27 |
 | **Blinx: The Time Sweeper** | 🔵 Measured, not rated yet | **14.8**<br>Thor, Sep 26 |
-| **BloodRayne** | 🔵 Measured, not rated yet | **29.9**<br>Nova, Oct 14 |
-| **BloodRayne 2 USA** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 8 |
-| **Bloody Roar: Extreme** | 🔵 Measured, not rated yet | **9.8**<br>Nova, Oct 18 |
-| **Brian Lara International Cricket 2005 Europe** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 15 |
+| **Bloody Roar: Extreme** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 18 |
 | **Buffy the Vampire Slayer** | 🔵 Measured, not rated yet | **29.7**<br>Nova, Oct 18 |
-| **Burnout 3: Takedown** | 🔵 Measured, not rated yet | **30.8**<br>Nova, Oct 14 |
-| **Conan Europe En Fr De Es It** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 12 |
-| **Conflict Desert Storm II Back to Baghdad USA** | 🔵 Measured, not rated yet | **41.1**<br>Nova, Oct 13 |
-| **Conflict Global Terror USA** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 13 |
+| **Burnout 3: Takedown** | 🔵 Measured, not rated yet | **22.0**<br>Thor, Sep 28 |
 | **Conker: Live & Reloaded** | 🔵 Measured, not rated yet | **17.4**<br>Nova, Oct 17 |
-| **Conspiracy Weapons of Mass Destruction Europe En Fr De Es It** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 14 |
-| **Crash Bandicoot: The Wrath of Cortex** | 🔵 Measured, not rated yet | **46.9**<br>Nova, Oct 7 |
-| **Crazy Taxi 3 High Roller USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 13 |
-| **Dance Dance Revolution Ultramix 3 USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 16 |
-| **Darkwatch** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 13 |
-| **David Beckham Soccer Europe En Fr De Es It** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 15 |
-| **Dead or Alive 1 Ultimate** | 🔵 Measured, not rated yet | **40.4**<br>Nova, Oct 7 |
+| **Crash Bandicoot: The Wrath of Cortex** | 🔵 Measured, not rated yet | **57.1**<br>Nova, Sep 30 |
+| **Dead or Alive 1 Ultimate** | 🔵 Measured, not rated yet | **12.6**<br>Nova, Sep 26 |
 | **Dead or Alive Xtreme Beach Volleyball** | 🔵 Measured, not rated yet | **20.0**<br>Nova, Sep 27 |
 | **Deathrow** | 🔵 Measured, not rated yet | **59.9**<br>Thor, Sep 30 |
-| **Dragon Ball Z Sagas** | 🔵 Measured, not rated yet | **29.2**<br>Nova, Oct 7 |
-| **Dungeons & Dragons Heroes** | 🔵 Measured, not rated yet | **33.8**<br>Nova, Oct 18 |
-| **ESPN International Winter Sports 2002 USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 16 |
-| **ESPN Major League Baseball USA** | 🔵 Measured, not rated yet | **43.2**<br>Nova, Oct 16 |
-| **ESPN MLS ExtraTime 2002 USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 16 |
-| **Fantastic 4** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 7 |
-| **FILA World Tour Tennis Europe** | 🔵 Measured, not rated yet | **56.8**<br>Nova, Oct 15 |
-| **Forgotten Realms Demon Stone USA** | 🔵 Measured, not rated yet | **28.9**<br>Nova, Oct 8 |
+| **Dungeons & Dragons Heroes** | 🔵 Measured, not rated yet | **12.5**<br>Nova, Oct 6 |
+| **Fantastic 4** | 🔵 Measured, not rated yet | **58.0**<br>Nova, Oct 9 |
 | **Forza Motorsport** | 🔵 Measured, not rated yet | **25.1**<br>Nova, Oct 18 |
 | **Gauntlet: Dark Legacy** | 🔵 Measured, not rated yet | **14.2**<br>Thor, Sep 30 |
-| **Gene Troopers Europe En Fr De Es It** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 14 |
-| **Ghost Master The Gravenville Chronicles Europe En Fr De Es It** | 🔵 Measured, not rated yet | **57.6**<br>Nova, Oct 13 |
 | **GoldenEye: Rogue Agent** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Sep 27 |
 | **Grand Theft Auto III** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 16 |
 | **Grand Theft Auto: San Andreas** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 12 |
 | **Grand Theft Auto: Vice City** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 16 |
-| **Gui Yi Taiwan** | 🔵 Measured, not rated yet | **57.7**<br>Nova, Oct 7 |
-| **Half Life 2** | 🔵 Measured, not rated yet | **29.8**<br>Nova, Oct 13 |
 | **Halo 2** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 3 |
-| **Hello Kitty Roller Rescue Europe En Fr De Es It** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 14 |
-| **Indigo Prophecy USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 7 |
-| **Jacked Europe En Fr De Es It** | 🔵 Measured, not rated yet | **46.1**<br>Nova, Oct 14 |
-| **Knights of the Temple II Europe En Fr De Es It** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 14 |
-| **Knockout Kings 2002 USA** | 🔵 Measured, not rated yet | **59.8**<br>Nova, Oct 16 |
-| **Kung Fu Chaos USA Asia En Fr De** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 14 |
-| **Largo Winch Empire Under Threat Europe En Fr De Es It** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 14 |
-| **Legacy of Kain Defiance USA** | 🔵 Measured, not rated yet | **47.6**<br>Nova, Oct 7 |
-| **Legends of Wrestling II USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 14 |
-| **Legends of Wrestling USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 14 |
-| **LEGO Star Wars: The Video Game** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 5 |
-| **Lemony Snicket s A Series of Unfortunate Events USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 12 |
-| **Lord of the Rings The The Fellowship of the Ring USA** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 7 |
-| **Manhunt USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 8 |
-| **Mat Hoffman s Pro BMX 2 USA** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 14 |
-| **Max Payne 2 The Fall of Max Payne USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 8 |
+| **Indigo Prophecy USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 11 |
+| **Lord of the Rings The The Fellowship of the Ring USA** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 11 |
 | **MechAssault 2: Lone Wolf** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 8 |
-| **Medal of Honor Frontline USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 7 |
-| **Mercenaries USA Europe** | 🔵 Measured, not rated yet | **53.3**<br>Nova, Oct 12 |
-| **Micro Machines Europe En Fr De Es It** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 14 |
-| **Midnight Club II** | 🔵 Measured, not rated yet | **23.1**<br>Nova, Oct 5 |
-| **Mortal Kombat: Deadly Alliance** | 🔵 Measured, not rated yet | **39.9**<br>Nova, Oct 6 |
-| **Motor Trend Presents Lotus Challenge USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 15 |
-| **MTV Music Generator 3 This Is the Remix USA En Es** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 7 |
-| **MVP Baseball 2003 USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 16 |
-| **NBA 2K7 USA Europe** | 🔵 Measured, not rated yet | **57.2**<br>Nova, Oct 16 |
-| **NBA Inside Drive 2004 USA** | 🔵 Measured, not rated yet | **31.1**<br>Nova, Oct 16 |
-| **NBA Live 06** | 🔵 Measured, not rated yet | **20.0**<br>Nova, Oct 6 |
-| **NBA Live 2005** | 🔵 Measured, not rated yet | **20.0**<br>Nova, Oct 3 |
+| **Midnight Club II** | 🔵 Measured, not rated yet | **32.7**<br>Nova, Oct 9 |
+| **Mortal Kombat: Deadly Alliance** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 19 |
 | **NFL Blitz 2002 USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 11 |
-| **NHL 2K3** | 🔵 Measured, not rated yet | **35.0**<br>Nova, Oct 5 |
-| **NHL Hitz Pro** | 🔵 Measured, not rated yet | **37.4**<br>Nova, Oct 5 |
-| **Nickelodeon Avatar The Last Airbender USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 7 |
-| **Nickelodeon SpongeBob SquarePants Battle for Bikini Bottom USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 7 |
+| **NHL 2K3** | 🔵 Measured, not rated yet | **39.3**<br>Nova, Oct 9 |
+| **Nickelodeon SpongeBob SquarePants Battle for Bikini Bottom USA** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 11 |
 | **Ninja Gaiden** | 🔵 Measured, not rated yet | **59.9**<br>Thor, Sep 30 |
 | **Ninja Gaiden Black** | 🔵 Measured, not rated yet | **38.0**<br>Nova, Oct 12 |
 | **Otogi: Myth of Demons** | 🔵 Measured, not rated yet | **28.1**<br>Thor, Sep 30 |
-| **Panzer Elite Action Fields of Glory Europe** | 🔵 Measured, not rated yet | **30.4**<br>Nova, Oct 7 |
 | **Petit Copter** | 🔵 Measured, not rated yet | **59.9**<br>Thor, Oct 1 |
 | **Phantom Crash** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 4 |
 | **Phantom Dust** | 🔵 Measured, not rated yet | **29.4**<br>Thor, Sep 30 |
-| **Pilot Down Behind Enemy Lines Europe** | 🔵 Measured, not rated yet | **23.3**<br>Nova, Oct 7 |
-| **Plus Plumb 2** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 13 |
-| **Prince of Persia: The Sands of Time** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 13 |
-| **Pro Evolution Soccer 5 Europe** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 18 |
+| **Pilot Down Behind Enemy Lines Europe** | 🔵 Measured, not rated yet | **47.2**<br>Nova, Oct 9 |
 | **Project Gotham Racing 2** | 🔵 Measured, not rated yet | **55.7**<br>Thor, Sep 29 |
 | **Psychonauts** | 🔵 Measured, not rated yet | **22.0**<br>Thor, Sep 30 |
 | **RalliSport Challenge 2** | 🔵 Measured, not rated yet | **44.7**<br>Nova, Oct 18 |
-| **Rent a Hero No 1 Japan** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 7 |
-| **Ricky Ponting International Cricket 2005 Australia** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 15 |
-| **Rugby League 2 Europe** | 🔵 Measured, not rated yet | **55.1**<br>Nova, Oct 15 |
-| **Scooby Doo Mystery Mayhem Europe** | 🔵 Measured, not rated yet | **29.0**<br>Nova, Oct 12 |
-| **Scooby Doo Unmasked Europe** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 13 |
-| **Shadow of Memories Europe** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 13 |
 | **Shin Megami Tensei: NINE** | 🔵 Measured, not rated yet | **30.0**<br>Thor, Sep 30 |
-| **Ski Racing 2005 Europe** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 16 |
-| **Slam Tennis Europe** | 🔵 Measured, not rated yet | **35.4**<br>Nova, Oct 16 |
-| **Spider-Man 2** | 🔵 Measured, not rated yet | **25.8**<br>Nova, Oct 5 |
-| **Stake USA En Fr De Es It** | 🔵 Measured, not rated yet | **57.6**<br>Nova, Oct 16 |
-| **Star Wars Knights of the Old Republic II The Sith Lords Europe** | 🔵 Measured, not rated yet | **29.9**<br>Nova, Oct 12 |
-| **Star Wars The Clone Wars USA** | 🔵 Measured, not rated yet | **29.4**<br>Nova, Oct 8 |
 | **Star Wars: Episode III: Revenge of the Sith** | 🔵 Measured, not rated yet | **28.5**<br>Nova, Oct 6 |
-| **Stranger's Wrath** | 🔵 Measured, not rated yet | **27.0**<br>Nova, Oct 13 |
-| **Strike Force Bowling** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 5 |
-| **Tecmo Classic Arcade** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 6 |
-| **Tenchu 3 Kaiki no Shou Japan** | 🔵 Measured, not rated yet | **44.3**<br>Nova, Oct 12 |
-| **The Incredible Hulk: Ultimate Destruction** | 🔵 Measured, not rated yet | **29.2**<br>Nova, Oct 5 |
-| **The Lord of the Rings: The Return of the King** | 🔵 Measured, not rated yet | **27.7**<br>Nova, Oct 5 |
-| **Tiger Woods PGA Tour 06 USA** | 🔵 Measured, not rated yet | **20.1**<br>Nova, Oct 16 |
-| **Tiger Woods PGA Tour 07 USA** | 🔵 Measured, not rated yet | **20.0**<br>Nova, Oct 16 |
-| **Tiger Woods PGA Tour 2003 USA** | 🔵 Measured, not rated yet | **20.3**<br>Nova, Oct 16 |
-| **Tom Clancy s Splinter Cell Double Agent USA** | 🔵 Measured, not rated yet | **23.5**<br>Nova, Oct 12 |
-| **Tony Hawk s Underground 2 USA Europe En Fr De** | 🔵 Measured, not rated yet | **59.7**<br>Nova, Oct 13 |
-| **Torino 2006 Europe En Fr De Es It** | 🔵 Measured, not rated yet | **39.1**<br>Nova, Oct 15 |
+| **The Incredible Hulk: Ultimate Destruction** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 9 |
+| **The Lord of the Rings: The Return of the King** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 9 |
+| **Top Spin** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 18 |
 | **Tron 2.0 : Killer App** | 🔵 Measured, not rated yet | **54.8**<br>Nova, Oct 6 |
-| **Turok Evolution** | 🔵 Measured, not rated yet | **29.9**<br>Nova, Oct 7 |
-| **Ty the Tasmanian Tiger Night of the Quinkan USA Australia** | 🔵 Measured, not rated yet | **47.8**<br>Nova, Oct 7 |
-| **TY the Tasmanian Tiger USA** | 🔵 Measured, not rated yet | **30.0**<br>Nova, Oct 14 |
-| **Ultimate Pro Pinball Europe** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 16 |
-| **Ultimate Spider Man** | 🔵 Measured, not rated yet | **29.4**<br>Nova, Oct 7 |
 | **Whacked** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 4 |
-| **Wild Rings The Japan** | 🔵 Measured, not rated yet | **53.3**<br>Nova, Oct 19 |
-| **World Series Baseball USA** | 🔵 Measured, not rated yet | **22.0**<br>Nova, Oct 16 |
-| **World Snooker Championship 2005 Europe** | 🔵 Measured, not rated yet | **23.4**<br>Nova, Oct 15 |
-| **X Men The Official Game Europe** | 🔵 Measured, not rated yet | **49.3**<br>Nova, Oct 12 |
-| **XIII USA Europe En Fr De Es It** | 🔵 Measured, not rated yet | **59.9**<br>Nova, Oct 7 |
-| **Yetisports Arctic Adventures Europe** | 🔵 Measured, not rated yet | **35.1**<br>Nova, Oct 16 |
 
-<details><summary>356 titles not tested yet</summary>
+<details><summary>375 titles not tested yet</summary>
 
 | Title |
 |---|
 | 007: Everything Or Nothing |
+| 4x4 Evo 2 |
+| Aeon Flux |
 | AFL Live 2003 |
 | AFL Live 2004 |
 | AFL Live Premiership Edition |
@@ -323,6 +227,7 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | American Chopper |
 | American Chopper 2 Full Throttle |
 | American McGee Presents Scrapland |
+| AMF Xtreme Bowling |
 | AND 1 Streetball |
 | Angelic Concert |
 | Animaniacs The Great Edgar Hunt |
@@ -333,18 +238,23 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | Armed and Dangerous |
 | Army Men Major Malfunction |
 | Army Men Sarge s War |
+| Arx Fatalis |
 | Atari Anthology |
+| Auto Modellista |
 | Backyard Wrestling Don t Try This at Home |
 | Baldur s Gate Dark Alliance II |
 | Barbarian |
 | Barbie Horse Adventures Wild Horse Rescue |
 | Bass Pro Shops Trophy Bass 2007 |
 | Bass Pro Shops Trophy Hunter 2007 |
+| Batman Begins |
+| Batman Dark Tomorrow |
 | Batman Rise of Sin Tzu |
 | Batman Vengeance |
 | Battle Engine Aquila |
 | Battlestar Galactica |
 | Beat Down Fists of Vengeance |
+| Beyond Good & Evil |
 | Bicycle Casino Includes Texas Hold em |
 | Big Bumpin |
 | Big Mutha Truckers |
@@ -422,6 +332,7 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | Dance Dance Revolution Ultramix 2 |
 | Dance Dance Revolution Ultramix 4 |
 | Dance UK |
+| Darkwatch |
 | Dave Mirra Freestyle BMX 2 |
 | Dead Man s Hand |
 | Dead to Rights |
@@ -447,6 +358,7 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | Doom 3 |
 | Doom 3 Resurrection of Evil |
 | Dr Seuss The Cat in the Hat |
+| Dragon Ball Z Sagas |
 | Dragon s Lair 3D Return to the Lair |
 | Drake of the 99 Dragons |
 | Dreamfall The Longest Journey |
@@ -532,6 +444,7 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | Gun |
 | Gun Metal |
 | Gungriffon Allied Strike |
+| Half Life 2 |
 | Halo 2 Multiplayer Map Pack |
 | Harry Potter and the Chamber of Secrets |
 | Harry Potter and the Goblet of Fire |
@@ -574,6 +487,7 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | Largo Winch Empire Under Threat |
 | Legends of Wrestling |
 | Legends of Wrestling II |
+| LEGO Star Wars: The Video Game |
 | LMA Manager 2003 |
 | Loons The Fight for Fame |
 | Mace Griffin Bounty Hunter |
@@ -602,6 +516,8 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | Need for Speed Hot Pursuit 2 |
 | Neighbours from Hell |
 | NFL 2K2 (USA).7z |
+| Plus Plumb 2 |
+| Prince of Persia: The Sands of Time |
 | PsiOps |
 | Psyvariar 2 Extend Edition |
 | RAW |
@@ -624,9 +540,12 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | Star Wars Starfighter Special Edition |
 | Star Wars The Clone Wars |
 | Still Life |
+| Stranger's Wrath |
+| Strike Force Bowling |
 | Super Bubble Pop |
 | Superman Returns |
 | Takahashi Junko no Mahjong Seminar |
+| Tecmo Classic Arcade |
 | Tetris Worlds |
 | The Bard s Tale |
 | The Baseball 2002 Battle Ball Park Sengen |
@@ -649,8 +568,10 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 | Triangle Again |
 | Triple Play 2002 |
 | Trivial Pursuit Unhinged |
+| Turok Evolution |
 | UEFA Champions League 2004 2005 |
 | Ultimate Pro Pinball |
+| Ultimate Spider Man |
 | Umezawa Yukari no Igo Seminar |
 | Unreal Championship |
 | Virtual Pool Tournament Edition |
@@ -668,5 +589,5 @@ Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/
 
 </details>
 
-626 titles: 97 Playable, 8 below 30 fps, 16 crash or hang, 149 measured but not rated yet, 356 not tested yet.
+547 titles: 97 Playable, 12 below 30 fps, 10 crash or hang, 53 measured but not rated yet, 375 not tested yet.
 
